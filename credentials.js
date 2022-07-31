@@ -8,14 +8,7 @@ function askForCredentials(method) {
       .showModalDialog(html, 'RWGPS Credentials')
 }
 
-// function getCredentials(method) {
-//   Logger.log(credentials.email === undefined);
-//   if (credentials.email === undefined || credentials.password === undefined) {
-//     askForCredentials(method);
-//   } else {
-//     Logger.log("Got Credentials")
-//   }
-// }
+
 function clearCredentials() {
   PropertiesService.getUserProperties().deleteAllProperties();
 }
