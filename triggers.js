@@ -1,4 +1,4 @@
-`/** @OnlyCurrentDoc */
+/** @OnlyCurrentDoc */
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ride Lead Coordinators')
