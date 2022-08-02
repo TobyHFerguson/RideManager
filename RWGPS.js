@@ -20,9 +20,9 @@ class RWGPS {
    * @param{event} event object - the event to be used as the source of the changes
    */
   edit_event(event_url, event) {
-    // Looking up organizer ids can only be done in the context of the event url, hence we embellish the event at this late stage in the process
-    event.organizer_ids = this._lookupOrganizerId(event_url, event.organizer_name);
-    event.desc = `Ride Leader: ${event.organizer_ids.includes(RIDE_LEADER_TBD_ID) ? RIDE_LEADER_TBD_NAME : event.organizer_name}
+    // Looking up organizer tokens can only be done in the context of the event url, hence we embellish the event at this late stage in the process
+    event.organizer_tokens = this._lookupOrganizerId(event_url, event.organizer_name);
+    event.desc = `Ride Leader: ${event.organizer_tokens.includes(RIDE_LEADER_TBD_ID) ? RIDE_LEADER_TBD_NAME : event.organizer_name}
 
     ${event.desc}`;
     let response = this.rwgpsService.edit_event(event_url, event);
@@ -74,10 +74,81 @@ class RWGPS {
 }
 
 
+const CANONICAL_EVENT = {
+    "id": 188822,
+    "name": "My New Name",
+    "desc": "This is the description",
+    "group_id": 5278668,
+    "group_membership_id": 642972,
+    "created_at": "2022-08-02T15:24:30-07:00",
+    "updated_at": "2022-08-02T15:24:30-07:00",
+    "official": false,
+    "starts_on": null,
+    "custom_tabs": "[]",
+    "location": "Aptos Village",
+    "slug": "188822-copied-event",
+    "ends_on": null,
+    "cost_in_cents": null,
+    "visibility": "1",
+    "starts_at": null,
+    "ends_at": null,
+    "request_age_and_gender": "0",
+    "filter_gender": "1",
+    "filter_age": "1",
+    "age_splits": "35,55",
+    "participant_duration": null,
+    "request_email": "0",
+    "organizer_ids": [
+        []
+    ],
+    "event_series_id": null,
+    "archived_at": null,
+    "all_day": "0",
+    "implicit_ends_at": null,
+    "organizer_names_formal": [],
+    "user": {
+        "id": 621846,
+        "name": "Santa Cruz County Cycling Club"
+    },
+    "creating_group": {
+        "name": "",
+        "visibility": 0,
+        "slug": null
+    },
+    "start_date": "2022-08-31",
+    "start_time": "",
+    "end_date": "",
+    "end_time": "",
+    "repeat_frequency": "does not repeat",
+    "weekly_repeat_every": "1",
+    "weekly_repeat_until": "2022-09-02",
+    "monthly_repeat_every": "0",
+    "monthly_repeat_on": "0",
+    "monthly_repeat_until": "2022-09-02",
+    "organizer_tokens": "302732",
+    "auto_expire_participants": "0",
+    "route_ids": ""
+}
+
+
 class RWGPSService {
   constructor(email, password) {
     this.sign_in(email, password);
   }
+
+    /**
+ * Select the union of the two objects, ensuring only the keys from the left are in the result
+ * @param{left} object
+ * @param{right} object
+ * @return object - the new object created
+ */
+function _left_select(left, right) {
+  let no = { ...left, ...right };
+  let left_keys = Object.keys(left);
+  let right_keys = Object.keys(right);
+  right_keys.filter(k => !left_keys.includes(k)).forEach(k => delete no[k])
+  return no;
+}
 
   _send_request(url, options) {
     const response = UrlFetchApp.fetch(url, options);
@@ -121,11 +192,12 @@ class RWGPSService {
   }
 
 
-  edit_event(event_url, event) {
+    edit_event(event_url, event) {
+	let new_event = this._left_select(CANONICAL_EVENT, event);
     const options = {
       method: 'put',
       contentType: 'application/json',
-      payload: JSON.stringify(event),
+      payload: JSON.stringify(new_event),
       headers: { cookie: this.cookie },
       followRedirects: false,
       muteHttpExceptions: true
