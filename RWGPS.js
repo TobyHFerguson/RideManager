@@ -22,13 +22,14 @@ class RWGPS {
   edit_event(event_url, event) {
     // Looking up organizer tokens can only be done in the context of the event url, hence we embellish the event at this late stage in the process
     event.organizer_tokens = this._lookupOrganizerId(event_url, event.organizer_name);
-    event.desc = `Ride Leader: ${event.organizer_tokens.includes(RIDE_LEADER_TBD_ID) ? RIDE_LEADER_TBD_NAME : event.organizer_name}
+    event.desc = `Ride Leader: ${event.organizer_tokens == RIDE_LEADER_TBD_ID ? RIDE_LEADER_TBD_NAME : event.organizer_name}
 
     ${event.desc}`;
     let response = this.rwgpsService.edit_event(event_url, event);
     if (response.getResponseCode() >= 500) {
       throw Error(`received a code ${response.getResponseCode()} when editing event ${event_url}`);
     }
+    return response;
   }
   batch_delete_events(event_urls) {
     let event_ids = event_urls.map(e => e.split('/')[4].split('-')[0]);
@@ -49,8 +50,8 @@ class RWGPS {
    * @return{string} - the organizer's id
    */
   _lookupOrganizerId(url, organizer_name) {
-    if (organizer_name === null || organizer_name === "") {
-      return [RIDE_LEADER_TBD_ID];
+    if (organizer_name === undefined || organizer_name === null || organizer_name === "") {
+      return RIDE_LEADER_TBD_ID +"";
     }
     let response = this.rwgpsService._lookupOrganizerId(url, organizer_name);
     let rc = response.getResponseCode();
@@ -59,21 +60,25 @@ class RWGPS {
         const names = JSON.parse(response.getContentText()).results;
         for (var i = 0; i < names.length; i++) {
           if (names[i].text.toLowerCase() === organizer_name.toLowerCase()) {
-            return [names[i].id];
+            return names[i].id +"";
           }
         }
-        return [RIDE_LEADER_TBD_ID];
+        return RIDE_LEADER_TBD_ID + "";
       } catch (e) {
         Logger.log(`RWGPS._lookupOrganizerId(${url}, ${organizer_name}) threw ${e}`);
         Logger.log(`RWGPS._lookupOrganizerId(${url}, ${organizer_name}) content text: ${response.getContentText()}`);
         throw (e);
       }
     }
-    return [RIDE_LEADER_TBD_ID];
+    return RIDE_LEADER_TBD_ID + "";
   }
 }
 
-
+/**
+ * This is the event I've gleaned from a working session with Chrome. It contains every property I might wish to set. 
+ * Only properties from this event should be sent to RWGPS - not sure that it actually matters, but when debugging its
+ * one of the things the engineers wanted to ensure. 
+ */
 const CANONICAL_EVENT = {
     "id": 188822,
     "name": "My New Name",
@@ -137,22 +142,24 @@ class RWGPSService {
   }
 
     /**
- * Select the union of the two objects, ensuring only the keys from the left are in the result
+* Select the keys and values of the left object where every key in the left is in the right
  * @param{left} object
  * @param{right} object
  * @return object - the new object created
  */
-function _left_select(left, right) {
-  let no = { ...left, ...right };
-  let left_keys = Object.keys(left);
+  key_filter(left, right) {
+    let no = { ...left };
+    let left_keys = Object.keys(no);
   let right_keys = Object.keys(right);
-  right_keys.filter(k => !left_keys.includes(k)).forEach(k => delete no[k])
+    left_keys.filter(k => !right_keys.includes(k)).forEach(k => delete no[k])
   return no;
 }
 
   _send_request(url, options) {
     const response = UrlFetchApp.fetch(url, options);
+    if (response.getAllHeaders()['Set-Cookie'] !== undefined) {
     this.cookie = response.getAllHeaders()['Set-Cookie'].split(';')[0];
+    } 
     return response;
   }
   sign_in(email, password) {
@@ -193,12 +200,15 @@ function _left_select(left, right) {
 
 
     edit_event(event_url, event) {
-	let new_event = this._left_select(CANONICAL_EVENT, event);
+    let new_event = this.key_filter(event, CANONICAL_EVENT);
     const options = {
       method: 'put',
       contentType: 'application/json',
       payload: JSON.stringify(new_event),
-      headers: { cookie: this.cookie },
+      headers: { 
+        cookie: this.cookie, 
+        Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
+      },
       followRedirects: false,
       muteHttpExceptions: true
     }
