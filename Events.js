@@ -28,7 +28,7 @@ class Event {
     try {
       try {
         let options = { timeZone: "America/Los_Angeles" };
-        this.start_date = row.getStartDate().toLocaleDateString("en-US", options);
+        this.start_date = row.getStartDate().toLocaleDateString("en-CA", options);
       } catch (e) {
         Logger.log(`makeEventObject() threw ${e} for row ${row.rowNum} ${row.getStartDate()}`);
         this.errors.push('start date column does not contain a date');
