@@ -1,0 +1,18 @@
+{
+  "timeZone": "America/Anchorage",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "sheets": {
+    "macros": [
+      {
+        "menuName": "SatA",
+        "functionName": "SatA"
+      },
+      {
+        "menuName": "Unlink Route",
+        "functionName": "UnlinkRoute"
+      }
+    ]
+  }
+}
