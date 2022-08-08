@@ -15,6 +15,15 @@ class RWGPS {
     return headers['Location'];
   }
   /**
+   * Get the event at the URL
+   * @param{string} url
+   * @returns{object} the event object
+   */
+  get_event(event_url) {
+    let response = this.rwgpsService.get_event(event_url);
+    return JSON.parse(response.getContentText())["event"];
+  }
+  /**
    * Edit the scheduled event at the given url to be consistent with the given event object
    * @param{event_url} string - the scheduled event to be modified
    * @param{event} event object - the event to be used as the source of the changes
@@ -51,7 +60,7 @@ class RWGPS {
    */
   _lookupOrganizerId(url, organizer_name) {
     if (organizer_name === undefined || organizer_name === null || organizer_name === "") {
-      return RIDE_LEADER_TBD_ID +"";
+      return RIDE_LEADER_TBD_ID + "";
     }
     let response = this.rwgpsService._lookupOrganizerId(url, organizer_name);
     let rc = response.getResponseCode();
@@ -60,7 +69,7 @@ class RWGPS {
         const names = JSON.parse(response.getContentText()).results;
         for (var i = 0; i < names.length; i++) {
           if (names[i].text.toLowerCase() === organizer_name.toLowerCase()) {
-            return names[i].id +"";
+            return names[i].id + "";
           }
         }
         return RIDE_LEADER_TBD_ID + "";
@@ -80,59 +89,59 @@ class RWGPS {
  * one of the things the engineers wanted to ensure. 
  */
 const CANONICAL_EVENT = {
-    "id": 188822,
-    "name": "My New Name",
-    "desc": "This is the description",
-    "group_id": 5278668,
-    "group_membership_id": 642972,
-    "created_at": "2022-08-02T15:24:30-07:00",
-    "updated_at": "2022-08-02T15:24:30-07:00",
-    "official": false,
-    "starts_on": null,
-    "custom_tabs": "[]",
-    "location": "Aptos Village",
-    "slug": "188822-copied-event",
-    "ends_on": null,
-    "cost_in_cents": null,
-    "visibility": "1",
-    "starts_at": null,
-    "ends_at": null,
-    "request_age_and_gender": "0",
-    "filter_gender": "1",
-    "filter_age": "1",
-    "age_splits": "35,55",
-    "participant_duration": null,
-    "request_email": "0",
-    "organizer_ids": [
-        []
-    ],
-    "event_series_id": null,
-    "archived_at": null,
-    "all_day": "0",
-    "implicit_ends_at": null,
-    "organizer_names_formal": [],
-    "user": {
-        "id": 621846,
-        "name": "Santa Cruz County Cycling Club"
-    },
-    "creating_group": {
-        "name": "",
-        "visibility": 0,
-        "slug": null
-    },
-    "start_date": "2022-08-31",
-    "start_time": "",
-    "end_date": "",
-    "end_time": "",
-    "repeat_frequency": "does not repeat",
-    "weekly_repeat_every": "1",
-    "weekly_repeat_until": "2022-09-02",
-    "monthly_repeat_every": "0",
-    "monthly_repeat_on": "0",
-    "monthly_repeat_until": "2022-09-02",
-    "organizer_tokens": "302732",
-    "auto_expire_participants": "0",
-    "route_ids": ""
+  "id": 188822,
+  "name": "My New Name",
+  "desc": "This is the description",
+  "group_id": 5278668,
+  "group_membership_id": 642972,
+  "created_at": "2022-08-02T15:24:30-07:00",
+  "updated_at": "2022-08-02T15:24:30-07:00",
+  "official": false,
+  "starts_on": null,
+  "custom_tabs": "[]",
+  "location": "Aptos Village",
+  "slug": "188822-copied-event",
+  "ends_on": null,
+  "cost_in_cents": null,
+  "visibility": "1",
+  "starts_at": null,
+  "ends_at": null,
+  "request_age_and_gender": "0",
+  "filter_gender": "1",
+  "filter_age": "1",
+  "age_splits": "35,55",
+  "participant_duration": null,
+  "request_email": "0",
+  "organizer_ids": [
+    []
+  ],
+  "event_series_id": null,
+  "archived_at": null,
+  "all_day": "0",
+  "implicit_ends_at": null,
+  "organizer_names_formal": [],
+  "user": {
+    "id": 621846,
+    "name": "Santa Cruz County Cycling Club"
+  },
+  "creating_group": {
+    "name": "",
+    "visibility": 0,
+    "slug": null
+  },
+  "start_date": "2022-08-31",
+  "start_time": "",
+  "end_date": "",
+  "end_time": "",
+  "repeat_frequency": "does not repeat",
+  "weekly_repeat_every": "1",
+  "weekly_repeat_until": "2022-09-02",
+  "monthly_repeat_every": "0",
+  "monthly_repeat_on": "0",
+  "monthly_repeat_until": "2022-09-02",
+  "organizer_tokens": "302732",
+  "auto_expire_participants": "0",
+  "route_ids": ""
 }
 
 
@@ -141,25 +150,25 @@ class RWGPSService {
     this.sign_in(email, password);
   }
 
-    /**
+  /**
 * Select the keys and values of the left object where every key in the left is in the right
- * @param{left} object
- * @param{right} object
- * @return object - the new object created
- */
+* @param{left} object
+* @param{right} object
+* @return object - the new object created
+*/
   key_filter(left, right) {
     let no = { ...left };
     let left_keys = Object.keys(no);
-  let right_keys = Object.keys(right);
+    let right_keys = Object.keys(right);
     left_keys.filter(k => !right_keys.includes(k)).forEach(k => delete no[k])
-  return no;
-}
+    return no;
+  }
 
   _send_request(url, options) {
     const response = UrlFetchApp.fetch(url, options);
     if (response.getAllHeaders()['Set-Cookie'] !== undefined) {
-    this.cookie = response.getAllHeaders()['Set-Cookie'].split(';')[0];
-    } 
+      this.cookie = response.getAllHeaders()['Set-Cookie'].split(';')[0];
+    }
     return response;
   }
   sign_in(email, password) {
@@ -198,15 +207,26 @@ class RWGPSService {
     return this._send_request(url, options);
   }
 
-
-    edit_event(event_url, event) {
+  get_event(event_url) {
+    const options = {
+      method: 'get',
+      headers: {
+        cookie: this.cookie,
+        Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
+      },
+      followRedirects: false,
+      muteHttpExceptions: true
+    }
+    return this._send_request(event_url, options);
+  }
+  edit_event(event_url, event) {
     let new_event = this.key_filter(event, CANONICAL_EVENT);
     const options = {
       method: 'put',
       contentType: 'application/json',
       payload: JSON.stringify(new_event),
-      headers: { 
-        cookie: this.cookie, 
+      headers: {
+        cookie: this.cookie,
         Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
       },
       followRedirects: false,
@@ -279,4 +299,12 @@ class RWGPSService {
     }
     return this._send_request(url, options);
   }
+}
+
+function testGetEvent() {
+  let rwgps = new RWGPS(new RWGPSService("toby.h.ferguson@icloud.com", "1rider1"));
+  let url = "https://ridewithgps.com/events/189081-copied-event";
+  Logger.log(rwgps.get_event(url)['starts_at']);
+  Logger.log(new Date(rwgps.get_event(url)['starts_at']));
+  Logger.log(new Date("9/27/2022") === Date.parse(rwgps.get_event(url)['starts_at']));
 }

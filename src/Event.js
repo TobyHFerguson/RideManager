@@ -7,24 +7,26 @@ const MEMBERS_ONLY = 2;
 
 
 class Event {
-  constructor(row) {
-    function makeRideName(start_date, start_time, group, route_name) {
-      return `${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" })} '${group}' Ride (${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" })} ${start_time.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" })}) ${route_name}`;
-    }
-
-    if (typeof row == "undefined") {
-      throw new RangeError("EventObject cannot be created with an undefined row");
-    }
-
-
-    this.row = row;
+  constructor() {
     this.errors = [];
     this.warnings = [];
-    this.rowNum = row.rowNum;
-
     this.auto_expire_participants = "1";
     this.all_day = "0";
     this.visibility = EVENT_MANAGERS_ONLY;
+  }
+
+  fromRow(row) {
+    if (typeof row == "undefined") {
+      throw new RangeError("EventObject cannot be created with an undefined row");
+    }
+    this.row = row;
+    this.rowNum = row.rowNum;
+
+    function _makeRideName(start_date, start_time, group, route_name) {
+      return `${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" })} '${group}' Ride (${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" })} ${start_time.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" })}) ${route_name}`;
+    }
+
+
     try {
       try {
         let options = { timeZone: "America/Los_Angeles" };
@@ -73,7 +75,7 @@ class Event {
     }
     this.name = row.getRideName();
     if ((this.name == null || this.name === "") && this.errors.length === 0) {
-      this.name = makeRideName(row.getStartDate(), row.getStartTime(), row.getGroup(), row.getRouteName());
+      this.name = _makeRideName(row.getStartDate(), row.getStartTime(), row.getGroup(), row.getRouteName());
     }
     this.location = row.getLocation();
     if (this.location == "" || this.location == "#VALUE!") {
@@ -98,6 +100,10 @@ All participants are assumed to have read and agreed to the clubs ride policy: h
 Note: In a browser use the "Go to route" link below to open up the route.`;
 
     return this;
+  }
+
+  fromRwgps(rwgpsEvent) {
+    
   }
 
   setRideLink(url) {
