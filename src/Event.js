@@ -81,7 +81,7 @@ constructor(row) {
   }
   this.name = row.getRideName();
   if ((this.name == null || this.name === "") && this.errors.length === 0) {
-    this.name = makeRideName(row.getStartDate(), row.getStartTime(), row.getGroup(), row.getRouteName());
+    this.name = Event.makeRideName(row.getStartDate(), row.getStartTime(), row.getGroup(), row.getRouteName());
   }
   this.location = row.getLocation();
   if (this.location == "" || this.location == "#VALUE!") {
