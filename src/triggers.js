@@ -5,6 +5,7 @@ function onOpen() {
     .addItem('Link Route URLs', 'linkRouteURLs')
     .addSeparator()
     .addItem('Schedule Selected Events', 'scheduleSelectedEvents')
+    .addItem('Update Selected Events', 'updateSelectedEvents')
     .addItem('Cancel Selected Events', 'cancelSelectedEvents')
     .addSeparator()
     .addItem('Clear User Credentials', 'clearCredentials')

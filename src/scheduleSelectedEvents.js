@@ -16,7 +16,7 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
         case 'A': return A_TEMPLATE;
         case 'B': return B_TEMPLATE;
         case 'C': return C_TEMPLATE;
-        default: throw error(`Unknown group: ${group}`);
+        default: throw new Error(`Unknown group: ${group}`);
       }
     }
 
@@ -41,7 +41,7 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
 
     function create_warning_message(events) {
       let message = "";
-      let warning_events = events.filter((e) => e.warnings.length > 0);
+      let warning_events = events.filter((e) => schedulable_(e) && e.warnings.length > 0);
       if (warning_events.length > 0) {
         message += "These rows had warnings and can be scheduled:\n"
         let warnings = warning_events.flatMap(event => event.warnings.map(warning => `Row ${event.rowNum}: ${warning}`));
@@ -56,7 +56,7 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
      */
     function create_schedule_message(events) {
       let message = "";
-      let clean_events = events.filter((e) => e.warnings.length == 0 && e.errors.length == 0);
+      let clean_events = events.filter((e) => schedulable_(e) && e.warnings.length == 0);
       if (clean_events.length > 0) {
         message += "These rows had neither errors nor warnings and can be scheduled:\n"
         message += clean_events.map(event => `Row ${event.rowNum}`).join("\n");
@@ -85,7 +85,12 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
   }
 
   clear_sidebar();
+  // Mark up any events which have already been scheduled
+  events.forEach(e => {if (e.row.getRideURL() !== null) {
+        e.errors.push("This ride has already been scheduled");
+      }});
   let message = create_message(events);
+  create_sidebar(events.filter(e => !schedulable_(e) || e.warnings.length > 0));
   let schedulable_events = events.filter(e => schedulable_(e));
   if (schedulable_events.length === 0) {
     inform_of_errors(message);
@@ -95,7 +100,7 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
       rwgps.remove_tags(scheduled_event_urls, ["template"]);
     }
   }
-  create_sidebar(events.filter(e => e.errors.length > 0 || e.warnings.length > 0));
+  
 }
 
 
