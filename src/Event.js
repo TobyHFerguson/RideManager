@@ -25,7 +25,7 @@ constructor(row) {
 
   this.auto_expire_participants = "1";
   this.all_day = "0";
-  this.visibility = EVENT_MANAGERS_ONLY;
+  this.visibility = PUBLIC;
   try {
     try {
       let options = { timeZone: "America/Los_Angeles" };
