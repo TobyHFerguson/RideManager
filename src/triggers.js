@@ -16,7 +16,7 @@ function onOpen() {
 
 function linkRouteURLs() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheets()[0];
+  var sheet = ss.getSheetByName("Consolidated Rides");
   // var routeRange = sheet.getActiveRange();
   var routeRange = sheet.getRange(`E2:E${sheet.getLastRow()}`);
   var rtvs = routeRange.getRichTextValues();
