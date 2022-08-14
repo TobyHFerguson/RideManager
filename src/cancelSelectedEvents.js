@@ -58,7 +58,13 @@ function cancelSelectedEventsWithCreds(events, rwgps) {
     inform_of_errors(message);
   } else {
     if (confirm_cancel(message)) {
-      rwgps.batch_delete_events(cancelable_events.map(e => { let url = e.getRideLinkURL(); e.deleteRideLinkURL(); return url; }));
+      try {
+        rwgps.batch_delete_events(cancelable_events.map(e => { let url = e.getRideLinkURL(); e.deleteRideLinkURL(); return url; }));
+      } catch (e) {
+        if (e.message.indexOf('Request failed for https://ridewithgps.com returned code 404. Truncated server response: {"success":0,"message":"Record not found"} (use muteHttpExceptions option to examine full response)') === -1) {
+          throw e;
+        }
+      }
     }
   }
 }
