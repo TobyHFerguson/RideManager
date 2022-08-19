@@ -62,11 +62,11 @@ constructor(row) {
     }
     try {
       let url = row.getRouteURL().split('?')[0]
-      const response = UrlFetchApp.fetch(url + ".json");
-      if (JSON.parse(response.getContentText()).user_id !== SCCCC_USER_ID) {
+      let route = new Route(url);
+      if (!route.ownedBySCCCC()) {
         this.errors.push('Route is not owned by SCCCC');
       } else {
-        this.route_ids = [row.getRouteURL().split('/')[4]];
+        this.route_ids = route.getId();
       }
 
     } catch (e) {
