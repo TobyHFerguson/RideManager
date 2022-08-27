@@ -4,10 +4,10 @@ class Route {
     const response = UrlFetchApp.fetch(url + ".json");
     this.route = JSON.parse(response.getContentText());
   }
-  static ownedBySCCCC() {
+  ownedBySCCCC() {
     return this.route.user_id === SCCCC_USER_ID; 
   }
-  static getId() {
+  getId() {
     return this.url.split('/')[4]
   }
 }

@@ -42,8 +42,8 @@ constructor(row) {
       Logger.log(`makeEventObject() threw ${e} for row ${row.rowNum} ${row.getStartTime()}`);
       this.errors.push('start time column does not contain a time');
     }
-
-    switch (row.getGroup()) {
+    let g = row.getGroup();
+    switch (g) {
       case undefined:
       case null:
       case "":
@@ -52,10 +52,10 @@ constructor(row) {
       case "A":
       case "B":
       case "C":
-        this.group = row.getGroup();
+        this.group = g;
         break;
       default:
-        this.errors.push(`Unknown group: ${row.getGroup()}`);
+        this.errors.push(`Unknown group: ${g}`);
     }
     if (row.getRouteName() === null || row.getRouteName() === "") {
       this.errors.push("No route name defined for this ride");
