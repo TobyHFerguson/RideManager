@@ -30,8 +30,8 @@ function testStage0() {
 }
 function createEvent(row) {
   addRowToSheet(row);
-  scheduleLastRow();
-  sendEmail(row);
+  let event = scheduleLastRow();
+  sendEmail(event);
 }
 
 function addRowToSheet(row) {
@@ -57,6 +57,7 @@ function scheduleLastRow() {
   const lastRow = schedule.getLastRow();
   const event = new Event(lastRow);
   schedule_event_(rwgps, event);
+  return event;
 }
 
 function schedule_event_(rwgps, event) {
