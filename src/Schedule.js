@@ -32,6 +32,16 @@ class Schedule {
     this.activeSheet.getRange(rowNum, this.getColumn(RIDECOLUMNNAME) + 1).clear({contentsOnly: true});
   }
 
+  convertRangeToRows(range) {
+    let rows = []
+      let values = range.getValues();
+      let richTextValues = range.getRichTextValues();
+      for (var offset = 0; offset < values.length; offset++) {
+        rows.push(new Row(this, range, offset, values, richTextValues))
+      }
+      return rows;
+  }
+
   getSelectedRows() {
     let activeSheet = this.activeSheet;
     function getRowRanges() {
@@ -54,6 +64,16 @@ class Schedule {
       }
     });
     return rows;
+  }
+  getLastRow() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Consolidated Rides');
+    let rownum = sheet.getLastRow();
+    let colnum = 1;
+    let numrows = 1;
+    let numcols = sheet.getLastColumn();
+    let range = sheet.getRange(rownum, colnum, numrows, numcols);
+    return this.convertRangeToRows(range)[0];
   }
 }
 

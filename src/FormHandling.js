@@ -11,35 +11,52 @@ function onFormSubmit(event) {
     Route: `${nv['Route URL']}`,
     'Ride Leader': `${nv['Name (first last)']}`
   }
+  createEvent(row);
+}
+
+function testFormSubmission() {
+  testStage0();
+}
+
+function testStage0() {
+  let row = {
+    Date: "11/1/2022",
+    Group: "A",
+    'Start Time': "10:00 AM",
+    Route: "https://ridewithgps.com/routes/30674325",
+    'Ride Leader': "Toby Ferguson",
+  };
+  createEvent(row);
+}
+function createEvent(row) {
   addRowToSheet(row);
-  selectLastRow();
   scheduleLastRow();
-  sendEmail(event);
+  sendEmail(row);
 }
 
 function addRowToSheet(row) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('Consolidated Rides');
   sheet.appendRow([`${row['Date']}`, `${row['Group']}`, , `${row['Start Time']}`, `${row['Route']}`, `${row['Ride Leader']}`]);
+  formatDateInLastRow();
+  linkRouteURLs();
 }
 
-function selectLastRow() {
+function formatDateInLastRow() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('Consolidated Rides');
   let r = sheet.getLastRow();
-  sheet.setActiveSelection(`A${r}:A${r}`);
+  // sheet.setActiveSelection(`A${r}:A${r}`);
   sheet.getRange(`A${r}`).setNumberFormat('ddd mm/dd');
 }
  
 function scheduleLastRow() {
-  linkRouteURLs();
   const rwgpsService = new RWGPSService("toby.h.ferguson@icloud.com", "1rider1");
   const rwgps = new RWGPS(rwgpsService);
   const schedule = new Schedule();
-  selectLastRow();
-  let rows = schedule.getSelectedRows();
-  let events = rows.map(row => new Event(row))
-  events.forEach(event => schedule_event_(rwgps, event));
+  const lastRow = schedule.getLastRow();
+  const event = new Event(lastRow);
+  schedule_event_(rwgps, event);
 }
 
 function schedule_event_(rwgps, event) {
@@ -58,12 +75,11 @@ function schedule_event_(rwgps, event) {
   event.setRideLink(new_event_url);
   return new_event_url
 }
-function sendEmail(e) {
-  var formValues = e.namedValues;
+function sendEmail(row) {
   var html = '<ul>';
-  for (let k in formValues) {
+  for (let k in row) {
     var key = k;
-    var data = formValues[k];
+    var data = row[k];
     html += '<li>' + key + ": " + data + '</li>';
   };
   html += '</ul>';
