@@ -35,7 +35,7 @@ constructor(row) {
       this.errors.push('start date column does not contain a date');
     }
     try {
-      let options = { timeZone: "America/Los_Angeles" };
+      let options = { timeZone: "America/Los_Angeles", hour:"2-digit", minute:"2-digit" };
       this.start_time = row.getStartTime().toLocaleTimeString("en-US", options);
       this.meet_time = (new Date(Number(row.getStartTime()) - 15 * 60 * 1000)).toLocaleTimeString("en-US", options);
     } catch (e) {
