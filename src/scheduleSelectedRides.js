@@ -1,13 +1,12 @@
 /** @OnlyCurrentDoc */
 
 
-function scheduleSelectedEvents() {
-  let form = { ...credentials, method: "scheduleSelectedEventsWithCredentials" };
+function scheduleSelectedRides() {
+  let form = { ...credentials, method: scheduleSelectedRidesWithCredentials.name };
   do_action(form);
 }
 
-
-function scheduleSelectedEventsWithCredentials(events, rwgps) {
+function scheduleSelectedRidesWithCredentials(events, rwgps) {
   function schedulable_(event) { return event.errors.length == 0; }
 
   function schedule_event_(rwgps, event) {
@@ -31,7 +30,7 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
       let message = "";
       let error_events = events.filter(e => !schedulable_(e));
       if (error_events.length > 0) {
-        message += "These rows had errors and will not be scheduled:\n";
+        message += "These rides had errors and will not be scheduled:\n";
         let errors = error_events.flatMap(event => event.errors.map(error => `Row ${event.rowNum}: ${error}`));
         message += errors.join("\n");
         message += "\n\n";
@@ -43,7 +42,7 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
       let message = "";
       let warning_events = events.filter((e) => schedulable_(e) && e.warnings.length > 0);
       if (warning_events.length > 0) {
-        message += "These rows had warnings and can be scheduled:\n"
+        message += "These rides had warnings but can be scheduled:\n"
         let warnings = warning_events.flatMap(event => event.warnings.map(warning => `Row ${event.rowNum}: ${warning}`));
         message += warnings.join("\n");
         message += "\n\n";
@@ -52,13 +51,13 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
     }
 
     /**
-     * Create a message for all the events that have neither errors nor warnings
+     * Create a message for all the rides that have neither errors nor warnings
      */
     function create_schedule_message(events) {
       let message = "";
       let clean_events = events.filter((e) => schedulable_(e) && e.warnings.length == 0);
       if (clean_events.length > 0) {
-        message += "These rows had neither errors nor warnings and can be scheduled:\n"
+        message += "These rides had neither errors nor warnings and can be scheduled:\n"
         message += clean_events.map(event => `Row ${event.rowNum}`).join("\n");
         message += "\n\n";
       }
@@ -73,14 +72,14 @@ function scheduleSelectedEventsWithCredentials(events, rwgps) {
   }
 
   function confirm_schedule(message) {
-    message += `Do you want to continue to schedule all schedulable events?`;
+    message += `Do you want to continue to schedule all schedulable rides?`;
     let ui = SpreadsheetApp.getUi();
     let result = ui.alert(message, ui.ButtonSet.YES_NO);
     return result == ui.Button.YES
   }
 
   function inform_of_errors(message) {
-    message += "All selected rows are unschedulable and need to have the errors fixed.";
+    message += "All selected rides are unschedulable and need to have the errors fixed.";
     SpreadsheetApp.getUi().alert(message);
   }
 

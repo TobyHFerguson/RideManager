@@ -1,6 +1,6 @@
 /** @OnlyCurrentDoc */
-function cancelSelectedEvents() {
-  let form = { ...credentials, method: "cancelSelectedEventsWithCreds" };
+function cancelSelectedRides() {
+  let form = { ...credentials, method: cancelSelectedRidesWithCreds.name };
   do_action(form);
 }
 
@@ -9,7 +9,7 @@ function cancelable_(event) {
   return url !== undefined && url !== null && url !== "";
 }
 
-function cancelSelectedEventsWithCreds(events, rwgps) {
+function cancelSelectedRidesWithCreds(events, rwgps) {
   function create_cancel_message(events) {
     function create_cancelable_message(events) {
       let message = "";
@@ -26,7 +26,7 @@ function cancelSelectedEventsWithCreds(events, rwgps) {
       let message = "";
       let non_cancelable_events = events.filter(e => !cancelable_(e));
       if (non_cancelable_events.length > 0) {
-        message += "These rows don't appear to have been scheduled and cannot now be canceled:\n";
+        message += "These rides don't appear to have been scheduled and cannot now be canceled:\n";
         message += non_cancelable_events.map(e => `Row ${e.rowNum}`).join("\n");
         message += "\n\n";
       }
@@ -40,14 +40,14 @@ function cancelSelectedEventsWithCreds(events, rwgps) {
   }
 
   function confirm_cancel(message) {
-    message += "Do you want to continue to cancel all cancelable events?"
+    message += "Do you want to continue to cancel all cancelable rides?"
     let ui = SpreadsheetApp.getUi();
     let result = ui.alert(message, ui.ButtonSet.YES_NO);
     return result == ui.Button.YES
   }
 
   function inform_of_errors(message) {
-    message += "There are no events that can be canceled!";
+    message += "There are no rides that can be canceled!";
     SpreadsheetApp.getUi().alert(message);
   }
 

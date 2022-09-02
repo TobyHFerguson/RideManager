@@ -2,13 +2,13 @@
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ride Lead Coordinators')
-    .addItem('Link Route URLs', 'linkRouteURLs')
+    .addItem('Link Route URLs', linkRouteURLs.name)
     .addSeparator()
-    .addItem('Schedule Selected Events', 'scheduleSelectedEvents')
-    .addItem('Update Selected Events', 'updateSelectedEvents')
-    .addItem('Cancel Selected Events', 'cancelSelectedEvents')
+    .addItem('Schedule Selected Rides', scheduleSelectedRides.name)
+    .addItem('Update Selected Rides', updateSelectedRides.name)
+    .addItem('Cancel Selected Rides', cancelSelectedRides.name)
     .addSeparator()
-    .addItem('Clear User Credentials', 'clearCredentials')
+    .addItem('Clear User Credentials', clearCredentials.name)
     .addToUi();
 }
 

@@ -1,13 +1,13 @@
 /** @OnlyCurrentDoc */
 
 
-function updateSelectedEvents() {
-  let form = { ...credentials, method: "updateSelectedEventsWithCredentials" };
+function updateSelectedRides() {
+  let form = { ...credentials, method: updateSelectedRidesWithCredentials.name };
   do_action(form);
 }
 
 
-function updateSelectedEventsWithCredentials(events, rwgps) {
+function updateSelectedRidesWithCredentials(events, rwgps) {
   function _updateable(event) { return event.errors.length === 0; }
 
   function _update_event(event) {
@@ -20,7 +20,7 @@ function updateSelectedEventsWithCredentials(events, rwgps) {
       let message = "";
       let error_events = events.filter(e => !_updateable(e));
       if (error_events.length > 0) {
-        message += "These rows had errors and will not be updated:\n";
+        message += "These rides had errors and will not be updated:\n";
         let errors = error_events.flatMap(event => event.errors.map(error => `Row ${event.rowNum}: ${error}`));
         message += errors.join("\n");
         message += "\n\n";
@@ -32,7 +32,7 @@ function updateSelectedEventsWithCredentials(events, rwgps) {
       let message = "";
       let warning_events = events.filter((e) => _updateable(e) && e.warnings.length > 0);
       if (warning_events.length > 0) {
-        message += "These rows had warnings and can be updated:\n"
+        message += "These rides had warnings and can be updated:\n"
         let warnings = warning_events.flatMap(event => event.warnings.map(warning => `Row ${event.rowNum}: ${warning}`));
         message += warnings.join("\n");
         message += "\n\n";
@@ -41,13 +41,13 @@ function updateSelectedEventsWithCredentials(events, rwgps) {
     }
 
     /**
-     * Create a message for all the events that have neither errors nor warnings
+     * Create a message for all the rides that have neither errors nor warnings
      */
     function create_update_message(events) {
       let message = "";
       let updateable_events = events.filter((e) => _updateable(e) && e.warnings.length === 0);
       if (updateable_events.length > 0) {
-        message += "These rows had neither errors nor warnings and can be updated:\n"
+        message += "These rides had neither errors nor warnings and can be updated:\n"
         message += updateable_events.map(event => `Row ${event.rowNum}`).join("\n");
         message += "\n\n";
       }
@@ -62,14 +62,14 @@ function updateSelectedEventsWithCredentials(events, rwgps) {
   }
 
   function confirm_update(message) {
-    message += `Do you want to continue to update all updateable events?`;
+    message += `Do you want to continue to update all updateable rides?`;
     let ui = SpreadsheetApp.getUi();
     let result = ui.alert(message, ui.ButtonSet.YES_NO);
     return result == ui.Button.YES
   }
 
   function inform_of_errors(message) {
-    message += "No selected rows are updateable; they need to have the errors fixed.";
+    message += "No selected rides are updateable; they need to have the errors fixed.";
     SpreadsheetApp.getUi().alert(message);
   }
 
@@ -89,7 +89,7 @@ function updateSelectedEventsWithCredentials(events, rwgps) {
   function _compare(event) {
     let url = event.getRideLinkURL();
     if (url === null) {
-      event.errors.push("No event has been scheduled");
+      event.errors.push("No ride has been scheduled");
       return;
     }
     let old_event = rwgps.get_event(url);
