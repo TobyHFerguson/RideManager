@@ -85,7 +85,7 @@ function scheduleSelectedRidesWithCredentials(events, rwgps) {
 
   clear_sidebar();
   // Mark up any events which have already been scheduled
-  events.forEach(e => {if (e.row.getRideURL() !== null) {
+  events.forEach(e => {if (e.row.RideURL !== null) {
         e.errors.push("This ride has already been scheduled");
       }});
   let message = create_message(events);

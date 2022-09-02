@@ -68,19 +68,19 @@ class Row {
     this.myRowValues = values[offset];
     this.richTextValues = rtvs[offset];
   }
-  getStartDate() { return this.schedule.getStartDate(this.myRowValues); }
-  getStartTime() { return this.schedule.getStartTime(this.myRowValues); }
-  getGroup() { return this.schedule.getGroup(this.myRowValues); }
-  getRouteName() { return this.schedule.getRouteName(this.richTextValues).getText(); }
-  getRouteURL() { return this.schedule.getRouteURL(this.richTextValues).getLinkUrl(); }
-  getRideLeader() { return this.schedule.getRideLeader(this.myRowValues); }
-  getLocation() { return this.schedule.getLocation(this.myRowValues); }
-  getAddress() { return this.schedule.getAddress(this.myRowValues); }
+  get StartDate() { return this.schedule.getStartDate(this.myRowValues); }
+  get StartTime() { return this.schedule.getStartTime(this.myRowValues); }
+  get Group() { return this.schedule.getGroup(this.myRowValues); }
+  get RouteName() { return this.schedule.getRouteName(this.richTextValues).getText(); }
+  get RouteURL() { return this.schedule.getRouteURL(this.richTextValues).getLinkUrl(); }
+  get RideLeader() { return this.schedule.getRideLeader(this.myRowValues); }
+  get Location() { return this.schedule.getLocation(this.myRowValues); }
+  get Address() { return this.schedule.getAddress(this.myRowValues); }
   setRideLink(name, url) {
     this.schedule.setRideLink(this.rowNum, name, url);
   }
-  getRideName() { return this.schedule.getRideURL(this.richTextValues).getText(); }
-  getRideURL() { return this.schedule.getRideURL(this.richTextValues).getLinkUrl(); }
+  get RideName() { return this.schedule.getRideURL(this.richTextValues).getText(); }
+  get RideURL() { return this.schedule.getRideURL(this.richTextValues).getLinkUrl(); }
   deleteRideLink() {
     this.schedule.deleteRideLink(this.rowNum);
   }

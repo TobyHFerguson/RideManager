@@ -29,21 +29,21 @@ constructor(row) {
   try {
     try {
       let options = { timeZone: "America/Los_Angeles" };
-      this.start_date = row.getStartDate().toLocaleDateString("en-CA", options);
+      this.start_date = row.StartDate.toLocaleDateString("en-CA", options);
     } catch (e) {
-      Logger.log(`makeEventObject() threw ${e} for row ${row.rowNum} ${row.getStartDate()}`);
+      Logger.log(`makeEventObject() threw ${e} for row ${row.rowNum} ${row.StartDate}`);
       this.errors.push('start date column does not contain a date');
     }
     try {
       let options = { timeZone: "America/Los_Angeles", hour:"numeric", minute:"numeric" };
-      this.start_time = row.getStartTime().toLocaleTimeString("en-US", options);
-      this.meet_time = (new Date(Number(row.getStartTime()) - 15 * 60 * 1000)).toLocaleTimeString("en-US", options);
+      this.start_time = row.StartTime.toLocaleTimeString("en-US", options);
+      this.meet_time = (new Date(Number(row.StartTime) - 15 * 60 * 1000)).toLocaleTimeString("en-US", options);
     } catch (e) {
-      Logger.log(`makeEventObject() threw ${e} for row ${row.rowNum} ${row.getStartTime()}`);
+      Logger.log(`makeEventObject() threw ${e} for row ${row.rowNum} ${row.StartTime}`);
       this.errors.push('start time column does not contain a time');
     }
 
-    switch (row.getGroup()) {
+    switch (row.Group) {
       case undefined:
       case null:
       case "":
@@ -52,21 +52,21 @@ constructor(row) {
       case "A":
       case "B":
       case "C":
-        this.group = row.getGroup();
+        this.group = row.Group;
         break;
       default:
-        this.errors.push(`Unknown group: ${row.getGroup()}`);
+        this.errors.push(`Unknown group: ${row.Group}`);
     }
-    if (row.getRouteName() === null || row.getRouteName() === "") {
+    if (row.RouteName === null || row.RouteName === "") {
       this.errors.push("No route name defined for this ride");
     }
     try {
-      let url = row.getRouteURL().split('?')[0]
+      let url = row.RouteURL.split('?')[0]
       const response = UrlFetchApp.fetch(url + ".json");
       if (JSON.parse(response.getContentText()).user_id !== SCCCC_USER_ID) {
         this.errors.push('Route is not owned by SCCCC');
       } else {
-        this.route_ids = [row.getRouteURL().split('/')[4]];
+        this.route_ids = [row.RouteURL.split('/')[4]];
       }
 
     } catch (e) {
@@ -79,21 +79,21 @@ constructor(row) {
     Logger.log(`MakeEventObject() threw: ${e}`);
     this.errors.push(e);
   }
-  this.name = row.getRideName();
+  this.name = row.RideName;
   if ((this.name == null || this.name === "") && this.errors.length === 0) {
-    this.name = Event.makeRideName(row.getStartDate(), row.getStartTime(), row.getGroup(), row.getRouteName());
+    this.name = Event.makeRideName(row.StartDate, row.StartTime, row.Group, row.RouteName);
   }
-  this.location = row.getLocation();
+  this.location = row.Location;
   if (this.location == "" || this.location == "#VALUE!") {
     this.warnings.push("Location is unknown");
     this.location = "";
   };
-  this.address = row.getAddress();
+  this.address = row.Address;
   if (this.address == "" || this.address == "#VALUE!") {
     this.warnings.push("Address is unknown");
     this.address = "";
   };
-  this.organizer_name = row.getRideLeader();
+  this.organizer_name = row.RideLeader;
   if (this.organizer_name === "") {
     this.warnings.push(`Ride Leader will default to '${RIDE_LEADER_TBD_NAME}'`);
   }
@@ -113,12 +113,12 @@ setRideLink(url) {
 }
 
 updateRideName() {
-  this.name = Event.makeRideName(this.row.getStartDate(), this.row.getStartTime(), this.row.getGroup(), this.row.getRouteName());
+  this.name = Event.makeRideName(this.row.StartDate, this.row.StartTime, this.row.Group, this.row.RouteName);
   this.row.setRideLink(this.name, this.getRideLinkURL());
 }
 
 getRideLinkURL() {
-  return this.row.getRideURL();
+  return this.row.RideURL;
 }
 
 deleteRideLinkURL() {
