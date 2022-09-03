@@ -30,12 +30,10 @@ const errorFuns = [
             return "No route name defined for row ride";
         }
     },
-    function noRouteURL_(row) {
+    function nonClubRoute_(row) {
         if (row.RouteURL === undefined || row.RouteURL === null) {
             return "No route url"
         }
-    },
-    function nonClubRoute_(row) {
         let url = row.RouteURL.split('?')[0]
         const response = UrlFetchApp.fetch(url + ".json");
         switch (response.getResponseCode()) {
@@ -59,32 +57,26 @@ const errorFuns = [
 
 const warningFuns = [
     function noLocation_(row) {
-        let l = row.Location;
-        if (l === undefined || l === null || l == "" || l == "#VALUE!") {
+        if (row.Location === undefined || row.Location === null || row.Location == "" || row.Location == "#VALUE!") {
             return "No location";
         }
     },
     function noAddress_(row) {
-        let a = row.Address;
-        if (a === undefined || a === null || a == "" || a == "#VALUE!") {
+        if (row.Address === undefined || row.Address === null || row.Address == "" || row.Address == "#VALUE!") {
             return "No address";
         }
     },
     function noRideLeader_(row) {
-        if (row.OrganizerName === "") {
+        if (row.RideLeader === "") {
             return `Ride Leader will default to '${RIDE_LEADER_TBD_NAME}'`;
         }
     }
 ]
 
-function collectErrors_(row) {
-    let errors = errorFuns.map(f => f(row)).filter(e => e !== undefined);
-    row.errors = errors;
+function evalRow_(row) {
+    row.errors = [];
+    errorFuns.map(f => f(row)).filter(e => e !== undefined).forEach(e => row.errors.push(e));
+    row.warnings = []
+    warningFuns.map(f => f(row)).filter(w => w !== undefined).forEach(w => row.warnings.push(w));;
 }
-function collectWarnings_(row) {
-    let warnings = warningFuns.map(f => f(row)).filter(w => w !== undefined);
-    row.warnings = warnings;
-}
-
-
 
