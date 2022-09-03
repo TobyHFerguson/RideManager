@@ -6,10 +6,11 @@ function scheduleSelectedRides() {
   do_action(form);
 }
 
-function scheduleSelectedRidesWithCredentials(events, rwgps) {
-  function schedulable_(event) { return event.errors.length == 0; }
+function scheduleSelectedRidesWithCredentials(rows, rwgps) {
+  function schedulable_(row) { return row.errors.length == 0; }
 
-  function schedule_event_(rwgps, event) {
+  function schedule_event_(rwgps, row) {
+    let event = new Event(row);
     function get_template_(group) {
       switch (group) {
         case 'A': return A_TEMPLATE;
@@ -25,25 +26,25 @@ function scheduleSelectedRidesWithCredentials(events, rwgps) {
     return new_event_url
   }
 
-  function create_message(events) {
-    function create_error_message(events) {
+  function create_message(rows) {
+    function create_error_message(rows) {
       let message = "";
-      let error_events = events.filter(e => !schedulable_(e));
-      if (error_events.length > 0) {
+      let error_rows = rows.filter(r => !schedulable_(r));
+      if (error_rows.length > 0) {
         message += "These rides had errors and will not be scheduled:\n";
-        let errors = error_events.flatMap(event => event.errors.map(error => `Row ${event.rowNum}: ${error}`));
+        let errors = error_rows.flatMap(row => row.errors.map(error => `Row ${row.rowNum}: ${error}`));
         message += errors.join("\n");
         message += "\n\n";
       }
       return message;
     }
 
-    function create_warning_message(events) {
+    function create_warning_message(rows) {
       let message = "";
-      let warning_events = events.filter((e) => schedulable_(e) && e.warnings.length > 0);
-      if (warning_events.length > 0) {
+      let warning_rows = rows.filter((r) => schedulable_(r) && r.warnings.length > 0);
+      if (warning_rows.length > 0) {
         message += "These rides had warnings but can be scheduled:\n"
-        let warnings = warning_events.flatMap(event => event.warnings.map(warning => `Row ${event.rowNum}: ${warning}`));
+        let warnings = warning_rows.flatMap(row => row.warnings.map(warning => `Row ${row.rowNum}: ${warning}`));
         message += warnings.join("\n");
         message += "\n\n";
       }
@@ -53,21 +54,21 @@ function scheduleSelectedRidesWithCredentials(events, rwgps) {
     /**
      * Create a message for all the rides that have neither errors nor warnings
      */
-    function create_schedule_message(events) {
+    function create_schedule_message(rows) {
       let message = "";
-      let clean_events = events.filter((e) => schedulable_(e) && e.warnings.length == 0);
-      if (clean_events.length > 0) {
+      let clean_rows = rows.filter((r) => schedulable_(r) && r.warnings.length == 0);
+      if (clean_rows.length > 0) {
         message += "These rides had neither errors nor warnings and can be scheduled:\n"
-        message += clean_events.map(event => `Row ${event.rowNum}`).join("\n");
+        message += clean_rows.map(row => `Row ${row.rowNum}`).join("\n");
         message += "\n\n";
       }
       return message;
     }
-    
+
     let message = "";
-    message += create_error_message(events);
-    message += create_warning_message(events)
-    message += create_schedule_message(events);
+    message += create_error_message(rows);
+    message += create_warning_message(rows)
+    message += create_schedule_message(rows);
     return message;
   }
 
@@ -84,23 +85,33 @@ function scheduleSelectedRidesWithCredentials(events, rwgps) {
   }
 
   clear_sidebar();
-  // Mark up any events which have already been scheduled
-  events.forEach(e => {if (e.row.RideURL !== null) {
-        e.errors.push("This ride has already been scheduled");
-      }});
-  let message = create_message(events);
-  create_sidebar(events.filter(e => !schedulable_(e) || e.warnings.length > 0));
-  let schedulable_events = events.filter(e => schedulable_(e));
-  if (schedulable_events.length === 0) {
+  errorFuns.push((row) => {
+    if (row.RideURL !== null) {
+      return "This ride has already been scheduled";
+    }
+  });
+  
+  rows.forEach(row => collectErrors_(row));
+  rows.forEach(row => collectWarnings_(row));
+  
+  let message = create_message(rows);
+  create_sidebar(rows.filter(r => !schedulable_(r) || r.warnings.length > 0));
+  let schedulable_rows = rows.filter(r => schedulable_(r));
+  if (schedulable_rows.length === 0) {
     inform_of_errors(message);
   } else {
     if (confirm_schedule(message)) {
-      let scheduled_event_urls = schedulable_events.map(event => schedule_event_(rwgps, event));
+      let scheduled_event_urls = schedulable_rows.map(row => schedule_event_(rwgps, row));
       rwgps.remove_tags(scheduled_event_urls, ["template"]);
     }
   }
-  
+
 }
+
+
+
+
+
 
 
 

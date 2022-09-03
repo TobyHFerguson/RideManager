@@ -7,7 +7,6 @@ function do_action(form) {
     const rwgps = new RWGPS(rwgpsService);
     const schedule = new Schedule();
     let rows = schedule.getSelectedRows();
-    let events = rows.map(row => new Event(row))
-    this[form.method](events, rwgps);
+    this[form.method](rows, rwgps);
   }
 }

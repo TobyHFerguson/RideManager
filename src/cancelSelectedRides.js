@@ -4,38 +4,38 @@ function cancelSelectedRides() {
   do_action(form);
 }
 
-function cancelable_(event) {
-  let url = event.getRideLinkURL();
+function cancelable_(row) {
+  let url = row.RideURL;
   return url !== undefined && url !== null && url !== "";
 }
 
-function cancelSelectedRidesWithCreds(events, rwgps) {
-  function create_cancel_message(events) {
-    function create_cancelable_message(events) {
+function cancelSelectedRidesWithCreds(rows, rwgps) {
+  function create_cancel_message(rows) {
+    function create_cancelable_message(rows) {
       let message = "";
-      let cancelable_events = events.filter(e => cancelable_(e));
-      if (cancelable_events.length > 0) {
+      let cancelable_rows = rows.filter(row => cancelable_(row));
+      if (cancelable_rows.length > 0) {
         message += "These rows can be canceled:\n";
-        message += cancelable_events.map(e => `Row ${e.rowNum}`).join("\n");
+        message += cancelable_rows.map(row => `Row ${row.rowNum}`).join("\n");
         message += "\n\n";
       }
       return message;
     }
 
-    function create_cancel_error_message(events) {
+    function create_cancel_error_message(rows) {
       let message = "";
-      let non_cancelable_events = events.filter(e => !cancelable_(e));
-      if (non_cancelable_events.length > 0) {
+      let non_cancelable_rows = rows.filter(row => !cancelable_(row));
+      if (non_cancelable_rows.length > 0) {
         message += "These rides don't appear to have been scheduled and cannot now be canceled:\n";
-        message += non_cancelable_events.map(e => `Row ${e.rowNum}`).join("\n");
+        message += non_cancelable_rows.map(row => `Row ${row.rowNum}`).join("\n");
         message += "\n\n";
       }
       return message;
     }
 
     let message = "";
-    message += create_cancel_error_message(events);
-    message += create_cancelable_message(events);
+    message += create_cancel_error_message(rows);
+    message += create_cancelable_message(rows);
     return message;
   }
 
@@ -52,17 +52,17 @@ function cancelSelectedRidesWithCreds(events, rwgps) {
   }
 
   clear_sidebar();
-  let message = create_cancel_message(events);
-  let cancelable_events = events.filter(e => cancelable_(e));
-  if (cancelable_events.length === 0) {
+  let message = create_cancel_message(rows);
+  let canceleable_events = rows.filter(row => cancelable_(row)).map(row => new Event(row));
+  if (canceleable_events.length === 0) {
     inform_of_errors(message);
   } else {
     if (confirm_cancel(message)) {
       try {
-        rwgps.batch_delete_events(cancelable_events.map(e => { let url = e.getRideLinkURL(); e.deleteRideLinkURL(); return url; }));
-      } catch (e) {
-        if (e.message.indexOf('Request failed for https://ridewithgps.com returned code 404. Truncated server response: {"success":0,"message":"Record not found"} (use muteHttpExceptions option to examine full response)') === -1) {
-          throw e;
+        rwgps.batch_delete_events(canceleable_events.map(event => { let url = event.getRideLinkURL(); event.deleteRideLinkURL(); return url; }));
+      } catch (err) {
+        if (err.message.indexOf('Request failed for https://ridewithgps.com returned code 404. Truncated server response: {"success":0,"message":"Record not found"} (use muteHttpExceptions option to examine full response)') === -1) {
+          throw err;
         }
       }
     }

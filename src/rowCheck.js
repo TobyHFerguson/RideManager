@@ -1,0 +1,90 @@
+const errorFuns = [
+    function noStartDate_(row) {
+        if (row.StartDate === undefined || row.StartDate.constructor !== Date) {
+            return "No Start Date"
+        }
+    },
+    function noStartTime_(row) {
+        if (row.StartTime === undefined || row.StartTime.constructor !== Date) {
+            return "No Start Time"
+        }
+    },
+    function noGroup_(row) {
+        switch (row.Group) {
+            case undefined:
+            case null:
+            case "":
+                return "Group column is empty";
+                break;
+            case "A":
+            case "B":
+            case "C":
+                row.group = row.Group;
+                break;
+            default:
+                return `Unknown group: ${row.Group}`;
+        }
+    },
+    function noRouteName_(row) {
+        if (row.RouteName === undefined || row.RouteName === null || row.RouteName === "") {
+            return "No route name defined for row ride";
+        }
+    },
+    function noRouteURL_(row) {
+        if (row.RouteURL === undefined || row.RouteURL === null) {
+            return "No route url"
+        }
+    },
+    function nonClubRoute_(row) {
+        let url = row.RouteURL.split('?')[0]
+        const response = UrlFetchApp.fetch(url + ".json");
+        switch (response.getResponseCode()) {
+            case 200:
+                if (JSON.parse(response.getContentText()).user_id !== SCCCC_USER_ID) {
+                    return 'Route is not owned by SCCCC';
+                }
+                break;
+            case 403:
+                return 'Access forbidden to the route URL';
+                break;
+            case 404:
+                return 'Route URL does not point to any known resource';
+                break;
+            default:
+                return "Unknown issue with Route URL";
+        }
+    }
+]
+
+
+const warningFuns = [
+    function noLocation_(row) {
+        let l = row.Location;
+        if (l === undefined || l === null || l == "" || l == "#VALUE!") {
+            return "No location";
+        }
+    },
+    function noAddress_(row) {
+        let a = row.Address;
+        if (a === undefined || a === null || a == "" || a == "#VALUE!") {
+            return "No address";
+        }
+    },
+    function noRideLeader_(row) {
+        if (row.OrganizerName === "") {
+            return `Ride Leader will default to '${RIDE_LEADER_TBD_NAME}'`;
+        }
+    }
+]
+
+function collectErrors_(row) {
+    let errors = errorFuns.map(f => f(row)).filter(e => e !== undefined);
+    row.errors = errors;
+}
+function collectWarnings_(row) {
+    let warnings = warningFuns.map(f => f(row)).filter(w => w !== undefined);
+    row.warnings = warnings;
+}
+
+
+
