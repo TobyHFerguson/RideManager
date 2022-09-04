@@ -25,17 +25,17 @@ const errorFuns = [
                 return `Unknown group: ${row.Group}`;
         }
     },
-    function noRouteName_(row) {
-        if (row.RouteName === undefined || row.RouteName === null || row.RouteName === "") {
-            return "No route name defined for row ride";
-        }
-    },
     function nonClubRoute_(row) {
         if (row.RouteURL === undefined || row.RouteURL === null) {
             return "No route url"
         }
-        let url = row.RouteURL.split('?')[0]
-        const response = UrlFetchApp.fetch(url + ".json");
+        let re = /(https:\/\/ridewithgps.com\/routes\/(\d+))/
+        let url = row.RouteURL.match(re);
+        if (url === null) {
+          return "Route URL doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS"
+        }
+        url = url[1];
+        const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
         switch (response.getResponseCode()) {
             case 200:
                 if (JSON.parse(response.getContentText()).user_id !== SCCCC_USER_ID) {
@@ -43,10 +43,10 @@ const errorFuns = [
                 }
                 break;
             case 403:
-                return 'Access forbidden to the route URL';
+                return 'Route URL does not have public access';
                 break;
             case 404:
-                return 'Route URL does not point to any known resource';
+                return `This route cannot be found on the server`;
                 break;
             default:
                 return "Unknown issue with Route URL";
@@ -57,12 +57,12 @@ const errorFuns = [
 
 const warningFuns = [
     function noLocation_(row) {
-        if (row.Location === undefined || row.Location === null || row.Location == "" || row.Location == "#VALUE!") {
+        if (row.Location === undefined || row.Location === null || row.Location == "" || row.Location == "#VALUE!" || row.Location !== "#N/A") {
             return "No location";
         }
     },
     function noAddress_(row) {
-        if (row.Address === undefined || row.Address === null || row.Address == "" || row.Address == "#VALUE!") {
+        if (row.Address === undefined || row.Address === null || row.Address == "" || row.Address == "#VALUE!" || row.Location !== "#N/A") {
             return "No address";
         }
     },

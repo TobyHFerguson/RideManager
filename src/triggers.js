@@ -22,27 +22,41 @@ function linkRouteURLs() {
   var rtvs = routeRange.getRichTextValues();
   var row = routeRange.getRow();
   for (var i = 0; i < rtvs.length; i++) {
-    for (var j = 0; j< rtvs[i].length; j++) {
+    for (var j = 0; j < rtvs[i].length; j++) {
       let cell = rtvs[i][j];
-      let url =cell.getLinkUrl();
+      let url = cell.getLinkUrl();
       let text = cell.getText();
       if (url != null && url == text) {
-        let route = getRouteJson(url);
-         if (route.user_id !== SCCCC_USER_ID) {
-          throw Error(`Row ${row + i}: ${url} is not owned by SCCCC`);
-        }
-        let name = route.name;
-        Logger.log(`Row ${row + i} Linking ${name} to ${url}`);
-        let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
-        rtvs[i][j] = rtv;
+        try {
+          let route = getRouteJson(url);
+          if (route.user_id !== SCCCC_USER_ID) {
+            throw Error(`${url} is not owned by SCCCC`);
+          }
+          let name = route.name;
+          Logger.log(`Row ${row + i} Linking ${name} to ${url}`);
+          let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
+          rtvs[i][j] = rtv;
+        } catch (e) {
+          SpreadsheetApp.getUi().alert(`Row ${row + i}: ${e.message}`);
       }
+    } 
     }
   }
   routeRange.setRichTextValues(rtvs);
 }
 
 function getRouteJson(url) {
-  const response = UrlFetchApp.fetch(`${url}.json`);
+  const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
+  switch (response.getResponseCode()) {
+    case 403:
+      throw new Error(`This route: ${url} is not publicly accessible`);
+    case 404:
+      throw new Error(`This route: ${url} cannot be found on the server`);
+    case 200:
+      break;
+    default:
+      throw new Error(`Uknown error retrieving data for ${url}`);
+  }
   const json = JSON.parse(response.getContentText());
   return json;
 }
