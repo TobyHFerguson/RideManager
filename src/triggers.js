@@ -26,7 +26,8 @@ function linkRouteURLs() {
       let cell = rtvs[i][j];
       let url = cell.getLinkUrl();
       let text = cell.getText();
-      if (url != null && url == text) {
+      url = url === null ? text : url;
+      if (url != null && url !== "" && url === text) {
         try {
           let route = getRouteJson(url);
           if (route.user_id !== SCCCC_USER_ID) {
