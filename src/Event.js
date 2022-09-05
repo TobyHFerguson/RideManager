@@ -41,6 +41,7 @@ class Event {
     if (this.name === undefined || this.name === null || this.name === "") {
       this.name = Event.makeRideName(row.StartDate, row.StartTime, row.Group, row.RouteName);
     }
+    let y = row.Location;
     this.location = row.Location !== undefined && row.Location !== null && row.Location !== "" && row.Location !== "#VALUE!" && row.Location !== "#N/A" ? row.Location : "";
     this.address = row.Address !== undefined && row.Address !== null && row.Address !== "" && row.Address !== "#VALUE!" && row.Address !== "#N/A" ? row.Address : "";
     this.organizer_name = row.RideLeader;
