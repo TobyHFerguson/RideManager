@@ -51,21 +51,20 @@ const errorFuns = [
             default:
                 return "Unknown issue with Route URL";
         }
-    }
-]
-
-
-const warningFuns = [
+    },
     function noLocation_(row) {
-        if (row.Location === undefined || row.Location === null || row.Location == "" || row.Location == "#VALUE!" || row.Location !== "#N/A") {
+        if (row.Location === undefined || row.Location === null || row.Location === "" || row.Location === "#VALUE!" || row.Location === "#N/A") {
             return "No location";
         }
     },
     function noAddress_(row) {
-        if (row.Address === undefined || row.Address === null || row.Address == "" || row.Address == "#VALUE!" || row.Location !== "#N/A") {
+        if (row.Address === undefined || row.Address === null || row.Address === "" || row.Address === "#VALUE!" || row.Location === "#N/A") {
             return "No address";
         }
-    },
+    }
+]
+
+const warningFuns = [
     function noRideLeader_(row) {
         if (row.RideLeader === "") {
             return `Ride Leader will default to '${RIDE_LEADER_TBD_NAME}'`;
