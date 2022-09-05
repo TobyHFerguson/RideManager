@@ -26,10 +26,17 @@ class Schedule {
     let cell = this.activeSheet.getRange(rowNum, this.getColumn(RIDECOLUMNNAME) + 1);
     let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
     cell.setRichTextValue(rtv);
+    return rtv;
+  }
+  setRouteLink(rowNum, name, url) {
+    let cell = this.activeSheet.getRange(rowNum, this.getColumn(ROUTECOLUMNNAME) + 1);
+    let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
+    cell.setRichTextValue(rtv);
+    return rtv;
   }
 
   deleteRideLink(rowNum) {
-    this.activeSheet.getRange(rowNum, this.getColumn(RIDECOLUMNNAME) + 1).clear({contentsOnly: true});
+    this.activeSheet.getRange(rowNum, this.getColumn(RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
   }
 
   getSelectedRows() {
@@ -55,6 +62,54 @@ class Schedule {
     });
     return rows;
   }
+
+
+
+  linkRouteURLsInSelectedRows() {
+    function getRouteJson(row) {
+      let f = errorFuns.filter(f => f.name === "nonClubRoute_")[0];
+      const error = f(row);
+      if (error !== undefined) {
+        throw new Error(error);
+      }
+      let url = row.RouteURL;
+      const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
+      switch (response.getResponseCode()) {
+        case 403:
+          throw new Error(`This route: ${url} is not publicly accessible`);
+        case 404:
+          throw new Error(`This route: ${url} cannot be found on the server`);
+        case 200:
+          break;
+        default:
+          throw new Error(`Uknown error retrieving data for ${url}`);
+      }
+      const json = JSON.parse(response.getContentText());
+      return json;
+    }
+    function link(row) {
+      let url = row.RouteURL;
+      let text = row.RouteName;
+      if (url === null) {
+        row.setRouteLink(text, text);
+        Logger.log(row.RouteURL);
+        Logger.log(row.RouteName);
+        url = text;
+      }
+      if (url != null && url !== "" && url === text) {
+        try {
+          let route = getRouteJson(row);
+          let name = route.name;
+          Logger.log(`Row ${row.rowNum}: Linking ${name} to ${url}`);
+          row.setRouteLink(name, url);
+        } catch (e) {
+          SpreadsheetApp.getUi().alert(`Row ${row.rowNum}: ${e.message}`);
+        }
+      }
+    }
+    let rows = this.getSelectedRows();
+    rows.forEach(row => link(row));
+  }
 }
 
 class Row {
@@ -77,12 +132,17 @@ class Row {
   get Location() { return this.schedule.getLocation(this.myRowValues); }
   get Address() { return this.schedule.getAddress(this.myRowValues); }
   setRideLink(name, url) {
-    this.schedule.setRideLink(this.rowNum, name, url);
+    let rtv = this.schedule.setRideLink(this.rowNum, name, url);
+    this.richTextValues[this.schedule.getColumn(RIDECOLUMNNAME)] = rtv;
   }
   get RideName() { return this.schedule.getRideURL(this.richTextValues).getText(); }
   get RideURL() { return this.schedule.getRideURL(this.richTextValues).getLinkUrl(); }
   deleteRideLink() {
     this.schedule.deleteRideLink(this.rowNum);
+  }
+  setRouteLink(name, url) {
+    let rtv = this.schedule.setRouteLink(this.rowNum, name, url);
+    this.richTextValues[this.schedule.getColumn(ROUTECOLUMNNAME)] = rtv;
   }
 }
 
