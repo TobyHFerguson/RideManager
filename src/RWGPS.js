@@ -53,12 +53,12 @@ class RWGPS {
     this.rwgpsService.remove_tags(event_ids, tags);
   }
   /**
-   * lookup the organizer id given the event url and the organizer name
+   * lookup the organizer id given an event url and the organizer name
    * @param{url} string - the event url
    * @param{name} string - the organizer's name
    * @return{string} - the organizer's id
    */
-  _lookupOrganizerId(url, organizer_name) {
+  lookupOrganizerId(url, organizer_name) {
     if (organizer_name === undefined || organizer_name === null || organizer_name === "") {
       return RIDE_LEADER_TBD_ID + "";
     }
@@ -81,7 +81,17 @@ class RWGPS {
     }
     return RIDE_LEADER_TBD_ID + "";
   }
+
+  /**
+ * Determine if named ride leader is known
+ * @param {string} name first and last name of ride leader whose status is to be determined
+ * @return {boolean} true iff the ride leader is not the default
+ */
+  knownRideLeader(name) {
+    return this.lookupOrganizerId(A_TEMPLATE, name) !== RIDE_LEADER_TBD_ID + "";
+  }
 }
+
 
 /**
  * This is the event I've gleaned from a working session with Chrome. It contains every property I might wish to set. 
