@@ -65,17 +65,24 @@ const errorFuns = [
 ]
 
 const warningFuns = [
-    function noRideLeader_(row) {
-        if (row.RideLeader === "") {
-            return `Ride Leader will default to '${RIDE_LEADER_TBD_NAME}'`;
+    function rideLeaderCheck_(row, rwgps) {
+        if (!row.RideLeader) {
+            return `No ride leader given. Defaulting to '${RIDE_LEADER_TBD_NAME}'`;
+        } else {
+            if (!rwgps.knownRideLeader(row.RideLeader)) {
+                row.highlightRideLeader(true);
+                return `Ride Leader (${row.RideLeader}) unknown. Defaulting to '${RIDE_LEADER_TBD_NAME}'`
+            } else {
+                row.highlightRideLeader(false);
+            }
         }
     }
 ]
 
-function evalRow_(row) {
+function evalRow_(row, rwgps) {
     row.errors = [];
-    errorFuns.map(f => f(row)).filter(e => e !== undefined).forEach(e => row.errors.push(e));
+    errorFuns.map(f => f(row, rwgps)).filter(e => e !== undefined).forEach(e => row.errors.push(e));
     row.warnings = []
-    warningFuns.map(f => f(row)).filter(w => w !== undefined).forEach(w => row.warnings.push(w));;
+    warningFuns.map(f => f(row, rwgps)).filter(w => w !== undefined).forEach(w => row.warnings.push(w));;
 }
 

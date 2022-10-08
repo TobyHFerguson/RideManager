@@ -91,7 +91,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
     }
   });
   
-  rows.forEach(row => evalRow_(row));
+  rows.forEach(row => evalRow_(row, rwgps));
   let message = create_message(rows);
   create_sidebar(rows.filter(r => !schedulable_(r) || r.warnings.length > 0));
   let schedulable_rows = rows.filter(r => schedulable_(r));
