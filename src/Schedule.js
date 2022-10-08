@@ -22,6 +22,10 @@ class Schedule {
   getLocation(values) { return values[this.getColumn(LOCATIONCOLUMNNAME)]; };
   getAddress(values) { return values[this.getColumn(ADDRESSCOLUMNNAME)]; };
 
+  setHighlight(rowNum, colName, onoff) {
+    let cell = this.activeSheet.getRange(rowNum, this.getColumn(colName)+1);
+    cell.setFontColor(onoff ? "red" : null);
+  }
   setRideLink(rowNum, name, url) {
     let cell = this.activeSheet.getRange(rowNum, this.getColumn(RIDECOLUMNNAME) + 1);
     let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
@@ -131,6 +135,12 @@ class Row {
   get RideLeader() { return this.schedule.getRideLeader(this.myRowValues); }
   get Location() { return this.schedule.getLocation(this.myRowValues); }
   get Address() { return this.schedule.getAddress(this.myRowValues); }
+
+  highlightRideLeader(onoff) {
+    this.schedule.highlightRideLeader(this.rowNum, RIDELEADERCOLUMNNAME, onoff);
+    return this;
+  }
+
   setRideLink(name, url) {
     let rtv = this.schedule.setRideLink(this.rowNum, name, url);
     this.richTextValues[this.schedule.getColumn(RIDECOLUMNNAME)] = rtv;
