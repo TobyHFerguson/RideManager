@@ -8,7 +8,9 @@
   "version": "1.0.0",
   "main": "Events.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx clasp-env --folder . --scriptId 1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya && clasp push -w",
+    "prod": "npx clasp-env --folder . --scriptId 1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc && clasp push -w"
   },
   "keywords": [],
   "author": "",
