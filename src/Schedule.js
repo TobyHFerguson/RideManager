@@ -22,7 +22,7 @@ class Schedule {
   getLocation(values) { return values[this.getColumn(LOCATIONCOLUMNNAME)]; };
   getAddress(values) { return values[this.getColumn(ADDRESSCOLUMNNAME)]; };
 
-  setHighlight(rowNum, colName, onoff) {
+  highlightCell(rowNum, colName, onoff) {
     let cell = this.activeSheet.getRange(rowNum, this.getColumn(colName)+1);
     cell.setFontColor(onoff ? "red" : null);
   }
@@ -137,7 +137,7 @@ class Row {
   get Address() { return this.schedule.getAddress(this.myRowValues); }
 
   highlightRideLeader(onoff) {
-    this.schedule.highlightRideLeader(this.rowNum, RIDELEADERCOLUMNNAME, onoff);
+    this.schedule.highlightCell(this.rowNum, RIDELEADERCOLUMNNAME, onoff);
     return this;
   }
 

@@ -30,7 +30,7 @@ class RWGPS {
    */
   edit_event(event_url, event) {
     // Looking up organizer tokens can only be done in the context of the event url, hence we embellish the event at this late stage in the process
-    event.organizer_tokens = this._lookupOrganizerId(event_url, event.organizer_name);
+    event.organizer_tokens = this.lookupOrganizerId(event_url, event.organizer_name);
     event.desc = `Ride Leader: ${event.organizer_tokens == RIDE_LEADER_TBD_ID ? RIDE_LEADER_TBD_NAME : event.organizer_name}
 
     ${event.desc}`;

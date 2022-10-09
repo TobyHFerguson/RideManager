@@ -98,7 +98,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
 
   clear_sidebar();
 
-  rows.forEach(row => {evalRow_(row); compare_(row)});
+  rows.forEach(row => {evalRow_(row, rwgps); compare_(row)});
   let message = create_message(rows);
   create_sidebar(rows.filter(row => !_updateable(row) || row.warnings.length > 0 ));
   let updateable_rows = rows.filter(row => _updateable(row));
