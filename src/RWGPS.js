@@ -30,8 +30,24 @@ class RWGPS {
    */
   edit_event(event_url, event) {
     // Looking up organizer tokens can only be done in the context of the event url, hence we embellish the event at this late stage in the process
-    event.organizer_tokens = this.lookupOrganizerId(event_url, event.organizer_name);
-    event.desc = `Ride Leader: ${event.organizer_tokens == RIDE_LEADER_TBD_ID ? RIDE_LEADER_TBD_NAME : event.organizer_name}
+    const organizers = event.organizer_names.map(name => this.lookupOrganizer(event_url, name)).reduce((p, o) =>  {
+      if (o.id !== RIDE_LEADER_TBD_ID) {
+        p.known.push(o)
+      } else {
+        p.unknown.push(o)}; 
+        return p;
+       },
+       { known: [], unknown: [] }  );
+    event.organizer_tokens = organizers.known.map(o => o.id + "");
+    const names = organizers.known.map(o => o.text);
+
+    // Only if there are no known organizers will the defaults be used
+    if (!organizers.known.length) {
+      event.organizer_tokens.push(RIDE_LEADER_TBD_ID+"");
+      names.push(RIDE_LEADER_TBD_NAME);
+    }
+
+    event.desc = `Ride Leader${names.length > 1 ? "s" : ""}: ${names.join(', ')}
 
     ${event.desc}`;
     let response = this.rwgpsService.edit_event(event_url, event);
@@ -58,28 +74,30 @@ class RWGPS {
    * @param{name} string - the organizer's name
    * @return{string} - the organizer's id
    */
-  lookupOrganizerId(url, organizer_name) {
-    if (organizer_name === undefined || organizer_name === null || organizer_name === "") {
-      return RIDE_LEADER_TBD_ID + "";
+  lookupOrganizer(url, organizer_name) {
+    let TBD = { text: RIDE_LEADER_TBD_NAME, id: RIDE_LEADER_TBD_ID };
+    if (!organizer_name) {
+      return TBD;
     }
-    let response = this.rwgpsService._lookupOrganizerId(url, organizer_name);
-    let rc = response.getResponseCode();
+    const on_lc = organizer_name.toLowerCase();
+    const response = this.rwgpsService.getOrganizers(url, organizer_name);
+    const rc = response.getResponseCode();
     if (rc == 200 || rc == 404) {
       try {
-        const names = JSON.parse(response.getContentText()).results;
-        for (var i = 0; i < names.length; i++) {
-          if (names[i].text.toLowerCase() === organizer_name.toLowerCase()) {
-            return names[i].id + "";
-          }
+        const content = JSON.parse(response.getContentText());
+        const names = content.results;
+        let found = names.find(n => n.text.toLowerCase() === on_lc);
+        if (!found) {
+          found = { text: organizer_name, id: RIDE_LEADER_TBD_ID}
         }
-        return RIDE_LEADER_TBD_ID + "";
+        return found;
       } catch (e) {
-        Logger.log(`RWGPS._lookupOrganizerId(${url}, ${organizer_name}) threw ${e}`);
-        Logger.log(`RWGPS._lookupOrganizerId(${url}, ${organizer_name}) content text: ${response.getContentText()}`);
+        Logger.log(`RWGPS.lookupOrganizer(${url}, ${organizer_name}) threw ${e}`);
+        Logger.log(`RWGPS.lookupOrganizer(${url}, ${organizer_name}) content text: ${response.getContentText()}`);
         throw (e);
       }
     }
-    return RIDE_LEADER_TBD_ID + "";
+    return TBD;
   }
 
   /**
@@ -88,7 +106,7 @@ class RWGPS {
  * @return {boolean} true iff the ride leader is not the default
  */
   knownRideLeader(name) {
-    return this.lookupOrganizerId(A_TEMPLATE, name) !== RIDE_LEADER_TBD_ID + "";
+    return this.lookupOrganizer(A_TEMPLATE, name).id !== RIDE_LEADER_TBD_ID;
   }
 }
 
@@ -298,7 +316,7 @@ class RWGPSService {
   }
 
 
-  _lookupOrganizerId(url, organizer_name) {
+  getOrganizers(url, organizer_name) {
     url = `${url}/organizer_ids.json`;
     const payload = { term: organizer_name.split(' ')[0], page: 1 }
     const options = {
@@ -318,3 +336,7 @@ function testGetEvent() {
   Logger.log(new Date(rwgps.get_event(url)['starts_at']));
   Logger.log(new Date("9/27/2022") === Date.parse(rwgps.get_event(url)['starts_at']));
 }
+
+var x;
+
+console.log(x ? "yes" : "no");

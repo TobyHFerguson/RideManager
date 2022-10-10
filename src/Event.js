@@ -37,14 +37,12 @@ class Event {
     } else {
       this.route_ids = [row.RouteURL.split('/')[4]];
     }
-    this.name = row.RideName;
-    if (this.name === undefined || this.name === null || this.name === "") {
-      this.name = Event.makeRideName(row.StartDate, row.StartTime, row.Group, row.RouteName);
-    }
+    this.name = row.rideName ? row.rideName : Event.makeRideName(row.StartDate, row.StartTime, row.Group, row.RouteName);
+
     let y = row.Location;
     this.location = row.Location !== undefined && row.Location !== null && row.Location !== "" && row.Location !== "#VALUE!" && row.Location !== "#N/A" ? row.Location : "";
     this.address = row.Address !== undefined && row.Address !== null && row.Address !== "" && row.Address !== "#VALUE!" && row.Address !== "#N/A" ? row.Address : "";
-    this.organizer_name = row.RideLeader;
+    this.organizer_names = row.RideLeader.split(',').map(rl => rl.trim());
     this.desc = `${this.address}
           
 Arrive ${this.meet_time} for a ${this.start_time} rollout.

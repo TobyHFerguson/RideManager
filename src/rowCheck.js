@@ -69,9 +69,10 @@ const warningFuns = [
         if (!row.RideLeader) {
             return `No ride leader given. Defaulting to '${RIDE_LEADER_TBD_NAME}'`;
         } else {
-            if (!rwgps.knownRideLeader(row.RideLeader)) {
+            const unknownRideLeaders = row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => !rwgps.knownRideLeader(rl));
+            if (unknownRideLeaders.length > 0) {
                 row.highlightRideLeader(true);
-                return `Ride Leader (${row.RideLeader}) unknown. Defaulting to '${RIDE_LEADER_TBD_NAME}'`
+                return `Ride Leader${unknownRideLeaders.length > 1 ? 's' : ''} (${unknownRideLeaders.join(', ')}) unknown. Defaulting to '${RIDE_LEADER_TBD_NAME}'`
             } else {
                 row.highlightRideLeader(false);
             }
@@ -85,4 +86,3 @@ function evalRow_(row, rwgps) {
     row.warnings = []
     warningFuns.map(f => f(row, rwgps)).filter(w => w !== undefined).forEach(w => row.warnings.push(w));;
 }
-
