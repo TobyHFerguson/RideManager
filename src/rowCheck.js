@@ -69,10 +69,20 @@ const warningFuns = [
         if (!row.RideLeader) {
             return `No ride leader given. Defaulting to '${RIDE_LEADER_TBD_NAME}'`;
         } else {
-            const unknownRideLeaders = row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => !rwgps.knownRideLeader(rl));
-            if (unknownRideLeaders.length > 0) {
+            const rls = row.RideLeader.split(',').map(rl => rl.trim()).reduce((p, rl) =>  {
+                if (rwgps.knownRideLeader(rl)) {
+                  p.known.push(rl)
+                } else {
+                  p.unknown.push(rl)}; 
+                  return p;
+                 },
+                 { known: [], unknown: [] }  );
+
+            if (rls.unknown.length) {
                 row.highlightRideLeader(true);
-                return `Ride Leader${unknownRideLeaders.length > 1 ? 's' : ''} (${unknownRideLeaders.join(', ')}) unknown. Defaulting to '${RIDE_LEADER_TBD_NAME}'`
+                const prefix = `${rls.known.length ? "Some" : "All"} Ride Leaders (${rls.unknown.join(', ')}) unknown.`
+                const suffix = rls.known.length ? "" : ` Defaulting to ${RIDE_LEADER_TBD_NAME}`;
+                return prefix + suffix;
             } else {
                 row.highlightRideLeader(false);
             }
