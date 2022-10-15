@@ -1,6 +1,6 @@
 class Schedule {
   constructor() {
-    this.activeSheet = SpreadsheetApp.getActiveSheet();
+    this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
     this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0];
   }
 
@@ -53,6 +53,10 @@ class Schedule {
       return rows;
   }
 
+  /**
+   * Get the selected rows - assumed to be in the 'Consolidated Rides' Sheet
+   * @returns {array} rows - an array of row objects, each one having been selected
+   */
   getSelectedRows() {
     let activeSheet = this.activeSheet;
     function getRowRanges() {
@@ -77,7 +81,7 @@ class Schedule {
     return rows;
   }
 
-  linkRouteURLsInSelectedRows() {
+  linkRouteURL(row) {
     function getRouteJson(row) {
       let f = errorFuns.filter(f => f.name === "nonClubRoute_")[0];
       const error = f(row);
@@ -99,29 +103,24 @@ class Schedule {
       const json = JSON.parse(response.getContentText());
       return json;
     }
-    function link(row) {
-      let url = row.RouteURL;
-      let text = row.RouteName;
-      if (url === null) {
-        row.setRouteLink(text, text);
-        Logger.log(row.RouteURL);
-        Logger.log(row.RouteName);
-        url = text;
-      }
-      if (url != null && url !== "" && url === text) {
-        try {
-          let route = getRouteJson(row);
-          let name = route.name;
-          Logger.log(`Row ${row.rowNum}: Linking ${name} to ${url}`);
-          row.setRouteLink(name, url);
-        } catch (e) {
-          SpreadsheetApp.getUi().alert(`Row ${row.rowNum}: ${e.message}`);
-        }
+    let url = row.RouteURL;
+    let text = row.RouteName;
+    if (!url) {
+      row.setRouteLink(text, text);
+      url = text;
+    }
+    if (url && url === text) {
+      try {
+        let route = getRouteJson(row);
+        let name = route.name;
+        Logger.log(`Row ${row.rowNum}: Linking ${name} to ${url}`);
+        row.setRouteLink(name, url);
+      } catch (e) {
+        SpreadsheetApp.getUi().alert(`Row ${row.rowNum}: ${e.message}`);
       }
     }
-    let rows = this.getSelectedRows();
-    rows.forEach(row => link(row));
   }
+  
   getLastRow() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName('Consolidated Rides');

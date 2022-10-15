@@ -7,7 +7,6 @@ function create_sidebar(events) {
       events.forEach(event => {
         let firstRow = zip('', event.errors.slice(0, 1), event.warnings.slice(0, 1));
         let cols = firstRow.map(r => tableColumns("d", ...r));
-        Logger.log(`firstRow length: ${firstRow.length} ${firstRow}`);
         html.append(`<tr><td rowspan=${Math.max(event.errors.length, event.warnings.length)}>${event.rowNum}</td>${cols}</tr>`)
         let row_contents = zip("", event.errors.slice(1), event.warnings.slice(1));
         if (row_contents.length > 0) {
@@ -17,7 +16,6 @@ function create_sidebar(events) {
         }
       });
       html.append("</tbody></table>");
-      Logger.log(html.getContent());
     }
     SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.
       .showSidebar(html);

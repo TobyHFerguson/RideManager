@@ -1,10 +1,7 @@
 // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
 function onFormSubmit(event) {
   let nv = event.namedValues;
-  Logger.log(nv)
-  Logger.log(`Name (first last): ${nv['Name (first last)']}`);
-  Logger.log(`Email Address: ${nv['Email Address']}`)
-  let row = {
+  const row = {
     Date: `${nv['Ride Date']}`,
     Group: `${nv['Group']}`,
     'Start Time': `${nv['Start Time']}`,
@@ -19,11 +16,11 @@ function testFormSubmission() {
 }
 
 function testStage0() {
-  let row = {
+  const row = {
     Date: "11/1/2022",
     Group: "A",
     'Start Time': "10:00 AM",
-    Route: "https://ridewithgps.com/routes/30674325",
+    Route: "https://ridewithgps.com/routes/17166902",
     'Ride Leader': "Toby Ferguson",
   };
   createEvent(row);
@@ -35,20 +32,20 @@ function createEvent(row) {
 }
 
 function addRowToSheet(row) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Consolidated Rides');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Consolidated Rides');
   sheet.appendRow([`${row['Date']}`, `${row['Group']}`, , `${row['Start Time']}`, `${row['Route']}`, `${row['Ride Leader']}`]);
   formatDateInLastRow();
-  linkRouteURLs();
+  const sc = new Schedule();
+  sc.linkRouteURL(sc.getLastRow());
 }
 
 function formatDateInLastRow() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Consolidated Rides');
-  let r = sheet.getLastRow();
-  // sheet.setActiveSelection(`A${r}:A${r}`);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Consolidated Rides');
+  const r = sheet.getLastRow();
   sheet.getRange(`A${r}`).setNumberFormat('ddd mm/dd');
-}
+ }
  
 function scheduleLastRow() {
   const rwgpsService = new RWGPSService("toby.h.ferguson@icloud.com", "1rider1");
@@ -70,8 +67,8 @@ function schedule_event_(rwgps, event) {
     }
   }
 
-  let g = event.group;
-  let new_event_url = rwgps.copy_template_(get_template_(g));
+  const g = event.group;
+  const new_event_url = rwgps.copy_template_(get_template_(g));
   rwgps.edit_event(new_event_url, event);
   event.setRideLink(new_event_url);
   return new_event_url

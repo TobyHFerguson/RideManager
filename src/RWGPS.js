@@ -337,6 +337,3 @@ function testGetEvent() {
   Logger.log(new Date("9/27/2022") === Date.parse(rwgps.get_event(url)['starts_at']));
 }
 
-var x;
-
-console.log(x ? "yes" : "no");
