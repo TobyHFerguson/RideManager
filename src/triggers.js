@@ -15,9 +15,7 @@ function onOpen() {
 
 
 function linkRouteURLs() {
-  const s = new Schedule();
-  const sr = s.getSelectedRows();
-  sr.forEach(r => s.linkRouteURL(r))
+  Schedule.getSelectedRows().forEach(r => Schedule.linkRouteURL(r))
 }
 
 

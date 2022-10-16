@@ -5,8 +5,7 @@ function do_action(form) {
   } else {
     const rwgpsService = new RWGPSService(form.email, form.password);
     const rwgps = new RWGPS(rwgpsService);
-    const schedule = new Schedule();
-    let rows = schedule.getSelectedRows();
+    let rows = Schedule.getSelectedRows();
     this[form.method](rows, rwgps);
   }
 }

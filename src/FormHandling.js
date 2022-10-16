@@ -36,8 +36,7 @@ function addRowToSheet(row) {
   const sheet = ss.getSheetByName('Consolidated Rides');
   sheet.appendRow([`${row['Date']}`, `${row['Group']}`, , `${row['Start Time']}`, `${row['Route']}`, `${row['Ride Leader']}`]);
   formatDateInLastRow();
-  const sc = new Schedule();
-  sc.linkRouteURL(sc.getLastRow());
+  Schedule.linkRouteURL(Schedule.getLastRow());
 }
 
 function formatDateInLastRow() {
@@ -50,9 +49,7 @@ function formatDateInLastRow() {
 function scheduleLastRow() {
   const rwgpsService = new RWGPSService("toby.h.ferguson@icloud.com", "1rider1");
   const rwgps = new RWGPS(rwgpsService);
-  const schedule = new Schedule();
-  const lastRow = schedule.getLastRow();
-  const event = new Event(lastRow);
+  const event = new Event(Schedule.getLastRow());
   schedule_event_(rwgps, event);
   return event;
 }
