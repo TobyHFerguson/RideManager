@@ -79,14 +79,15 @@ class RWGPS {
     if (!organizer_name) {
       return TBD;
     }
-    const on_lc = organizer_name.toLowerCase();
+    // Make a string that can be easily and accurately compared - lowercase, all strings prefix, infix, suffix removed
+    const on_lc = organizer_name.toLowerCase().split(' ').join('');
     const response = this.rwgpsService.getOrganizers(url, organizer_name);
     const rc = response.getResponseCode();
     if (rc == 200 || rc == 404) {
       try {
         const content = JSON.parse(response.getContentText());
         const names = content.results;
-        let found = names.find(n => n.text.toLowerCase() === on_lc);
+        let found = names.find(n => n.text.toLowerCase().split(' ').join('') === on_lc);
         if (!found) {
           found = { text: organizer_name, id: RIDE_LEADER_TBD_ID}
         }
@@ -337,3 +338,13 @@ function testGetEvent() {
   Logger.log(new Date("9/27/2022") === Date.parse(rwgps.get_event(url)['starts_at']));
 }
 
+function testLookupOrganizer() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  
+  const name = 'Peter Stanger';
+
+  const organizer = rwgps.lookupOrganizer(A_TEMPLATE, name);
+  console.log(organizer);
+  console.log(rwgps.knownRideLeader(name))
+}
