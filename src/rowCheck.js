@@ -87,6 +87,11 @@ const warningFuns = [
                 row.highlightRideLeader(false);
             }
         }
+    },
+    function cancelled_(row) {
+        if (row.RideName.startsWith('Cancelled')) {
+            return 'Cancelled';
+        }
     }
 ]
 
