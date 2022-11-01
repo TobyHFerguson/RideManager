@@ -160,6 +160,8 @@ const Schedule = function () {
     get RouteName() { return this.schedule.getRouteName(this.richTextValues).getText(); }
     get RouteURL() { return this.schedule.getRouteURL(this.richTextValues).getLinkUrl(); }
     get RideLeader() { return this.schedule.getRideLeader(this.myRowValues); }
+    get RideName() { return this.schedule.getRideURL(this.richTextValues).getText(); }
+    get RideURL() { return this.schedule.getRideURL(this.richTextValues).getLinkUrl(); }
     get Location() { return this.schedule.getLocation(this.myRowValues); }
     get Address() { return this.schedule.getAddress(this.myRowValues); }
 
@@ -172,8 +174,7 @@ const Schedule = function () {
       let rtv = this.schedule.setRideLink(this.rowNum, name, url);
       this.richTextValues[this.schedule.getColumn(RIDECOLUMNNAME)] = rtv;
     }
-    get RideName() { return this.schedule.getRideURL(this.richTextValues).getText(); }
-    get RideURL() { return this.schedule.getRideURL(this.richTextValues).getLinkUrl(); }
+   
     deleteRideLink() {
       this.schedule.deleteRideLink(this.rowNum);
     }

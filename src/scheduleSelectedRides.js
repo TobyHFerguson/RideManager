@@ -10,7 +10,38 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
   function schedulable_(row) { return row.errors.length == 0; }
 
   function schedule_event_(rwgps, row) {
+    /**
+     * Fixup the organizers (ie. ride leaders) in the given event. 
+     * @param {object} rwgps - the rwgps object used to talk to rwgps
+     * @param {object} event - the event object to be fixed
+     */
+    function fixup_organizers(rwgps, event) {
+      const organizers = event.organizer_names.map(name => rwgps.lookupOrganizer(A_TEMPLATE, name)).reduce((p, o) => {
+        if (o.id !== RIDE_LEADER_TBD_ID) {
+          p.known.push(o)
+        } else {
+          p.unknown.push(o)
+        };
+        return p;
+      },
+        { known: [], unknown: [] });
+      event.organizer_tokens = organizers.known.map(o => o.id + "");
+      const names = organizers.known.map(o => o.text);
+
+      // Only if there are no known organizers will the defaults be used
+      if (!organizers.known.length) {
+        event.organizer_tokens.push(RIDE_LEADER_TBD_ID + "");
+        names.push(RIDE_LEADER_TBD_NAME);
+      }
+
+      event.desc = `Ride Leader${names.length > 1 ? "s" : ""}: ${names.join(', ')}
+
+    ${event.desc}`;
+    }
+
     let event = new Event(row);
+    fixup_organizers(rwgps, event);
+
     function get_template_(group) {
       switch (group) {
         case 'A': return A_TEMPLATE;
@@ -19,7 +50,6 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
         default: throw new Error(`Unknown group: ${group}`);
       }
     }
-
     let new_event_url = rwgps.copy_template_(get_template_(event.group));
     rwgps.edit_event(new_event_url, event);
     event.setRideLink(new_event_url);
@@ -90,7 +120,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
       return "This ride has already been scheduled";
     }
   });
-  
+
   rows.forEach(row => evalRow_(row, rwgps));
   let message = create_message(rows);
   create_sidebar(rows.filter(r => !schedulable_(r) || r.warnings.length > 0));

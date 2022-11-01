@@ -54,6 +54,12 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
     return this;
   }
 
+  cancel() {
+    this.name = 'CANCELLED: ' + this.name;
+    this.desc = 'CANCELLED'
+    this.row.setRideLink(this.name, this.getRideLinkURL());
+  }
+
   setRideLink(url) {
     this.row.setRideLink(this.name, url);
   }

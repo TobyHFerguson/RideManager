@@ -7,6 +7,7 @@ function onOpen() {
     .addItem('Schedule Selected Rides', scheduleSelectedRides.name)
     .addItem('Update Selected Rides', updateSelectedRides.name)
     .addItem('Cancel Selected Rides', cancelSelectedRides.name)
+    .addItem('Unschedule Selected Rides', unscheduleSelectedRides.name)
     .addSeparator()
     .addItem('Clear User Credentials', clearCredentials.name)
     .addToUi();

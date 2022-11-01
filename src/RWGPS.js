@@ -29,27 +29,7 @@ class RWGPS {
    * @param{event} event object - the event to be used as the source of the changes
    */
   edit_event(event_url, event) {
-    // Looking up organizer tokens can only be done in the context of the event url, hence we embellish the event at this late stage in the process
-    const organizers = event.organizer_names.map(name => this.lookupOrganizer(event_url, name)).reduce((p, o) =>  {
-      if (o.id !== RIDE_LEADER_TBD_ID) {
-        p.known.push(o)
-      } else {
-        p.unknown.push(o)}; 
-        return p;
-       },
-       { known: [], unknown: [] }  );
-    event.organizer_tokens = organizers.known.map(o => o.id + "");
-    const names = organizers.known.map(o => o.text);
-
-    // Only if there are no known organizers will the defaults be used
-    if (!organizers.known.length) {
-      event.organizer_tokens.push(RIDE_LEADER_TBD_ID+"");
-      names.push(RIDE_LEADER_TBD_NAME);
-    }
-
-    event.desc = `Ride Leader${names.length > 1 ? "s" : ""}: ${names.join(', ')}
-
-    ${event.desc}`;
+    
     let response = this.rwgpsService.edit_event(event_url, event);
     if (response.getResponseCode() >= 500) {
       throw Error(`received a code ${response.getResponseCode()} when editing event ${event_url}`);
