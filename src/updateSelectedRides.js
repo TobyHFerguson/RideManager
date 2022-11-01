@@ -10,7 +10,36 @@ function updateSelectedRides() {
 function updateSelectedRidesWithCredentials(rows, rwgps) {
   function _updateable(row) { return row.errors.length === 0; }
 
+  /**
+     * Fixup the organizers (ie. ride leaders) in the given event. 
+     * @param {object} event - the event object to be fixed
+     */
+  function fixup_organizers(event) {
+    const organizers = event.organizer_names.map(name => rwgps.lookupOrganizer(A_TEMPLATE, name)).reduce((p, o) => {
+      if (o.id !== RIDE_LEADER_TBD_ID) {
+        p.known.push(o)
+      } else {
+        p.unknown.push(o)
+      };
+      return p;
+    },
+      { known: [], unknown: [] });
+    event.organizer_tokens = organizers.known.map(o => o.id + "");
+    const names = organizers.known.map(o => o.text);
+
+    // Only if there are no known organizers will the defaults be used
+    if (!organizers.known.length) {
+      event.organizer_tokens.push(RIDE_LEADER_TBD_ID + "");
+      names.push(RIDE_LEADER_TBD_NAME);
+    }
+
+    event.desc = `Ride Leader${names.length > 1 ? "s" : ""}: ${names.join(', ')}
+
+  ${event.desc}`;
+  }
+
   function _update_event(event) {
+    fixup_organizers(event);
     event.updateRideName();
     rwgps.edit_event(event.getRideLinkURL(), event);
   }
@@ -53,7 +82,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
       }
       return message;
     }
-    
+
     let message = "";
     message += create_error_message(rows);
     message += create_warning_message(rows);
@@ -73,11 +102,11 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     SpreadsheetApp.getUi().alert(message);
   }
 
-    /**
-     * Compare the given row with the corresponding RWGPS event at the given event's URL. 
-     * Update the given row's errors array with any issues
-     * @param {object} row row to be compared
-     */
+  /**
+   * Compare the given row with the corresponding RWGPS event at the given event's URL. 
+   * Update the given row's errors array with any issues
+   * @param {object} row row to be compared
+   */
   function compare_(row) {
     let url = row.RideURL;
     if (url === null) {
@@ -87,7 +116,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     let old_event = rwgps.get_event(url);
     let osd = old_event.starts_on;
     let nsd = row.StartDate.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-    if (dates.compare(nsd,osd) !== 0) {
+    if (dates.compare(nsd, osd) !== 0) {
       row.errors.push(`Start date has changed (old: ${osd}; new: ${nsd} ).`);
     }
     let old_event_group = old_event.name.split("'")[1];
@@ -98,9 +127,9 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
 
   clear_sidebar();
 
-  rows.forEach(row => {evalRow_(row, rwgps); compare_(row)});
+  rows.forEach(row => { evalRow_(row, rwgps); compare_(row) });
   let message = create_message(rows);
-  create_sidebar(rows.filter(row => !_updateable(row) || row.warnings.length > 0 ));
+  create_sidebar(rows.filter(row => !_updateable(row) || row.warnings.length > 0));
   let updateable_rows = rows.filter(row => _updateable(row));
   if (updateable_rows.length === 0) {
     inform_of_errors(message);
@@ -109,7 +138,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
       updateable_rows.forEach(row => _update_event(new Event(row)));
     }
   }
-  
+
 }
 
 
