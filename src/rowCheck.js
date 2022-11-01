@@ -69,7 +69,7 @@ const warningFuns = [
         if (!row.RideLeader) {
             return `No ride leader given. Defaulting to '${RIDE_LEADER_TBD_NAME}'`;
         } else {
-            const rls = row.RideLeader.split(',').map(rl => rl.trim()).reduce((p, rl) =>  {
+            const rls = row.RideLeader.split(',').map(rl => rl.trim()).filter(s => s).reduce((p, rl) =>  {
                 if (rwgps.knownRideLeader(rl)) {
                   p.known.push(rl)
                 } else {
@@ -89,8 +89,8 @@ const warningFuns = [
         }
     },
     function cancelled_(row) {
-        if (row.RideName.startsWith('Cancelled')) {
-            return 'Cancelled';
+        if (row.RideName.toLowerCase().startsWith('cancelled')) {
+            return 'Cancelled - this ride will be rescheduled';
         }
     }
 ]
@@ -101,3 +101,7 @@ function evalRow_(row, rwgps) {
     row.warnings = []
     warningFuns.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
 }
+
+const splits = "one, two, ".split(',').map(s => s.trim());
+const non_empty = splits.filter(s => s);
+non_empty.forEach(s => console.log(`|${s}|`));
