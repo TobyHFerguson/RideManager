@@ -88,13 +88,28 @@ class RWGPS {
   knownRideLeader(name) {
     return this.lookupOrganizer(A_TEMPLATE, name).id !== RIDE_LEADER_TBD_ID;
   }
+
+  /**
+   * @typedef ForeignRoute
+   * @type {(string | object)}
+   * @property {string} url - the foreign route's url
+   * @property {Number} [visibility = 0] - the visibility to set the imported route to. Defaults to 0 (Public)
+   * @property {string} [name] - the name of the imported route. Defaults to the foreign route's name.
+   */
   /**
    * Import a route from a foreign route URL into the club library
-   * @param {string} url - the foreign route url
+   * @param {ForeignRoute} route - the foreign route url, or an object with the following fields
    * @returns {string} url - the url of the new route in the club library
    */
-  importRoute(url) {
-    const response =  this.rwgpsService.importRoute(url);
+  importRoute(route) {
+    let fr;
+    if (typeof route === typeof "") {
+      fr = { url: route }
+    } else {
+      fr = route;
+    }
+    
+    const response =  this.rwgpsService.importRoute(fr);
     const body = JSON.parse(response.getContentText());
     if (body.success) {
       return body.url;
@@ -171,18 +186,17 @@ class RWGPSService {
   }
   /**
    * 
-   * @param {string} route_url - the foreign url to be imported
+   * @param {ForeignRoute} routeObject - the foreign route object to be imported
    * @return {string} the url of the imported route
    */
-  importRoute(route_url) {
-    const  url =  route_url + "/copy.json";
+  importRoute(routeObject) {
+    const  url =  routeObject.url + "/copy.json";
     const payload = {
       "user_id": 621846,
       "asset_type": "route", 
       "privacy_code": null, 
-      "name": "Quick loop (copy)", 
-      "visibility": 0, 
-      "include_photos": false
+      "include_photos": false,
+      ...routeObject
     }
     const options = {
       method: 'post',
@@ -370,4 +384,5 @@ function testImportRoute() {
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const rwgps = new RWGPS(rwgpsService);
   console.log(rwgps.importRoute('https://ridewithgps.com/routes/19551869'));
+  console.log(rwgps.importRoute({ url: 'https://ridewithgps.com/routes/19551869', visibility: 2, name: "Toby's new route"}));
 }
