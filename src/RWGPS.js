@@ -29,7 +29,6 @@ class RWGPS {
    * @param{event} event object - the event to be used as the source of the changes
    */
   edit_event(event_url, event) {
-    
     let response = this.rwgpsService.edit_event(event_url, event);
     if (response.getResponseCode() >= 500) {
       throw Error(`received a code ${response.getResponseCode()} when editing event ${event_url}`);
@@ -69,7 +68,7 @@ class RWGPS {
         const names = content.results;
         let found = names.find(n => n.text.toLowerCase().split(' ').join('') === on_lc);
         if (!found) {
-          found = { text: organizer_name, id: RIDE_LEADER_TBD_ID}
+          found = { text: organizer_name, id: RIDE_LEADER_TBD_ID }
         }
         return found;
       } catch (e) {
@@ -88,6 +87,18 @@ class RWGPS {
  */
   knownRideLeader(name) {
     return this.lookupOrganizer(A_TEMPLATE, name).id !== RIDE_LEADER_TBD_ID;
+  }
+  /**
+   * Import a route from a foreign route URL into the club library
+   * @param {string} url - the foreign route url
+   * @returns {string} url - the url of the new route in the club library
+   */
+  importRoute(url) {
+    const response =  this.rwgpsService.importRoute(url);
+    const body = JSON.parse(response.getContentText());
+    if (body.success) {
+      return body.url;
+    }
   }
 }
 
@@ -158,7 +169,33 @@ class RWGPSService {
   constructor(email, password) {
     this.sign_in(email, password);
   }
-
+  /**
+   * 
+   * @param {string} route_url - the foreign url to be imported
+   * @return {string} the url of the imported route
+   */
+  importRoute(route_url) {
+    const  url =  route_url + "/copy.json";
+    const payload = {
+      "user_id": 621846,
+      "asset_type": "route", 
+      "privacy_code": null, 
+      "name": "Quick loop (copy)", 
+      "visibility": 0, 
+      "include_photos": false
+    }
+    const options = {
+      method: 'post',
+      headers: { 
+        cookie: this.cookie,
+        Accept: 'application/json'
+     },
+      followRedirects: false,
+      muteHttpExceptions: false,
+      payload: payload
+    }
+    return this._send_request(url, options);
+  }
   /**
 * Select the keys and values of the left object where every key in the left is in the right
 * @param{left} object
@@ -321,10 +358,16 @@ function testGetEvent() {
 function testLookupOrganizer() {
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const rwgps = new RWGPS(rwgpsService);
-  
+
   const name = 'Peter Stanger';
 
   const organizer = rwgps.lookupOrganizer(A_TEMPLATE, name);
   console.log(organizer);
   console.log(rwgps.knownRideLeader(name))
+}
+
+function testImportRoute() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  console.log(rwgps.importRoute('https://ridewithgps.com/routes/19551869'));
 }
