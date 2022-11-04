@@ -125,9 +125,7 @@ class RWGPS {
     const response = this.rwgpsService.importRoute(fr);
     const body = JSON.parse(response.getContentText());
     if (body.success) {
-      if (fr.expiry) {
-        this.setRouteExpiration(fr.url, fr.expiry)
-      }
+      this.setRouteExpiration(body.url, fr.expiry);
     }
     return body.url;
   }
@@ -158,8 +156,10 @@ class RWGPS {
     }
     function deleteExpirationTag() {
       const etag = findExpirationTag(route_url);
-      const id = route_url.split('/')[4].split('-')[0];
-      self.rwgpsService.unTagRoutes([id], [etag]);
+      if (etag) {
+        const id = route_url.split('/')[4].split('-')[0];
+        self.rwgpsService.unTagRoutes([id], [etag]);
+      }
     }
     function getExpirationDate(etag) {
       return etag.split(": ")[1];
@@ -461,6 +461,14 @@ class RWGPSService {
   }
 }
 
+//------------------------------
+function testImportRoute() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  console.log(rwgps.importRoute('https://ridewithgps.com/routes/19551869'));
+  console.log(rwgps.importRoute({ url: 'https://ridewithgps.com/routes/19551869', visibility: 2, name: "Toby's new route", expiry: '12/24/2022' }));
+}
+
 function testUdatingRouteExpiration() {
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const rwgps = new RWGPS(rwgpsService);
@@ -531,9 +539,3 @@ function testLookupOrganizer() {
   console.log(rwgps.knownRideLeader(name))
 }
 
-function testImportRoute() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
-  const rwgps = new RWGPS(rwgpsService);
-  console.log(rwgps.importRoute('https://ridewithgps.com/routes/19551869'));
-  console.log(rwgps.importRoute({ url: 'https://ridewithgps.com/routes/19551869', visibility: 2, name: "Toby's new route" }));
-}
