@@ -16,11 +16,11 @@ class RWGPS {
   }
   /**
    * Get the event at the URL
-   * @param{string} url
+   * @param{string} event_url
    * @returns{object} the event object
    */
   get_event(event_url) {
-    let response = this.rwgpsService.get_event(event_url);
+    let response = this.rwgpsService.get(event_url);
     return JSON.parse(response.getContentText())["event"];
   }
   /**
@@ -39,14 +39,26 @@ class RWGPS {
     let event_ids = event_urls.map(e => e.split('/')[4].split('-')[0]);
     return this.rwgpsService.batch_delete_events(event_ids);
   }
-  add_tags(event_urls, tags) {
+  /**
+   * Add the tags to the events. Both arrays must be non-empty. Idempotent.
+   * @param {string[]} event_urls - the array of event urls
+   * @param {string[]} tags - the tags
+   * @returns 
+   */
+  tagEvents(event_urls, tags) {
     let event_ids = event_urls.map(e => e.split('/')[4].split('-')[0]);
-    return this.rwgpsService.add_tags(event_ids, tags);
+    return this.rwgpsService.tagEvents(event_ids, tags);
   }
-  remove_tags(event_urls, tags) {
+  /**
+   * Remove the tags from the events. Both arrays must be non-empty. Idempotent.
+   * @param {string[]} event_urls - the event urls
+   * @param {string[]} tags - the tags
+   */
+  untagEvents(event_urls, tags) {
     let event_ids = event_urls.map(e => e.split('/')[4].split('-')[0]);
-    this.rwgpsService.remove_tags(event_ids, tags);
+    this.rwgpsService.untagEvents(event_ids, tags);
   }
+
   /**
    * lookup the organizer id given an event url and the organizer name
    * @param{url} string - the event url
@@ -91,14 +103,15 @@ class RWGPS {
 
   /**
    * @typedef ForeignRoute
-   * @type {(string | object)}
+   * @type {Object}
    * @property {string} url - the foreign route's url
    * @property {Number} [visibility = 0] - the visibility to set the imported route to. Defaults to 0 (Public)
    * @property {string} [name] - the name of the imported route. Defaults to the foreign route's name.
+   * @property {Date} [expiry] - date that the imported route should be expired.
    */
   /**
    * Import a route from a foreign route URL into the club library
-   * @param {ForeignRoute} route - the foreign route url, or an object with the following fields
+   * @param {string |ForeignRoute} route - the foreign route url or object
    * @returns {string} url - the url of the new route in the club library
    */
   importRoute(route) {
@@ -108,12 +121,70 @@ class RWGPS {
     } else {
       fr = route;
     }
-    
-    const response =  this.rwgpsService.importRoute(fr);
+
+    const response = this.rwgpsService.importRoute(fr);
     const body = JSON.parse(response.getContentText());
     if (body.success) {
-      return body.url;
+      if (fr.expiry) {
+        this.setRouteExpiration(fr.url, fr.expiry)
+      }
     }
+    return body.url;
+  }
+  /**
+   * Return the object at the given route url
+   * @param {string} route_url - url of route to be fetched
+   */
+  getRouteObject(route_url) {
+    const response = this.rwgpsService.get(route_url);
+    const o = JSON.parse(response.getContentText());
+    return o;
+  }
+
+  /**
+   * Set the expiration date of the given route to the latter of the route's current expiration date or its new one
+   * @param {string} route_url - the url of the route whose expiration is to be set
+   * @param {(string | Date)} [expiration_date] - the expiration date. No date removes the expiration date from the route.
+   * @returns {object} returns this for chaining
+   */
+  setRouteExpiration(route_url, expiration_date) {
+    const self = this;
+    function findExpirationTag(route_url) {
+      const route = self.getRouteObject(route_url);
+      if (route.tag_names) {
+        const ix = route.tag_names.findIndex(element => element.startsWith("expires: "));
+        return route.tag_names[ix]
+      }
+    }
+    function deleteExpirationTag() {
+      const etag = findExpirationTag(route_url);
+      const id = route_url.split('/')[4].split('-')[0];
+      self.rwgpsService.unTagRoutes([id], [etag]);
+    }
+    function getExpirationDate(etag) {
+      return etag.split(": ")[1];
+    }
+    function makeExpirationTag(date) {
+      return `expires: ${date}`
+    }
+
+    if (!expiration_date) {
+      deleteExpirationTag(route_url);
+    } else {
+      const cet = findExpirationTag(route_url);
+      if (!cet) {
+        const id = route_url.split('/')[4].split('-')[0];
+        this.rwgpsService.tagRoutes([id], [makeExpirationTag(expiration_date)]);
+      } else {
+        const ced = getExpirationDate(cet);
+        if (dates.compare(ced, expiration_date) < 0) {
+          const id = route_url.split('/')[4].split('-')[0];
+          this.rwgpsService.unTagRoutes([id], [makeExpirationTag(ced)]);
+          this.rwgpsService.tagRoutes([id], [makeExpirationTag(expiration_date)]);
+        }
+      }
+    }
+    return this;
   }
 }
 
@@ -190,20 +261,20 @@ class RWGPSService {
    * @return {string} the url of the imported route
    */
   importRoute(routeObject) {
-    const  url =  routeObject.url + "/copy.json";
+    const url = routeObject.url + "/copy.json";
     const payload = {
       "user_id": 621846,
-      "asset_type": "route", 
-      "privacy_code": null, 
+      "asset_type": "route",
+      "privacy_code": null,
       "include_photos": false,
       ...routeObject
     }
     const options = {
       method: 'post',
-      headers: { 
+      headers: {
         cookie: this.cookie,
         Accept: 'application/json'
-     },
+      },
       followRedirects: false,
       muteHttpExceptions: false,
       payload: payload
@@ -267,7 +338,12 @@ class RWGPSService {
     return this._send_request(url, options);
   }
 
-  get_event(event_url) {
+  /**
+   * GET the given url
+   * @param {string} url - the url whose resource is to be fetched
+   * @returns {object} the response object
+   */
+  get(url) {
     const options = {
       method: 'get',
       headers: {
@@ -277,7 +353,7 @@ class RWGPSService {
       followRedirects: false,
       muteHttpExceptions: true
     }
-    return this._send_request(event_url, options);
+    return this._send_request(url, options);
   }
   edit_event(event_url, event) {
     let new_event = this.key_filter(event, CANONICAL_EVENT);
@@ -350,30 +426,27 @@ class RWGPSService {
    * @param{NumberLike[]} ids - an array containing the ids of the events to remove the tags from
    * @param{string[]} tags - an array of the tags to be removed from the events
    */
-   unTagEvents(ids, tags) {
+  unTagEvents(ids, tags) {
     return this._batch_update_tags(ids, "remove", tags, 'event');
   }
 
- /**
-   * Add multiple tags to multiple routes - idempotent
-   * @param{NumberLike[]} ids - an array containing the ids of the routes to add the tags to
-   * @param{string[]} tags - an array of the tags to be added to the routes
-   */
+  /**
+    * Add multiple tags to multiple routes - idempotent
+    * @param{NumberLike[]} ids - an array containing the ids of the routes to add the tags to
+    * @param{string[]} tags - an array of the tags to be added to the routes
+    */
   tagRoutes(ids, tags) {
     return this._batch_update_tags(ids, "add", tags, 'route');
   }
-  
-   /**
-   * Remove multiple tags from multiple routes - idempotent
-   * @param{NumberLike[]} ids - an array containing the ids of the routes to add the tags to
-   * @param{string[]} tags - an array of the tags to be removed from the routes
-   */
+
+  /**
+  * Remove multiple tags from multiple routes - idempotent
+  * @param{NumberLike[]} ids - an array containing the ids of the routes to add the tags to
+  * @param{string[]} tags - an array of the tags to be removed from the routes
+  */
   unTagRoutes(route_ids, tags) {
     return this._batch_update_tags(route_ids, "remove", tags, 'route');
   }
-
-  
-
 
   getOrganizers(url, organizer_name) {
     url = `${url}/organizer_ids.json`;
@@ -388,6 +461,39 @@ class RWGPSService {
   }
 }
 
+function testUdatingRouteExpiration() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/22/2023");
+  rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/23/2023");
+  const new_tag_found = rwgps.getRouteObject("https://ridewithgps.com/routes/41365882").tag_names.includes("expires: 11/23/2023")
+  if (!new_tag_found) {
+    throw Error("testUdatingRouteExpiration() failed - no tag 'expires: 11/23/2023' was found");
+  }
+  const old_tag_found = rwgps.getRouteObject("https://ridewithgps.com/routes/41365882").tag_names.includes("expires: 11/22/2023")
+  if (old_tag_found) {
+    throw Error("testDeletingRouteExpiration() failed - unexpectedly found expired tag 'expires: 11/22/2023'");
+  }
+}
+function testDeletingRouteExpiration() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/22/2023");
+  rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882");
+  const tag_found = rwgps.getRouteObject("https://ridewithgps.com/routes/41365882").tag_names.includes("expires: 11/22/2023")
+  if (tag_found) {
+    throw Error("testDeletingRouteExpiration() failed - unexpectedly found deleted tag 'expires: 11/22/2023'");
+  }
+}
+function testSetRouteExpiration() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/22/2023");
+  const tag_found = rwgps.getRouteObject("https://ridewithgps.com/routes/41365882").tag_names.includes("expires: 11/22/2023")
+  if (!tag_found) {
+    throw Error("testSetRouteExpiration() failed - no tag 'expires: 11/22/2023' was found");
+  }
+}
 function testTagEvents() {
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   rwgpsService.tagEvents(['189081'], ['Tobys Tag']);
@@ -429,5 +535,5 @@ function testImportRoute() {
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const rwgps = new RWGPS(rwgpsService);
   console.log(rwgps.importRoute('https://ridewithgps.com/routes/19551869'));
-  console.log(rwgps.importRoute({ url: 'https://ridewithgps.com/routes/19551869', visibility: 2, name: "Toby's new route"}));
+  console.log(rwgps.importRoute({ url: 'https://ridewithgps.com/routes/19551869', visibility: 2, name: "Toby's new route" }));
 }
