@@ -311,14 +311,17 @@ class RWGPSService {
     return this._send_request(url, options);
   }
   /**
-  * Update multiple tags on multiple events
-   * @param{event_ids} array - an array containing the ids of the events to add the tags to
-   * @param{tags} array - an array of the tags to be added to the events
+   * Update multiple tags on multiple resources
+   * @param{!(NumberLike | NumberLike[])} ids - an id or an array of ids of the resources to be tagged
+   * @param{!(string | string[])} tags - an optional tag or array of tags
+   * @param{!string} tag_action - one of 'add' or 'remove' to indicate addition or removal of tags
+   * @param{!string} resource - the kind of resource to be operated on, one of 'event' or 'route'
   */
-  _batch_update_tags(event_ids, tag_action, tags) {
-    if (event_ids.length > 0 && tags.length > 0) {
-      let url = "https://ridewithgps.com/events/batch_update_tags.json";
-      const payload = { event_ids: event_ids.join(), tag_action, tag_names: tags.join() };
+  _batch_update_tags(ids, tag_action, tags, resource) {
+    if (ids.length > 0 && tags.length > 0) {
+      const url = `https://ridewithgps.com/${resource}s/batch_update_tags.json`;
+      const payload = { tag_action, tag_names: tags.join() };
+      payload[`${resource}_ids`] = ids.join();
       const options = {
         method: 'post',
         headers: { 'cookie': this.cookie },
@@ -330,22 +333,46 @@ class RWGPSService {
   }
 
   /**
-   * Add multiple tags to multiple events
-   * @param{event_ids} array - an array containing the ids of the events to add the tags to
-   * @param{tags} array - an array of the tags to be added to the events
+ * A number, or a string containing a number.
+ * @typedef {(number|string)} NumberLike
+ */
+  /**
+   * Add multiple tags to multiple events - idempotent
+   * @param{NumberLike[]} ids - an array containing the ids of the events to add the tags to
+   * @param{string[]} tags - an array of the tags to be added to the events
    */
-  add_tags(event_ids, tags) {
-    return this._batch_update_tags(event_ids, "add", tags);
+  tagEvents(ids, tags) {
+    return this._batch_update_tags(ids, "add", tags, 'event');
   }
 
   /**
-   * remove multiple tags to multiple events
-   * @param{event_ids} array - an array containing the ids of the events to add the tags to
-   * @param{tags} array - an array of the tags to be added to the events
+   * remove multiple tags from multiple events - idempotent
+   * @param{NumberLike[]} ids - an array containing the ids of the events to remove the tags from
+   * @param{string[]} tags - an array of the tags to be removed from the events
    */
-  remove_tags(event_ids, tags) {
-    return this._batch_update_tags(event_ids, "remove", tags);
+   unTagEvents(ids, tags) {
+    return this._batch_update_tags(ids, "remove", tags, 'event');
   }
+
+ /**
+   * Add multiple tags to multiple routes - idempotent
+   * @param{NumberLike[]} ids - an array containing the ids of the routes to add the tags to
+   * @param{string[]} tags - an array of the tags to be added to the routes
+   */
+  tagRoutes(ids, tags) {
+    return this._batch_update_tags(ids, "add", tags, 'route');
+  }
+  
+   /**
+   * Remove multiple tags from multiple routes - idempotent
+   * @param{NumberLike[]} ids - an array containing the ids of the routes to add the tags to
+   * @param{string[]} tags - an array of the tags to be removed from the routes
+   */
+  unTagRoutes(route_ids, tags) {
+    return this._batch_update_tags(route_ids, "remove", tags, 'route');
+  }
+
+  
 
 
   getOrganizers(url, organizer_name) {
@@ -361,12 +388,30 @@ class RWGPSService {
   }
 }
 
+function testTagEvents() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  rwgpsService.tagEvents(['189081'], ['Tobys Tag']);
+}
+function testUntagEvents() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  rwgpsService.unTagEvents(['189081'], ['Tobys Tag']);
+}
+function testUnTagRoutes() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  rwgpsService.unTagRoutes(['41365882'], ['Tobys Tag']);
+}
+function testTagRoutes() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  rwgpsService.tagRoutes(['41365882'], ['Tobys Tag']);
+}
 function testGetEvent() {
   let rwgps = new RWGPS(new RWGPSService("toby.h.ferguson@icloud.com", "1rider1"));
   let url = "https://ridewithgps.com/events/189081-copied-event";
-  Logger.log(rwgps.get_event(url)['starts_at']);
-  Logger.log(new Date(rwgps.get_event(url)['starts_at']));
-  Logger.log(new Date("9/27/2022") === Date.parse(rwgps.get_event(url)['starts_at']));
+  const event = rwgps.get_event(url);
+  Logger.log(event.starts_at);
+  Logger.log(new Date(event.starts_at));
+  console.log(new Date("9/27/2022 09:00"));
+  console.log(dates.compare("9/27/2022", event.starts_at));
 }
 
 function testLookupOrganizer() {
