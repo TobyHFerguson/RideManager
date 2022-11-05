@@ -89,9 +89,8 @@ const Schedule = function () {
      */
     linkRouteURL(row) {
       function getRouteJson(row) {
-        let f = errorFuns.filter(f => f.name === "nonClubRoute_")[0];
-        const error = f(row);
-        if (error !== undefined) {
+        const error = rowCheck.badRoute_(row);
+        if (error) {
           throw new Error(error);
         }
         let url = row.RouteURL;

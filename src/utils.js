@@ -54,7 +54,7 @@ var dates = {
         //  an object     : Interpreted as an object with year, month and date
         //                  attributes.  **NOTE** month is 0-11.
         return (
-            d.constructor === Date ? new Date(d.getFullYear(), d.getMonth(), d.getDay() ) :
+            d.constructor === Date ? new Date(d.getFullYear(), d.getMonth(), d.getDate() ) :
             d.constructor === Array ? new Date(d[0],d[1],d[2]) :
             d.constructor === Number ? new Date(d) :
             d.constructor === String ? new Date(d) :
@@ -91,5 +91,24 @@ var dates = {
             start <= d && d <= end :
             NaN
         );
+    },
+    shortString:function(d) {
+      // Returns the shortened MM/DD/YYYY version of the date
+      return this.convert(d).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "numeric", day: "numeric" })
+    },
+    add:function(d, days) {
+      let nd = this.convert(d);
+      nd.setDate(nd.getDate() + days);
+      return nd;
     }
 }
+
+const d = dates.convert("4/26/2022");
+if (dates.shortString(d) !== "4/26/2022") {
+  console.log(`dates.convert failed - was expecting '4/26/2022', got '${dates.shortString(d)}'` );
+}
+const nd = dates.add(d, 7);
+if (dates.shortString(nd) !== "5/3/2022") {
+  console.log(`dates.add failed - was expecting '4/26/2022', got '${dates.shortString(nd)}'` );
+}
+

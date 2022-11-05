@@ -115,12 +115,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
   }
 
   clear_sidebar();
-  errorFuns.push((row) => {
-    if (row.RideURL !== null) {
-      return "This ride has already been scheduled";
-    }
-  });
-
+  errorFuns.push(rowCheck.alreadyScheduled);
   rows.forEach(row => evalRow_(row, rwgps));
   let message = create_message(rows);
   create_sidebar(rows.filter(r => !schedulable_(r) || r.warnings.length > 0));
@@ -130,7 +125,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
   } else {
     if (confirm_schedule(message)) {
       let scheduled_event_urls = schedulable_rows.map(row => schedule_event_(rwgps, row));
-      rwgps.remove_tags(scheduled_event_urls, ["template"]);
+      rwgps.unTagEvents(scheduled_event_urls, ["template"]);
     }
   }
 

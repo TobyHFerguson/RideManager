@@ -1,15 +1,17 @@
-const errorFuns = [
-    function noStartDate_(row) {
+
+
+const rowCheck = {
+    noStartDate_: function (row) {
         if (row.StartDate === undefined || row.StartDate.constructor !== Date) {
             return "No Start Date"
         }
     },
-    function noStartTime_(row) {
+    noStartTime_: function (row) {
         if (row.StartTime === undefined || row.StartTime.constructor !== Date) {
             return "No Start Time"
         }
     },
-    function noGroup_(row) {
+    noGroup_: function (row) {
         switch (row.Group) {
             case undefined:
             case null:
@@ -25,20 +27,21 @@ const errorFuns = [
                 return `Unknown group: ${row.Group}`;
         }
     },
-    function nonClubRoute_(row) {
+    badRoute_: function (row) {
         if (row.RouteURL === undefined || row.RouteURL === null) {
             return "No route url"
         }
         let re = /(https:\/\/ridewithgps.com\/routes\/(\d+))/
         let url = row.RouteURL.match(re);
         if (url === null) {
-          return "Route URL doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS"
+            return "Route URL doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS"
         }
         url = url[1];
         const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
+        let route = JSON.parse(response.getContentText());
         switch (response.getResponseCode()) {
             case 200:
-                if (JSON.parse(response.getContentText()).user_id !== SCCCC_USER_ID) {
+                if (route.user_id !== SCCCC_USER_ID) {
                     return 'Route is not owned by SCCCC';
                 }
                 break;
@@ -52,31 +55,20 @@ const errorFuns = [
                 return "Unknown issue with Route URL";
         }
     },
-    function noLocation_(row) {
-        if (row.Location === undefined || row.Location === null || row.Location === "" || row.Location === "#VALUE!" || row.Location === "#N/A") {
-            return "No location";
-        }
-    },
-    function noAddress_(row) {
-        if (row.Address === undefined || row.Address === null || row.Address === "" || row.Address === "#VALUE!" || row.Location === "#N/A") {
-            return "No address";
-        }
-    }
-]
-
-const warningFuns = [
-    function rideLeaderCheck_(row, rwgps) {
+    // Warnings
+    noRideLeader_: function (row, rwgps) {
         if (!row.RideLeader) {
             return `No ride leader given. Defaulting to '${RIDE_LEADER_TBD_NAME}'`;
         } else {
-            const rls = row.RideLeader.split(',').map(rl => rl.trim()).filter(s => s).reduce((p, rl) =>  {
+            const rls = row.RideLeader.split(',').map(rl => rl.trim()).filter(s => s).reduce((p, rl) => {
                 if (rwgps.knownRideLeader(rl)) {
-                  p.known.push(rl)
+                    p.known.push(rl)
                 } else {
-                  p.unknown.push(rl)}; 
-                  return p;
-                 },
-                 { known: [], unknown: [] }  );
+                    p.unknown.push(rl)
+                };
+                return p;
+            },
+                { known: [], unknown: [] });
 
             if (rls.unknown.length) {
                 row.highlightRideLeader(true);
@@ -88,12 +80,71 @@ const warningFuns = [
             }
         }
     },
-    function cancelled_(row) {
+    cancelled_: function (row) {
         if (row.RideName.toLowerCase().startsWith('cancelled')) {
             return 'Cancelled - this ride will be rescheduled';
         }
+    },
+    noLocation_: function (row) {
+        if (!row.Location || row.Location.startsWith('#')) {
+            return "Unknown location";
+        }
+    },
+    noAddress_: function (row) {
+        if (!row.Address || row.Address.startsWith('#')) {
+            return "Unknown address";
+        }
+    },
+    _inappropiateGroup: function (row) {
+        function __inappropriateGroup(group, elevation, distance) {
+            switch (group) {
+                case 'A':
+                    if (elevation < A_RIDE_MIN_ELEVATION_GAIN) {
+                        return `Elevation gain (${elevation}') too low for A group (>= ${A_RIDE_MIN_ELEVATION_GAIN}')`
+                    }
+                    if (distance < A_RIDE_MIN_LENGTH) {
+                        return `Distance (${distance} miles) too short for A group (>= ${A_RIDE_MIN_LENGTH} miles)`
+                    }
+                    if (distance > A_RIDE_MAX_LENGTH) {
+                        return `Distance (${distance} miles) too long for A group (<= ${A_RIDE_MAX_LENGTH} miles)`
+                    }
+                    break;
+                case 'B':
+                    if (elevation > B_RIDE_MAX_ELEVATION_GAIN) {
+                        return `Elevation gain (${elevation}') too great for B group (<= ${B_RIDE_MAX_ELEVATION_GAIN}')`
+                    }
+                    if (distance > B_RIDE_MAX_LENGTH) {
+                        return `Distance (${distance} miles) too long for B group (<= ${B_RIDE_MAX_LENGTH} miles)`
+                    }
+                    break;
+                case 'C':
+                    if (elevation > C_RIDE_MAX_ELEVATION_GAIN) {
+                        return `Elevation gain (${elevation}') too great for C group (<= ${C_RIDE_MAX_ELEVATION_GAIN}')`
+                    }
+                    if (distance > C_RIDE_MAX_LENGTH) {
+                        return `Distance (${distance} miles) too long for C group (<= ${C_RIDE_MAX_LENGTH} miles)`
+                    }
+                    break;
+                default:
+                    throw Error(`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
+            }
+        }
+        const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
+        const route = JSON.parse(response.getContentText());
+        const d = Math.round(route.distance * METERS_TO_MILES);
+        const e = Math.round(route.elevation_gain * METERS_TO_FEET);
+        return __inappropriateGroup(row.group, e, d);
+    },
+    alreadyScheduled: function (row) {
+        if (row.RideURL !== null) {
+            return "This ride has already been scheduled";
+        }
     }
-]
+}
+
+const errorFuns = [rowCheck.noStartDate_, rowCheck.noStartTime_, rowCheck.noGroup_, rowCheck.badRoute_]
+
+const warningFuns = [rowCheck.noRideLeader_, rowCheck.cancelled_, rowCheck.noLocation_, rowCheck.noAddress_, rowCheck._inappropiateGroup]
 
 function evalRow_(row, rwgps) {
     row.errors = [];
@@ -101,7 +152,3 @@ function evalRow_(row, rwgps) {
     row.warnings = []
     warningFuns.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
 }
-
-const splits = "one, two, ".split(',').map(s => s.trim());
-const non_empty = splits.filter(s => s);
-non_empty.forEach(s => console.log(`|${s}|`));

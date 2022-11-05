@@ -54,9 +54,9 @@ class RWGPS {
    * @param {string[]} event_urls - the event urls
    * @param {string[]} tags - the tags
    */
-  untagEvents(event_urls, tags) {
+  unTagEvents(event_urls, tags) {
     let event_ids = event_urls.map(e => e.split('/')[4].split('-')[0]);
-    this.rwgpsService.untagEvents(event_ids, tags);
+    this.rwgpsService.unTagEvents(event_ids, tags);
   }
 
   /**

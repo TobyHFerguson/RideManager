@@ -3,6 +3,7 @@ function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ride Lead Coordinators')
     .addItem('Link Selected Route URLs', linkRouteURLs.name)
+    .addItem('Import Selected Routes', importSelectedRoutes.name)
     .addSeparator()
     .addItem('Schedule Selected Rides', scheduleSelectedRides.name)
     .addItem('Update Selected Rides', updateSelectedRides.name)
