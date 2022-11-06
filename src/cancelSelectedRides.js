@@ -64,13 +64,7 @@ function cancelSelectedRides() {
       inform_of_errors(message);
     } else {
       if (confirm_cancel(message)) {
-        try {
-          canceleable_events.forEach(event => { event.cancel(); rwgps.edit_event(event.getRideLinkURL(), event)} );
-        } catch (err) {
-          if (err.message.indexOf('Request failed for https://ridewithgps.com returned code 404. Truncated server response: {"success":0,"message":"Record not found"} (use muteHttpExceptions option to examine full response)') === -1) {
-            throw err;
-          }
-        }
+        canceleable_events.forEach(event => { event.cancel(); rwgps.edit_event(event.getRideLinkURL(), event)} );
       }
     }
   }
