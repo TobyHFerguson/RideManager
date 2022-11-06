@@ -5,8 +5,7 @@ function unscheduleSelectedRides() {
 }
 
 function unscheduleable_(row) {
-  let url = row.RideURL;
-  return url !== undefined && url !== null && url !== "";
+  return row.RideURL;
 }
 
 function unscheduleSelectedRidesWithCreds(rows, rwgps) {
@@ -53,13 +52,13 @@ function unscheduleSelectedRidesWithCreds(rows, rwgps) {
 
   clear_sidebar();
   let message = create_unschedule_message(rows);
-  let unscheduleable_events = rows.filter(row => unscheduleable_(row)).map(row => new Event(row));
-  if (unscheduleable_events.length === 0) {
+  let unschedulable_rows = rows.filter(row => unscheduleable_(row));
+  if (unschedulable_rows.length === 0) {
     inform_of_errors(message);
   } else {
     if (confirm_unschedule(message)) {
       try {
-        rwgps.batch_delete_events(unscheduleable_events.map(event => { let url = event.getRideLinkURL(); event.deleteRideLinkURL(); return url; }));
+        rwgps.batch_delete_events(unschedulable_rows.map(row => { let url = row.RideURL; row.deleteRideLink(); return url; }));
       } catch (err) {
         if (err.message.indexOf('Request failed for https://ridewithgps.com returned code 404. Truncated server response: {"success":0,"message":"Record not found"} (use muteHttpExceptions option to examine full response)') === -1) {
           throw err;
