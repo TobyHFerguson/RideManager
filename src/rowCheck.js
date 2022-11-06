@@ -27,9 +27,14 @@ const rowCheck = {
                 return `Unknown group: ${row.Group}`;
         }
     },
-    routeInaccessible: function(row) {
-        switch(UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true }).getResponseCode()) {
-            case 200: return;
+    routeInaccessibleOrOwnedByClub: function(row) {
+        const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
+        let route = JSON.parse(response.getContentText());
+        switch (response.getResponseCode()) {
+            case 200: if (route.user_id === SCCCC_USER_ID) {
+                return 'Route is owned by SCCCC';
+            }
+            break;
             case 403: return 'Route URL does not have public access';
             case 404: return `This route cannot be found on the server`;
             default: return "Unknown issue with Route URL";

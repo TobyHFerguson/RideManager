@@ -75,7 +75,7 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
       const w = rowCheck._inappropiateGroup(row);
       if (w) row.warnings.push(w);
     }
-    const e = rowCheck.routeInaccessible(row);
+    const e = rowCheck.routeInaccessibleOrOwnedByClub(row);
     if (e) row.errors.push(e);
   }
   rows.forEach(row => checkRow(row));
