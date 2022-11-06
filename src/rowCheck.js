@@ -27,6 +27,14 @@ const rowCheck = {
                 return `Unknown group: ${row.Group}`;
         }
     },
+    routeInaccessible: function(row) {
+        switch(UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true }).getResponseCode()) {
+            case 200: return;
+            case 403: return 'Route URL does not have public access';
+            case 404: return `This route cannot be found on the server`;
+            default: return "Unknown issue with Route URL";
+        }
+    },
     badRoute_: function (row) {
         if (row.RouteURL === undefined || row.RouteURL === null) {
             return "No route url"

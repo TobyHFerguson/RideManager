@@ -74,14 +74,14 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
     if (!row.errors) row.errors = []
     if (!rowCheck.noGroup_(row))  {
       const w = rowCheck._inappropiateGroup(row);
-      if (w) {
-        row.warnings.push(w);
-      }
+      if (w) row.warnings.push(w);
     }
+    const e = rowCheck.routeInaccessible(row);
+    if (e) row.errors.push(e);
   }
   rows.forEach(row => checkRow(row));
   let message = create_message(rows);
-  create_sidebar(rows.filter(row => importable(row) || row.warnings.length > 0));
+  create_sidebar(rows.filter(row => !importable(row) || row.warnings.length > 0));
   let importable_rows = rows.filter(row => importable(row));
   if (importable_rows.length === 0) {
     inform_of_errors(message);

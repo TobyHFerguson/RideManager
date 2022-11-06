@@ -1,5 +1,4 @@
 function do_action(form) {
-  linkRouteURLs();
   if (form.email === undefined || form.password === undefined) {
     askForCredentials(form.method);
   } else {

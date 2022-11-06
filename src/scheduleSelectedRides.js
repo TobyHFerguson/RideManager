@@ -115,6 +115,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
   }
 
   clear_sidebar();
+  linkRouteURLs();
   errorFuns.push(rowCheck.alreadyScheduled);
   rows.forEach(row => evalRow_(row, rwgps));
   let message = create_message(rows);
