@@ -58,7 +58,6 @@ function cancelSelectedRides() {
       SpreadsheetApp.getUi().alert(message);
     }
   
-    clear_sidebar();
     let message = create_cancel_message(rows);
     let canceleable_events = rows.filter(row => cancelable_(row)).map(row => new Event(row));
     if (canceleable_events.length === 0) {

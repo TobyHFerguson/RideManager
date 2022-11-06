@@ -68,7 +68,6 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
     message += "No selected routes are importable; they need to have the errors fixed.";
     SpreadsheetApp.getUi().alert(message);
   }
-  clear_sidebar();
   function checkRow(row) {
     if (!row.warnings) row.warnings = [];
     if (!row.errors) row.errors = []
@@ -81,7 +80,7 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
   }
   rows.forEach(row => checkRow(row));
   let message = create_message(rows);
-  create_sidebar(rows.filter(row => !importable(row) || row.warnings.length > 0));
+  sidebar.create(rows.filter(row => !importable(row) || row.warnings.length > 0));
   let importable_rows = rows.filter(row => importable(row));
   if (importable_rows.length === 0) {
     inform_of_errors(message);

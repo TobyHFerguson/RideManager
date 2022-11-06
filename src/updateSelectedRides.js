@@ -125,11 +125,10 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     }
   }
 
-  clear_sidebar();
   linkRouteURLs();
   rows.forEach(row => { evalRow_(row, rwgps); compare_(row) });
   let message = create_message(rows);
-  create_sidebar(rows.filter(row => !_updateable(row) || row.warnings.length > 0));
+  sidebar.create(rows.filter(row => !_updateable(row) || row.warnings.length > 0));
   let updateable_rows = rows.filter(row => _updateable(row));
   if (updateable_rows.length === 0) {
     inform_of_errors(message);

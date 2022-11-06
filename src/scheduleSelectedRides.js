@@ -114,12 +114,11 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
     SpreadsheetApp.getUi().alert(message);
   }
 
-  clear_sidebar();
   linkRouteURLs();
   errorFuns.push(rowCheck.alreadyScheduled);
   rows.forEach(row => evalRow_(row, rwgps));
   let message = create_message(rows);
-  create_sidebar(rows.filter(r => !schedulable_(r) || r.warnings.length > 0));
+  sidebar.create(rows.filter(r => !schedulable_(r) || r.warnings.length > 0));
   let schedulable_rows = rows.filter(r => schedulable_(r));
   if (schedulable_rows.length === 0) {
     inform_of_errors(message);

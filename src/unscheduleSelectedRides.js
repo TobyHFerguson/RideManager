@@ -33,8 +33,8 @@ function unscheduleSelectedRidesWithCreds(rows, rwgps) {
     }
 
     let message = "";
-    message += create_unschedule_error_message(rows);
-    message += create_unscheduleable_message(rows);
+    message += create_unschedule_error_message(rows.filter(r => r.errors && r.errors.length));
+    message += create_unscheduleable_message(rows.filter(r => !(r.errors &&r.errors.length)));
     return message;
   }
 
@@ -50,9 +50,9 @@ function unscheduleSelectedRidesWithCreds(rows, rwgps) {
     SpreadsheetApp.getUi().alert(message);
   }
 
-  clear_sidebar();
   let message = create_unschedule_message(rows);
   let unschedulable_rows = rows.filter(row => unscheduleable_(row));
+  sidebar.create(unschedulable_rows);
   if (unschedulable_rows.length === 0) {
     inform_of_errors(message);
   } else {
