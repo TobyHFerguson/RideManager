@@ -43,7 +43,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     fixup_organizers(event);
     event.updateRideName();
     rwgps.edit_event(event.getRideLinkURL(), event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(event.StartDate, EXPIRY_DELAY), true );
+    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true );
   }
 
   function create_message(rows) {
