@@ -143,9 +143,10 @@ class RWGPS {
    * Set the expiration date of the given route to the latter of the route's current expiration date or its new one
    * @param {string} route_url - the url of the route whose expiration is to be set
    * @param {(string | Date)} [expiration_date] - the expiration date. No date removes the expiration date from the route.
+   * @param {NumberLike} [extend_only = false] - When true only update the expiration if there's already an expiration date. If there's not then do nothing. When false then add the expiration regardless.
    * @returns {object} returns this for chaining
    */
-  setRouteExpiration(route_url, expiration_date) {
+  setRouteExpiration(route_url, expiration_date, extend_only = false) {
     const self = this;
     function findExpirationTag(route_url) {
       const route = self.getRouteObject(route_url);
@@ -165,21 +166,28 @@ class RWGPS {
       return etag.split(": ")[1];
     }
     function makeExpirationTag(date) {
-      return `expires: ${date}`
+      return `expires: ${dates.shortString(date)}`
     }
 
     if (!expiration_date) {
       deleteExpirationTag(route_url);
     } else {
+      // cet: Current Expiration Tag
       const cet = findExpirationTag(route_url);
-      if (!cet) {
-        const id = route_url.split('/')[4].split('-')[0];
-        this.rwgpsService.tagRoutes([id], [makeExpirationTag(expiration_date)]);
+      if (!cet) { // No expiration tag
+        if (extend_only) {
+          // no-op! We've not got an expiration date but we've been told only to extend!
+        } else {
+          // No expiration date, but we're not extending, so add a new tag
+          const id = route_url.split('/')[4].split('-')[0];
+          this.rwgpsService.tagRoutes([id], [makeExpirationTag(expiration_date)]);
+        }
       } else {
+        // we have an expiration tag; extend_only doesn't matter here; We'll replace the tag.
         const ced = getExpirationDate(cet);
         if (dates.compare(ced, expiration_date) < 0) {
           const id = route_url.split('/')[4].split('-')[0];
-          this.rwgpsService.unTagRoutes([id], [makeExpirationTag(ced)]);
+          this.rwgpsService.unTagRoutes([id], [cet]);
           this.rwgpsService.tagRoutes([id], [makeExpirationTag(expiration_date)]);
         }
       }

@@ -35,3 +35,5 @@ const A_RIDE_MIN_LENGTH = 40;
 const A_RIDE_MAX_LENGTH = 80;
 const A_RIDE_MIN_ELEVATION_GAIN = 3000;
 
+// Number of days after an event or an import that a route will expire
+EXPIRY_DELAY = 30;

@@ -38,10 +38,12 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
   ${event.desc}`;
   }
 
-  function _update_event(event) {
+  function _update_event(row) {
+    const event = new Event(row)
     fixup_organizers(event);
     event.updateRideName();
     rwgps.edit_event(event.getRideLinkURL(), event);
+    rwgps.setRouteExpiration(row.RouteURL, dates.add(event.StartDate, EXPIRY_DELAY), true );
   }
 
   function create_message(rows) {
@@ -134,7 +136,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     inform_of_errors(message);
   } else {
     if (confirm_update(message)) {
-      updateable_rows.forEach(row => _update_event(new Event(row)));
+      updateable_rows.forEach(row => _update_event(row));
     }
   }
 

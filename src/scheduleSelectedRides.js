@@ -52,6 +52,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
     }
     let new_event_url = rwgps.copy_template_(get_template_(event.group));
     rwgps.edit_event(new_event_url, event);
+    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true );
     event.setRideLink(new_event_url);
     return new_event_url
   }

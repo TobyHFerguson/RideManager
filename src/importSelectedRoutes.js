@@ -10,7 +10,7 @@ function importSelectedRoutes() {
 function importSelectedRoutesWithCredentials(rows, rwgps) {
   function importable(row) { return row.errors.length === 0; }
 
-  
+
   function create_message(rows) {
     function create_error_message(rows) {
       let message = "";
@@ -71,13 +71,18 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
   function checkRow(row) {
     if (!row.warnings) row.warnings = [];
     if (!row.errors) row.errors = []
-    if (!rowCheck.noGroup_(row))  {
+    if (!rowCheck.noGroup_(row)) {
       const w = rowCheck._inappropiateGroup(row);
       if (w) row.warnings.push(w);
     }
     const e = rowCheck.routeInaccessibleOrOwnedByClub(row);
     if (e) row.errors.push(e);
   }
+
+  function makeExpiryDate(d) {
+    return dates.shortString(d ? dates.add(d, EXPIRY_DELAY) : dates.add(new Date(), EXPIRY_DELAY))
+  }
+
   rows.forEach(row => checkRow(row));
   let message = create_message(rows);
   sidebar.create(rows.filter(row => !importable(row) || row.warnings.length > 0));
@@ -86,7 +91,7 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
     inform_of_errors(message);
   } else {
     if (confirm_update(message)) {
-      importable_rows.forEach(row => { const url = rwgps.importRoute({ url: row.RouteURL, expiry: dates.shortString(dates.add(row.StartDate, 7))} ); row.setRouteLink(url, url)});
+      importable_rows.forEach(row => { const url = rwgps.importRoute({ url: row.RouteURL, expiry: makeExpiryDate(row.StartDate) }); row.setRouteLink(url, url) });
     }
   }
 
