@@ -41,7 +41,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
   function _update_event(row) {
     const event = new Event(row)
     fixup_organizers(event);
-    event.updateRideName();
+    event.updateRideName(rwgps.getRSVPCount(event.getRideLinkURL()));
     rwgps.edit_event(event.getRideLinkURL(), event);
     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true );
   }
@@ -127,6 +127,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     }
   }
 
+  
   linkRouteURLs();
   rows.forEach(row => { evalRow_(row, rwgps); compare_(row) });
   let message = create_message(rows);

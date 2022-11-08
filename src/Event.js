@@ -7,8 +7,8 @@ const MEMBERS_ONLY = 2;
 
 
 class Event {
-  static makeRideName(start_date, start_time, group, route_name) {
-    return `${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" })} '${group}' Ride (${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" })} ${start_time.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" })}) ${route_name}`;
+  static makeRideName(rsvps, start_date, start_time, group, route_name) {
+    return `${rsvps ? '#'+ rsvps : ''} ${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" })} '${group}' Ride (${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" })} ${start_time.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" })}) ${route_name}`;
   }
   constructor(row) {
 
@@ -37,12 +37,14 @@ class Event {
     } else {
       this.route_ids = [row.RouteURL.split('/')[4]];
     }
-    this.name = row.rideName ? row.rideName : Event.makeRideName(row.StartDate, row.StartTime, row.Group, row.RouteName);
+    this.organizer_names = row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl);
+    console.log(this.organizer_names);
+    this.name = row.rideName ? row.rideName : Event.makeRideName(this.organizer_names.length, row.StartDate, row.StartTime, row.Group, row.RouteName);
 
     let y = row.Location;
     this.location = row.Location !== undefined && row.Location !== null && row.Location !== "" && row.Location !== "#VALUE!" && row.Location !== "#N/A" ? row.Location : "";
     this.address = row.Address !== undefined && row.Address !== null && row.Address !== "" && row.Address !== "#VALUE!" && row.Address !== "#N/A" ? row.Address : "";
-    this.organizer_names = row.RideLeader.split(',').map(rl => rl.trim());
+    
     this.desc = `${this.address}
           
 Arrive ${this.meet_time} for a ${this.start_time} rollout.
@@ -64,8 +66,10 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
     this.row.setRideLink(this.name, url);
   }
 
-  updateRideName() {
-    this.name = Event.makeRideName(this.row.StartDate, this.row.StartTime, this.row.Group, this.row.RouteName);
+  updateRideName(rsvpCount) {
+    console.log(this.organizer_names);
+    const total = this.organizer_names.length + rsvpCount;
+    this.name = Event.makeRideName(total, this.row.StartDate, this.row.StartTime, this.row.Group, this.row.RouteName);
     this.row.setRideLink(this.name, this.getRideLinkURL());
   }
 

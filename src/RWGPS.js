@@ -9,10 +9,29 @@ class RWGPS {
   constructor(rwgpsService) {
     this.rwgpsService = rwgpsService;
   }
+  /**
+   * Return the count of participants that have RSVP'd to the event
+   * @param {string} event_url - url of the event
+   * @return {Number} number of participants
+   */
+  getRSVPCount(event_url) {
+    try {
+      const url = event_url +"/participants.json";
+      return JSON.parse(this.rwgpsService.get(url).getContentText()).filter(p => p.rsvp_status === "Yes").length
+    } catch (e) {
+      console.log(e);
+      return 0;
+    }
+  }
+  /**
+   * Returns the basic url of the event created by coping the given template
+   * @param {string} template_url - url of the RWGPS template to be copied
+   * @returns the url of the copied event ending in digits
+   */
   copy_template_(template_url) {
     let response = this.rwgpsService.copy_template_(template_url);
     const headers = response.getAllHeaders();
-    return headers['Location'];
+    return headers['Location'].split('-')[0];
   }
   /**
    * Get the event at the URL
