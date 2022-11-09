@@ -8,7 +8,7 @@ const MEMBERS_ONLY = 2;
 
 class Event {
   static makeRideName(rsvps, start_date, start_time, group, route_name) {
-    return `${rsvps ? '#'+ rsvps : ''} ${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" })} '${group}' Ride (${start_date.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" })} ${start_time.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" })}) ${route_name}`;
+    return `${dates.weekday(start_date)} '${group}' (${dates.MMDD(start_date)} ${dates.T24(start_time)}) ${rsvps ? '['+ rsvps +']' : ''} ${route_name}`;
   }
   constructor(row) {
 
@@ -67,7 +67,6 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
   }
 
   updateRideName(rsvpCount) {
-    console.log(this.organizer_names);
     const total = this.organizer_names.length + rsvpCount;
     this.name = Event.makeRideName(total, this.row.StartDate, this.row.StartTime, this.row.Group, this.row.RouteName);
     this.row.setRideLink(this.name, this.getRideLinkURL());
