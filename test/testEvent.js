@@ -1,0 +1,21 @@
+const Event = require("../src/Event");
+const should = require('chai').should();
+
+describe("Event Tests", () => {
+    describe("test managedRide()", () => {
+        it("matches the regexp of a managed ride", () => {
+            Event.managedEvent("Sat A (12/31 10:00) [1] SCP - Seascape/Corralitos").should.be.true;
+        })
+        it("doesn't match a non managed ride", () => {
+            Event.managedEvent("My Non Managed Ride").should.be.false;
+        })
+    })
+    describe("test makeUnmanagedRideName()", () => {
+        it("returns the original name with the rsvp appended", () => {
+            Event.makeUnmanagedRideName("Name", 10).should.equal("Name [10]");
+        })
+        it("updates the rsvp only", () => {
+            Event.makeUnmanagedRideName("Name [1]", 12).should.equal("Name [12]");
+        })
+    })
+})
