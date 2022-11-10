@@ -41,7 +41,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
   function _update_event(row) {
     const event = new Event(row)
     fixup_organizers(event);
-    event.updateRideName(rwgps.getRSVPCount(event.getRideLinkURL()));
+    event.updateRiderCount(rwgps.getRSVPCount(event.getRideLinkURL()));
     rwgps.edit_event(event.getRideLinkURL(), event);
     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true );
   }

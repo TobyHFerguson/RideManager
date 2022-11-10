@@ -98,7 +98,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
     this.row.setRideLink(this.name, url);
   }
 
-  updateRideName(numRiders) {
+  updateRiderCount(numRiders) {
     if (Event.managedEvent(this.name)) {
       this.name = Event.makeManagedRideName(numRiders, this.row.StartDate, this.row.StartTime, this.row.Group, this.row.RouteName);
     } else {
