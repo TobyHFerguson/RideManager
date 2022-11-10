@@ -9,6 +9,12 @@ describe("Event Tests", () => {
         it("doesn't match a non managed ride", () => {
             Event.managedEvent("My Non Managed Ride").should.be.false;
         })
+        it("an empty ride is managed", () => {
+            Event.managedEvent("").should.be.true;
+        })
+        it("no name will be managed", () => {
+            Event.managedEvent().should.be.true;
+        })
     })
     describe("test makeUnmanagedRideName()", () => {
         it("returns the original name with the rsvp appended", () => {

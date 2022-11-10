@@ -40,7 +40,7 @@ class Event {
    */
   static managedEvent(eventName) {
     const re = /[MTWFS][a-z]{2}\s[ABC]\s\([^)]{11}\)\s\[\d{1,2}].*/
-    return re.test(eventName);
+    return !eventName || re.test(eventName);
   }
 
   constructor(row) {
