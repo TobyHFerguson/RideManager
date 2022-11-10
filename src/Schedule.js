@@ -4,6 +4,32 @@ const Schedule = function () {
       this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
       this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0];
     }
+    /**
+     * Find and return all rows that are scheduled after the given day
+     * @param {Date} date the day after which rows should be returned
+     * @return {Row[]} the rows that are younger than the given date
+     */
+    getYoungerRows(date) {
+      const ss = this.activeSheet;
+      const dateColumn = this.getColumn("Date") + 1; // +1 because we need to convert to spreadsheet indexing
+      ss.getRange(2, dateColumn, ss.getLastRow()).sort(dateColumn);
+      const range = ss.getRange(1, dateColumn, ss.getLastRow())
+
+      if (range.getFilter()) range.getFilter().remove();
+
+      const dateFilter = range.createFilter();
+      const criteria = SpreadsheetApp.newFilterCriteria()
+        .whenDateAfter(date)
+        .build();
+      dateFilter.setColumnFilterCriteria(dateColumn, criteria);
+
+      for (var i = 2; i<=ss.getLastRow() && ss.isRowHiddenByFilter(i); i++) {
+      }
+      dateFilter.remove();
+      
+      const rows = this.convertRangeToRows(ss.getRange(i, 1, ss.getLastRow() - i + 1, ss.getLastColumn()));
+      return rows;
+    }
 
     getColumn(name) {
       let ix = this.columnNames.indexOf(name);
@@ -60,14 +86,27 @@ const Schedule = function () {
      */
     getSelectedRows() {
       let activeSheet = this.activeSheet;
+      /**
+       * Convert the given ranges (assumed to be single cell ranges) to ranges
+       * that cover entire rows
+       * @param {Range[]} cellRangeList List of ranges to be converted
+       * @returns list of converted ranges
+       */
+      function convertCellRangesToRowRanges(cellRangeList) {
+        const cellRanges = cellRangeList.getRanges();
+        const lastColumn = `C${activeSheet.getMaxColumns()}`;
+        const rowRangeExpression = cellRanges.map(r => `R${r.getRow()}C1:R${r.getRow() + r.getNumRows() - 1}${lastColumn}`);
+        const rowRangeList = activeSheet.getRangeList(rowRangeExpression);
+        const rowRanges = rowRangeList.getRanges();
+        return rowRanges;
+      }
       function getRowRanges() {
         let selection = activeSheet.getSelection();
         const rangeList = selection.getActiveRangeList();
-        const ranges = rangeList.getRanges();
-        const lastColumn = `C${activeSheet.getMaxColumns()}`;
-        const rowRangeExpression = ranges.map(r => `R${r.getRow()}C1:R${r.getRow() + r.getNumRows() - 1}${lastColumn}`);
-        const rowRangeList = activeSheet.getRangeList(rowRangeExpression);
-        return rowRangeList.getRanges();
+        // The rangeList is a list of single celled ranges
+        // We need to convert these ranges ranges that capture a whole row.
+        const rowRanges = convertCellRangesToRowRanges(rangeList)
+        return rowRanges;
       }
 
       let rows = [];
@@ -140,6 +179,7 @@ const Schedule = function () {
       let range = sheet.getRange(rownum, colnum, numrows, numcols);
       return this.convertRangeToRows(range)[0];
     }
+
   }
 
   class Row {
@@ -173,7 +213,7 @@ const Schedule = function () {
       let rtv = this.schedule.setRideLink(this.rowNum, name, url);
       this.richTextValues[this.schedule.getColumn(RIDECOLUMNNAME)] = rtv;
     }
-   
+
     deleteRideLink() {
       this.schedule.deleteRideLink(this.rowNum);
     }

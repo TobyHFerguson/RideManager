@@ -80,7 +80,7 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
   }
 
   function makeExpiryDate(d) {
-    return dates.shortString(d ? dates.add(d, EXPIRY_DELAY) : dates.add(new Date(), EXPIRY_DELAY))
+    return dates.MMDDYYYY(d ? dates.add(d, EXPIRY_DELAY) : dates.add(new Date(), EXPIRY_DELAY))
   }
 
   rows.forEach(row => checkRow(row));

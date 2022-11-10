@@ -8,7 +8,7 @@ const MEMBERS_ONLY = 2;
 
 class Event {
   static makeRideName(rsvps, start_date, start_time, group, route_name) {
-    return `${dates.weekday(start_date)} '${group}' (${dates.MMDD(start_date)} ${dates.T24(start_time)}) ${rsvps ? '['+ rsvps +']' : ''} ${route_name}`;
+    return `${dates.weekday(start_date)} '${group}' (${dates.MMDD(start_date)} ${dates.T24(start_time)}) [${rsvps}] ${route_name}`;
   }
   constructor(row) {
 

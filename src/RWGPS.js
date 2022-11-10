@@ -185,7 +185,7 @@ class RWGPS {
       return etag.split(": ")[1];
     }
     function makeExpirationTag(date) {
-      return `expires: ${dates.shortString(date)}`
+      return `expires: ${dates.MMDDYYYY(date)}`
     }
 
     if (!expiration_date) {

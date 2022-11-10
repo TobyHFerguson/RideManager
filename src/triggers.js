@@ -9,6 +9,7 @@ function onOpen() {
     .addSeparator()
     .addItem('Import Selected Routes', importSelectedRoutes.name)
     .addItem('Link Selected Route URLs', linkRouteURLs.name)
+    .addItem('Update RSVP Count', updateRSVPCount.name)
     .addSeparator()
     .addItem('Clear User Credentials', clearCredentials.name)
     .addToUi();
