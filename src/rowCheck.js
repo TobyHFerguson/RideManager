@@ -1,6 +1,16 @@
 
 
 const rowCheck = {
+    unmanagedRide: function(row) {
+        if (!Event.managedEvent(row.RideName)) {
+            return "Ride is unmanaged";
+        }
+    },
+    unscheduled: function(row) {
+        if (!row.RideURL) {
+            return "Ride has not been scheduled";
+        }
+    },
     noStartDate_: function (row) {
         if (row.StartDate === undefined || row.StartDate.constructor !== Date) {
             return "No Start Date"
@@ -155,13 +165,13 @@ const rowCheck = {
     }
 }
 
-const errorFuns = [rowCheck.noStartDate_, rowCheck.noStartTime_, rowCheck.noGroup_, rowCheck.badRoute_]
+const errorFuns = [rowCheck.unmanagedRide, rowCheck.noStartDate_, rowCheck.noStartTime_, rowCheck.noGroup_, rowCheck.badRoute_]
 
 const warningFuns = [rowCheck.noRideLeader_, rowCheck.cancelled_, rowCheck.noLocation_, rowCheck.noAddress_, rowCheck._inappropiateGroup]
 
-function evalRow_(row, rwgps) {
+function evalRow_(row, rwgps, efs = errorFuns, wfs = warningFuns) {
     row.errors = [];
-    errorFuns.map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
+    efs.map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
     row.warnings = []
-    warningFuns.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
+    wfs.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
 }
