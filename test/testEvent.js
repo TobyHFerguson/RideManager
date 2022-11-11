@@ -3,6 +3,9 @@ const should = require('chai').should();
 
 describe("Event Tests", () => {
     describe("test managedRide()", () => {
+        it("regexp matches Tue 'B' Ride (1/1 10:00 AM)", () => {
+            Event.managedEvent("Tue 'B' Ride (1/1 10:00 AM)").should.be.true;
+        })
         it("regexp matches Tue 'B' Ride (11/15 10:00 AM)", () => {
             Event.managedEvent("Tue 'B' Ride (11/15 10:00 AM)").should.be.true;
         })

@@ -39,7 +39,7 @@ class Event {
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEvent(eventName) {
-    const re = /[MTWFS][a-z]{2} (([ABC] \([^)]{11}\))|('[ABC]' Ride \([^)]{14}\)))/
+    const re = /[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABC]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\)))/
     return !eventName || re.test(eventName);
   }
 
