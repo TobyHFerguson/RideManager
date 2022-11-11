@@ -39,7 +39,7 @@ class Event {
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEvent(eventName) {
-    const re = /[MTWFS][a-z]{2}\s[ABC]\s\([^)]{11}\)\s\[\d{1,2}].*/
+    const re = /[MTWFS][a-z]{2} (([ABC] \([^)]{11}\))|('[ABC]' Ride \([^)]{14}\)))/
     return !eventName || re.test(eventName);
   }
 
@@ -63,12 +63,15 @@ class Event {
     this.start_time = row.StartTime.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" });
     this.meet_time = (new Date(Number(row.StartTime) - 15 * 60 * 1000)).toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" });
     this.group = row.Group;
-    let url = row.RouteURL.split('?')[0]
+    let url = row.RouteURL;
+    if (url) {
+      url = url.split('?')[0]
     const response = UrlFetchApp.fetch(url + ".json");
     if (JSON.parse(response.getContentText()).user_id !== SCCCC_USER_ID) {
       throw new Error('Route is not owned by SCCCC');
     } else {
       this.route_ids = [row.RouteURL.split('/')[4]];
+      }
     }
     this.organizer_names = row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl);
     this.name = row.RideName ? row.RideName : Event.makeManagedRideName(this.organizer_names.length, row.StartDate, row.StartTime, row.Group, row.RouteName);

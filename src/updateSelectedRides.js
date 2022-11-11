@@ -40,10 +40,14 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
 
   function _update_event(row) {
     const event = new Event(row)
-    fixup_organizers(event);
-    event.updateRiderCount(rwgps.getRSVPCount(event.getRideLinkURL()));
+    if (Event.managedEvent(row.RideName)) {
+      fixup_organizers(event);
+    }
+    const numRideLeaders = !row.RideLeader ? 0 : row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl).length;
+    event.updateRiderCount(rwgps.getRSVPCount(event.getRideLinkURL()) + numRideLeaders);
     rwgps.edit_event(event.getRideLinkURL(), event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true );
+    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true);
+
   }
 
   function create_message(rows) {
@@ -121,15 +125,17 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     if (dates.compare(nsd, osd) !== 0) {
       row.errors.push(`Start date has changed (old: ${osd}; new: ${nsd} ).`);
     }
-    let old_event_group = old_event.name.split("'")[1];
+    let old_event_group = old_event.name.split(" ")[1];
     if (row.Group !== old_event_group) {
       row.errors.push(`Group has changed (old: ${old_event_group}; new: ${row.Group} ).`);
     }
   }
 
-  
+
   linkRouteURLs();
-  rows.forEach(row => { evalRow_(row, rwgps); compare_(row) });
+  rows.map(row => evalRow_(row, rwgps, [rowCheck.unmanagedRide, rowCheck.unscheduled], []))
+    .filter(row => row.errors.length === 0)
+    .map(row => compare_(row));
   let message = create_message(rows);
   sidebar.create(rows.filter(row => !_updateable(row) || row.warnings.length > 0));
   let updateable_rows = rows.filter(row => _updateable(row));

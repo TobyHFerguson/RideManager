@@ -15,11 +15,14 @@ class RWGPS {
    * @return {Number} number of participants
    */
   getRSVPCount(event_url) {
+    if (!event_url) {
+      return 0;
+    }
     try {
       const url = event_url +"/participants.json";
       return JSON.parse(this.rwgpsService.get(url).getContentText()).filter(p => p.rsvp_status === "Yes").length
     } catch (e) {
-      console.log(e);
+      console.log(`event_url ${event_url} led to this error: ${e}`);
       return 0;
     }
   }
@@ -166,6 +169,9 @@ class RWGPS {
    * @returns {object} returns this for chaining
    */
   setRouteExpiration(route_url, expiration_date, extend_only = false) {
+    if (!route_url) {
+      return this;
+    }
     const self = this;
     function findExpirationTag(route_url) {
       const route = self.getRouteObject(route_url);
@@ -378,7 +384,7 @@ class RWGPSService {
         Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
       },
       followRedirects: false,
-      muteHttpExceptions: true
+      muteHttpExceptions: false
     }
     return this._send_request(url, options);
   }

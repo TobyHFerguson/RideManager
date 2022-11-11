@@ -152,6 +152,7 @@ const rowCheck = {
                     throw Error(`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
             }
         }
+        if (!row.RouteURL) return; 
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
         const route = JSON.parse(response.getContentText());
         const d = Math.round(route.distance * METERS_TO_MILES);
@@ -174,4 +175,5 @@ function evalRow_(row, rwgps, efs = errorFuns, wfs = warningFuns) {
     efs.map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
     row.warnings = []
     wfs.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
+    return row;
 }
