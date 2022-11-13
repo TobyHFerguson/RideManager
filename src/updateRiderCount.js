@@ -46,9 +46,10 @@ function updateRiderCountWithCreds(rows, rwgps) {
     const event = new Event(row)
     fixup_organizers(rwgps, event);
     const numRideLeaders = !row.RideLeader ? 0 : row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl).length;
-    event.updateRiderCount(rwgps.getRSVPCount(event.getRideLinkURL()) + numRideLeaders);
-    rwgps.edit_event(event.getRideLinkURL(), event);
+    event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + numRideLeaders);
+    rwgps.edit_event(row.RideURL, event);
     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true);
+    row.setRideLink(event.name, row.RideURL);
     end = new Date().getTime();
     console.log(duration(`row ${row.rowNum}`, start, end));
   })

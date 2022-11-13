@@ -3,6 +3,7 @@
 const PUBLIC = 0;
 const EVENT_MANAGERS_ONLY = 1;
 const MEMBERS_ONLY = 2;
+const MANAGED_RE = /(?<prefix>[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABC]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\))))( \[(\d{1,2})\])*(?<suffix>.*$)/
 
 
 
@@ -27,9 +28,8 @@ class Event {
    * @returns {string} the new event name
    */
   static makeUnmanagedRideName(eventName, numRiders) {
-    const re = /(.*?)\s\[[\d{(1,2)}]\]/;
-    let name = re.exec(eventName);
-    name = name ? name[1] : eventName;
+    const li = eventName.lastIndexOf(' [');
+    const name = (li != -1) ? eventName.slice(0, li) : eventName;
     let newName = `${name} [${numRiders}]`;
     return newName;
   }
@@ -39,8 +39,16 @@ class Event {
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEvent(eventName) {
-    const re = /[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABC]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\)))/
-    return !eventName || re.test(eventName);
+    return !eventName || MANAGED_RE.test(eventName);
+  }
+
+
+  static updateCountInName(name, count) {
+    let match = MANAGED_RE.exec(name);
+    if (match) {
+      return `${match.groups.prefix} [${count}] ${match.groups.suffix.trim()}`;
+    }
+    return Event.makeUnmanagedRideName(name, count);
   }
 
   constructor(row) {
@@ -51,10 +59,8 @@ class Event {
     }
 
 
-    this.row = row;
     this.errors = [];
     this.warnings = [];
-    this.rowNum = row.rowNum;
 
     this.auto_expire_participants = "1";
     this.all_day = "0";
@@ -93,29 +99,10 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
 
   cancel() {
     this.name = 'CANCELLED: ' + this.name;
-    this.desc = 'CANCELLED'
-    this.row.setRideLink(this.name, this.getRideLinkURL());
-  }
-
-  setRideLink(url) {
-    this.row.setRideLink(this.name, url);
   }
 
   updateRiderCount(numRiders) {
-    if (Event.managedEvent(this.name)) {
-      this.name = Event.makeManagedRideName(numRiders, this.row.StartDate, this.row.StartTime, this.row.Group, this.row.RouteName);
-    } else {
-      this.name = Event.makeUnmanagedRideName(this.name, numRiders);
-    }
-    this.row.setRideLink(this.name, this.getRideLinkURL());
-  }
-
-  getRideLinkURL() {
-    return this.row.RideURL;
-  }
-
-  deleteRideLinkURL() {
-    this.row.deleteRideLink();
+    this.name = Event.updateCountInName(this.name, numRiders);
   }
 }
 

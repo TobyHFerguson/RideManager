@@ -21,6 +21,9 @@ describe("Event Tests", () => {
         it("no name will be managed", () => {
             Event.managedEvent().should.be.true;
         })
+        it("detects 'foobar [12]' as unmanaged", () => {
+            (!Event.managedEvent("foobar [12]")).should.be.true;
+        })
     })
     describe("test makeUnmanagedRideName()", () => {
         it("returns the original name with the rsvp appended", () => {
@@ -28,6 +31,14 @@ describe("Event Tests", () => {
         })
         it("updates the rsvp only", () => {
             Event.makeUnmanagedRideName("Name [1]", 12).should.equal("Name [12]");
+        })
+    })
+    describe("test updateCountInName()", () => {
+        it("updates the unmanaged name", () => {
+            Event.updateCountInName("foobar [12]", 9).should.equal("foobar [9]")
+        })
+        it("updates the managed name", () => {
+            Event.updateCountInName("Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", 12).should.equal("Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos")
         })
     })
 })

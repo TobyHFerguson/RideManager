@@ -68,13 +68,20 @@ function cancelSelectedRides() {
     }
     rows.forEach(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide], []));
     let message = create_message(rows);
-    let canceleable_events = rows.filter(row => !row.errors.length).map(row => new Event(row));
-    if (canceleable_events.length === 0) {
+    let canceleable_rows = rows.filter(row => !row.errors.length);
+    if (canceleable_rows.length === 0) {
       inform_of_errors(message);
     } else {
       if (confirm_cancel(message)) {
-        canceleable_events.forEach(event => { event.cancel(); rwgps.edit_event(event.getRideLinkURL(), event)} );
+        canceleable_rows.forEach(row => cancel(row));
       }
+    }
+
+    function cancel(row) {
+      let event = new Event(row);
+      event.cancel();
+      row.setRideLink(event.name, row.RideURL);
+      rwgps.edit_event(row.RideURL, event)
     }
   }
   

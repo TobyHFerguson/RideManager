@@ -44,10 +44,10 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
       fixup_organizers(event);
     }
     const numRideLeaders = !row.RideLeader ? 0 : row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl).length;
-    event.updateRiderCount(rwgps.getRSVPCount(event.getRideLinkURL()) + numRideLeaders);
-    rwgps.edit_event(event.getRideLinkURL(), event);
+    event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + numRideLeaders);
+    rwgps.edit_event(row.RideURL, event);
     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true);
-
+    row.setRideLink(event.name, row.RideURL);
   }
 
   function create_message(rows) {
@@ -125,7 +125,11 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     if (dates.compare(nsd, osd) !== 0) {
       row.errors.push(`Start date has changed (old: ${osd}; new: ${nsd} ).`);
     }
-    let old_event_group = old_event.name.split(" ")[1];
+    
+   const re = /(CANCELLED: )?(?<name>.*)/
+
+
+    let old_event_group = re.exec(old_event.name).groups.name.split(" ")[1];
     if (row.Group !== old_event_group) {
       row.errors.push(`Group has changed (old: ${old_event_group}; new: ${row.Group} ).`);
     }
