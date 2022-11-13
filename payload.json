@@ -1,0 +1,61 @@
+{
+	"age_splits": "35,55",
+	"all_day": "1",
+	"archived_at": null,
+	"auto_expire_participants": "0",
+	"cost_in_cents": null,
+	"created_at": "2022-11-11T10:43:47-08:00",
+	"creating_group": {
+		"name": "",
+		"visibility": 0,
+		"slug": null
+	},
+	"custom_tabs": "[]",
+	"desc": "",
+	"end_date": "",
+	"end_time": "",
+	"ends_at": null,
+	"ends_on": null,
+	"event_series_id": null,
+	"filter_age": "1",
+	"filter_gender": "1",
+	"group_id": 5636125,
+	"group_membership_id": 642972,
+	"id": 196961,
+	"implicit_ends_at": null,
+	"location": "",
+	"monthly_repeat_every": "0",
+	"monthly_repeat_on": "0",
+	"monthly_repeat_until": "2022-12-11",
+	"name": "TEST EVENT",
+	"official": false,
+	"organizer_ids": [
+		"302732",
+		"358454",
+		"295337"
+	],
+	"organizer_names_formal": [
+		"Peter  Stanger",
+		"Toby Ferguson",
+		"Peter Jones"
+	],
+	"organizer_tokens": "295337,302732,676510",
+	"participant_duration": null,
+	"repeat_frequency": "does not repeat",
+	"request_age_and_gender": "0",
+	"request_email": "0",
+	"route_ids": "41365882,41387972",
+	"slug": "196961-test-event",
+	"start_date": "2023-12-31",
+	"start_time": "12:00am",
+	"starts_at": "2023-11-31",
+	"starts_on": "2023-11-31",
+	"updated_at": "2022-11-11T10:44:27-08:00",
+	"user": {
+		"id": 621846,
+		"name": "Santa Cruz County Cycling Club"
+	},
+	"visibility": "1",
+	"weekly_repeat_every": "1",
+	"weekly_repeat_until": "2022-12-11"
+}
