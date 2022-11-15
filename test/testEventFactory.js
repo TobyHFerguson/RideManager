@@ -2,13 +2,12 @@ var should = require('chai').should();
 const sinon = require('sinon');
 const myPayload = require('./fixtures/MyPayload.js')
 const EventFactory = require('../src/EventFactory.js');
-
 const RWGPS = require('../src/RWGPS.js');
 
 
 describe("Event Factory Tests", () => {
     const date = new Date("2023-01-01 10:00 AM");
-    const row = {
+    const managedRow = {
         StartDate: date,
         StartTime: date,
         Group: 'A',
@@ -19,6 +18,7 @@ describe("Event Factory Tests", () => {
         Location: 'Seascape County Park',
         Address: 'Seascape County Park, Sumner Ave, Aptos, CA 95003'
     }
+    const unmanagedRow = { ...managedRow, RideName: 'Tobys Ride' }
     let rwgps;
     beforeEach(() => {
         rwgps = sinon.createStubInstance(RWGPS, {
@@ -29,30 +29,58 @@ describe("Event Factory Tests", () => {
         rwgps.lookupOrganizer.restore;
     })
     describe("Basic Construction", () => {
-
-
         it("should build from a row", () => {
-            let actual = EventFactory.fromRow(row, rwgps);
+            let actual = EventFactory.fromRow(managedRow, rwgps);
             delete actual.cancel;
             const expected = myPayload;
             actual.should.deep.equal(expected);
         })
         it("It should create a brand new object on each call", () => {
-            let e1 = EventFactory.fromRow(row, rwgps);
+            let e1 = EventFactory.fromRow(managedRow, rwgps);
 
-            let e2 = EventFactory.fromRow(row, rwgps);
+            let e2 = EventFactory.fromRow(managedRow, rwgps);
             e1.should.not.equal(e2);
         })
-        
+        it("should build an unmanaged event when a ride name is given", () => {
+            const expected = { ...myPayload, name: 'Tobys Ride [1]' }
+            const actual = EventFactory.fromRow(unmanagedRow, rwgps);
+            expected.should.deep.equal(actual);
+        })
+        it("should throw an error if either parameter is missing", () => {
+            (() => EventFactory.fromRow()).should.throw("no row object given");
+            (() => EventFactory.fromRow(managedRow)).should.throw("no rwgps object given");
+        })
     })
     describe("cancellation", () => {
         it("the new ride name should say cancelled", () => {
-            const uut = EventFactory.fromRow(row, rwgps)
+            const uut = EventFactory.fromRow(managedRow, rwgps)
             let old_name = uut.name;
             let new_name = `CANCELLED: ${old_name}`;
             let expected = { ...uut, name: new_name };
             let actual = uut.cancel();
             expected.should.deep.equal(actual)
+        })
+        it("cancel should be idempotent on an already cancelled event", () => {
+            const uut = EventFactory.fromRow(managedRow, rwgps);
+            let old_name = uut.name;
+            let new_name = `CANCELLED: ${old_name}`;
+            let expected = { ...uut, name: new_name };
+            let actual = uut.cancel().cancel();
+            expected.should.deep.equal(actual)
+        })
+    })
+    describe("updateRiderCount()", () => {
+        it("managedRow", () => {
+            const uut = EventFactory.fromRow(managedRow, rwgps);
+            let expected = { ...uut, name: 'Sun A (1/1 10:00) [6] SCP - Seascape/Corralitos' };
+            let actual = uut.updateRiderCount(6);
+            actual.should.deep.equal(expected);
+        })
+        it("unmanagedRow", () => {
+            const uut = EventFactory.fromRow(unmanagedRow, rwgps);
+            let expected = { ...uut, name: 'Tobys Ride [6]' };
+            let actual = uut.updateRiderCount(6);
+            actual.should.deep.equal(expected);
         })
     })
 

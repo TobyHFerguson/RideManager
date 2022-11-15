@@ -1,30 +1,9 @@
 if (typeof require) {
     var dates = require('./dates.js');
     var Globals = require('./Globals.js');
+    var Event = require('./Event.js')
 }
 const EventFactory = function () {
-    let basic = {
-        all_day: '0',
-        auto_expire_participants: '1',
-        desc: undefined,
-        location: undefined,
-        name: undefined,
-        organizer_tokens: undefined,
-        route_ids: undefined,
-        start_date: undefined,
-        start_time: undefined,
-        visibility: 0,
-        cancel: function () {
-            this.name = `CANCELLED: ${this.name}`
-            return this;
-        }
-    };
-    let result = { ...basic };
-
-    // function checkKey(key, row) {
-    //     if (!(row[key])) throw new Error(`unexpected - row.${key}: undefined`)
-    //     return true;
-    // }
     /**
      * Get a string that describes the ride
      * @param {String[]} leaders - array of ride leader organizers
@@ -61,23 +40,27 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
         //If any names are known then return them, else return the TBD organizer
         return (knownOrganizers.length ? knownOrganizers : { id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME });
     }
-    function createRideName(start_date, group, numRiders, route_name) {
-        return `${dates.weekday(start_date)} ${group} (${dates.MMDD(start_date)} ${dates.T24(start_date)}) [${numRiders}] ${route_name}`;
+
+    function makeRideName(row, numRiders) {
+        return row.RideName ?
+            Event.makeUnmanagedRideName(row.RideName, numRiders) :
+            Event.makeManagedRideName(numRiders, row.StartDate, row.Group, row.RouteName);
     }
     return {
         fromRow: function (row, rwgps) {
-            result.location = row.Location && !(row.Location.startsWith("#")) ? row.Location : "";
-            result.route_ids = [row.RouteURL.split('/')[4]];
-            result.start_time = dates.T12(row.StartTime);
-            result.start_date = row.StartDate.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+            if (!row) throw new Error("no row object given");
+            if (!rwgps) throw new Error("no rwgps object given");
+            const event = new Event();
+            event.location = row.Location && !(row.Location.startsWith("#")) ? row.Location : "";
+            event.route_ids = [row.RouteURL.split('/')[4]];
+            event.start_time = dates.T12(row.StartTime);
+            event.start_date = row.StartDate.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
             const organizers = getOrganizers(row.RideLeader, rwgps);
-            result.name = createRideName(row.StartDate, row.Group, organizers.length, row.RouteName)
-            result.organizer_tokens = organizers.map(o => o.id + "");
+            event.name = makeRideName(row, organizers.length);
+            event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
             let meet_time = (new Date(Number(row.StartTime) - 15 * 60 * 1000));
-            result.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime);
-            const event = { ...result };
-            result = { ...basic }
+            event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime);
             return event;
         }
     }
