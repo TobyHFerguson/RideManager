@@ -1,3 +1,6 @@
+if (typeof require !== 'undefined') {
+  Globals = require('./Globals.js');
+}
 const Schedule = function () {
   class Schedule {
     constructor() {
@@ -39,35 +42,35 @@ const Schedule = function () {
       throw new Error(`Column name: ${name} is not known`);
     }
 
-    getStartDate(values) { return values[this.getColumn(STARTDATECOLUMNNAME)]; };
-    getStartTime(values) { return values[this.getColumn(STARTTIMECOLUMNNAME)]; };
-    getGroup(values) { return values[this.getColumn(GROUPCOLUMNNAME)]; };
-    getRouteName(values) { return values[this.getColumn(ROUTECOLUMNNAME)]; };
-    getRouteURL(values) { return values[this.getColumn(ROUTECOLUMNNAME)]; };
-    getRideLeader(values) { return values[this.getColumn(RIDELEADERCOLUMNNAME)]; };
-    getRideURL(values) { return values[this.getColumn(RIDECOLUMNNAME)]; }
-    getLocation(values) { return values[this.getColumn(LOCATIONCOLUMNNAME)]; };
-    getAddress(values) { return values[this.getColumn(ADDRESSCOLUMNNAME)]; };
+    getStartDate(values) { return values[this.getColumn(Globals.STARTDATECOLUMNNAME)]; };
+    getStartTime(values) { return values[this.getColumn(Globals.STARTTIMECOLUMNNAME)]; };
+    getGroup(values) { return values[this.getColumn(Globals.GROUPCOLUMNNAME)]; };
+    getRouteName(values) { return values[this.getColumn(Globals.ROUTECOLUMNNAME)]; };
+    getRouteURL(values) { return values[this.getColumn(Globals.ROUTECOLUMNNAME)]; };
+    getRideLeader(values) { return values[this.getColumn(Globals.RIDELEADERCOLUMNNAME)]; };
+    getRideURL(values) { return values[this.getColumn(Globals.RIDECOLUMNNAME)]; }
+    getLocation(values) { return values[this.getColumn(Globals.LOCATIONCOLUMNNAME)]; };
+    getAddress(values) { return values[this.getColumn(Globals.ADDRESSCOLUMNNAME)]; };
 
     highlightCell(rowNum, colName, onoff) {
       let cell = this.activeSheet.getRange(rowNum, this.getColumn(colName) + 1);
       cell.setFontColor(onoff ? "red" : null);
     }
     setRideLink(rowNum, name, url) {
-      let cell = this.activeSheet.getRange(rowNum, this.getColumn(RIDECOLUMNNAME) + 1);
+      let cell = this.activeSheet.getRange(rowNum, this.getColumn(Globals.RIDECOLUMNNAME) + 1);
       let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
       cell.setRichTextValue(rtv);
       return rtv;
     }
     setRouteLink(rowNum, name, url) {
-      let cell = this.activeSheet.getRange(rowNum, this.getColumn(ROUTECOLUMNNAME) + 1);
+      let cell = this.activeSheet.getRange(rowNum, this.getColumn(Globals.ROUTECOLUMNNAME) + 1);
       let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
       cell.setRichTextValue(rtv);
       return rtv;
     }
 
     deleteRideLink(rowNum) {
-      this.activeSheet.getRange(rowNum, this.getColumn(RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
+      this.activeSheet.getRange(rowNum, this.getColumn(Globals.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
     }
 
     convertRangeToRows(range) {
@@ -205,13 +208,13 @@ const Schedule = function () {
     get Address() { return this.schedule.getAddress(this.myRowValues); }
 
     highlightRideLeader(onoff) {
-      this.schedule.highlightCell(this.rowNum, RIDELEADERCOLUMNNAME, onoff);
+      this.schedule.highlightCell(this.rowNum, Globals.RIDELEADERCOLUMNNAME, onoff);
       return this;
     }
 
     setRideLink(name, url) {
       let rtv = this.schedule.setRideLink(this.rowNum, name, url);
-      this.richTextValues[this.schedule.getColumn(RIDECOLUMNNAME)] = rtv;
+      this.richTextValues[this.schedule.getColumn(Globals.RIDECOLUMNNAME)] = rtv;
     }
 
     deleteRideLink() {
@@ -219,7 +222,7 @@ const Schedule = function () {
     }
     setRouteLink(name, url) {
       let rtv = this.schedule.setRouteLink(this.rowNum, name, url);
-      this.richTextValues[this.schedule.getColumn(ROUTECOLUMNNAME)] = rtv;
+      this.richTextValues[this.schedule.getColumn(Globals.ROUTECOLUMNNAME)] = rtv;
     }
   }
 

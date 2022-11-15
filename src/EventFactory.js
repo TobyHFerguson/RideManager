@@ -1,7 +1,7 @@
-if (typeof require) {
-    var dates = require('./dates.js');
-    var Globals = require('./Globals.js');
-    var Event = require('./Event.js')
+if (typeof require !== 'undefined') {
+    dates = require('./dates.js');
+    Globals = require('./Globals.js');
+    Event = require('./Event.js')
 }
 const EventFactory = function () {
     /**
@@ -43,7 +43,9 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
 
     function makeRideName(row, numRiders) {
         return row.RideName ?
-            Event.makeUnmanagedRideName(row.RideName, numRiders) :
+            !(Event.managedEvent(row.RideName)) ?
+                Event.makeUnmanagedRideName(row.RideName, numRiders) :
+                row.RideName :
             Event.makeManagedRideName(numRiders, row.StartDate, row.Group, row.RouteName);
     }
     return {

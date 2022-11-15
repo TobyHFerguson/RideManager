@@ -1,6 +1,8 @@
 /** @OnlyCurrentDoc */
 
-
+if (typeof require !== 'undefined') {
+  Globals = require('../Globals.js');
+}
 function importSelectedRoutes() {
   let form = { ...credentials, method: importSelectedRoutesWithCredentials.name };
   do_action(form);
@@ -80,7 +82,7 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
   }
 
   function makeExpiryDate(d) {
-    return dates.MMDDYYYY(d ? dates.add(d, EXPIRY_DELAY) : dates.add(new Date(), EXPIRY_DELAY))
+    return dates.MMDDYYYY(d ? dates.add(d, Globals.EXPIRY_DELAY) : dates.add(new Date(), Globals.EXPIRY_DELAY))
   }
 
   rows.forEach(row => checkRow(row));

@@ -1,4 +1,6 @@
-
+if (typeof require !== 'undefined') {
+    Globals = require('./Globals.js');
+  }
 
 const rowCheck = {
     unmanagedRide: function(row) {
@@ -41,7 +43,7 @@ const rowCheck = {
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
         let route = JSON.parse(response.getContentText());
         switch (response.getResponseCode()) {
-            case 200: if (route.user_id === SCCCC_USER_ID) {
+            case 200: if (route.user_id === Globals.SCCCC_USER_ID) {
                 return 'Route is owned by SCCCC';
             }
             break;
@@ -64,7 +66,7 @@ const rowCheck = {
         let route = JSON.parse(response.getContentText());
         switch (response.getResponseCode()) {
             case 200:
-                if (route.user_id !== SCCCC_USER_ID) {
+                if (route.user_id !== Globals.SCCCC_USER_ID) {
                     return 'Route is not owned by SCCCC';
                 }
                 break;
@@ -81,7 +83,7 @@ const rowCheck = {
     // Warnings
     noRideLeader_: function (row, rwgps) {
         if (!row.RideLeader) {
-            return `No ride leader given. Defaulting to '${RIDE_LEADER_TBD_NAME}'`;
+            return `No ride leader given. Defaulting to '${Globals.RIDE_LEADER_TBD_NAME}'`;
         } else {
             const rls = row.RideLeader.split(',').map(rl => rl.trim()).filter(s => s).reduce((p, rl) => {
                 if (rwgps.knownRideLeader(rl)) {
@@ -96,7 +98,7 @@ const rowCheck = {
             if (rls.unknown.length) {
                 row.highlightRideLeader(true);
                 const prefix = `${rls.known.length ? "Some" : "All"} Ride Leaders (${rls.unknown.join(', ')}) unknown.`
-                const suffix = rls.known.length ? "" : ` Defaulting to ${RIDE_LEADER_TBD_NAME}`;
+                const suffix = rls.known.length ? "" : ` Defaulting to ${Globals.RIDE_LEADER_TBD_NAME}`;
                 return prefix + suffix;
             } else {
                 row.highlightRideLeader(false);
@@ -122,30 +124,30 @@ const rowCheck = {
         function __inappropriateGroup(group, elevation, distance) {
             switch (group) {
                 case 'A':
-                    if (elevation < A_RIDE_MIN_ELEVATION_GAIN) {
-                        return `Elevation gain (${elevation}') too low for A group (>= ${A_RIDE_MIN_ELEVATION_GAIN}')`
+                    if (elevation < Globals.A_RIDE_MIN_ELEVATION_GAIN) {
+                        return `Elevation gain (${elevation}') too low for A group (>= ${Globals.A_RIDE_MIN_ELEVATION_GAIN}')`
                     }
-                    if (distance < A_RIDE_MIN_LENGTH) {
-                        return `Distance (${distance} miles) too short for A group (>= ${A_RIDE_MIN_LENGTH} miles)`
+                    if (distance < Globals.A_RIDE_MIN_LENGTH) {
+                        return `Distance (${distance} miles) too short for A group (>= ${Globals.A_RIDE_MIN_LENGTH} miles)`
                     }
-                    if (distance > A_RIDE_MAX_LENGTH) {
-                        return `Distance (${distance} miles) too long for A group (<= ${A_RIDE_MAX_LENGTH} miles)`
+                    if (distance > Globals.A_RIDE_MAX_LENGTH) {
+                        return `Distance (${distance} miles) too long for A group (<= ${Globals.A_RIDE_MAX_LENGTH} miles)`
                     }
                     break;
                 case 'B':
-                    if (elevation > B_RIDE_MAX_ELEVATION_GAIN) {
-                        return `Elevation gain (${elevation}') too great for B group (<= ${B_RIDE_MAX_ELEVATION_GAIN}')`
+                    if (elevation > Globals.B_RIDE_MAX_ELEVATION_GAIN) {
+                        return `Elevation gain (${elevation}') too great for B group (<= ${Globals.B_RIDE_MAX_ELEVATION_GAIN}')`
                     }
-                    if (distance > B_RIDE_MAX_LENGTH) {
-                        return `Distance (${distance} miles) too long for B group (<= ${B_RIDE_MAX_LENGTH} miles)`
+                    if (distance > Globals.B_RIDE_MAX_LENGTH) {
+                        return `Distance (${distance} miles) too long for B group (<= ${Globals.B_RIDE_MAX_LENGTH} miles)`
                     }
                     break;
                 case 'C':
-                    if (elevation > C_RIDE_MAX_ELEVATION_GAIN) {
-                        return `Elevation gain (${elevation}') too great for C group (<= ${C_RIDE_MAX_ELEVATION_GAIN}')`
+                    if (elevation > Globals.C_RIDE_MAX_ELEVATION_GAIN) {
+                        return `Elevation gain (${elevation}') too great for C group (<= ${Globals.C_RIDE_MAX_ELEVATION_GAIN}')`
                     }
-                    if (distance > C_RIDE_MAX_LENGTH) {
-                        return `Distance (${distance} miles) too long for C group (<= ${C_RIDE_MAX_LENGTH} miles)`
+                    if (distance > Globals.C_RIDE_MAX_LENGTH) {
+                        return `Distance (${distance} miles) too long for C group (<= ${Globals.C_RIDE_MAX_LENGTH} miles)`
                     }
                     break;
                 default:
@@ -155,8 +157,8 @@ const rowCheck = {
         if (!row.RouteURL) return; 
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
         const route = JSON.parse(response.getContentText());
-        const d = Math.round(route.distance * METERS_TO_MILES);
-        const e = Math.round(route.elevation_gain * METERS_TO_FEET);
+        const d = Math.round(route.distance * Globals.METERS_TO_MILES);
+        const e = Math.round(route.elevation_gain * Globals.METERS_TO_FEET);
         return __inappropriateGroup(row.group, e, d);
     },
     alreadyScheduled: function (row) {

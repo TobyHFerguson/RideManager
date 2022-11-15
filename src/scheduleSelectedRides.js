@@ -1,5 +1,7 @@
 /** @OnlyCurrentDoc */
-
+if (typeof require !== 'undefined') {
+  Globals = require('./Globals.js');
+}
 
 function scheduleSelectedRides() {
   let form = { ...credentials, method: scheduleSelectedRidesWithCredentials.name };
@@ -10,49 +12,21 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
   function schedulable_(row) { return row.errors.length == 0; }
 
   function schedule_event_(rwgps, row) {
-    /**
-     * Fixup the organizers (ie. ride leaders) in the given event. 
-     * @param {object} rwgps - the rwgps object used to talk to rwgps
-     * @param {object} event - the event object to be fixed
-     */
-    function fixup_organizers(rwgps, event) {
-      const organizers = event.organizer_names.map(name => rwgps.lookupOrganizer(A_TEMPLATE, name)).reduce((p, o) => {
-        if (o.id !== RIDE_LEADER_TBD_ID) {
-          p.known.push(o)
-        } else {
-          p.unknown.push(o)
-        };
-        return p;
-      },
-        { known: [], unknown: [] });
-      event.organizer_tokens = organizers.known.map(o => o.id + "");
-      const names = organizers.known.map(o => o.text);
+   
 
-      // Only if there are no known organizers will the defaults be used
-      if (!organizers.known.length) {
-        event.organizer_tokens.push(RIDE_LEADER_TBD_ID + "");
-        names.push(RIDE_LEADER_TBD_NAME);
-      }
-
-      event.desc = `Ride Leader${names.length > 1 ? "s" : ""}: ${names.join(', ')}
-
-    ${event.desc}`;
-    }
-
-    let event = new Event(row);
-    fixup_organizers(rwgps, event);
 
     function get_template_(group) {
       switch (group) {
-        case 'A': return A_TEMPLATE;
-        case 'B': return B_TEMPLATE;
-        case 'C': return C_TEMPLATE;
+        case 'A': return Globals.A_TEMPLATE;
+        case 'B': return Globals.B_TEMPLATE;
+        case 'C': return Globals.C_TEMPLATE;
         default: throw new Error(`Unknown group: ${group}`);
       }
     }
-    let new_event_url = rwgps.copy_template_(get_template_(event.group));
+    let event = EventFactory.fromRow(row, rwgps);
+    let new_event_url = rwgps.copy_template_(get_template_(row.group));
     rwgps.edit_event(new_event_url, event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true );
+    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true );
     row.setRideLink(event.name, new_event_url);
     return new_event_url
   }

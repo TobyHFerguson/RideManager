@@ -73,12 +73,12 @@ function cancelSelectedRides() {
       inform_of_errors(message);
     } else {
       if (confirm_cancel(message)) {
-        canceleable_rows.forEach(row => cancel(row));
+        canceleable_rows.forEach(row => cancel(row, rwgps));
       }
     }
 
     function cancel(row) {
-      let event = new Event(row);
+      let event = EventFactory.fromRow(row, rwgps);
       event.cancel();
       row.setRideLink(event.name, row.RideURL);
       rwgps.edit_event(row.RideURL, event)

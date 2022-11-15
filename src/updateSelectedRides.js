@@ -1,5 +1,7 @@
 /** @OnlyCurrentDoc */
-
+if (typeof require !== 'undefined') {
+  Globals = require('../Globals.js');
+}
 
 function updateSelectedRides() {
   let form = { ...credentials, method: updateSelectedRidesWithCredentials.name };
@@ -10,43 +12,12 @@ function updateSelectedRides() {
 function updateSelectedRidesWithCredentials(rows, rwgps) {
   function _updateable(row) { return row.errors.length === 0; }
 
-  /**
-     * Fixup the organizers (ie. ride leaders) in the given event. 
-     * @param {object} event - the event object to be fixed
-     */
-  function fixup_organizers(event) {
-    const organizers = event.organizer_names.map(name => rwgps.lookupOrganizer(A_TEMPLATE, name)).reduce((p, o) => {
-      if (o.id !== RIDE_LEADER_TBD_ID) {
-        p.known.push(o)
-      } else {
-        p.unknown.push(o)
-      };
-      return p;
-    },
-      { known: [], unknown: [] });
-    event.organizer_tokens = organizers.known.map(o => o.id + "");
-    const names = organizers.known.map(o => o.text);
-
-    // Only if there are no known organizers will the defaults be used
-    if (!organizers.known.length) {
-      event.organizer_tokens.push(RIDE_LEADER_TBD_ID + "");
-      names.push(RIDE_LEADER_TBD_NAME);
-    }
-
-    event.desc = `Ride Leader${names.length > 1 ? "s" : ""}: ${names.join(', ')}
-
-  ${event.desc}`;
-  }
-
   function _update_event(row) {
-    const event = new Event(row)
-    if (Event.managedEvent(row.RideName)) {
-      fixup_organizers(event);
-    }
+    const event = EventFactory.fromRow(row, rwgps)
     const numRideLeaders = !row.RideLeader ? 0 : row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl).length;
     event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + numRideLeaders);
     rwgps.edit_event(row.RideURL, event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, EXPIRY_DELAY), true);
+    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
     row.setRideLink(event.name, row.RideURL);
   }
 
@@ -137,7 +108,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
 
 
   linkRouteURLs();
-  rows.map(row => evalRow_(row, rwgps, [rowCheck.unmanagedRide, rowCheck.unscheduled], []))
+  rows.map(row => evalRow_(row, rwgps, [rowCheck.unscheduled], []))
     .filter(row => row.errors.length === 0)
     .map(row => compare_(row));
   let message = create_message(rows);

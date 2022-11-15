@@ -41,7 +41,7 @@ describe("Event Factory Tests", () => {
             let e2 = EventFactory.fromRow(managedRow, rwgps);
             e1.should.not.equal(e2);
         })
-        it("should build an unmanaged event when a ride name is given", () => {
+        it("should use the given ride name", () => {
             const expected = { ...myPayload, name: 'Tobys Ride [1]' }
             const actual = EventFactory.fromRow(unmanagedRow, rwgps);
             expected.should.deep.equal(actual);

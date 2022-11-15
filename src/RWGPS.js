@@ -1,3 +1,6 @@
+if (typeof require !== 'undefined') {
+  Globals = require('./Globals.js')
+}
 function DEBUG_(message) {
   Logger.log(`DEBUG: ${message}`);
 }
@@ -88,7 +91,7 @@ class RWGPS {
    * @return{string} - the organizer's id
    */
   lookupOrganizer(url, organizer_name) {
-    let TBD = { text: RIDE_LEADER_TBD_NAME, id: RIDE_LEADER_TBD_ID };
+    let TBD = { text: Globals.RIDE_LEADER_TBD_NAME, id: Globals.RIDE_LEADER_TBD_ID };
     if (!organizer_name) {
       return TBD;
     }
@@ -102,7 +105,7 @@ class RWGPS {
         const names = content.results;
         let found = names.find(n => n.text.toLowerCase().split(' ').join('') === on_lc);
         if (!found) {
-          found = { text: organizer_name, id: RIDE_LEADER_TBD_ID }
+          found = { text: organizer_name, id: Globals.RIDE_LEADER_TBD_ID }
         }
         return found;
       } catch (e) {
@@ -120,7 +123,7 @@ class RWGPS {
  * @return {boolean} true iff the ride leader is not the default
  */
   knownRideLeader(name) {
-    return this.lookupOrganizer(A_TEMPLATE, name).id !== RIDE_LEADER_TBD_ID;
+    return this.lookupOrganizer(Globals.A_TEMPLATE, name).id !== Globals.RIDE_LEADER_TBD_ID;
   }
 
   /**
@@ -345,7 +348,7 @@ class RWGPSService {
       },
       followRedirects: false
     };
-    let response = this._send_request(SIGN_IN_URI, options);
+    let response = this._send_request(Globals.SIGN_IN_URI, options);
     if (response.getResponseCode() == 302 && response.getAllHeaders()["Location"] === "https://ridewithgps.com/signup") {
       throw new Error("Could not sign in - invalid credentials for RWGPS");
     }
@@ -400,6 +403,20 @@ class RWGPSService {
       },
       followRedirects: false,
       muteHttpExceptions: true
+    }
+    return this._send_request(event_url, options);
+  }
+  round_trip(event_url, event) {
+    const options = {
+      method: 'put',
+      contentType: 'application/json',
+      payload: JSON.stringify(event),
+      headers: {
+        cookie: this.cookie,
+        Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
+      },
+      followRedirects: false,
+      muteHttpExceptions: false
     }
     return this._send_request(event_url, options);
   }
@@ -495,6 +512,48 @@ class RWGPSService {
 }
 
 //------------------------------
+// function testEditNameOnly() {
+//   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+//   const rwgps = new RWGPS(rwgpsService);
+//   const event_URL = rwgps.copy_template_("https://ridewithgps.com/events/196961-test-event");
+//   console.log(`New Event URL: ${event_URL}`);
+//   const initial_body = rwgps.get_event(event_URL);
+//   const ibk = Object.keys(initial_body);
+//   const new_body = JSON.parse(rwgps.edit_event(event_URL, initial_body).getContentText());
+//   const nbk = Object.keys(new_body);
+//   if (ibk.length !== nbk.length){
+//     console.log("Expected keys to be same - they weren't")
+//   }
+//   rwgps.batch_delete_events([event_URL]);
+// }
+
+function testRoundTrip() {
+  let rwgps, event_URL;
+  try {
+    const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+    rwgps = new RWGPS(rwgpsService);
+    event_URL = rwgps.copy_template_("https://ridewithgps.com/events/196910");
+    console.log(`New Event URL: ${event_URL}`);
+    const initial_body = rwgps.get_event(event_URL);
+    initial_body.organizer_ids = initial_body.organizer_ids.join(',');
+    initial_body.route_ids = initial_body.routes.map(r => r.id).join(',');
+    const sa = initial_body.starts_at ? initial_body.starts_at : new Date();
+    initial_body.start_date = sa.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+    initial_body.start_time = sa.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric" });
+
+    const ibk = Object.keys(initial_body);
+    const new_body = JSON.parse(rwgps.edit_event(event_URL, initial_body).getContentText());
+    const nbk = Object.keys(new_body);
+    if (ibk.length !== nbk.length) {
+      console.log("Expected keys to be same - they weren't")
+    }
+  }
+  catch (e) {
+    console.log(e);
+    rwgps.batch_delete_events([event_URL]);
+  }
+}
+
 function testImportRoute() {
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const rwgps = new RWGPS(rwgpsService);
@@ -567,8 +626,12 @@ function testLookupOrganizer() {
 
   const name = 'Peter Stanger';
 
-  const organizer = rwgps.lookupOrganizer(A_TEMPLATE, name);
+  const organizer = rwgps.lookupOrganizer(Globals.A_TEMPLATE, name);
   console.log(organizer);
   console.log(rwgps.knownRideLeader(name))
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = RWGPS;
 }
 

@@ -1,5 +1,5 @@
 if (typeof require !== 'undefined') {
-  var dates = require('./dates.js');
+  dates = require('./dates.js');
 }
 
 const MANAGED_RE = /(?<prefix>[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABC]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\))))( \[(\d{1,2})\])*(?<suffix>.*$)/
