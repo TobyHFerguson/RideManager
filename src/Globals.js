@@ -37,3 +37,11 @@ const A_RIDE_MIN_ELEVATION_GAIN = 3000;
 
 // Number of days after an event or an import that a route will expire
 EXPIRY_DELAY = 30;
+
+if (typeof module !== 'undefined') {
+    module.exports = {
+        A_TEMPLATE,
+        RIDE_LEADER_TBD_ID,
+        RIDE_LEADER_TBD_NAME
+    };
+}

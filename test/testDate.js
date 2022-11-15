@@ -1,5 +1,7 @@
 const should = require('chai').should();
 const dates = require('../src/dates');
+const sinon = require('sinon');
+
 
 describe("date tests", () => {
     describe("dates.convert() tests", () => {
@@ -56,5 +58,16 @@ describe("date tests", () => {
             dates.T24(() => {}).should.be.NaN;
         }) 
     })
-    describe("dates.add()", () => {})
+    describe("dates.add()", () => {
+        it("should return a date that is one day more than the initial day, including months and years", () => {
+            const d = new Date("12/31/2023");
+            dates.add(d, 1).should.deep.equal(new Date("1/1/2024"))
+        })
+    })
+    describe("dates.T12()", () => {
+        it("should return a 12 hour representation of a time", () => {
+            const d = new Date("2024-12-31 13:15");
+            dates.T12(d).should.equal("1:15 PM");
+        })
+    })
 })
