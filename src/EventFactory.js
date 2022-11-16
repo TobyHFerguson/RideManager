@@ -17,7 +17,7 @@ const EventFactory = function () {
 
         return `Ride Leader${leaders.length > 1 ? 's' : ''}: ${leaders.join(', ')}
 
-    Address: ${address}
+    ${address}
           
 Arrive ${dates.T12(meet_time)} for a ${dates.T12(start_time)} rollout.
   
