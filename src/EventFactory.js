@@ -46,7 +46,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             !(Event.managedEvent(row.RideName)) ?
                 Event.makeUnmanagedRideName(row.RideName, numRiders) :
                 row.RideName :
-            Event.makeManagedRideName(numRiders, row.StartDate, row.Group, row.RouteName);
+            Event.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName);
     }
     return {
         fromRow: function (row, rwgps) {
@@ -56,15 +56,29 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             event.location = row.Location && !(row.Location.startsWith("#")) ? row.Location : "";
             event.route_ids = [row.RouteURL.split('/')[4]];
             event.start_time = dates.T12(row.StartTime);
-            event.start_date = row.StartDate.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+            event.start_date = dates.YYYY_MM_DD(row.StartDate);
             const organizers = getOrganizers(row.RideLeader, rwgps);
             event.name = makeRideName(row, organizers.length);
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
-            let meet_time = (new Date(Number(row.StartTime) - 15 * 60 * 1000));
+            let meet_time = dates.addMinutes(row.StartTime, -15);
             event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime);
             return event;
-        }
+        },
+        fromRwgpsEvent: function(eventURL, rwgps) {
+            const rwgpsEvent = rwgps.get_event(eventURL);
+            const event = new Event();
+            event.all_day = rwgpsEvent.all_day ? "1" : "0";
+            event.desc = rwgpsEvent.desc.replaceAll('\r', '');
+            event.location = rwgpsEvent.location;
+            event.name = rwgpsEvent.name;
+            event.organizer_tokens = rwgpsEvent.organizer_ids;
+            event.route_ids = rwgpsEvent.routes.map(r => r.id+"");
+            event.start_date = dates.YYYY_MM_DD(rwgpsEvent.starts_at);
+            event.start_time = dates.T12(rwgpsEvent.starts_at);
+            event.visibility = rwgpsEvent.visibility;
+            return event;
+        }   
     }
 }()
 

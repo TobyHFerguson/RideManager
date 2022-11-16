@@ -1,163 +1,127 @@
 {
-	"age_splits": "35,55",
-	"all_day": true,
-	"archived_at": null,
-	"cost_in_cents": null,
-	"created_at": "2022-11-11T10:43:47-08:00",
-	"custom_tabs": "[]",
-	"desc": "",
-	"ends_at": null,
-	"ends_on": null,
-	"event_series_id": null,
-	"filter_age": true,
-	"filter_gender": true,
-	"group_id": 5636125,
-	"group_membership_id": 642972,
-	"highlighted_photo_checksum": null,
-	"highlighted_photo_id": 0,
-	"id": 196961,
-	"is_participant": false,
-	"location": "",
-	"name": "TEST EVENT",
-	"official": false,
-	"organizer_ids": [
-		"302732",
-		"358454",
-		"295337"
-	],
-	"participant_duration": null,
-	"photo_ids": [],
-	"photos": [],
-	"request_age_and_gender": false,
-	"request_email": false,
-	"routes": [
-		{
-			"id": 41365882,
-			"highlighted_photo_id": 0,
-			"highlighted_photo_checksum": null,
-			"distance": 152656,
-			"elevation_gain": 3172.57,
-			"elevation_loss": 3173.62,
-			"track_id": "63642150fa348e3fec90f5dc",
-			"user_id": 621846,
-			"pavement_type": null,
-			"pavement_type_id": null,
-			"recreation_type_ids": [],
-			"visibility": 0,
-			"created_at": 1667506512,
-			"updated_at": 1667522004,
-			"name": "100 GG",
-			"description": "",
-			"first_lng": -121.92609,
-			"first_lat": 36.98723,
-			"last_lat": 36.98722,
-			"last_lng": -121.92609,
-			"bounding_box": [
-				{
-					"lat": 36.9763,
-					"lng": -122.18723
-				},
-				{
-					"lat": 37.19529,
-					"lng": -121.80438
-				}
-			],
-			"locality": "Seacliff",
-			"postal_code": "95073",
-			"administrative_area": "CA",
-			"country_code": "US",
-			"privacy_code": null,
-			"user": {
-				"id": 621846,
-				"created_at": "2015-10-05T08:11:03-07:00",
-				"description": null,
-				"interests": null,
-				"locality": "Santa Cruz",
-				"administrative_area": "CA",
-				"account_level": 3,
-				"total_trip_distance": 69765.328125,
-				"total_trip_duration": 12930,
-				"total_trip_elevation_gain": 1363.2257080078125,
-				"name": "Santa Cruz County Cycling Club",
+	"event": {
+		"age_splits": "35,55",
+		"all_day": false,
+		"archived_at": null,
+		"cost_in_cents": null,
+		"created_at": "2022-11-15T14:38:47-08:00",
+		"custom_tabs": "[]",
+		"desc": "Ride Leader: Toby Ferguson\r\n\r\n    Address: Seascape County Park, Sumner Ave, Aptos, CA 95003\r\n          \r\nArrive 9:45 AM for a 10:00 AM rollout.\r\n  \r\nAll participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709\r\n  \r\nNote: In a browser use the \"Go to route\" link below to open up the route.",
+		"ends_at": "2023-01-01T23:59:59-08:00",
+		"ends_on": null,
+		"event_series_id": null,
+		"filter_age": true,
+		"filter_gender": true,
+		"group_id": 5643844,
+		"group_membership_id": 642972,
+		"highlighted_photo_checksum": "0c20d95e6cd19b19d02a4521be03bcd2",
+		"highlighted_photo_id": 0,
+		"id": 197166,
+		"is_participant": false,
+		"location": "Seascape County Park",
+		"name": "Sun A (1/1 10:00) [1] SCP - Seascape/Corralitos",
+		"official": false,
+		"organizer_ids": [
+			"302732"
+		],
+		"participant_duration": null,
+		"photo_ids": [
+			13167433
+		],
+		"photos": [
+			{
+				"id": 13167433,
+				"group_membership_id": 642972,
+				"caption": null,
+				"created_at": "2022-11-15T14:38:52-08:00",
+				"position": 0,
+				"visibility": 1,
+				"lat": null,
+				"lng": null,
+				"published": true,
+				"captured_at": null,
+				"user_id": 621846,
+				"updated_at": "2022-11-15T14:38:52-08:00",
+				"width": 66,
+				"height": 68,
+				"optional_uuid": null,
+				"checksum": "0c20d95e6cd19b19d02a4521be03bcd2"
+			}
+		],
+		"request_age_and_gender": false,
+		"request_email": false,
+		"routes": [
+			{
+				"id": 17166902,
 				"highlighted_photo_id": 0,
-				"highlighted_photo_checksum": null
-			},
-			"has_course_points": true,
-			"tag_names": [
-				"A"
-			],
-			"track_type": "loop",
-			"terrain": "climbing",
-			"difficulty": "hard",
-			"unpaved_pct": 8,
-			"surface": "mostly_paved",
-			"nav_enabled": true
-		},
-		{
-			"id": 41387972,
-			"highlighted_photo_id": 0,
-			"highlighted_photo_checksum": null,
-			"distance": 38812.9,
-			"elevation_gain": 553.916,
-			"elevation_loss": 554.621,
-			"track_id": "6368591dfa348e417b90f89d",
-			"user_id": 621846,
-			"pavement_type": null,
-			"pavement_type_id": null,
-			"recreation_type_ids": [],
-			"visibility": 0,
-			"created_at": 1667782941,
-			"updated_at": 1667782941,
-			"name": "Kelyseyville loop",
-			"description": null,
-			"first_lng": -122.83729,
-			"first_lat": 38.97778,
-			"last_lat": 38.97781,
-			"last_lng": -122.83728,
-			"bounding_box": [
-				{
-					"lat": 38.91038,
-					"lng": -122.83782
-				},
-				{
-					"lat": 39.00981,
-					"lng": -122.72731
-				}
-			],
-			"locality": "Lake County",
-			"postal_code": "95435",
-			"administrative_area": "CA",
-			"country_code": "US",
-			"privacy_code": null,
-			"user": {
-				"id": 621846,
-				"created_at": "2015-10-05T08:11:03-07:00",
-				"description": null,
-				"interests": null,
-				"locality": "Santa Cruz",
+				"highlighted_photo_checksum": null,
+				"distance": 38656.3,
+				"elevation_gain": 511.333,
+				"elevation_loss": 510.353,
+				"track_id": "5801c240bca5922ce800010d",
+				"user_id": 621846,
+				"pavement_type": null,
+				"pavement_type_id": null,
+				"recreation_type_ids": [
+					3
+				],
+				"visibility": 0,
+				"created_at": 1476510272,
+				"updated_at": 1666060714,
+				"name": "SCP - Seascape/Corralitos",
+				"description": "Seascape County Park, Sumner Ave, Aptos, CA 95003\n\nRestrooms and water available",
+				"first_lng": -121.87391,
+				"first_lat": 36.9483,
+				"last_lat": 36.94837,
+				"last_lng": -121.87381,
+				"bounding_box": [
+					{
+						"lat": 36.91623,
+						"lng": -121.91399
+					},
+					{
+						"lat": 36.99798,
+						"lng": -121.7877
+					}
+				],
+				"locality": "Seascape",
+				"postal_code": "95003",
 				"administrative_area": "CA",
-				"account_level": 3,
-				"total_trip_distance": 69765.328125,
-				"total_trip_duration": 12930,
-				"total_trip_elevation_gain": 1363.2257080078125,
-				"name": "Santa Cruz County Cycling Club",
-				"highlighted_photo_id": 0,
-				"highlighted_photo_checksum": null
-			},
-			"has_course_points": true,
-			"tag_names": [],
-			"track_type": "loop",
-			"terrain": "climbing",
-			"difficulty": "moderate",
-			"unpaved_pct": 0,
-			"surface": "paved",
-			"nav_enabled": true
-		}
-	],
-	"slug": "196961-test-event",
-	"starts_at": "2023-12-31T00:00:00-08:00",
-	"starts_on": "2023-12-31",
-	"thumb_url": "/images/profile_no_image.png",
-	"updated_at": "2022-11-11T10:44:27-08:00",
-	"visibility": 1
+				"country_code": "US",
+				"privacy_code": null,
+				"user": {
+					"id": 621846,
+					"created_at": "2015-10-05T08:11:03-07:00",
+					"description": null,
+					"interests": null,
+					"locality": "Santa Cruz",
+					"administrative_area": "CA",
+					"account_level": 3,
+					"total_trip_distance": 69765.328125,
+					"total_trip_duration": 12930,
+					"total_trip_elevation_gain": 1363.2257080078125,
+					"name": "Santa Cruz County Cycling Club",
+					"highlighted_photo_id": 0,
+					"highlighted_photo_checksum": null
+				},
+				"has_course_points": true,
+				"tag_names": [
+					"SCCCC",
+					"C"
+				],
+				"track_type": "loop",
+				"terrain": "climbing",
+				"difficulty": "moderate",
+				"unpaved_pct": 0,
+				"surface": "paved",
+				"nav_enabled": true
+			}
+		],
+		"slug": "197166-sun-a-1-1-24-00-1-scp-seascape-corralito",
+		"starts_at": "2023-01-01T10:00:00-08:00",
+		"starts_on": "2023-01-01",
+		"thumb_url": "/photos/13167433/profile.jpg",
+		"updated_at": "2022-11-15T14:41:30-08:00",
+		"visibility": 0
+	}
 }

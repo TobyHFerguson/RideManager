@@ -9,15 +9,18 @@ const MANAGED_RE = /(?<prefix>[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d
 class Event {
   /**
    * Create the name of a Managed Event. A Managed Event is one where this code is
-   * responsible for all parts of the name and the Event body
+   * responsible for all parts of the name and the Event body.
+   * 
+   * Note that due to the vagaries of Google Spreadsheets the start date and start time are independent, although both are a date and a time!
    * @param {number} numRiders number of riders for this event
-   * @param {date} start event start
+   * @param {date} start_date event start date
+   * @param {date} start_time event start time
    * @param {Group} group one of 'A', 'B', or 'C'
    * @param {string} route_name name of route
    * @returns {string} name of event
    */
-  static makeManagedRideName(numRiders, start, group, route_name) {
-    return `${dates.weekday(start)} ${group} (${dates.MMDD(start)} ${dates.T24(start)}) [${numRiders}] ${route_name}`;
+   static makeManagedRideName(numRiders, start_date, start_time, group, route_name) {
+    return `${dates.weekday(start_date)} ${group} (${dates.MMDD(start_date)} ${dates.T24(start_time)}) [${numRiders}] ${route_name}`;
   }
   /**
    * Create the unmanaged event name by appending or updating the participant count to the main name
