@@ -55,6 +55,10 @@ const dates = {
     // Returns the shortened MM/DD/YYYY version of the date
     return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "numeric", day: "numeric" }) : NaN;
   },
+  YYYY_MM_DD: function (d) {
+    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) : NaN;
+
+  },
   MMDD: function (d) {
     return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" }) : NaN;
   },
@@ -71,6 +75,13 @@ const dates = {
     let a = this.convert(d);
     if (isFinite(a)) {
       a.setDate(d.getDate() + days);
+    }
+    return a;
+  },
+  addMinutes: function (d, minutes) {
+    let a = this.convert(d);
+    if (isFinite(a)) {
+      a = dates.convert(Number(dates.convert(a)) + minutes * 60 * 1000);
     }
     return a;
   }

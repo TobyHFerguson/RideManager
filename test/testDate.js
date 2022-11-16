@@ -38,6 +38,16 @@ describe("date tests", () => {
             dates.MMDD(() => {}).should.be.NaN;
         })
     })
+    describe("dates.YYYY_MM_DD() tests", () => {
+        it("should create a date that looks like YYYY-MM-DD", () => {
+            let n = "2023-01-01T10:00:00-08:00";
+            let d = new Date(n);
+            dates.YYYY_MM_DD(d).should.equal("2023-01-01");
+        })
+        it("should produce a NaN when the date is busted", () => {
+            dates.MMDD(() => {}).should.be.NaN;
+        })
+    })
     describe("dates.weekday() tests", () => {
         it("should produce a three letter weekday", () => {
             let n = 12345;
@@ -50,9 +60,9 @@ describe("date tests", () => {
     })
     describe("dates.T24", () => {
         it("should produce a 24 hour time", () => {
-            let n = 12345;
+            let n = "2023-01-01T10:00:00-08:00"
             let d = new Date(n);
-            dates.T24(d).should.equal("16:00");
+            dates.T24(d).should.equal("10:00");
         })
         it("should produce a NaN when the date is busted", () => {
             dates.T24(() => {}).should.be.NaN;
@@ -68,6 +78,12 @@ describe("date tests", () => {
         it("should return a 12 hour representation of a time", () => {
             const d = new Date("2024-12-31 13:15");
             dates.T12(d).should.equal("1:15 PM");
+        })
+    })
+    describe("dates.addMinutes()", () => {
+        it("should return a time that is 15 minutes less", () => {
+            const d = new Date("2024-12-31 13:15");
+            dates.addMinutes(d, -15).should.deep.equal(new Date("2024-12-31T21:00:00.000Z"));
         })
     })
 })
