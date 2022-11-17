@@ -201,7 +201,10 @@ const Schedule = function () {
     get Group() { return this.schedule.getGroup(this.myRowValues); }
     get RouteName() { return this.schedule.getRouteName(this.richTextValues).getText(); }
     get RouteURL() { return this.schedule.getRouteURL(this.richTextValues).getLinkUrl(); }
-    get RideLeader() { return this.schedule.getRideLeader(this.myRowValues); }
+    get RideLeaders() { 
+      let rls = this.schedule.getRideLeader(this.myRowValues);
+      return rls ? rls.split(',').map(rl => rl.trim()).filter(rl => rl) : [] ;
+    }
     get RideName() { return this.schedule.getRideURL(this.richTextValues).getText(); }
     get RideURL() { return this.schedule.getRideURL(this.richTextValues).getLinkUrl(); }
     get Location() { return this.schedule.getLocation(this.myRowValues); }

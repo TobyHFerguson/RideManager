@@ -4,7 +4,7 @@ if (typeof require !== 'undefined') {
 
 const rowCheck = {
     unmanagedRide: function(row) {
-        if (!Event.managedEvent(row.RideName)) {
+        if (!Event.managedEventName(row.RideName)) {
             return "Ride is unmanaged";
         }
     },
@@ -82,10 +82,10 @@ const rowCheck = {
     },
     // Warnings
     noRideLeader_: function (row, rwgps) {
-        if (!row.RideLeader) {
+        if (!row.RideLeaders) {
             return `No ride leader given. Defaulting to '${Globals.RIDE_LEADER_TBD_NAME}'`;
         } else {
-            const rls = row.RideLeader.split(',').map(rl => rl.trim()).filter(s => s).reduce((p, rl) => {
+            const rls = row.RideLeaders.reduce((p, rl) => {
                 if (rwgps.knownRideLeader(rl)) {
                     p.known.push(rl)
                 } else {
@@ -107,7 +107,12 @@ const rowCheck = {
     },
     cancelled_: function (row) {
         if (row.RideName.toLowerCase().startsWith('cancelled')) {
-            return 'Cancelled - this ride will be rescheduled';
+            return 'Cancelled';
+        }
+    },
+    notCancelled: function (row) {
+        if (!(row.RideName.toLowerCase().startsWith('cancelled'))) {
+            return 'Not cancelled';
         }
     },
     noLocation_: function (row) {
@@ -154,7 +159,7 @@ const rowCheck = {
                     throw Error(`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
             }
         }
-        if (!row.RouteURL) return; 
+        if (!row.RouteURL) return;
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
         const route = JSON.parse(response.getContentText());
         const d = Math.round(route.distance * Globals.METERS_TO_MILES);

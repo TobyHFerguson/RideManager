@@ -19,7 +19,7 @@ class Event {
    * @param {string} route_name name of route
    * @returns {string} name of event
    */
-   static makeManagedRideName(numRiders, start_date, start_time, group, route_name) {
+  static makeManagedRideName(numRiders, start_date, start_time, group, route_name) {
     return `${dates.weekday(start_date)} ${group} (${dates.MMDD(start_date)} ${dates.T24(start_time)}) [${numRiders}] ${route_name}`;
   }
   /**
@@ -39,7 +39,7 @@ class Event {
    * @param {string} eventName the event name
    * @returns {boolean} true iff this is a managed ride
    */
-  static managedEvent(eventName) {
+  static managedEventName(eventName) {
     return !eventName || MANAGED_RE.test(eventName);
   }
 
@@ -67,10 +67,19 @@ class Event {
       this.name = 'CANCELLED: ' + this.name;
     return this;
   }
+  reinstate() {
+    this.name = this.name.replace('CANCELLED: ', '');
+    return this;
+  }
 
   updateRiderCount(numRiders) {
     this.name = Event.updateCountInName(this.name, numRiders);
     return this;
+  }
+
+  managedEvent() { 
+    const result = Event.managedEventName(this.name); 
+    return result;
   }
 }
 

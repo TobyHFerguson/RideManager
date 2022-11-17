@@ -23,8 +23,8 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
         default: throw new Error(`Unknown group: ${group}`);
       }
     }
-    let event = EventFactory.fromRow(row, rwgps);
-    let new_event_url = rwgps.copy_template_(get_template_(row.group));
+    const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
+    const new_event_url = rwgps.copy_template_(get_template_(row.group));
     rwgps.edit_event(new_event_url, event);
     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true );
     row.setRideLink(event.name, new_event_url);

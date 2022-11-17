@@ -26,47 +26,39 @@ All participants are assumed to have read and agreed to the clubs ride policy: h
 Note: In a browser use the "Go to route" link below to open up the route.`;
     }
 
-    /**
-     * 
-     * @param {string} names - comma separated list of ride leader names
-     * @param {RWGPS} rwgps - rwgps object to lookup organizers with
-     * @returns one or more organizer objects
-     */
-    function getOrganizers(names, rwgps) {
-        //convert the names into the organizer structure
-        const organizers = names.split(',').map(name => rwgps.lookupOrganizer(Globals.A_TEMPLATE, name.trim()));
-        //Figure out if any of the names are known
-        const knownOrganizers = organizers.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID)
-        //If any names are known then return them, else return the TBD organizer
-        return (knownOrganizers.length ? knownOrganizers : { id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME });
-    }
+    
 
     function makeRideName(row, numRiders) {
         return row.RideName ?
-            !(Event.managedEvent(row.RideName)) ?
+            !(Event.managedEventName(row.RideName)) ?
                 Event.makeUnmanagedRideName(row.RideName, numRiders) :
                 row.RideName :
             Event.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName);
     }
     return {
-        fromRow: function (row, rwgps) {
+        /**
+         * @param {Row} row row object to make event from
+         * @param {Organizers[]} organizers the organizers (i.e. ride leaders) for this event
+         * @returns 
+         */
+        newEvent: function (row, organizers) {
+            if (!organizers || !organizers.length) {
+                organizers = [{id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME}]
+            }
             if (!row) throw new Error("no row object given");
-            if (!rwgps) throw new Error("no rwgps object given");
             const event = new Event();
             event.location = row.Location && !(row.Location.startsWith("#")) ? row.Location : "";
             event.route_ids = [row.RouteURL.split('/')[4]];
             event.start_time = dates.T12(row.StartTime);
             event.start_date = dates.YYYY_MM_DD(row.StartDate);
-            const organizers = getOrganizers(row.RideLeader, rwgps);
-            event.name = makeRideName(row, organizers.length);
+            event.name = makeRideName(row, organizers.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID).length);
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
             let meet_time = dates.addMinutes(row.StartTime, -15);
             event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime);
             return event;
         },
-        fromRwgpsEvent: function(eventURL, rwgps) {
-            const rwgpsEvent = rwgps.get_event(eventURL);
+        fromRwgpsEvent: function(rwgpsEvent) {
             const event = new Event();
             event.all_day = rwgpsEvent.all_day ? "1" : "0";
             event.desc = rwgpsEvent.desc.replaceAll('\r', '');

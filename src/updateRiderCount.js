@@ -19,11 +19,9 @@ function updateRiderCountWithCreds(rows, rwgps) {
 
   rows.filter(row => rowCheck.alreadyScheduled(row)).forEach(row => {
     start = new Date().getTime();
-    const event = EventFactory.fromRow(row, rwgps)
-    const numRideLeaders = !row.RideLeader ? 0 : row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl).length;
-    event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + numRideLeaders);
+    const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+    event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + row.RideLeaders.length);
     rwgps.edit_event(row.RideURL, event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
     row.setRideLink(event.name, row.RideURL);
     end = new Date().getTime();
     console.log(duration(`row ${row.rowNum}`, start, end));

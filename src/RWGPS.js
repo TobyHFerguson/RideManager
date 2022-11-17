@@ -85,6 +85,27 @@ class RWGPS {
   }
 
   /**
+   * The Organizer (i.e. ride leader) of an event
+   * @typedef Organizer 
+   * @property {string} id the organizer id
+   * @property {string} text the organizer's name
+   */
+  /**
+     * 
+     * @param {string[]} names - list of ride leader names
+     * @param {RWGPS} rwgps - rwgps object to lookup organizers with
+     * @returns {Organizer[]} one or more organizer objects
+     */
+   getOrganizers(names) {
+    if (!names) return [];
+    //convert the names into the organizer structure
+    const organizers = names.map(name => this.lookupOrganizer(Globals.A_TEMPLATE, name.trim()));
+    //Figure out if any of the names are known
+    const knownOrganizers = organizers.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID)
+    //If any names are known then return them, else return the TBD organizer
+    return (knownOrganizers.length ? knownOrganizers : { id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME });
+}
+  /**
    * lookup the organizer id given an event url and the organizer name
    * @param{url} string - the event url
    * @param{name} string - the organizer's name

@@ -12,13 +12,19 @@ function updateSelectedRides() {
 function updateSelectedRidesWithCredentials(rows, rwgps) {
   function _updateable(row) { return row.errors.length === 0; }
 
+
   function _update_event(row) {
-    const event = EventFactory.fromRow(row, rwgps)
-    const numRideLeaders = !row.RideLeader ? 0 : row.RideLeader.split(',').map(rl => rl.trim()).filter(rl => rl).length;
-    event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + numRideLeaders);
-    rwgps.edit_event(row.RideURL, event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
+    let event
+    if (!Event.managedEventName(row.RideName)) {
+      event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+      event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + row.RideLeaders.length);
+    } else {
+      event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
+      rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
+    }
+    event.reinstate();
     row.setRideLink(event.name, row.RideURL);
+    rwgps.edit_event(row.RideURL, event);
   }
 
   function create_message(rows) {
@@ -90,19 +96,18 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
       row.errors.push("No ride has been scheduled");
       return;
     }
-    let old_event = rwgps.get_event(url);
-    let osd = old_event.starts_on;
-    let nsd = row.StartDate.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-    if (dates.compare(nsd, osd) !== 0) {
+    const rwgpsEvent = rwgps.get_event(url);
+    const old_event = EventFactory.fromRwgpsEvent(rwgpsEvent);
+    const osd = dates.YYYY_MM_DD(old_event.start_date);
+    const nsd = dates.YYYY_MM_DD(row.StartDate);
+    if (dates.compare(osd, nsd) !== 0 ) {
       row.errors.push(`Start date has changed (old: ${osd}; new: ${nsd} ).`);
     }
-    
-   const re = /(CANCELLED: )?(?<name>.*)/
-
-
-    let old_event_group = re.exec(old_event.name).groups.name.split(" ")[1];
-    if (row.Group !== old_event_group) {
-      row.errors.push(`Group has changed (old: ${old_event_group}; new: ${row.Group} ).`);
+    if (old_event.managedEvent()) {
+      let old_event_group = old_event.name.replace("CANCELLED: ", "").split(' ')[1];
+      if (row.Group !== old_event_group) {
+        row.errors.push(`Group has changed (old: ${old_event_group}; new: ${row.Group} ).`);
+      }
     }
   }
 

@@ -66,7 +66,7 @@ function cancelSelectedRides() {
       message += "There are no rides that can be canceled!";
       SpreadsheetApp.getUi().alert(message);
     }
-    rows.forEach(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide], []));
+    rows.forEach(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.cancelled_], []));
     let message = create_message(rows);
     let canceleable_rows = rows.filter(row => !row.errors.length);
     if (canceleable_rows.length === 0) {
@@ -77,8 +77,8 @@ function cancelSelectedRides() {
       }
     }
 
-    function cancel(row) {
-      let event = EventFactory.fromRow(row, rwgps);
+    function cancel(row, rwgps) {
+      const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
       event.cancel();
       row.setRideLink(event.name, row.RideURL);
       rwgps.edit_event(row.RideURL, event)
