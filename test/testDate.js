@@ -60,7 +60,7 @@ describe("date tests", () => {
     })
     describe("dates.T24", () => {
         it("should produce a 24 hour time", () => {
-            let n = "2023-01-01T10:00:00-08:00"
+            let n = "2023-01-01T10:00:00"
             let d = new Date(n);
             dates.T24(d).should.equal("10:00");
         })
@@ -76,14 +76,17 @@ describe("date tests", () => {
     })
     describe("dates.T12()", () => {
         it("should return a 12 hour representation of a time", () => {
-            const d = new Date("2024-12-31 13:15");
+            const d = new Date("2023-01-01T13:15:00");
             dates.T12(d).should.equal("1:15 PM");
+        })
+        it("should convert 10:00 AM to 10:00 AM", () => {
+            dates.T12("2023-01-01 10:00 AM").should.equal("10:00 AM");
         })
     })
     describe("dates.addMinutes()", () => {
         it("should return a time that is 15 minutes less", () => {
-            const d = new Date("2024-12-31 13:15");
-            dates.addMinutes(d, -15).should.deep.equal(new Date("2024-12-31T21:00:00.000Z"));
+            const d = new Date("2023-01-01T13:15:00");
+            dates.addMinutes(d, -15).should.deep.equal(new Date("2023-01-01T13:00:00"));
         })
     })
 })

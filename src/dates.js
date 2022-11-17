@@ -53,23 +53,23 @@ const dates = {
   },
   MMDDYYYY: function (d) {
     // Returns the shortened MM/DD/YYYY version of the date
-    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "numeric", day: "numeric" }) : NaN;
+    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { year: "numeric", month: "numeric", day: "numeric" }) : NaN;
   },
   YYYY_MM_DD: function (d) {
-    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) : NaN;
+    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-CA") : NaN;
 
   },
   MMDD: function (d) {
-    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" }) : NaN;
+    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { month: "numeric", day: "numeric" }) : NaN;
   },
   weekday: function (d) {
-    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }) : NaN;
+    return isFinite(a = this.convert(d)) ? a.toLocaleDateString("en-US", { weekday: "short" }) : NaN;
   },
   T24: function (d) {
-    return isFinite(a = this.convert(d)) ? a.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric", hour12: false }) : NaN;
+    return isFinite(a = this.convert(d)) ? a.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: false }) : NaN;
   },
   T12: function (d) {
-    return isFinite(a = this.convert(d)) ? a.toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric", hour12: true }) : NaN;
+    return isFinite(a = this.convert(d)) ? a.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true }) : NaN;
   },
   add: function (d, days) {
     let a = this.convert(d);
