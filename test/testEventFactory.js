@@ -9,8 +9,8 @@ const organizers = [ { id: 302732, text: "Toby Ferguson"}];
 
 describe("Event Factory Tests", () => {
     const managedRow = {
-        StartDate: "2023-01-01 10:00 AM",
-        StartTime: "2023-01-01 10:00 AM",
+        StartDate: "2023-01-01T08:00:00.00Z",
+        StartTime: "1899-12-30T18:00:00.000Z",
         Group: 'A',
         RouteName: 'SCP - Seascape/Corralitos',
         RouteURL: 'http://ridewithgps.com/routes/17166902',
@@ -37,7 +37,7 @@ describe("Event Factory Tests", () => {
             it("should use the given ride name", () => {
                 const expected = { ...managedEvent, name: 'Tobys Ride [1]' }
                 const actual = EventFactory.newEvent(unmanagedRow, organizers);
-                expected.should.deep.equal(actual);
+                actual.should.deep.equal(expected);
             })
             it("should throw an error if row is missing", () => {
                 (() => EventFactory.newEvent()).should.throw("no row object given");
@@ -57,7 +57,7 @@ describe("Event Factory Tests", () => {
             it("should return the managedEvent", () => {
                 let actual = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
                 const expected = managedEvent;
-                expected.should.deep.equal(actual);  
+                actual.should.deep.equal(expected);  
             })
         })
     })

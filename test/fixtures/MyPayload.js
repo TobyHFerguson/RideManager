@@ -6,8 +6,8 @@ const payload = {
     name: 'Sun A (1/1 10:00) [1] SCP - Seascape/Corralitos',
     organizer_tokens: ['302732'],
     route_ids: ['17166902'],
-    start_date: '2023-01-01',
-    start_time: '10:00 AM',
+    start_date: '2023-01-01T18:00:00.000Z',
+    start_time: '2023-01-01T18:00:00.000Z',
     visibility: 0,
 }
 

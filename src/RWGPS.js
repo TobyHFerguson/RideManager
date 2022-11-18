@@ -22,7 +22,7 @@ class RWGPS {
       return 0;
     }
     try {
-      const url = event_url +"/participants.json";
+      const url = event_url + "/participants.json";
       return JSON.parse(this.rwgpsService.get(url).getContentText()).filter(p => p.rsvp_status === "Yes").length
     } catch (e) {
       console.log(`event_url ${event_url} led to this error: ${e}`);
@@ -54,7 +54,10 @@ class RWGPS {
    * @param{event} event object - the event to be used as the source of the changes
    */
   edit_event(event_url, event) {
-    let response = this.rwgpsService.edit_event(event_url, event);
+    // RWGPS bug that prevents an event from being properly scheduled if all_day is not set.
+    let new_event = { ...event, all_day: "1" }
+    let response = this.rwgpsService.edit_event(event_url, new_event);
+    response = this.rwgpsService.edit_event(event_url, event);
     if (response.getResponseCode() >= 500) {
       throw Error(`received a code ${response.getResponseCode()} when editing event ${event_url}`);
     }
@@ -96,7 +99,7 @@ class RWGPS {
      * @param {RWGPS} rwgps - rwgps object to lookup organizers with
      * @returns {Organizer[]} one or more organizer objects
      */
-   getOrganizers(names) {
+  getOrganizers(names) {
     if (!names) return [];
     //convert the names into the organizer structure
     const organizers = names.map(name => this.lookupOrganizer(Globals.A_TEMPLATE, name.trim()));
@@ -104,7 +107,7 @@ class RWGPS {
     const knownOrganizers = organizers.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID)
     //If any names are known then return them, else return the TBD organizer
     return (knownOrganizers.length ? knownOrganizers : { id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME });
-}
+  }
   /**
    * lookup the organizer id given an event url and the organizer name
    * @param{url} string - the event url
@@ -548,6 +551,26 @@ class RWGPSService {
 //   rwgps.batch_delete_events([event_URL]);
 // }
 
+function testEditEvent() {
+  const event = {
+    all_day: '0',
+    auto_expire_participants: '1',
+    desc: 'Ride Leader: Toby Ferguson\n\n    Address: Seascape County Park, Sumner Ave, Aptos, CA 95003\n          \nArrive 9:45 AM for a 10:00 AM rollout.\n  \nAll participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709\n  \nNote: In a browser use the "Go to route" link below to open up the route.',
+    location: 'Seascape County Park',
+    name: 'Sun A (1/1 10:00) [1] SCP - Seascape/Corralitos',
+    organizer_tokens: ['302732'],
+    route_ids: ['17166902'],
+    start_date: '2023-01-01T10:00.000-08:00',
+    start_time: '21899-12-30T10:00.000-08:00',
+    visibility: 0,
+  }
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  const event_URL = rwgps.copy_template_("https://ridewithgps.com/events/194877");
+  console.log(`New Event URL: ${event_URL}`);
+  rwgps.edit_event(event_URL, event);
+  console.log(rwgps.get_event(event_URL));
+}
 function testRoundTrip() {
   let rwgps, event_URL;
   try {

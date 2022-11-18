@@ -5,6 +5,7 @@ function onOpen() {
     .addItem('Schedule Selected Rides', scheduleSelectedRides.name)
     .addItem('Update Selected Rides', updateSelectedRides.name)
     .addItem('Cancel Selected Rides', cancelSelectedRides.name)
+    .addItem('Reinstate Selected Rides', reinstateSelectedRides.name)
     .addItem('Unschedule Selected Rides', unscheduleSelectedRides.name)
     .addSeparator()
     .addItem('Import Selected Routes', importSelectedRoutes.name)

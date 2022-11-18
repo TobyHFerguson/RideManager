@@ -60,7 +60,7 @@ describe("date tests", () => {
     })
     describe("dates.T24", () => {
         it("should produce a 24 hour time", () => {
-            let n = "2023-01-01T10:00:00"
+            let n = "2023-01-01T18:00:00.000Z"
             let d = new Date(n);
             dates.T24(d).should.equal("10:00");
         })
@@ -75,12 +75,19 @@ describe("date tests", () => {
         })
     })
     describe("dates.T12()", () => {
-        it("should return a 12 hour representation of a time", () => {
-            const d = new Date("2023-01-01T13:15:00");
+        let options = { timeZone: 'America/Los_Angeles'}
+        it("should return a 12 hour representation of a time in LA timeZone", () => {
+            const d = new Date("2023-01-01T13:15:00.000-08:00");
             dates.T12(d).should.equal("1:15 PM");
         })
         it("should convert 10:00 AM to 10:00 AM", () => {
-            dates.T12("2023-01-01 10:00 AM").should.equal("10:00 AM");
+            const d = new Date("2023-01-01 10:00 AM GMT-0800")
+            dates.T12(d).should.equal("10:00 AM");
+        })
+        it("should convert to 10:00 AM", () => {
+            const d = new Date("1899-12-30T18:00:00.000Z");
+            console.log(d);
+            dates.T12(d).should.equal("10:00 AM");
         })
     })
     describe("dates.addMinutes()", () => {
