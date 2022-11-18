@@ -17,11 +17,11 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     let event
     if (!Event.managedEventName(row.RideName)) {
       event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
-      event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + row.RideLeaders.length);
     } else {
       event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
       rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
     }
+    event.updateRiderCount(rwgps.getRSVPCount(row.RideURL) + row.RideLeaders.length);
     event.reinstate();
     row.setRideLink(event.name, row.RideURL);
     rwgps.edit_event(row.RideURL, event);
