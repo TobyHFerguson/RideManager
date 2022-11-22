@@ -13,7 +13,7 @@ function duration(msg, start, end){
 
 function updateRiderCountWithCreds(rows, rwgps) {
   let start = new Date().getTime();
-  rows = Schedule.getYoungerRows(new Date());
+  rows = Schedule.getYoungerRows(dates.add(new Date(), - 1));
   let end = new Date().getTime();
   console.log(duration("getYoungerRows", start, end));
 
