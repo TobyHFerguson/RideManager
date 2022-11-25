@@ -358,7 +358,11 @@ class RWGPSService {
   _send_request(url, options) {
     const response = UrlFetchApp.fetch(url, options);
     if (response.getAllHeaders()['Set-Cookie'] !== undefined) {
-      this.cookie = response.getAllHeaders()['Set-Cookie'].split(';')[0];
+      const newCookie = response.getAllHeaders()['Set-Cookie'].split(';')[0];
+      if (this.cookie !== newCookie) {
+        console.log(`updating cookie`);
+      }
+      this.cookie = newCookie;
     }
     return response;
   }
@@ -533,8 +537,58 @@ class RWGPSService {
     }
     return this._send_request(url, options);
   }
+
+  getAll(urls) {
+    const requests = urls.map(url => {
+      let r = {
+        url,
+        method: 'get',
+        headers: {
+          cookie: this.cookie,
+          Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
+        },
+        followRedirects: false,
+        muteHttpExceptions: false
+      };
+      return r;
+    })
+    return UrlFetchApp.fetchAll(requests);
+  }
 }
 
+function testGetAll() {
+  function timedGet(urls) {
+    const start = new Date();
+    let results = rwgpsService.getAll(urls);
+    let ids = results.map(r => {
+      const rc = r.getResponseCode();
+      const body = JSON.parse(r.getContentText()).event.id;
+    })
+    return new Date() - start;
+  }
+  function printTimings(times) {
+    const total = times.reduce((p,t) => p+t, 0);
+    const avg = total / times.length;
+    const max = times.reduce( (p, t) => p >= t ? p : t, 0);
+    const min = times.reduce((p,t) =>  p <= t ? p : t,  10000);
+    console.log(`Average: ${avg} min: ${min} max: ${max}, total: ${total}`);
+  }
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const events = ['https://ridewithgps.com/events/198070', 'https://ridewithgps.com/events/196909'];
+  const urls = [];
+  let timings = [];
+  for (let i = 0; i < 100; i++) {
+    timings.push(timedGet(['https://ridewithgps.com/events/198070']))
+  }
+  printTimings(timings);
+  
+  for (let i = 0; i < 100; i++) {
+    urls.push(events[0]);
+  }
+  timings = [];
+  timings.push(timedGet(urls))
+  printTimings(timings);
+}
 //------------------------------
 // function testEditNameOnly() {
 //   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
