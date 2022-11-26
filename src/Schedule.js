@@ -26,10 +26,10 @@ const Schedule = function () {
         .build();
       dateFilter.setColumnFilterCriteria(dateColumn, criteria);
 
-      for (var i = 2; i<=ss.getLastRow() && ss.isRowHiddenByFilter(i); i++) {
+      for (var i = 2; i <= ss.getLastRow() && ss.isRowHiddenByFilter(i); i++) {
       }
       dateFilter.remove();
-      
+
       const rows = this.convertRangeToRows(ss.getRange(i, 1, ss.getLastRow() - i + 1, ss.getLastColumn()));
       return rows;
     }
@@ -56,15 +56,11 @@ const Schedule = function () {
       cell.setFontColor(onoff ? "red" : null);
     }
     setRideLink(rowNum, name, url) {
-      let cell = this.activeSheet.getRange(rowNum, this.getColumn(Globals.RIDECOLUMNNAME) + 1);
       let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
-      cell.setRichTextValue(rtv);
       return rtv;
     }
     setRouteLink(rowNum, name, url) {
-      let cell = this.activeSheet.getRange(rowNum, this.getColumn(Globals.ROUTECOLUMNNAME) + 1);
       let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
-      cell.setRichTextValue(rtv);
       return rtv;
     }
 
@@ -165,6 +161,7 @@ const Schedule = function () {
           SpreadsheetApp.getUi().alert(`Row ${row.rowNum}: ${e.message}`);
         }
       }
+      row.saveRoute();
     }
 
     /**
@@ -202,7 +199,7 @@ const Schedule = function () {
     get RouteURL() { return this.schedule.getRouteCell(this.richTextValues).getLinkUrl(); }
     get RideLeaders() { 
       let rls = this.schedule.getRideLeader(this.myRowValues);
-      return rls ? rls.split(',').map(rl => rl.trim()).filter(rl => rl) : [] ;
+      return rls ? rls.split(',').map(rl => rl.trim()).filter(rl => rl) : [];
     }
     get RideName() { return this.schedule.getRideCell(this.richTextValues).getText(); }
     get RideURL() { return this.schedule.getRideCell(this.richTextValues).getLinkUrl(); }
@@ -217,6 +214,7 @@ const Schedule = function () {
     setRideLink(name, url) {
       let rtv = this.schedule.setRideLink(this.rowNum, name, url);
       this.richTextValues[this.schedule.getColumn(Globals.RIDECOLUMNNAME)] = rtv;
+      this.saveRide();
     }
 
     deleteRideLink() {
@@ -225,7 +223,22 @@ const Schedule = function () {
     setRouteLink(name, url) {
       let rtv = this.schedule.setRouteLink(this.rowNum, name, url);
       this.richTextValues[this.schedule.getColumn(Globals.ROUTECOLUMNNAME)] = rtv;
-      console.log(`Row.setRouteLink - ${this.RouteName} ${this.RouteURL}`)
+    }
+
+    saveRoute() {
+      if (this.offset + 1 < this.values.length) return;
+
+      const colRange = this.range.offset(0, this.schedule.getColumn(Globals.ROUTECOLUMNNAME), this.range.getNumRows(), 1);
+      const routes = this.rtvs.map(rtv => [rtv[this.schedule.getColumn(Globals.ROUTECOLUMNNAME)]]);
+      colRange.setRichTextValues(routes);
+    }
+
+    saveRide() {
+      if (this.offset + 1 < this.values.length) return;
+
+      const colRange = this.range.offset(0, this.schedule.getColumn(Globals.RIDECOLUMNNAME), this.range.getNumRows(), 1);
+      const routes = this.rtvs.map(rtv => [rtv[this.schedule.getColumn(Globals.RIDECOLUMNNAME)]]);
+      colRange.setRichTextValues(routes);
     }
   }
 

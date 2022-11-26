@@ -359,9 +359,6 @@ class RWGPSService {
     const response = UrlFetchApp.fetch(url, options);
     if (response.getAllHeaders()['Set-Cookie'] !== undefined) {
       const newCookie = response.getAllHeaders()['Set-Cookie'].split(';')[0];
-      if (this.cookie !== newCookie) {
-        console.log(`updating cookie`);
-      }
       this.cookie = newCookie;
     }
     return response;
@@ -554,8 +551,86 @@ class RWGPSService {
     })
     return UrlFetchApp.fetchAll(requests);
   }
+
+  edit_events(urls, events) {
+    const self = this;
+    function createRequest(url, event) {
+      let new_event = self.key_filter(event, CANONICAL_EVENT);
+      const request = {
+        url,
+        method: 'put',
+        contentType: 'application/json',
+        payload: JSON.stringify(new_event),
+        headers: {
+          cookie: self.cookie,
+          Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
+        },
+        followRedirects: false,
+        muteHttpExceptions: true
+      }
+      return request;
+    }
+    const requests = urls.map((url, i) => createRequest(url, events[i]));
+    const responses = UrlFetchApp.fetchAll(requests);
+    responses.forEach(r => {
+      const rc = r.getResponseCode()
+      if (rc != 200) throw new Error(`${rc} - ${r}`);
+    });
+    return responses;
+  }
 }
 
+function printTimings_(times, prefix) {
+  const total = times.reduce((p, t) => p + t, 0);
+  const avg = total / times.length;
+  const max = times.reduce((p, t) => p >= t ? p : t, 0);
+  const min = times.reduce((p, t) => p <= t ? p : t, 10000);
+  console.log(`${prefix} - Average: ${avg} min: ${min} max: ${max}, total: ${total}`);
+}
+function testEditAll() {
+  const NUMTESTS = 1;
+  const NUMEVENTS = 1;
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  function createTestEvents() {
+    const urls = [];
+    for (let i = 0; i < NUMEVENTS; i++) {
+      urls.push(rwgps.copy_template_(Globals.A_TEMPLATE));
+    }
+    return urls;
+  }
+
+  function test(urls, events, f) {
+    const timings = [];
+
+    for (let i = 0; i < NUMTESTS; i++) {
+      const start = new Date();
+      f(urls, events);
+      timings.push(new Date() - start);
+    }
+    printTimings_(timings, f.name);
+  }
+
+  function editSingle(urls, events) {
+    urls.forEach((url, i) =>
+      rwgps.edit_event(url, events[i]));
+  }
+
+  function editAll(urls, events) {
+    rwgpsService.edit_events(urls, events);
+  }
+  let urls = createTestEvents();
+  let rwgpsEvents = rwgpsService.getAll(urls).map(resp => JSON.parse(resp.getContentText()));
+  let events = rwgpsEvents.map(e => EventFactory.fromRwgpsEvent(e));
+  events.forEach(e => e.name = "EDIT SINGLE TEST");
+  test(urls, events, editSingle);
+  rwgps.batch_delete_events(urls);
+  urls = createTestEvents();
+  rwgpsEvents = rwgpsService.getAll(urls).map(resp => JSON.parse(resp.getContentText()));
+  events = rwgpsEvents.map(e => EventFactory.fromRwgpsEvent(e));
+  events.forEach(e => e.name = "EDIT ALL TEST");
+  test(urls, events, editAll);
+}
 function testGetAll() {
   function timedGet(urls) {
     const start = new Date();
@@ -566,13 +641,7 @@ function testGetAll() {
     })
     return new Date() - start;
   }
-  function printTimings(times) {
-    const total = times.reduce((p,t) => p+t, 0);
-    const avg = total / times.length;
-    const max = times.reduce( (p, t) => p >= t ? p : t, 0);
-    const min = times.reduce((p,t) =>  p <= t ? p : t,  10000);
-    console.log(`Average: ${avg} min: ${min} max: ${max}, total: ${total}`);
-  }
+
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const events = ['https://ridewithgps.com/events/198070', 'https://ridewithgps.com/events/196909'];
   const urls = [];
@@ -580,14 +649,14 @@ function testGetAll() {
   for (let i = 0; i < 100; i++) {
     timings.push(timedGet(['https://ridewithgps.com/events/198070']))
   }
-  printTimings(timings);
-  
+  printTimings_(timings);
+
   for (let i = 0; i < 100; i++) {
     urls.push(events[0]);
   }
   timings = [];
   timings.push(timedGet(urls))
-  printTimings(timings);
+  printTimings_(timings);
 }
 //------------------------------
 // function testEditNameOnly() {
