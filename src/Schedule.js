@@ -226,19 +226,20 @@ const Schedule = function () {
     }
 
     saveRoute() {
-      if (this.offset + 1 < this.values.length) return;
-
-      const colRange = this.range.offset(0, this.schedule.getColumn(Globals.ROUTECOLUMNNAME), this.range.getNumRows(), 1);
-      const routes = this.rtvs.map(rtv => [rtv[this.schedule.getColumn(Globals.ROUTECOLUMNNAME)]]);
-      colRange.setRichTextValues(routes);
+      this.saveColumn(Globals.ROUTECOLUMNNAME);
     }
 
     saveRide() {
+      this.saveColumn(Globals.RIDECOLUMNNAME);
+    }
+
+    saveColumn(columName) {
       if (this.offset + 1 < this.values.length) return;
 
-      const colRange = this.range.offset(0, this.schedule.getColumn(Globals.RIDECOLUMNNAME), this.range.getNumRows(), 1);
-      const routes = this.rtvs.map(rtv => [rtv[this.schedule.getColumn(Globals.RIDECOLUMNNAME)]]);
+      const colRange = this.range.offset(0, this.schedule.getColumn(columName), this.range.getNumRows(), 1);
+      const routes = this.rtvs.map(rtv => [rtv[this.schedule.getColumn(columName)]]);
       colRange.setRichTextValues(routes);
+     
     }
   }
 
