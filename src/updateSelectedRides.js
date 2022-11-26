@@ -114,7 +114,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
 
 
   linkRouteURLs();
-  rows.map(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide], []))
+  rows.map(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide]))
     .filter(row => row.errors.length === 0)
     .map(row => compare_(row));
   let message = create_message(rows);

@@ -33,7 +33,7 @@ const rowCheck = {
             case "A":
             case "B":
             case "C":
-                row.group = row.Group;
+                row.Group = row.Group;
                 break;
             default:
                 return `Unknown group: ${row.Group}`;
@@ -82,7 +82,7 @@ const rowCheck = {
     },
     // Warnings
     noRideLeader_: function (row, rwgps) {
-        if (!row.RideLeaders) {
+        if (!row.RideLeaders || row.RideLeaders.length === 0) {
             return `No ride leader given. Defaulting to '${Globals.RIDE_LEADER_TBD_NAME}'`;
         } else {
             const rls = row.RideLeaders.reduce((p, rl) => {
@@ -164,7 +164,7 @@ const rowCheck = {
         const route = JSON.parse(response.getContentText());
         const d = Math.round(route.distance * Globals.METERS_TO_MILES);
         const e = Math.round(route.elevation_gain * Globals.METERS_TO_FEET);
-        return __inappropriateGroup(row.group, e, d);
+        return __inappropriateGroup(row.Group, e, d);
     },
     alreadyScheduled: function (row) {
         if (row.RideURL !== null) {
