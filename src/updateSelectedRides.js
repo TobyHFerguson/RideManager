@@ -98,8 +98,9 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     }
     const rwgpsEvent = rwgps.get_event(url);
     const old_event = EventFactory.fromRwgpsEvent(rwgpsEvent);
-    const osd = dates.YYYY_MM_DD(old_event.start_date);
-    const nsd = dates.YYYY_MM_DD(row.StartDate);
+    const new_event = EventFactory.newEvent(row);
+    const osd = old_event.start_date;
+    const nsd = new_event.start_date;
     if (dates.compare(osd, nsd) !== 0 ) {
       row.errors.push(`Start date has changed (old: ${osd}; new: ${nsd} ).`);
     }

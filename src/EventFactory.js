@@ -72,8 +72,8 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             event.name = rwgpsEvent.name;
             event.organizer_tokens = rwgpsEvent.organizer_ids;
             event.route_ids = rwgpsEvent.routes.map(r => r.id+"");
-            event.start_date = dates.YYYY_MM_DD(rwgpsEvent.starts_at);
-            event.start_time = dates.T12(rwgpsEvent.starts_at);
+            event.start_date = new Date(rwgpsEvent.starts_at).toISOString();
+            event.start_time = new Date(rwgpsEvent.starts_at).toISOString();
             event.visibility = rwgpsEvent.visibility;
             return event;
         }   
