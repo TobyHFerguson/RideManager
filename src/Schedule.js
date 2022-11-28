@@ -45,10 +45,9 @@ const Schedule = function () {
     getStartDate(values) { return values[this.getColumn(Globals.STARTDATECOLUMNNAME)]; };
     getStartTime(values) { return values[this.getColumn(Globals.STARTTIMECOLUMNNAME)]; };
     getGroup(values) { return values[this.getColumn(Globals.GROUPCOLUMNNAME)]; };
-    getRouteName(values) { return values[this.getColumn(Globals.ROUTECOLUMNNAME)]; };
-    getRouteURL(values) { return values[this.getColumn(Globals.ROUTECOLUMNNAME)]; };
+    getRouteCell(values) { return values[this.getColumn(Globals.ROUTECOLUMNNAME)]; };
     getRideLeader(values) { return values[this.getColumn(Globals.RIDELEADERCOLUMNNAME)]; };
-    getRideURL(values) { return values[this.getColumn(Globals.RIDECOLUMNNAME)]; }
+    getRideCell(values) { return values[this.getColumn(Globals.RIDECOLUMNNAME)]; }
     getLocation(values) { return values[this.getColumn(Globals.LOCATIONCOLUMNNAME)]; };
     getAddress(values) { return values[this.getColumn(Globals.ADDRESSCOLUMNNAME)]; };
 
@@ -129,7 +128,7 @@ const Schedule = function () {
      * @param {Row} row - row whose route url is to be resolved and linked
      * @returns {Row} the row
      */
-    linkRouteURL(row) {
+     linkRouteURL(row) {
       function getRouteJson(row) {
         const error = rowCheck.badRoute_(row);
         if (error) {
@@ -199,14 +198,14 @@ const Schedule = function () {
     get StartDate() { return this.schedule.getStartDate(this.myRowValues); }
     get StartTime() { return this.schedule.getStartTime(this.myRowValues); }
     get Group() { return this.schedule.getGroup(this.myRowValues); }
-    get RouteName() { return this.schedule.getRouteName(this.richTextValues).getText(); }
-    get RouteURL() { return this.schedule.getRouteURL(this.richTextValues).getLinkUrl(); }
+    get RouteName() { return this.schedule.getRouteCell(this.richTextValues).getText(); }
+    get RouteURL() { return this.schedule.getRouteCell(this.richTextValues).getLinkUrl(); }
     get RideLeaders() { 
       let rls = this.schedule.getRideLeader(this.myRowValues);
       return rls ? rls.split(',').map(rl => rl.trim()).filter(rl => rl) : [] ;
     }
-    get RideName() { return this.schedule.getRideURL(this.richTextValues).getText(); }
-    get RideURL() { return this.schedule.getRideURL(this.richTextValues).getLinkUrl(); }
+    get RideName() { return this.schedule.getRideCell(this.richTextValues).getText(); }
+    get RideURL() { return this.schedule.getRideCell(this.richTextValues).getLinkUrl(); }
     get Location() { return this.schedule.getLocation(this.myRowValues); }
     get Address() { return this.schedule.getAddress(this.myRowValues); }
 
@@ -226,6 +225,7 @@ const Schedule = function () {
     setRouteLink(name, url) {
       let rtv = this.schedule.setRouteLink(this.rowNum, name, url);
       this.richTextValues[this.schedule.getColumn(Globals.ROUTECOLUMNNAME)] = rtv;
+      console.log(`Row.setRouteLink - ${this.RouteName} ${this.RouteURL}`)
     }
   }
 

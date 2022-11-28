@@ -89,7 +89,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
     SpreadsheetApp.getUi().alert(message);
   }
 
-  linkRouteURLs();
+rows.forEach(row => Schedule.linkRouteURL(row));
   errorFuns.push(rowCheck.alreadyScheduled);
   rows.forEach(row => evalRow_(row, rwgps));
   let message = create_message(rows);
