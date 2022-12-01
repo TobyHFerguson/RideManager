@@ -15,13 +15,15 @@ const Schedule = function () {
     getYoungerRows(date) {
       const ss = this.activeSheet;
       const dateColumn = this.getColumn("Date") + 1; // +1 because we need to convert to spreadsheet indexing
-      ss.getRange(2, dateColumn, ss.getLastRow()).sort(dateColumn);
-      const range = ss.getRange(1, dateColumn, ss.getLastRow())
+      // We start the range at row 2 to allow for the heading row (row 1)
+      ss.getRange(2, 1, ss.getLastRow(), ss.getLastColumn()).sort(dateColumn);
+      const range = ss.getRange(2, dateColumn, ss.getLastRow())
 
       if (range.getFilter()) range.getFilter().remove();
 
       const dateFilter = range.createFilter();
       const criteria = SpreadsheetApp.newFilterCriteria()
+        .whenCellNotEmpty()
         .whenDateAfter(date)
         .build();
       dateFilter.setColumnFilterCriteria(dateColumn, criteria);
@@ -124,7 +126,7 @@ const Schedule = function () {
      * @param {Row} row - row whose route url is to be resolved and linked
      * @returns {Row} the row
      */
-     linkRouteURL(row) {
+    linkRouteURL(row) {
       function getRouteJson(row) {
         const error = rowCheck.badRoute_(row);
         if (error) {
@@ -197,7 +199,7 @@ const Schedule = function () {
     get Group() { return this.schedule.getGroup(this.myRowValues); }
     get RouteName() { return this.schedule.getRouteCell(this.richTextValues).getText(); }
     get RouteURL() { return this.schedule.getRouteCell(this.richTextValues).getLinkUrl(); }
-    get RideLeaders() { 
+    get RideLeaders() {
       let rls = this.schedule.getRideLeader(this.myRowValues);
       return rls ? rls.split(',').map(rl => rl.trim()).filter(rl => rl) : [];
     }
@@ -239,7 +241,7 @@ const Schedule = function () {
       const colRange = this.range.offset(0, this.schedule.getColumn(columName), this.range.getNumRows(), 1);
       const routes = this.rtvs.map(rtv => [rtv[this.schedule.getColumn(columName)]]);
       colRange.setRichTextValues(routes);
-     
+
     }
   }
 
