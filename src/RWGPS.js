@@ -29,6 +29,28 @@ class RWGPS {
       return 0;
     }
   }
+
+  /**
+   * Return the counts for each of the given event urls.
+   * A count of 0 is given for any url that throws an error, and a log message is recorded.
+   * @param {string[]} event_urls 
+   * @returns{Number[]} the counts, in the same order as the corresponding event url.
+   */
+  getRSVPCounts(event_urls) {
+    const urls = event_urls.map(url => url + "/participants.json");
+    const responses = this.rwgpsService.getAll(urls);
+    const counts = responses.map((r, i) => {
+      const body = r.getContentText();
+      try {
+        return JSON.parse(body).filter(p => p.rsvp_status === "Yes").length
+      } catch (e) {
+        console.log(`event_url ${urls[i]} had this body: ${body} which led to this error: ${e}`);
+        return 0;
+      }
+    });
+    return counts;
+  }
+
   /**
    * Returns the basic url of the event created by coping the given template
    * @param {string} template_url - url of the RWGPS template to be copied
@@ -556,7 +578,7 @@ class RWGPSService {
           Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
         },
         followRedirects: false,
-        muteHttpExceptions: false
+        muteHttpExceptions: true
       };
       return r;
     })
@@ -600,6 +622,23 @@ function printTimings_(times, prefix) {
 }
 
 //=========== Tests ===========
+function testGetRSVPCounts() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  const test_cases = [
+    ['https://ridewithgps.com/events/196660-copied-event', 15],
+    ['https://ridewithgps.com/events/193587-copied-event', 6],
+    ['https://ridewithgps.com/routes/copied-event', 0]
+  ];
+  const counts = rwgps.getRSVPCounts(test_cases.map(tc => tc[0]));
+  counts.forEach((actual, i) => {
+    const uut = test_cases[i][0]
+    const expected = test_cases[i][1];
+    if (actual !== expected) {
+      console.log(`Error - expected uut: ${uut} to give ${expected} but got ${actual}`)
+    }
+  })
+}
 function testGetEvents() {
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const rwgps = new RWGPS(rwgpsService);
