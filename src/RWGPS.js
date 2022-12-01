@@ -96,6 +96,31 @@ class RWGPS {
     }
     return response;
   }
+
+  /**
+   * @typedef EventEditObject
+   * @prop{string} url - an event url
+   * @prop{Event} event - an Event
+   */
+
+  /**
+   * Edit the events as defined by the list of eventEditObjects
+   * @param {EventEditObject[]} eventEditObjects 
+   * @returns the resulting events
+   */
+   edit_events(eventEditObjects) {
+    // These next two lines are to work around an RWGPS bug
+    const eeos = eventEditObjects.map(({event, url}) => {return { event: {...event, all_day: "1"}, url}});
+    this.edit_events_(eeos);
+
+    const events = this.edit_events_(eventEditObjects);
+    return events;
+  }
+  edit_events_(eventEditObjects) {
+    const responses = this.rwgpsService.edit_events(eventEditObjects);
+    const events = responses.map(response => response["event"]);
+    return events;
+  }
   batch_delete_events(event_urls) {
     let event_ids = event_urls.map(e => e.split('/')[4].split('-')[0]);
     return this.rwgpsService.batch_delete_events(event_ids);
@@ -585,12 +610,12 @@ class RWGPSService {
     return UrlFetchApp.fetchAll(requests);
   }
 
-  edit_events(urls, events) {
+  edit_events(eventEditObjects) {
     const self = this;
-    function createRequest(url, event) {
-      let new_event = self.key_filter(event, CANONICAL_EVENT);
+    function createRequest(eventEditObject) {
+      let new_event = self.key_filter(eventEditObject.event, CANONICAL_EVENT);
       const request = {
-        url,
+        url: eventEditObject.url,
         method: 'put',
         contentType: 'application/json',
         payload: JSON.stringify(new_event),
@@ -603,12 +628,8 @@ class RWGPSService {
       }
       return request;
     }
-    const requests = urls.map((url, i) => createRequest(url, events[i]));
+    const requests = eventEditObjects.map(eeo => createRequest(eeo));
     const responses = UrlFetchApp.fetchAll(requests);
-    responses.forEach(r => {
-      const rc = r.getResponseCode()
-      if (rc != 200) throw new Error(`${rc} - ${r}`);
-    });
     return responses;
   }
 }
@@ -645,9 +666,9 @@ function testGetEvents() {
   const events = rwgps.get_events([Globals.A_TEMPLATE, Globals.B_TEMPLATE]);
   if (!(events.length == 2)) console.log("didn't get the expected number of events");
 }
-function testEditAll() {
+function testEditEvents() {
   const NUMTESTS = 1;
-  const NUMEVENTS = 1;
+  const NUMEVENTS = 5;
   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
   const rwgps = new RWGPS(rwgpsService);
   function createTestEvents() {
@@ -658,36 +679,42 @@ function testEditAll() {
     return urls;
   }
 
-  function test(urls, events, f) {
+  function test(eventEditObjects, f) {
     const timings = [];
 
     for (let i = 0; i < NUMTESTS; i++) {
       const start = new Date();
-      f(urls, events);
+      f(eventEditObjects);
       timings.push(new Date() - start);
     }
     printTimings_(timings, f.name);
   }
 
-  function editSingle(urls, events) {
-    urls.forEach((url, i) =>
-      rwgps.edit_event(url, events[i]));
+  function editSingle(eventEditObjects) {
+    eventEditObjects.forEach(({event, url}) =>
+      rwgps.edit_event(url, event));
   }
 
-  function editAll(urls, events) {
-    rwgpsService.edit_events(urls, events);
+  function editAll(eventEditObjects) {
+    rwgps.edit_events(eventEditObjects);
+  }
+
+  function createEventEditObjects(urls) {
+    let rwgpsEvents = rwgpsService.getAll(urls).map(resp => JSON.parse(resp.getContentText()));
+    let events = rwgpsEvents.map(e => EventFactory.fromRwgpsEvent(e));
+    let eventEditObjects = events.map((e, i) => { return { event: e, url: urls[i] } });
+    return eventEditObjects;
   }
   let urls = createTestEvents();
-  let rwgpsEvents = rwgpsService.getAll(urls).map(resp => JSON.parse(resp.getContentText()));
-  let events = rwgpsEvents.map(e => EventFactory.fromRwgpsEvent(e));
-  events.forEach(e => e.name = "EDIT SINGLE TEST");
-  test(urls, events, editSingle);
-  rwgps.batch_delete_events(urls);
+  let eventEditObjects = createEventEditObjects(urls);
+  eventEditObjects.forEach(({event, url}) => event.name = "EDIT SINGLE TEST");
+  test(eventEditObjects, editSingle);
+  // rwgps.batch_delete_events(urls);
   urls = createTestEvents();
-  rwgpsEvents = rwgpsService.getAll(urls).map(resp => JSON.parse(resp.getContentText()));
-  events = rwgpsEvents.map(e => EventFactory.fromRwgpsEvent(e));
-  events.forEach(e => e.name = "EDIT ALL TEST");
-  test(urls, events, editAll);
+  eventEditObjects = createEventEditObjects(urls);
+  eventEditObjects.forEach(({event, url}) => event.name = "EDIT ALL TEST");
+  test(eventEditObjects, editAll);
+  // rwgps.batch_delete_events(urls);
 }
 function testGetAll() {
   function timedGet(urls) {
