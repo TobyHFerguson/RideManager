@@ -67,13 +67,14 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
         fromRwgpsEvent: function(rwgpsEvent) {
             const event = new Event();
             event.all_day = rwgpsEvent.all_day ? "1" : "0";
-            event.desc = rwgpsEvent.desc.replaceAll('\r', '');
+            event.desc = rwgpsEvent.desc ? rwgpsEvent.desc.replaceAll('\r', '') : '';
             event.location = rwgpsEvent.location;
             event.name = rwgpsEvent.name;
             event.organizer_tokens = rwgpsEvent.organizer_ids;
-            event.route_ids = rwgpsEvent.routes.map(r => r.id+"");
-            event.start_date = new Date(rwgpsEvent.starts_at).toISOString();
-            event.start_time = new Date(rwgpsEvent.starts_at).toISOString();
+            event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map(r => r.id+"") : [];
+            const sd = (rwgpsEvent.starts_at ? new Date( rwgpsEvent.starts_at) : new Date()).toISOString();
+            event.start_date = sd;
+            event.start_time = sd;
             event.visibility = rwgpsEvent.visibility;
             return event;
         }   

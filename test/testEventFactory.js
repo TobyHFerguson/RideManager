@@ -4,7 +4,7 @@ const managedEvent = require('./fixtures/MyPayload.js')
 const EventFactory = require('../src/EventFactory.js');
 const Globals = require('../src/Globals.js');
 const managedRwgpsEvent = require('./fixtures/event.json').event;
-const organizers = [ { id: 302732, text: "Toby Ferguson"}];
+const organizers = [{ id: 302732, text: "Toby Ferguson" }];
 
 
 describe("Event Factory Tests", () => {
@@ -21,7 +21,7 @@ describe("Event Factory Tests", () => {
         Address: 'Address: Seascape County Park, Sumner Ave, Aptos, CA 95003'
     }
     const unmanagedRow = { ...managedRow, RideName: 'Tobys Ride' }
-   describe("Basic Construction", () => {
+    describe("Basic Construction", () => {
         describe("fromRow()", () => {
             it("should build from a row", () => {
                 const actual = EventFactory.newEvent(managedRow, organizers);
@@ -46,18 +46,49 @@ describe("Event Factory Tests", () => {
                 const expected = { ...managedEvent };
                 expected.desc = expected.desc.replace("Toby Ferguson", "To Be Determined")
                 expected.name = expected.name.replace("[1]", "[0]");
-                expected.organizer_tokens = [ Globals.RIDE_LEADER_TBD_ID+""]; 
-                
+                expected.organizer_tokens = [Globals.RIDE_LEADER_TBD_ID + ""];
+
                 const actual = EventFactory.newEvent(managedRow, [])
                 actual.should.deep.equal(expected);
             })
         })
         describe("fromRwgpsEvent()", () => {
-            
+
             it("should return the managedEvent", () => {
                 let actual = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
                 const expected = managedEvent;
-                actual.should.deep.equal(expected);  
+                actual.should.deep.equal(expected);
+            })
+            it("should return an event even if the description is missing", () => {
+                const testcase = managedRwgpsEvent;
+                delete testcase.desc;
+                let actual = EventFactory.fromRwgpsEvent(testcase);
+                const expected = managedEvent;
+                expected.desc = '';
+                actual.should.deep.equal(expected);
+            })
+            it("should return an event even if the routes are missing", () => {
+                const testcase = managedRwgpsEvent;
+                delete testcase.routes;
+                let actual = EventFactory.fromRwgpsEvent(testcase);
+                const expected = managedEvent;
+                expected.route_ids = [];
+                actual.should.deep.equal(expected);
+            })
+            it("should return an event even if the start_at date is missing", () => {
+                const testcase = managedRwgpsEvent;
+                delete testcase.starts_at;
+                let actual = EventFactory.fromRwgpsEvent(testcase);
+                const actual_start_date = actual.start_date;
+                const actual_start_time = actual.start_time;
+                delete actual.start_time;
+                delete actual.start_date;
+                const expected = managedEvent;
+                delete expected.start_date;
+                delete expected.start_time;
+                actual.should.deep.equal(expected);
+                actual_start_date.should.be.a("string");
+                actual_start_time.should.be.a("string");
             })
         })
     })
