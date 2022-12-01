@@ -45,8 +45,19 @@ class RWGPS {
    * @returns{object} the event object
    */
   get_event(event_url) {
-    let response = this.rwgpsService.get(event_url);
-    return JSON.parse(response.getContentText())["event"];
+    let response = this.rwgpsService.getAll([event_url]);
+    return JSON.parse(response[0].getContentText())["event"];
+  }
+
+  /**
+   * Get the events at the given URLs
+   * @param{string[]} event_urls
+   * @return{Event[]} events at the given urls
+   */
+  get_events(event_urls) {
+    const responses = this.rwgpsService.getAll(event_urls);
+    const events = responses.map(r => JSON.parse(r.getContentText())["event"]);
+    return events;
   }
   /**
    * Edit the scheduled event at the given url to be consistent with the given event object
@@ -586,6 +597,14 @@ function printTimings_(times, prefix) {
   const max = times.reduce((p, t) => p >= t ? p : t, 0);
   const min = times.reduce((p, t) => p <= t ? p : t, 10000);
   console.log(`${prefix} - Average: ${avg} min: ${min} max: ${max}, total: ${total}`);
+}
+
+//=========== Tests ===========
+function testGetEvents() {
+  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgps = new RWGPS(rwgpsService);
+  const events = rwgps.get_events([Globals.A_TEMPLATE, Globals.B_TEMPLATE]);
+  if (!(events.length == 2)) console.log("didn't get the expected number of events");
 }
 function testEditAll() {
   const NUMTESTS = 1;
