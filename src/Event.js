@@ -72,9 +72,15 @@ class Event {
     return this;
   }
 
+  /**
+   * Update the rider count, returning true iff the rider count has changed
+   * @param {Number} numRiders - number of riders
+   * @returns true iff the rider count has changed
+   */
   updateRiderCount(numRiders) {
+    const currentName = this.name;
     this.name = Event.updateCountInName(this.name, numRiders);
-    return this;
+    return currentName !== this.name
   }
 
   managedEvent() { 

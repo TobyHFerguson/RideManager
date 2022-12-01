@@ -56,16 +56,30 @@ describe("Event Tests", () => {
             uut.name = "foobar [12]";
             const expected = new Event();
             expected.name = "foobar [9]";
-            const actual = uut.updateRiderCount(9);
-            actual.should.deep.equal(expected);
+            const changed = uut.updateRiderCount(9);
+            uut.should.deep.equal(expected);
+            changed.should.be.true;
         })
         it("updates the managed name", () => {
             const uut = new Event();
             uut.name = "Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos";
             const expected = new Event();
             expected.name = "Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos";
-            const actual = uut.updateRiderCount(12);
-            actual.should.deep.equal(expected);
+            const changed = uut.updateRiderCount(12);
+            uut.should.deep.equal(expected);
+            changed.should.be.true;
+        })
+        it("should return false if the count hasn't changed (unmanaged)", () => {
+            const uut = new Event();
+            uut.name = "foobar [12]";
+            const changed = uut.updateRiderCount(12);
+            changed.should.be.false;
+        })
+        it("should return false if the count hasn't changed (managed)", () => {
+            const uut = new Event();
+            uut.name = "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos";
+            const changed = uut.updateRiderCount(11);
+            changed.should.be.false;
         })
     })
     describe("cancellation", () => {
