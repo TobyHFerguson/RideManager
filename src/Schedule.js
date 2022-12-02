@@ -6,6 +6,8 @@ const Schedule = function () {
     constructor() {
       this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
       this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0];
+      this.rideRows = new Set();
+      this.routeRows = new Set();
     }
     /**
      * Find and return all rows that are scheduled after the given day
@@ -14,7 +16,7 @@ const Schedule = function () {
      */
     getYoungerRows(date) {
       const ss = this.activeSheet;
-      const dateColumn = this.getColumn("Date") + 1; // +1 because we need to convert to spreadsheet indexing
+      const dateColumn = this.getColumnIndex("Date") + 1; // +1 because we need to convert to spreadsheet indexing
       // We start the range at row 2 to allow for the heading row (row 1)
       ss.getRange(2, 1, ss.getLastRow(), ss.getLastColumn()).sort(dateColumn);
       const range = ss.getRange(2, dateColumn, ss.getLastRow())
@@ -36,7 +38,7 @@ const Schedule = function () {
       return rows;
     }
 
-    getColumn(name) {
+    getColumnIndex(name) {
       let ix = this.columnNames.indexOf(name);
       if (ix !== -1) {
         return ix;
@@ -44,30 +46,59 @@ const Schedule = function () {
       throw new Error(`Column name: ${name} is not known`);
     }
 
-    getStartDate(values) { return values[this.getColumn(Globals.STARTDATECOLUMNNAME)]; };
-    getStartTime(values) { return values[this.getColumn(Globals.STARTTIMECOLUMNNAME)]; };
-    getGroup(values) { return values[this.getColumn(Globals.GROUPCOLUMNNAME)]; };
-    getRouteCell(values) { return values[this.getColumn(Globals.ROUTECOLUMNNAME)]; };
-    getRideLeader(values) { return values[this.getColumn(Globals.RIDELEADERCOLUMNNAME)]; };
-    getRideCell(values) { return values[this.getColumn(Globals.RIDECOLUMNNAME)]; }
-    getLocation(values) { return values[this.getColumn(Globals.LOCATIONCOLUMNNAME)]; };
-    getAddress(values) { return values[this.getColumn(Globals.ADDRESSCOLUMNNAME)]; };
+    getStartDate(values) { return values[this.getColumnIndex(Globals.STARTDATECOLUMNNAME)]; };
+    getStartTime(values) { return values[this.getColumnIndex(Globals.STARTTIMECOLUMNNAME)]; };
+    getGroup(values) { return values[this.getColumnIndex(Globals.GROUPCOLUMNNAME)]; };
+    getRouteCell(values) { return values[this.getColumnIndex(Globals.ROUTECOLUMNNAME)]; };
+    getRideLeader(values) { return values[this.getColumnIndex(Globals.RIDELEADERCOLUMNNAME)]; };
+    getRideCell(values) { return values[this.getColumnIndex(Globals.RIDECOLUMNNAME)]; }
+    getLocation(values) { return values[this.getColumnIndex(Globals.LOCATIONCOLUMNNAME)]; };
+    getAddress(values) { return values[this.getColumnIndex(Globals.ADDRESSCOLUMNNAME)]; };
 
     highlightCell(rowNum, colName, onoff) {
-      let cell = this.activeSheet.getRange(rowNum, this.getColumn(colName) + 1);
+      let cell = this.activeSheet.getRange(rowNum, this.getColumnIndex(colName) + 1);
       cell.setFontColor(onoff ? "red" : null);
     }
-    setRideLink(rowNum, name, url) {
-      let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
-      return rtv;
+    saveRideRow(row) {
+      this.rideRows.add(row);
     }
-    setRouteLink(rowNum, name, url) {
-      let rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build();
-      return rtv;
+    saveRouteRow(row) {
+      this.routeRows.add(row);
     }
 
+    /**
+     * Given a set of rows reduce it to those rows which have disjoint ranges
+     * @param {Set(Row)} rows 
+     */
+    getRowSet(rows) {
+      let rrs = Array.from(rows).reduce((p, row) => {
+        if (!p.ranges.has(row.range)) {
+          p.ranges.add(row.range);
+          p.rows.add(row);
+        }
+        return p
+      },
+        { ranges: new Set(), rows: new Set() }
+      );
+      return rrs.rows;
+    }
+    save() {
+      const self = this;
+      function saveColumn(colIdx, range, rtvs) {
+        const colRange = range.offset(0, colIdx, range.getNumRows(), 1);
+        const col_rtvs = rtvs.map(rtv => [rtv[colIdx]]);
+        colRange.setRichTextValues(col_rtvs);
+      }
+      this.getRowSet(this.rideRows).forEach(row => saveColumn(this.getColumnIndex(Globals.RIDECOLUMNNAME), row.range, row.rtvs));
+      this.getRowSet(this.routeRows).forEach(row => saveColumn(this.getColumnIndex(Globals.ROUTECOLUMNNAME), row.range, row.rtvs));
+      this.rideRows = new Set();
+      this.routeRows = new Set();
+    }
+
+    
+
     deleteRideLink(rowNum) {
-      this.activeSheet.getRange(rowNum, this.getColumn(Globals.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
+      this.activeSheet.getRange(rowNum, this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
     }
 
     convertRangeToRows(range) {
@@ -163,7 +194,7 @@ const Schedule = function () {
           SpreadsheetApp.getUi().alert(`Row ${row.rowNum}: ${e.message}`);
         }
       }
-      row.saveRoute();
+      
     }
 
     /**
@@ -213,38 +244,54 @@ const Schedule = function () {
       return this;
     }
 
+    createRTV(name, url) {
+      const rtv = SpreadsheetApp.newRichTextValue().setText(name).setLinkUrl(url).build()
+      return rtv;
+    }
+
     setRideLink(name, url) {
-      let rtv = this.schedule.setRideLink(this.rowNum, name, url);
-      this.richTextValues[this.schedule.getColumn(Globals.RIDECOLUMNNAME)] = rtv;
-      this.saveRide();
+      let rtv = this.createRTV(name, url);
+      this.richTextValues[this.schedule.getColumnIndex(Globals.RIDECOLUMNNAME)] = rtv;
+      this.schedule.saveRideRow(this);
     }
 
     deleteRideLink() {
       this.schedule.deleteRideLink(this.rowNum);
     }
     setRouteLink(name, url) {
-      let rtv = this.schedule.setRouteLink(this.rowNum, name, url);
-      this.richTextValues[this.schedule.getColumn(Globals.ROUTECOLUMNNAME)] = rtv;
+      let rtv = this.createRTV(name, url);
+      this.richTextValues[this.schedule.getColumnIndex(Globals.ROUTECOLUMNNAME)] = rtv;
+      this.schedule.saveRouteRow(this);
     }
-
-    saveRoute() {
-      this.saveColumn(Globals.ROUTECOLUMNNAME);
-    }
-
-    saveRide() {
-      this.saveColumn(Globals.RIDECOLUMNNAME);
-    }
-
-    saveColumn(columName) {
-      if (this.offset + 1 < this.values.length) return;
-
-      const colRange = this.range.offset(0, this.schedule.getColumn(columName), this.range.getNumRows(), 1);
-      const routes = this.rtvs.map(rtv => [rtv[this.schedule.getColumn(columName)]]);
-      colRange.setRichTextValues(routes);
-
-    }
-  }
+}
 
   return new Schedule();
 }()
+
+// ======== TESTS ============
+// getRowSet returns 2 when 3 rows are provided, two of which reference the same row. In the 
+// returned set the 2 distinct rows are returned. 
+function testGetRowSetWithThreeRows() {
+  const r1 = { f: 'boo' };
+  const r2 = { f: 'bark' };
+  const row1 = { range: r1 };
+  const row2 = { range: r2 };
+  const row3 = { range: r1 };
+  const actual = Schedule.getRowSet(new Set([row1, row2, row3]));
+  if (actual.size !== 2) console.log(`Expected 2 - Actual ${actual.size}`);
+  if (!actual.has(row1)) console.log(`Expected to get row1 back, but didn't`);
+  if (!actual.has(row2)) console.log(`Expected to get row2 back, but didn't`)
+}
+// getRowSet returns 1 when only one row is provided, and the returned set contains that row
+function testGetRowSetOnSingletonSet() {
+  const row = { range: { fargle: 'fargle'}}
+  const actual = Schedule.getRowSet(new Set([row]));
+  if (actual.size !== 1) console.log(`Expected 1 - Actual ${actual.size}`)
+  if (!actual.has(row)) console.log(`Expected to get the original row back, but didn't`)
+}
+// getRowSet returns 0 when no rows are provided
+function testGetRowSetOnEmptySet() {
+  const actual = Schedule.getRowSet(new Set());
+  if (actual.size !== 0) console.log(`Expected 0 - Actual ${actual.size}`)
+}
 

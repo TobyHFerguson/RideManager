@@ -12,7 +12,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
   function schedulable_(row) { return row.errors.length == 0; }
 
   function schedule_event_(rwgps, row) {
-   
+
 
 
     function get_template_(group) {
@@ -26,7 +26,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
     const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
     const new_event_url = rwgps.copy_template_(get_template_(row.Group));
     rwgps.edit_event(new_event_url, event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true );
+    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
     row.setRideLink(event.name, new_event_url);
     return new_event_url
   }
@@ -89,7 +89,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
     SpreadsheetApp.getUi().alert(message);
   }
 
-rows.forEach(row => Schedule.linkRouteURL(row));
+  rows.forEach(row => Schedule.linkRouteURL(row));
   errorFuns.push(rowCheck.alreadyScheduled);
   rows.forEach(row => evalRow_(row, rwgps));
   let message = create_message(rows);

@@ -12,39 +12,38 @@ class RWGPS {
   constructor(rwgpsService) {
     this.rwgpsService = rwgpsService;
   }
-  /**
-   * Return the count of participants that have RSVP'd to the event
-   * @param {string} event_url - url of the event
-   * @return {Number} number of participants
-   */
-  getRSVPCount(event_url) {
-    if (!event_url) {
-      return 0;
-    }
-    try {
-      const url = event_url + "/participants.json";
-      return JSON.parse(this.rwgpsService.get(url).getContentText()).filter(p => p.rsvp_status === "Yes").length
-    } catch (e) {
-      console.log(`event_url ${event_url} led to this error: ${e}`);
-      return 0;
-    }
-  }
 
   /**
    * Return the counts for each of the given event urls.
    * A count of 0 is given for any url that throws an error, and a log message is recorded.
    * @param {string[]} event_urls 
+   * @param{string[]} rideLeaders - array of array of ride leader names, corresponding to the event_urls
    * @returns{Number[]} the counts, in the same order as the corresponding event url.
    */
-  getRSVPCounts(event_urls) {
+  getRSVPCounts(event_urls, rideLeaders) {
+    if (!event_urls || event_urls.length === 0) {
+      return [0]
+    }
+    // rideLeaders is an array where each ride leader is a string of 'first last'. We need to remove the space
+
     const urls = event_urls.map(url => url + "/participants.json");
     const responses = this.rwgpsService.getAll(urls);
     const counts = responses.map((r, i) => {
       const body = r.getContentText();
+      const rls = rideLeaders && rideLeaders[i] ? rideLeaders[i].map(rl => rl.replaceAll(' ', '').toLowerCase()) : [];
       try {
-        return JSON.parse(body).filter(p => p.rsvp_status === "Yes").length
+        const participants = JSON.parse(body);
+        const riders = participants.filter(p => {
+          // Some names are returned with null for both first and last - we need to cope with that!
+          let name = `${p.first_name}${p.last_name}`;
+          name = name ? name.toLowerCase().replaceAll(' ', '') : name;
+          const result = p.rsvp_status === "Yes" && (name ? !(rls.includes(name)) : true);
+          return result;
+        })
+        const total = riders.length + rls.length
+        return total;
       } catch (e) {
-        console.log(`event_url ${urls[i]} had this body: ${body} which led to this error: ${e}`);
+        console.log(`RWGPS.getRSPVCounts() - Error: event_url ${urls[i]} had this body: ${body} which led to this error: ${e}`);
         return 0;
       }
     });
@@ -72,13 +71,23 @@ class RWGPS {
   }
 
   /**
-   * Get the events at the given URLs
+   * Get the events at the given URLs. 
    * @param{string[]} event_urls
    * @return{Event[]} events at the given urls
+   * 
+   * For each url that results in an error the event will be undefined.
    */
   get_events(event_urls) {
     const responses = this.rwgpsService.getAll(event_urls);
-    const events = responses.map(r => JSON.parse(r.getContentText())["event"]);
+    const events = responses.map((r, i) => {
+      const text = r.getContentText();
+      const body = JSON.parse(r.getContentText());
+      if (r.getResponseCode() !== 200) {
+        console.log(`RWGPS.get_events: Error (${r.getResponseCode()}) getting ${event_urls[i]}: ${text}`);
+      }
+      const event = body["event"];
+      return event;
+    });
     return events;
   }
   /**
@@ -108,9 +117,9 @@ class RWGPS {
    * @param {EventEditObject[]} eventEditObjects 
    * @returns the resulting events
    */
-   edit_events(eventEditObjects) {
+  edit_events(eventEditObjects) {
     // These next two lines are to work around an RWGPS bug
-    const eeos = eventEditObjects.map(({event, url}) => {return { event: {...event, all_day: "1"}, url}});
+    const eeos = eventEditObjects.map(({ event, url }) => { return { event: { ...event, all_day: "1" }, url } });
     this.edit_events_(eeos);
 
     const events = this.edit_events_(eventEditObjects);
@@ -691,7 +700,7 @@ function testEditEvents() {
   }
 
   function editSingle(eventEditObjects) {
-    eventEditObjects.forEach(({event, url}) =>
+    eventEditObjects.forEach(({ event, url }) =>
       rwgps.edit_event(url, event));
   }
 
@@ -707,12 +716,12 @@ function testEditEvents() {
   }
   let urls = createTestEvents();
   let eventEditObjects = createEventEditObjects(urls);
-  eventEditObjects.forEach(({event, url}) => event.name = "EDIT SINGLE TEST");
+  eventEditObjects.forEach(({ event, url }) => event.name = "EDIT SINGLE TEST");
   test(eventEditObjects, editSingle);
   // rwgps.batch_delete_events(urls);
   urls = createTestEvents();
   eventEditObjects = createEventEditObjects(urls);
-  eventEditObjects.forEach(({event, url}) => event.name = "EDIT ALL TEST");
+  eventEditObjects.forEach(({ event, url }) => event.name = "EDIT ALL TEST");
   test(eventEditObjects, editAll);
   // rwgps.batch_delete_events(urls);
 }
