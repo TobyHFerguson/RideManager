@@ -19,21 +19,20 @@ const Schedule = function () {
       const dateColumn = this.getColumnIndex("Date") + 1; // +1 because we need to convert to spreadsheet indexing
       // We start the range at row 2 to allow for the heading row (row 1)
       ss.getRange(2, 1, ss.getLastRow(), ss.getLastColumn()).sort(dateColumn);
-      const range = ss.getRange(2, dateColumn, ss.getLastRow())
-
-      if (range.getFilter()) range.getFilter().remove();
-
-      const dateFilter = range.createFilter();
-      const criteria = SpreadsheetApp.newFilterCriteria()
-        .whenCellNotEmpty()
-        .whenDateAfter(date)
-        .build();
-      dateFilter.setColumnFilterCriteria(dateColumn, criteria);
-
-      for (var i = 2; i <= ss.getLastRow() && ss.isRowHiddenByFilter(i); i++) {
+      var spreadsheet = SpreadsheetApp.getActive();
+      spreadsheet.getDataRange().activate();
+      try {
+        spreadsheet.getDataRange().createFilter();
+        spreadsheet.getActiveSheet().getRange(1, dateColumn, spreadsheet.getActiveSheet().getLastRow()).activate();
+        var criteria = SpreadsheetApp.newFilterCriteria()
+          .whenDateAfter(SpreadsheetApp.RelativeDate.TODAY)
+          .build();
+        spreadsheet.getActiveSheet().getFilter().setColumnFilterCriteria(dateColumn, criteria);
+        for (var i = ss.getLastRow(); i >= 2 && !ss.isRowHiddenByFilter(i); i--) {
+        }
+      } finally {
+        spreadsheet.getActiveSheet().getFilter().remove();
       }
-      dateFilter.remove();
-
       const rows = this.convertRangeToRows(ss.getRange(i, 1, ss.getLastRow() - i + 1, ss.getLastColumn()));
       return rows;
     }
@@ -95,7 +94,7 @@ const Schedule = function () {
       this.routeRows = new Set();
     }
 
-    
+
 
     deleteRideLink(rowNum) {
       this.activeSheet.getRange(rowNum, this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
@@ -194,7 +193,7 @@ const Schedule = function () {
           SpreadsheetApp.getUi().alert(`Row ${row.rowNum}: ${e.message}`);
         }
       }
-      
+
     }
 
     /**
@@ -263,7 +262,7 @@ const Schedule = function () {
       this.richTextValues[this.schedule.getColumnIndex(Globals.ROUTECOLUMNNAME)] = rtv;
       this.schedule.saveRouteRow(this);
     }
-}
+  }
 
   return new Schedule();
 }()
@@ -284,7 +283,7 @@ function testGetRowSetWithThreeRows() {
 }
 // getRowSet returns 1 when only one row is provided, and the returned set contains that row
 function testGetRowSetOnSingletonSet() {
-  const row = { range: { fargle: 'fargle'}}
+  const row = { range: { fargle: 'fargle' } }
   const actual = Schedule.getRowSet(new Set([row]));
   if (actual.size !== 1) console.log(`Expected 1 - Actual ${actual.size}`)
   if (!actual.has(row)) console.log(`Expected to get the original row back, but didn't`)
