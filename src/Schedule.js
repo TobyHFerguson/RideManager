@@ -25,7 +25,7 @@ const Schedule = function () {
         spreadsheet.getDataRange().createFilter();
         spreadsheet.getActiveSheet().getRange(1, dateColumn, spreadsheet.getActiveSheet().getLastRow()).activate();
         var criteria = SpreadsheetApp.newFilterCriteria()
-          .whenDateAfter(SpreadsheetApp.RelativeDate.TODAY)
+          .whenDateAfter(SpreadsheetApp.RelativeDate.YESTERDAY)
           .build();
         spreadsheet.getActiveSheet().getFilter().setColumnFilterCriteria(dateColumn, criteria);
         for (var i = ss.getLastRow(); i >= 2 && !ss.isRowHiddenByFilter(i); i--) {
