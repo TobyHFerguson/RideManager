@@ -7,15 +7,15 @@ function updateRiderCount() {
   do_action(form);
 }
 
-function duration(msg, start, end) {
-  return `${msg} duration: ${(end - start) / 1000}S`;
+function duration(msg, start, end = new Date()) {
+  console.log(`${msg} duration: ${(end - start) / 1000}S`);
 }
 
 function updateRiderCountWithCreds(rows, rwgps) {
   let start = new Date().getTime();
   rows = Schedule.getYoungerRows(dates.add(new Date(), - 1));
   let end = new Date().getTime();
-  console.log(duration("getYoungerRows", start, end));
+  duration("getYoungerRows", start, end);
 
   start = new Date().getTime();
   const scheduledRows = rows.filter(row => rowCheck.alreadyScheduled(row))
@@ -35,6 +35,6 @@ function updateRiderCountWithCreds(rows, rwgps) {
   Schedule.save();
   const updatedRows = edits.map(({row, event}) => row.rowNum);
   end = new Date().getTime();
-  console.log(duration(`row processing (${scheduledRows.length} rows, ${updatedRows.length} updated)`, start, end));
+  duration(`row processing (${scheduledRows.length} rows, ${updatedRows.length} updated)`, start, end);
   if (updatedRows.length) console.log(`row #s updated: ${updatedRows.join(', ')}`);
 }
