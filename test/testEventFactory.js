@@ -34,9 +34,19 @@ describe("Event Factory Tests", () => {
                 let e2 = EventFactory.newEvent(managedRow, organizers);
                 e1.should.not.equal(e2);
             })
-            it("should use the given ride name", () => {
+            it("should use the given ride name for unmanaged events", () => {
                 const expected = { ...managedEvent, name: 'Tobys Ride [1]' }
                 const actual = EventFactory.newEvent(unmanagedRow, organizers);
+                actual.should.deep.equal(expected);
+            })
+            it("should create a new ride name for managed events", () => {
+                const expected = { ...managedEvent, 
+                    name: "Thu A (6/1 10:00) [1] SCP - Seascape/Corralitos",
+                    "start_date": "2023-06-01T18:00:00.000Z",
+                    "start_time": "2023-06-01T18:00:00.000Z"
+                  }
+                const mr = { ...managedRow, StartDate: "2023-06-01T08:00:00.00Z",}
+                const actual = EventFactory.newEvent(mr, organizers);
                 actual.should.deep.equal(expected);
             })
             it("should throw an error if row is missing", () => {

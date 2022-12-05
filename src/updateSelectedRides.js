@@ -85,38 +85,12 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     SpreadsheetApp.getUi().alert(message);
   }
 
-  /**
-   * Compare the given row with the corresponding RWGPS event at the given event's URL. 
-   * Update the given row's errors array with any issues
-   * @param {object} row row to be compared
-   */
-  function compare_(row) {
-    let url = row.RideURL;
-    if (url === null) {
-      row.errors.push("No ride has been scheduled");
-      return;
-    }
-    const rwgpsEvent = rwgps.get_event(url);
-    const old_event = EventFactory.fromRwgpsEvent(rwgpsEvent);
-    const new_event = EventFactory.newEvent(row);
-    const osd = old_event.start_date;
-    const nsd = new_event.start_date;
-    if (dates.compare(osd, nsd) !== 0 ) {
-      row.errors.push(`Start date has changed (old: ${osd}; new: ${nsd} ).`);
-    }
-    if (old_event.managedEvent()) {
-      let old_event_group = old_event.name.replace("CANCELLED: ", "").split(' ')[1];
-      if (row.Group !== old_event_group) {
-        row.errors.push(`Group has changed (old: ${old_event_group}; new: ${row.Group} ).`);
-      }
-    }
-  }
+  
 
 
   linkRouteURLs();
   rows.map(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide]))
-    .filter(row => row.errors.length === 0)
-    .map(row => compare_(row));
+    .filter(row => row.errors.length === 0);
   let message = create_message(rows);
   sidebar.create(rows.filter(row => !_updateable(row) || row.warnings.length > 0));
   let updateable_rows = rows.filter(row => _updateable(row));

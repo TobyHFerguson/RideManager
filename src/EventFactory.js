@@ -26,15 +26,16 @@ All participants are assumed to have read and agreed to the clubs ride policy: h
 Note: In a browser use the "Go to route" link below to open up the route.`;
     }
 
-    
+
 
     function makeRideName(row, numRiders) {
-        return row.RideName ?
-            !(Event.managedEventName(row.RideName)) ?
-                Event.makeUnmanagedRideName(row.RideName, numRiders) :
-                row.RideName :
-            Event.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName);
+        const name = (!row.RideName || Event.managedEventName(row.RideName))
+            ? Event.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName)
+            : Event.makeUnmanagedRideName(row.RideName, numRiders);
+        return name;
     }
+
+
     return {
         /**
          * @param {Row} row row object to make event from
@@ -43,7 +44,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
          */
         newEvent: function (row, organizers) {
             if (!organizers || !organizers.length) {
-                organizers = [{id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME}]
+                organizers = [{ id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME }]
             }
             if (!row) throw new Error("no row object given");
             const event = new Event();
@@ -64,20 +65,20 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime);
             return event;
         },
-        fromRwgpsEvent: function(rwgpsEvent) {
+        fromRwgpsEvent: function (rwgpsEvent) {
             const event = new Event();
             event.all_day = rwgpsEvent.all_day ? "1" : "0";
             event.desc = rwgpsEvent.desc ? rwgpsEvent.desc.replaceAll('\r', '') : '';
             event.location = rwgpsEvent.location;
             event.name = rwgpsEvent.name;
             event.organizer_tokens = rwgpsEvent.organizer_ids;
-            event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map(r => r.id+"") : [];
-            const sd = (rwgpsEvent.starts_at ? new Date( rwgpsEvent.starts_at) : new Date()).toISOString();
+            event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map(r => r.id + "") : [];
+            const sd = (rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date()).toISOString();
             event.start_date = sd;
             event.start_time = sd;
             event.visibility = rwgpsEvent.visibility;
             return event;
-        }   
+        }
     }
 }()
 
