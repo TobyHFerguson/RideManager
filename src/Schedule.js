@@ -164,19 +164,11 @@ const Schedule = function () {
         }
         let url = row.RouteURL;
         const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
-        switch (response.getResponseCode()) {
-          case 403:
-            throw new Error(`This route: ${url} is not publicly accessible`);
-          case 404:
-            throw new Error(`This route: ${url} cannot be found on the server`);
-          case 200:
-            break;
-          default:
-            throw new Error(`Uknown error retrieving data for ${url}`);
-        }
         const json = JSON.parse(response.getContentText());
         return json;
       }
+
+      
       let url = row.RouteURL;
       let text = row.RouteName;
       if (!url) {
