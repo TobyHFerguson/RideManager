@@ -73,16 +73,11 @@ function reinstateSelectedRides() {
       inform_of_errors(message);
     } else {
       if (confirm_reinstate(message)) {
-        reinstateable_rows.forEach(row => reinstate(row, rwgps));
+        RideManager.reinstateRows(rows, rwgps);
       }
     }
 
-    function reinstate(row, rwgps) {
-      const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
-      event.reinstate();
-      row.setRideLink(event.name, row.RideURL);
-      rwgps.edit_event(row.RideURL, event)
-    }
+    
   }
   
   

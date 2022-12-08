@@ -13,19 +13,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
   function _updateable(row) { return row.errors.length === 0; }
 
 
-  function _update_event(row) {
-    let event
-    if (!Event.managedEventName(row.RideName)) {
-      event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
-    } else {
-      event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
-      rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
-    }
-    event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]));
-    event.reinstate();
-    row.setRideLink(event.name, row.RideURL);
-    rwgps.edit_event(row.RideURL, event);
-  }
+  
 
   function create_message(rows) {
     function create_error_message(rows) {
@@ -98,7 +86,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
     inform_of_errors(message);
   } else {
     if (confirm_update(message)) {
-      updateable_rows.forEach(row => _update_event(row));
+      RideManager.updateRows(updateable_rows, rwgps);
     }
   }
 

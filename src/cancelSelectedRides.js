@@ -73,16 +73,11 @@ function cancelSelectedRides() {
       inform_of_errors(message);
     } else {
       if (confirm_cancel(message)) {
-        canceleable_rows.forEach(row => cancel(row, rwgps));
+        RideManager.cancelRows(rows, rwgps);
       }
     }
 
-    function cancel(row, rwgps) {
-      const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
-      event.cancel();
-      row.setRideLink(event.name, row.RideURL);
-      rwgps.edit_event(row.RideURL, event)
-    }
+    
   }
   
   

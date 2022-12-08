@@ -11,25 +11,7 @@ function scheduleSelectedRides() {
 function scheduleSelectedRidesWithCredentials(rows, rwgps) {
   function schedulable_(row) { return row.errors.length == 0; }
 
-  function schedule_event_(rwgps, row) {
 
-
-
-    function get_template_(group) {
-      switch (group) {
-        case 'A': return Globals.A_TEMPLATE;
-        case 'B': return Globals.B_TEMPLATE;
-        case 'C': return Globals.C_TEMPLATE;
-        default: throw new Error(`Unknown group: ${group}`);
-      }
-    }
-    const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
-    const new_event_url = rwgps.copy_template_(get_template_(row.Group));
-    rwgps.edit_event(new_event_url, event);
-    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
-    row.setRideLink(event.name, new_event_url);
-    return new_event_url
-  }
 
   function create_message(rows) {
     function create_error_message(rows) {
@@ -99,8 +81,7 @@ function scheduleSelectedRidesWithCredentials(rows, rwgps) {
     inform_of_errors(message);
   } else {
     if (confirm_schedule(message)) {
-      let scheduled_event_urls = schedulable_rows.map(row => schedule_event_(rwgps, row));
-      rwgps.unTagEvents(scheduled_event_urls, ["template"]);
+      RideManager.scheduleRows(rows, rwgps);
     }
   }
 

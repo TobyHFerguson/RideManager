@@ -71,14 +71,7 @@ function unscheduleSelectedRidesWithCreds(rows, rwgps) {
     inform_of_errors(message);
   } else {
     if (confirm_unschedule(message)) {
-      try {
-        rwgps.batch_delete_events(unschedulable_rows.map(row => { let url = row.RideURL; row.deleteRideLink(); return url; }));
-      } catch (err) {
-        // Ignore the case where the event has already been deleted in rwgps land since we want it to be deleted anyway!
-        if (err.message.indexOf('Request failed for https://ridewithgps.com returned code 404. Truncated server response: {"success":0,"message":"Record not found"} (use muteHttpExceptions option to examine full response)') === -1) {
-          throw err;
-        }
-      }
+      RideManager.unscheduleRows(unschedulable_rows, rwgps);
     }
   }
 }

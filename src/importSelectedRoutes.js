@@ -81,9 +81,6 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
     if (e) row.errors.push(e);
   }
 
-  function makeExpiryDate(d) {
-    return dates.MMDDYYYY(d ? dates.add(d, Globals.EXPIRY_DELAY) : dates.add(new Date(), Globals.EXPIRY_DELAY))
-  }
 
   rows.forEach(row => checkRow(row));
   let message = create_message(rows);
@@ -93,7 +90,7 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
     inform_of_errors(message);
   } else {
     if (confirm_update(message)) {
-      importable_rows.forEach(row => { const url = rwgps.importRoute({ url: row.RouteURL, expiry: makeExpiryDate(row.StartDate) }); row.setRouteLink(url, url) });
+      RideManager.importRows(importable_rows, rwgps);
     }
   }
 
