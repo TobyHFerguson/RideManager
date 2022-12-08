@@ -19,7 +19,7 @@ const RideManager = {
             const url = rwgps.importRoute(route);
             row.setRouteLink(url, url);
             //TODO remove dependency on Schedule
-            Schedule.linkRouteUrl(row);
+            row.linkRouteUrl();
         }
 
         rows.forEach(row => importRow(row, rwgps));

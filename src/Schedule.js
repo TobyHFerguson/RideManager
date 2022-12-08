@@ -151,42 +151,7 @@ const Schedule = function () {
       return rows;
     }
 
-    /**
-     * Resolve and link the name and the url in the Route column
-     * @param {Row} row - row whose route url is to be resolved and linked
-     * @returns {Row} the row
-     */
-    linkRouteURL(row) {
-      function getRouteJson(row) {
-        const error = rowCheck.badRoute_(row);
-        if (error) {
-          throw new Error(error);
-        }
-        let url = row.RouteURL;
-        const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
-        const json = JSON.parse(response.getContentText());
-        return json;
-      }
-
-      
-      let url = row.RouteURL;
-      let text = row.RouteName;
-      if (!url) {
-        row.setRouteLink(text, text);
-        url = text;
-      }
-      if (url && url === text) {
-        try {
-          let route = getRouteJson(row);
-          let name = route.name;
-          Logger.log(`Row ${row.rowNum}: Linking ${name} to ${url}`);
-          row.setRouteLink(name, url);
-        } catch (e) {
-          SpreadsheetApp.getUi().alert(`Row ${row.rowNum}: ${e.message}`);
-        }
-      }
-
-    }
+   
 
     /**
      * Get the last row in the spreadsheet
@@ -254,6 +219,50 @@ const Schedule = function () {
       this.richTextValues[this.schedule.getColumnIndex(Globals.ROUTECOLUMNNAME)] = rtv;
       this.schedule.saveRouteRow(this);
     }
+     /**
+     * Resolve and link the name and the url in the Route column
+     * @param {Row} row - row whose route url is to be resolved and linked
+     * @returns {Row} the row
+     */
+      linkRouteURL() {
+        const row = this;
+        function getRouteJson() {
+          const error = rowCheck.badRoute_(row);
+          if (error) {
+            throw new Error(error);
+          }
+          let url = row.RouteURL;
+          const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
+          switch (response.getResponseCode()) {
+            case 403:
+              throw new Error(`This route: ${url} is not publicly accessible`);
+            case 404:
+              throw new Error(`This route: ${url} cannot be found on the server`);
+            case 200:
+              break;
+            default:
+              throw new Error(`Uknown error retrieving data for ${url}`);
+          }
+          const json = JSON.parse(response.getContentText());
+          return json;
+        }
+        let url = this.RouteURL;
+        let text = this.RouteName;
+        if (!url) {
+          this.setRouteLink(text, text);
+          url = text;
+        }
+        if (url && url === text) {
+          try {
+            let route = getRouteJson();
+            let name = route.name;
+            Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
+            this.setRouteLink(name, url);
+          } catch (e) {
+            SpreadsheetApp.getUi().alert(`Row ${this.rowNum}: ${e.message}`);
+          }
+        }
+      }
   }
 
   return new Schedule();
