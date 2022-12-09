@@ -180,7 +180,7 @@ const errorFuns = [rowCheck.unmanagedRide, rowCheck.noStartDate_, rowCheck.noSta
 const warningFuns = [rowCheck.noRideLeader_, rowCheck.cancelled_, rowCheck.noLocation_, rowCheck.noAddress_, rowCheck._inappropiateGroup]
 
 function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
-    function evalRow_(row, rwgps,) {
+    function evalRow_(row, rwgps, efs, wfs) {
         row.errors = [];
         efs.map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
         row.warnings = []
