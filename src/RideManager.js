@@ -14,12 +14,12 @@ const RideManager = {
             const route = {
                 url: row.RouteURL,
                 //TODO use dates as native objects, not strings
-                expiry: dates.MMDDYYYY(dates.add(d ? d : new Date(), Globals.EXPIRY_DELAY))
+                expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), Globals.EXPIRY_DELAY))
             };
             const url = rwgps.importRoute(route);
             row.setRouteLink(url, url);
             //TODO remove dependency on Schedule
-            row.linkRouteUrl();
+            row.linkRouteURL();
         }
 
         rows.forEach(row => importRow(row, rwgps));
@@ -68,6 +68,7 @@ const RideManager = {
         // This works on all rows at once as a performance measure. Its more complicated,
         // but helps keep the execution time down.
         start = new Date().getTime();
+        rows.forEach(row => row.linkRouteURL());
         const scheduledRows = rows.filter(row => rowCheck.alreadyScheduled(row))
         const scheduledRowURLs = scheduledRows.map(row => row.RideURL);
         const scheduledRowLeaders = scheduledRows.map(row => row.RideLeaders)

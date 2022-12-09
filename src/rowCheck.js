@@ -1,14 +1,14 @@
 if (typeof require !== 'undefined') {
     Globals = require('./Globals.js');
-  }
+}
 
 const rowCheck = {
-    unmanagedRide: function(row) {
+    unmanagedRide: function (row) {
         if (!Event.managedEventName(row.RideName)) {
             return "Ride is unmanaged";
         }
     },
-    unscheduled: function(row) {
+    unscheduled: function (row) {
         if (!row.RideURL) {
             return "Ride has not been scheduled";
         }
@@ -39,14 +39,16 @@ const rowCheck = {
                 return `Unknown group: ${row.Group}`;
         }
     },
-    routeInaccessibleOrOwnedByClub: function(row) {
+    routeInaccessibleOrOwnedByClub: function (row) {
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
-        let route = JSON.parse(response.getContentText());
+
         switch (response.getResponseCode()) {
-            case 200: if (route.user_id === Globals.SCCCC_USER_ID) {
-                return 'Route is owned by SCCCC';
-            }
-            break;
+            case 200:
+                let route = JSON.parse(response.getContentText());
+                if (route.user_id === Globals.SCCCC_USER_ID) {
+                    return 'Route is owned by SCCCC';
+                }
+                break;
             case 403: return 'Route URL does not have public access';
             case 404: return `This route cannot be found on the server`;
             default: return "Unknown issue with Route URL";
@@ -63,9 +65,9 @@ const rowCheck = {
         }
         url = url[1];
         const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
-        let route = JSON.parse(response.getContentText());
         switch (response.getResponseCode()) {
             case 200:
+                let route = JSON.parse(response.getContentText());
                 if (route.user_id !== Globals.SCCCC_USER_ID) {
                     return 'Route is not owned by SCCCC';
                 }
@@ -177,10 +179,14 @@ const errorFuns = [rowCheck.unmanagedRide, rowCheck.noStartDate_, rowCheck.noSta
 
 const warningFuns = [rowCheck.noRideLeader_, rowCheck.cancelled_, rowCheck.noLocation_, rowCheck.noAddress_, rowCheck._inappropiateGroup]
 
-function evalRow_(row, rwgps, efs = errorFuns, wfs = warningFuns) {
-    row.errors = [];
-    efs.map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
-    row.warnings = []
-    wfs.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
-    return row;
+function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
+    function evalRow_(row, rwgps,) {
+        row.errors = [];
+        efs.map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
+        row.warnings = []
+        wfs.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
+        return row;
+    }
+
+    return rows.map(row => evalRow_(row, rwgps, efs, wfs));
 }

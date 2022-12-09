@@ -70,21 +70,10 @@ function importSelectedRoutesWithCredentials(rows, rwgps) {
     message += "No selected routes are importable; they need to have the errors fixed.";
     SpreadsheetApp.getUi().alert(message);
   }
-  function checkRow(row) {
-    if (!row.warnings) row.warnings = [];
-    if (!row.errors) row.errors = []
-    if (!rowCheck.noGroup_(row)) {
-      const w = rowCheck._inappropiateGroup(row);
-      if (w) row.warnings.push(w);
-    }
-    const e = rowCheck.routeInaccessibleOrOwnedByClub(row);
-    if (e) row.errors.push(e);
-  }
 
-
-  rows.forEach(row => checkRow(row));
+  evalRowS(row, rwgps, [rowCheck.routeInaccessibleOrOwnedByClub, rowCheck.noGroup_], []);
   let message = create_message(rows);
-  sidebar.create(rows.filter(row => !importable(row) || row.warnings.length > 0));
+  sidebar.create(rows);
   let importable_rows = rows.filter(row => importable(row));
   if (importable_rows.length === 0) {
     inform_of_errors(message);

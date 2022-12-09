@@ -63,10 +63,11 @@ function unscheduleSelectedRidesWithCreds(rows, rwgps) {
     message += "There are no rides that can be unscheduled!";
     SpreadsheetApp.getUi().alert(message);
   }
-  rows.forEach(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide], []));
+  
+  evalRows(rows, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide], []);
   let message = create_message(rows);
   let unschedulable_rows = rows.filter(row => !row.errors.length);
-  sidebar.create(rows.filter(row => row.errors.length || row.warnings.length));
+  sidebar.create(rows);
   if (unschedulable_rows.length === 0) {
     inform_of_errors(message);
   } else {

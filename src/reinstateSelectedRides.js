@@ -66,7 +66,7 @@ function reinstateSelectedRides() {
       message += "There are no rides that can be reinstateed!";
       SpreadsheetApp.getUi().alert(message);
     }
-    rows.forEach(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.notCancelled], []));
+    evalRows(rows, rwgps, [rowCheck.unscheduled, rowCheck.notCancelled], []);
     let message = create_message(rows);
     let reinstateable_rows = rows.filter(row => !row.errors.length);
     if (reinstateable_rows.length === 0) {

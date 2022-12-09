@@ -45,7 +45,7 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
      */
     function create_update_message(rows) {
       let message = "";
-      let updateable_rows = rows.filter((row) => _updateable(row) && row.warnings.length === 0);
+      let updateable_rows = rows.filter((row) => row.errors.length === 0 && row.warnings.length === 0);
       if (updateable_rows.length > 0) {
         message += "These rides had neither errors nor warnings and can be updated:\n"
         message += updateable_rows.map(row => `Row ${row.rowNum}`).join("\n");
@@ -76,11 +76,10 @@ function updateSelectedRidesWithCredentials(rows, rwgps) {
   
 
 
-  linkRouteURLs();
-  rows.map(row => evalRow_(row, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide]))
-    .filter(row => row.errors.length === 0);
+  evalrows(rows, rwgps, [rowCheck.unscheduled, rowCheck.unmanagedRide]);
   let message = create_message(rows);
-  sidebar.create(rows.filter(row => !_updateable(row) || row.warnings.length > 0));
+  sidebar.create(rows);
+
   let updateable_rows = rows.filter(row => _updateable(row));
   if (updateable_rows.length === 0) {
     inform_of_errors(message);

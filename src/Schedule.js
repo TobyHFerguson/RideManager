@@ -225,6 +225,9 @@ const Schedule = function () {
      * @returns {Row} the row
      */
       linkRouteURL() {
+        // Skip the header column
+        if (this.rowNum === 1) return;
+
         const row = this;
         function getRouteJson() {
           const error = rowCheck.badRoute_(row);
