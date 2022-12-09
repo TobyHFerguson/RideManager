@@ -40,7 +40,9 @@ const rowCheck = {
         }
     },
     routeInaccessibleOrOwnedByClub: function (row) {
-        const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
+        const url = row.RouteURL ? row.RouteURL : row.RouteName;
+
+        const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
 
         switch (response.getResponseCode()) {
             case 200:

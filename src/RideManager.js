@@ -12,7 +12,7 @@ const RideManager = {
     importRows: function (rows, rwgps) {
         function importRow(row, rwgps) {
             const route = {
-                url: row.RouteURL,
+                url: row.RouteURL ? row.RouteURL : row.RouteName,
                 //TODO use dates as native objects, not strings
                 expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), Globals.EXPIRY_DELAY))
             };
