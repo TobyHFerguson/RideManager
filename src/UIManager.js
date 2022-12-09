@@ -18,7 +18,7 @@ const UIManager = {
                 let message = "";
                 let error_rows = rows.filter(row => row.errors.length > 0);
                 if (error_rows.length > 0) {
-                    message += "These rides had errors and will not be scheduled:\n";
+                    message += "These rides had errors and will not be processed:\n";
                     let errors = error_rows.flatMap(row => row.errors.map(error => `Row ${row.rowNum}: ${error}`));
                     message += errors.join("\n");
                     message += "\n\n";
@@ -30,7 +30,7 @@ const UIManager = {
                 let message = "";
                 let warning_rows = rows.filter((row) => row.errors.length === 0 && row.warnings.length > 0);
                 if (warning_rows.length > 0) {
-                    message += "These rides had warnings but can be scheduled:\n"
+                    message += "These rides had warnings but can be processed:\n"
                     let warnings = warning_rows.flatMap(row => row.warnings.map(warning => `Row ${row.rowNum}: ${warning}`));
                     message += warnings.join("\n");
                     message += "\n\n";
@@ -45,7 +45,7 @@ const UIManager = {
                 let message = "";
                 let clean_rows = rows.filter((row) => row.errors.length === 0 && row.warnings.length === 0);
                 if (clean_rows.length > 0) {
-                    message += "These rides had neither errors nor warnings and can be scheduled:\n"
+                    message += "These rides had neither errors nor warnings and can be processed:\n"
                     message += clean_rows.map(row => `Row ${row.rowNum}`).join("\n");
                     message += "\n\n";
                 }
@@ -60,14 +60,14 @@ const UIManager = {
         }
 
         function confirm_schedule(message) {
-            message += `Do you want to continue to schedule all schedulable rides?`;
+            message += `Do you want to continue to process all processable rides?`;
             let ui = SpreadsheetApp.getUi();
             let result = ui.alert(message, ui.ButtonSet.YES_NO);
             return result == ui.Button.YES
         }
 
         function inform_of_errors(message) {
-            message += "All selected rides are unschedulable and need to have the errors fixed.";
+            message += "All selected rides are unprocessable and need to have their errors fixed.";
             SpreadsheetApp.getUi().alert(message);
         }
     }

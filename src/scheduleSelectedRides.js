@@ -9,12 +9,6 @@ function scheduleSelectedRides() {
 }
 
 function scheduleSelectedRidesWithCredentials(rows, rwgps) {
-  
-
-
-
- 
-
   errorFuns.push(rowCheck.alreadyScheduled);
   UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.scheduleRows, true);
 
