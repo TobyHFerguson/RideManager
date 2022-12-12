@@ -10,7 +10,7 @@ function importSelectedRoutes() {
 
 
 function importSelectedRoutesWithCredentials(rows, rwgps) {
-  UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub, rowCheck.noGroup_], [], rwgps, RideManager.importRows);
+  UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows);
 }
 
 

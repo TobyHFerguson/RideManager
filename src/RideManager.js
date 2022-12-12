@@ -69,7 +69,7 @@ const RideManager = {
         // but helps keep the execution time down.
         start = new Date().getTime();
         rows.forEach(row => row.linkRouteURL());
-        const scheduledRows = rows.filter(row => rowCheck.alreadyScheduled(row))
+        const scheduledRows = rows.filter(row => rowCheck.scheduled(row))
         const scheduledRowURLs = scheduledRows.map(row => row.RideURL);
         const scheduledRowLeaders = scheduledRows.map(row => row.RideLeaders)
         const rwgpsEvents = rwgps.get_events(scheduledRowURLs);

@@ -7,7 +7,7 @@ function reinstateSelectedRides() {
 
 
 function reinstateSelectedRidesWithCreds(rows, rwgps) {
-  UIManager.processRows(rows, [rowCheck.unscheduled, rowCheck.notCancelled], [], rwgps, RideManager.reinstateRows);
+  UIManager.processRows(rows, [rowCheck.notCancelled], [], rwgps, RideManager.reinstateRows);
 }
 
 

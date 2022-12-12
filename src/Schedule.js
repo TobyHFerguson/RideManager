@@ -230,7 +230,7 @@ const Schedule = function () {
 
         const row = this;
         function getRouteJson() {
-          const error = rowCheck.badRoute_(row);
+          const error = rowCheck.badRoute(row);
           if (error) {
             throw new Error(error);
           }

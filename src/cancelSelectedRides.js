@@ -7,7 +7,7 @@ function cancelSelectedRides() {
 
 
 function cancelSelectedRidesWithCreds(rows, rwgps) {
-  UIManager.processRows(rows, [rowCheck.unscheduled, rowCheck.cancelled_], [], rwgps, RideManager.cancelRows);
+  UIManager.processRows(rows, [rowCheck.unscheduled], [], rwgps, RideManager.cancelRows);
 }
 
 

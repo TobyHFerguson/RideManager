@@ -13,17 +13,17 @@ const rowCheck = {
             return "Ride has not been scheduled";
         }
     },
-    noStartDate_: function (row) {
+    noStartDate: function (row) {
         if (row.StartDate === undefined || row.StartDate.constructor !== Date) {
             return "No Start Date"
         }
     },
-    noStartTime_: function (row) {
+    noStartTime: function (row) {
         if (row.StartTime === undefined || row.StartTime.constructor !== Date) {
             return "No Start Time"
         }
     },
-    noGroup_: function (row) {
+    noGroup: function (row) {
         switch (row.Group) {
             case undefined:
             case null:
@@ -56,7 +56,7 @@ const rowCheck = {
             default: return "Unknown issue with Route URL";
         }
     },
-    badRoute_: function (row) {
+    badRoute: function (row) {
         if (row.RouteURL === undefined || row.RouteURL === null) {
             return "No route url"
         }
@@ -85,7 +85,7 @@ const rowCheck = {
         }
     },
     // Warnings
-    noRideLeader_: function (row, rwgps) {
+    noRideLeader: function (row, rwgps) {
         if (!row.RideLeaders || row.RideLeaders.length === 0) {
             return `No ride leader given. Defaulting to '${Globals.RIDE_LEADER_TBD_NAME}'`;
         } else {
@@ -109,27 +109,27 @@ const rowCheck = {
             }
         }
     },
-    cancelled_: function (row) {
+    cancelled: function (row) {
+        if (!(row.RideName.toLowerCase().startsWith('cancelled'))) {
+            return 'Not Cancelled';
+        }
+    },
+    notCancelled: function (row) {
         if (row.RideName.toLowerCase().startsWith('cancelled')) {
             return 'Cancelled';
         }
     },
-    notCancelled: function (row) {
-        if (!(row.RideName.toLowerCase().startsWith('cancelled'))) {
-            return 'Not cancelled';
-        }
-    },
-    noLocation_: function (row) {
+    noLocation: function (row) {
         if (!row.Location || row.Location.startsWith('#')) {
             return "Unknown location";
         }
     },
-    noAddress_: function (row) {
+    noAddress: function (row) {
         if (!row.Address || row.Address.startsWith('#')) {
             return "Unknown address";
         }
     },
-    _inappropiateGroup: function (row) {
+    inappropiateGroup: function (row) {
         function __inappropriateGroup(group, elevation, distance) {
             switch (group) {
                 case 'A':
@@ -170,16 +170,16 @@ const rowCheck = {
         const e = Math.round(route.elevation_gain * Globals.METERS_TO_FEET);
         return __inappropriateGroup(row.Group, e, d);
     },
-    alreadyScheduled: function (row) {
+    scheduled: function (row) {
         if (row.RideURL !== null) {
             return "This ride has already been scheduled";
         }
     }
 }
 
-const errorFuns = [rowCheck.unmanagedRide, rowCheck.noStartDate_, rowCheck.noStartTime_, rowCheck.noGroup_, rowCheck.badRoute_]
+const errorFuns = [rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute]
 
-const warningFuns = [rowCheck.noRideLeader_, rowCheck.cancelled_, rowCheck.noLocation_, rowCheck.noAddress_, rowCheck._inappropiateGroup]
+const warningFuns = [rowCheck.noRideLeader, rowCheck.cancelled, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
 
 function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
     function evalRow_(row, rwgps, efs, wfs) {
