@@ -16,7 +16,16 @@ function onOpen() {
     .addToUi();
 }
 
-
+function onFormSubmit(event) {
+  let rng = event.range;
+  console.log( `sheet: ${rng.getSheet().getSheetName()} range ${rng.getRowIndex()}`)
+  console.log(rng.getValues());
+  console.log(event.values);
+  let nv = event.namedValues;
+  Logger.log(nv);
+  console.log("=============");
+  console.log(SpreadsheetApp.getActiveSheet().getDataRange().getValues());
+}
 
 function linkRouteURLs() {
   Schedule.getSelectedRows().forEach(r => r.linkRouteURL());

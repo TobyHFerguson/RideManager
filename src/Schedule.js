@@ -1,11 +1,11 @@
 if (typeof require !== 'undefined') {
-  Globals = require('./Globals.js');
+  require('./1Globals.js');
 }
 const Schedule = function () {
   class Schedule {
     constructor() {
-      this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
-      this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0];
+      this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RideSheet.NAME);
+      this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0].map(n => n.toLowerCase().trim());
       this.rideRows = new Set();
       this.routeRows = new Set();
     }
@@ -36,23 +36,23 @@ const Schedule = function () {
       const rows = this.convertRangeToRows(ss.getRange(i, 1, ss.getLastRow() - i + 1, ss.getLastColumn()));
       return rows;
     }
-
+// Replace this with a fixed lookup
     getColumnIndex(name) {
-      let ix = this.columnNames.indexOf(name);
+      let ix = this.columnNames.indexOf(name.toLowerCase().trim());
       if (ix !== -1) {
         return ix;
       }
       throw new Error(`Column name: ${name} is not known`);
     }
 
-    getStartDate(values) { return values[this.getColumnIndex(Globals.STARTDATECOLUMNNAME)]; };
-    getStartTime(values) { return values[this.getColumnIndex(Globals.STARTTIMECOLUMNNAME)]; };
-    getGroup(values) { return values[this.getColumnIndex(Globals.GROUPCOLUMNNAME)]; };
-    getRouteCell(values) { return values[this.getColumnIndex(Globals.ROUTECOLUMNNAME)]; };
-    getRideLeader(values) { return values[this.getColumnIndex(Globals.RIDELEADERCOLUMNNAME)]; };
-    getRideCell(values) { return values[this.getColumnIndex(Globals.RIDECOLUMNNAME)]; }
-    getLocation(values) { return values[this.getColumnIndex(Globals.LOCATIONCOLUMNNAME)]; };
-    getAddress(values) { return values[this.getColumnIndex(Globals.ADDRESSCOLUMNNAME)]; };
+    getStartDate(values) { return values[this.getColumnIndex(RideSheet.STARTDATECOLUMNNAME)]; };
+    getStartTime(values) { return values[this.getColumnIndex(RideSheet.STARTTIMECOLUMNNAME)]; };
+    getGroup(values) { return values[this.getColumnIndex(RideSheet.GROUPCOLUMNNAME)]; };
+    getRouteCell(values) { return values[this.getColumnIndex(RideSheet.ROUTECOLUMNNAME)]; };
+    getRideLeader(values) { return values[this.getColumnIndex(RideSheet.RIDELEADERCOLUMNNAME)]; };
+    getRideCell(values) { return values[this.getColumnIndex(RideSheet.RIDECOLUMNNAME)]; }
+    getLocation(values) { return values[this.getColumnIndex(RideSheet.LOCATIONCOLUMNNAME)]; };
+    getAddress(values) { return values[this.getColumnIndex(RideSheet.ADDRESSCOLUMNNAME)]; };
 
     highlightCell(rowNum, colName, onoff) {
       let cell = this.activeSheet.getRange(rowNum, this.getColumnIndex(colName) + 1);
@@ -88,8 +88,8 @@ const Schedule = function () {
         const col_rtvs = rtvs.map(rtv => [rtv[colIdx]]);
         colRange.setRichTextValues(col_rtvs);
       }
-      this.getRowSet(this.rideRows).forEach(row => saveColumn(this.getColumnIndex(Globals.RIDECOLUMNNAME), row.range, row.rtvs));
-      this.getRowSet(this.routeRows).forEach(row => saveColumn(this.getColumnIndex(Globals.ROUTECOLUMNNAME), row.range, row.rtvs));
+      this.getRowSet(this.rideRows).forEach(row => saveColumn(this.getColumnIndex(RideSheet.RIDECOLUMNNAME), row.range, row.rtvs));
+      this.getRowSet(this.routeRows).forEach(row => saveColumn(this.getColumnIndex(RideSheet.ROUTECOLUMNNAME), row.range, row.rtvs));
       this.rideRows = new Set();
       this.routeRows = new Set();
     }
@@ -97,7 +97,7 @@ const Schedule = function () {
 
 
     deleteRideLink(rowNum) {
-      this.activeSheet.getRange(rowNum, this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
+      this.activeSheet.getRange(rowNum, this.getColumnIndex(RideSheet.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
     }
 
     convertRangeToRows(range) {
@@ -196,7 +196,7 @@ const Schedule = function () {
     get Address() { return this.schedule.getAddress(this.myRowValues); }
 
     highlightRideLeader(onoff) {
-      this.schedule.highlightCell(this.rowNum, Globals.RIDELEADERCOLUMNNAME, onoff);
+      this.schedule.highlightCell(this.rowNum, RideSheet.RIDELEADERCOLUMNNAME, onoff);
       return this;
     }
 
@@ -207,7 +207,7 @@ const Schedule = function () {
 
     setRideLink(name, url) {
       let rtv = this.createRTV(name, url);
-      this.richTextValues[this.schedule.getColumnIndex(Globals.RIDECOLUMNNAME)] = rtv;
+      this.richTextValues[this.schedule.getColumnIndex(RideSheet.RIDECOLUMNNAME)] = rtv;
       this.schedule.saveRideRow(this);
     }
 
@@ -216,7 +216,7 @@ const Schedule = function () {
     }
     setRouteLink(name, url) {
       let rtv = this.createRTV(name, url);
-      this.richTextValues[this.schedule.getColumnIndex(Globals.ROUTECOLUMNNAME)] = rtv;
+      this.richTextValues[this.schedule.getColumnIndex(RideSheet.ROUTECOLUMNNAME)] = rtv;
       this.schedule.saveRouteRow(this);
     }
      /**

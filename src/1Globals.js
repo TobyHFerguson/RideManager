@@ -1,7 +1,10 @@
 /**
  * This file contains definitions of constants that impact the end users of the system.
  */
-const Globals = {
+const RideSheet = {
+    // The RIDESHEET is the sheet used for scheduling the rides
+    NAME: "Consolidated Rides",
+    // these are the names of the columns in the RIDESHEET
     STARTDATECOLUMNNAME: "Date",
     GROUPCOLUMNNAME: "Group",
     STARTLOCATIONCOLUMNNAME: "Start Location",
@@ -11,8 +14,29 @@ const Globals = {
     RIDECOLUMNNAME: "Ride",
     ADDRESSCOLUMNNAME: "Address",
     LOCATIONCOLUMNNAME: "Location",
-    PREFIXCOLUMNNAME: "Prefix",
+    PREFIXCOLUMNNAME: "Prefix"
+}
 
+const FormSheet = {
+    // The FORMSHEET is the sheet used for collecting the form events
+    NAME: "Form",
+    TIMESTAMPCOLUMNNAME: "Timestamp",
+    EMAILADDRESSCOLUMNNAME: "Email Address",
+    FIRSTNAMECOLUMNNAME: "First name",
+    LASTNAMECOLUMNNAME: "Last name",
+    PHONENUMBERCOLUMNNAME: "Phone Number",
+    RIDEDATECOLUMNNAME: "Ride Date",
+    STARTTIMECOLUMNNAME: "Start Time",
+    GROUPCOLUMNNAME: "Group",
+    ROUTEURLCOLUMNNAME: "Route URL",
+    STARTLOCATIONCOLUMNNAME: "Start Location",
+    HELPNEEDEDCOLUMNNAME: "Help needed",
+    RIDECANCELLEDCOLUMNNAME: "Ride cancelled",
+    RIDEDELETEDCOLUMNNAME: "Ride Deleted",
+    RIDEREFERENCECOLUMNNAME: "Ride Reference",
+}
+
+const Globals = {
     RIDE_LEADER_TBD_NAME: 'To Be Determined',
 
     A_TEMPLATE: `https://ridewithgps.com/events/186557-a-template`,
@@ -41,5 +65,5 @@ const Globals = {
 }
 
 if (typeof module !== 'undefined') {
-    module.exports = Globals;
+    module.exports = { RideSheet, FormSheet, Globals };
 }
