@@ -13,6 +13,8 @@ const Globals = {
     LOCATIONCOLUMNNAME: "Location",
     PREFIXCOLUMNNAME: "Prefix",
 
+    
+
     RIDE_LEADER_TBD_NAME: 'To Be Determined',
 
     A_TEMPLATE: `https://ridewithgps.com/events/186557-a-template`,
@@ -40,6 +42,10 @@ const Globals = {
     EXPIRY_DELAY: 30,
 }
 
+const AddressSheet = {
+    NAME: "Addresses"
+}
+
 if (typeof module !== 'undefined') {
-    module.exports = Globals;
+    module.exports = { Globals, AddressSheet} ;
 }
