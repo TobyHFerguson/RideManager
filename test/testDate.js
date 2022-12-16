@@ -1,6 +1,6 @@
 const should = require('chai').should();
 const dates = require('../src/dates');
-const sinon = require('sinon');
+
 
 
 describe("date tests", () => {
