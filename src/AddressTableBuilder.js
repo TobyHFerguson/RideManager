@@ -4,6 +4,8 @@ const AddressTableBuilder = function () {
     build: function() {
       if (_addressTable) return _addressTable;
       const addresses = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(AddressSheet.NAME).getDataRange().getValues();
+      // Remove the header
+      addresses.shift();
       _addressTable = new AddressTable(addresses);
       return _addressTable;
     }
