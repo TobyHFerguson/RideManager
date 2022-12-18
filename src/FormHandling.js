@@ -16,28 +16,31 @@ function log(event) {
   console.log(SpreadsheetApp.getActiveSheet().getDataRange().getValues());
 }
 
-// A new submission is when the form range contains no reference to a row.
-function newSubmission(event) {
+// A resubmission is when the form range contains a reference to a row.
+function reSubmission(event) {
   return Form.getReferenceCell(event.range)
 }
 // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
 function onFormSubmit(event) {
   // log(event);
-  if (newSubmission(event)) {
+  if (!reSubmission(event)) {
     const result = scheduleRide(event);
     Form.setReferenceCell(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
     // const email = composeScheduleEmailBody(result);
     // sendEmail(event[FormSheet.EMAILADDRESSCOLUMNNAME], email);
     console.log(result);
   } else {
-    let cancelled = event[FormSheet.RIDECANCELLEDCOLUMNNAME]
+    let cancelled = event.namedValues[FormSheet.RIDECANCELLEDCOLUMNNAME][0];
+    console.log(cancelled);
     cancelled = cancelled ? cancelled.split(',')[0].trim().toLowerCase() : cancelled;
+    console.log(cancelled);
     switch (cancelled) {
       case 'no':
         // const result = reinstateRide(event);
         // const email = composeReinstateEmailBody(result);
         // sendEmail(event[FormSheet.EMAILADDRESSCOLUMNNAME], email);
         console.log('reinstate event');
+        break;
       case 'yes':
         console.log('cancel event');
         break;
