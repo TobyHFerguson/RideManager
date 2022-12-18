@@ -6,8 +6,7 @@ const Schedule = function () {
     constructor() {
       this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(RideSheet.NAME);
       this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0].map(n => n.toLowerCase().trim());
-      this.rideRows = new Set();
-      this.routeRows = new Set();
+      this.dirtyRows = new Set();
     }
     /**
      * Find and return all rows that are scheduled after the given day
@@ -59,10 +58,10 @@ const Schedule = function () {
       cell.setFontColor(onoff ? "red" : null);
     }
     saveRideRow(row) {
-      this.rideRows.add(row);
+      this.dirtyRows.add(row);
     }
     saveRouteRow(row) {
-      this.routeRows.add(row);
+      this.dirtyRows.add(row);
     }
 
     /**
@@ -81,17 +80,24 @@ const Schedule = function () {
       );
       return rrs.rows;
     }
+    // Save relies on the idea that each row in a contiguous range has all the values and rtvs for that range.
+    // By using the first row in a range we can write the whole range in bulk, which is efficient.
     save() {
       const self = this;
+      
+      // Save a specific column for all the rows in a range.
       function saveColumn(colIdx, range, rtvs) {
         const colRange = range.offset(0, colIdx, range.getNumRows(), 1);
         const col_rtvs = rtvs.map(rtv => [rtv[colIdx]]);
         colRange.setRichTextValues(col_rtvs);
       }
-      this.getRowSet(this.rideRows).forEach(row => saveColumn(this.getColumnIndex(RideSheet.RIDECOLUMNNAME), row.range, row.rtvs));
-      this.getRowSet(this.routeRows).forEach(row => saveColumn(this.getColumnIndex(RideSheet.ROUTECOLUMNNAME), row.range, row.rtvs));
-      this.rideRows = new Set();
-      this.routeRows = new Set();
+      // Use the start row to first write out all the values in the range, then overlay the ride column and route column rtvs
+      this.getRowSet(this.dirtyRows).forEach(row => {
+        row.range.setValues(row.values);
+        saveColumn(this.getColumnIndex(RideSheet.RIDECOLUMNNAME), row.range, row.rtvs);
+        saveColumn(this.getColumnIndex(RideSheet.ROUTECOLUMNNAME), row.range, row.rtvs);
+      });
+      this.dirtyRows = new Set();
     }
 
 
