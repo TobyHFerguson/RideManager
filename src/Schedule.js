@@ -36,7 +36,7 @@ const Schedule = function () {
       const rows = this.convertRangeToRows(ss.getRange(i, 1, ss.getLastRow() - i + 1, ss.getLastColumn()));
       return rows;
     }
-// Replace this with a fixed lookup
+    // Replace this with a fixed lookup
     getColumnIndex(name) {
       let ix = this.columnNames.indexOf(name.toLowerCase().trim());
       if (ix !== -1) {
@@ -151,20 +151,41 @@ const Schedule = function () {
       return rows;
     }
 
-   
+    appendRow(row) {
+      const rowData = [];
+      rowData[this.getColumnIndex(RideSheet.STARTDATECOLUMNNAME)] = row.StartDate;
+      rowData[this.getColumnIndex(RideSheet.GROUPCOLUMNNAME)] = row.Group;
+      rowData[this.getColumnIndex(RideSheet.STARTLOCATIONCOLUMNNAME)] = row.StartLocation;
+      rowData[this.getColumnIndex(RideSheet.STARTTIMECOLUMNNAME)] = row.StartTime;
+      rowData[this.getColumnIndex(RideSheet.ROUTECOLUMNNAME)] = row.RouteURL;
+      rowData[this.getColumnIndex(RideSheet.RIDELEADERCOLUMNNAME)] = row.RideLeaders;
+      rowData[this.getColumnIndex(RideSheet.RIDECOLUMNNAME)] = row.RideColumn;
+      rowData[this.getColumnIndex(RideSheet.ADDRESSCOLUMNNAME)] = row.RideAddress;
+      rowData[this.getColumnIndex(RideSheet.LOCATIONCOLUMNNAME)] = row.Location;
+      rowData[this.getColumnIndex(RideSheet.LOCATIONCOLUMNNAME)] = row.Location;
+
+
+      this.activeSheet.appendRow(rowData);
+      const lastRow = this.getLastRow();
+      // Format the date in the last row
+      let r = this.activeSheet.getLastRow();
+      // sheet.setActiveSelection(`A${r}:A${r}`);
+      this.activeSheet.getRange(`A${lastRow.rowNum}`).setNumberFormat('ddd mm/dd');
+      lastRow.linkRouteURL();
+      return lastRow;
+    }
 
     /**
      * Get the last row in the spreadsheet
      * @returns {Row}
      */
     getLastRow() {
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var sheet = ss.getSheetByName('Consolidated Rides');
-      let rownum = sheet.getLastRow();
-      let colnum = 1;
-      let numrows = 1;
-      let numcols = sheet.getLastColumn();
-      let range = sheet.getRange(rownum, colnum, numrows, numcols);
+      const sheet = this.activeSheet;
+      const rownum = sheet.getLastRow();
+      const colnum = 1;
+      const numrows = 1;
+      const numcols = sheet.getLastColumn();
+      const range = sheet.getRange(rownum, colnum, numrows, numcols);
       return this.convertRangeToRows(range)[0];
     }
 
@@ -219,41 +240,32 @@ const Schedule = function () {
       this.richTextValues[this.schedule.getColumnIndex(RideSheet.ROUTECOLUMNNAME)] = rtv;
       this.schedule.saveRouteRow(this);
     }
-     /**
-     * Resolve and link the name and the url in the Route column
-     * @param {Row} row - row whose route url is to be resolved and linked
-     * @returns {Row} the row
-     */
-      linkRouteURL() {
-        // Skip the header column
-        if (this.rowNum === 1) return;
+    /**
+    * Resolve and link the name and the url in the Route column
+    * @param {Row} row - row whose route url is to be resolved and linked
+    * @returns {Row} the row
+    */
+    linkRouteURL() {
+      // Skip the header column
+      if (this.rowNum === 1) return;
 
-        const row = this;
-        function getRouteJson() {
-          const error = rowCheck.badRoute(row);
-          if (error) {
-            throw new Error(error);
-          }
-          let url = row.RouteURL;
-          const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
-          switch (response.getResponseCode()) {
-            case 403:
-              throw new Error(`This route: ${url} is not publicly accessible`);
-            case 404:
-              throw new Error(`This route: ${url} cannot be found on the server`);
-            case 200:
-              break;
-            default:
-              throw new Error(`Uknown error retrieving data for ${url}`);
-          }
-          const json = JSON.parse(response.getContentText());
-          return json;
+      const row = this;
+      function getRouteJson() {
+        const error = rowCheck.badRoute(row);
+        if (error) {
+          throw new Error(error);
         }
-        let url = this.RouteURL;
-        let text = this.RouteName;
-        if (!url) {
-          this.setRouteLink(text, text);
-          url = text;
+        let url = row.RouteURL;
+        const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
+        switch (response.getResponseCode()) {
+          case 403:
+            throw new Error(`This route: ${url} is not publicly accessible`);
+          case 404:
+            throw new Error(`This route: ${url} cannot be found on the server`);
+          case 200:
+            break;
+          default:
+            throw new Error(`Uknown error retrieving data for ${url}`);
         }
         if (url && url === text) {
           try {
@@ -266,6 +278,7 @@ const Schedule = function () {
           }
         }
       }
+    }
   }
 
   return new Schedule();
