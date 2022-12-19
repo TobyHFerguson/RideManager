@@ -7,12 +7,16 @@ describe("date tests", () => {
     describe("dates.convert() tests", () => {
         it("should return the original date", () => {
             let d = new Date();
-            dates.convert(d).should.equal(d);
+            dates.convert(d).should.eql(d);
+        })
+        it("should return a new date object", () => {
+            let d = new Date();
+            dates.convert(d).should.not.equal(d);
         })
         it("should convert a number", () => {
             let n = 12345;
             let d = new Date(n);
-            dates.convert(d).should.equal(d);
+            dates.convert(d).should.eql(d);
         })
         it("should return NaN", () => {
             dates.convert(() => {}).should.be.NaN;
