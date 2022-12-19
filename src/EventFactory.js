@@ -1,6 +1,6 @@
 if (typeof require !== 'undefined') {
     dates = require('./dates.js');
-    Globals = require('./Globals.js');
+    var { RideSheet, FormSheet, Globals  } = require('./1Globals.js');
     Event = require('./Event.js')
 }
 const EventFactory = function () {
