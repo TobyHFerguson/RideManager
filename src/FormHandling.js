@@ -1,9 +1,6 @@
 
 
-if (typeof require !== 'undefined') {
-  require("./Schedule");
-  require("./1Globals");
-}
+
 
 function log(event) {
   let rng = event.range;

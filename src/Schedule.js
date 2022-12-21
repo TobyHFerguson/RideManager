@@ -53,14 +53,18 @@ const Schedule = function () {
     getLocation(values) { return values[this.getColumnIndex(RideSheet.LOCATIONCOLUMNNAME)]; };
     getAddress(values) { return values[this.getColumnIndex(RideSheet.ADDRESSCOLUMNNAME)]; };
 
+    setStartDate(value, values) { values[this.getColumnIndex(RideSheet.STARTDATECOLUMNNAME)] = value; };
+    setStartTime(value, values) { values[this.getColumnIndex(RideSheet.STARTTIMECOLUMNNAME)] = value; };
+    setGroup(value, values) { values[this.getColumnIndex(RideSheet.GROUPCOLUMNNAME)] = value; };
+    setRideLeader(value, values) { values[this.getColumnIndex(RideSheet.RIDELEADERCOLUMNNAME)] = value; };
+    setLocation(value, values) { values[this.getColumnIndex(RideSheet.LOCATIONCOLUMNNAME)] = value; };
+    setAddress(value, values) { values[this.getColumnIndex(RideSheet.ADDRESSCOLUMNNAME)] = value; };
+
     highlightCell(rowNum, colName, onoff) {
       let cell = this.activeSheet.getRange(rowNum, this.getColumnIndex(colName) + 1);
       cell.setFontColor(onoff ? "red" : null);
     }
-    saveRideRow(row) {
-      this.dirtyRows.add(row);
-    }
-    saveRouteRow(row) {
+    addDirtyRow(row) {
       this.dirtyRows.add(row);
     }
 
@@ -84,7 +88,7 @@ const Schedule = function () {
     // By using the first row in a range we can write the whole range in bulk, which is efficient.
     save() {
       const self = this;
-      
+
       // Save a specific column for all the rows in a range.
       function saveColumn(colIdx, range, rtvs) {
         const colRange = range.offset(0, colIdx, range.getNumRows(), 1);
@@ -165,17 +169,13 @@ const Schedule = function () {
       rowData[this.getColumnIndex(RideSheet.STARTTIMECOLUMNNAME)] = row.StartTime;
       rowData[this.getColumnIndex(RideSheet.ROUTECOLUMNNAME)] = row.RouteURL;
       rowData[this.getColumnIndex(RideSheet.RIDELEADERCOLUMNNAME)] = row.RideLeaders;
-      rowData[this.getColumnIndex(RideSheet.RIDECOLUMNNAME)] = row.RideColumn;
+      rowData[this.getColumnIndex(RideSheet.RIDECOLUMNNAME)] = '';
       rowData[this.getColumnIndex(RideSheet.ADDRESSCOLUMNNAME)] = row.RideAddress;
-      rowData[this.getColumnIndex(RideSheet.LOCATIONCOLUMNNAME)] = row.Location;
       rowData[this.getColumnIndex(RideSheet.LOCATIONCOLUMNNAME)] = row.Location;
 
 
       this.activeSheet.appendRow(rowData);
       const lastRow = this.getLastRow();
-      // Format the date in the last row
-      let r = this.activeSheet.getLastRow();
-      // sheet.setActiveSelection(`A${r}:A${r}`);
       this.activeSheet.getRange(`A${lastRow.rowNum}`).setNumberFormat('ddd mm/dd');
       lastRow.linkRouteURL();
       return lastRow;
@@ -222,6 +222,13 @@ const Schedule = function () {
     get Location() { return this.schedule.getLocation(this.myRowValues); }
     get Address() { return this.schedule.getAddress(this.myRowValues); }
 
+    set StartDate(v) { this.schedule.setStartDate(v, this.myRowValues); this.schedule.addDirtyRow(this); }
+    set StartTime(v) { this.schedule.setStartTime(v, this.myRowValues); this.schedule.addDirtyRow(this); }
+    set Group(v) { this.schedule.setGroup(v, this.myRowValues); this.schedule.addDirtyRow(this); }
+    set RideLeaders(v) { this.schedule.setRideLeaders(v.join(','), this.myRowValues); this.schedule.addDirtyRow(this); }
+    set Location(v) { this.schedule.setLocation(v, this.myRowValues); this.schedule.addDirtyRow(this); }
+    set Address(v) { this.schedule.setAddress(v, this.myRowValues); this.schedule.addDirtyRow(this); }
+
     highlightRideLeader(onoff) {
       this.schedule.highlightCell(this.rowNum, RideSheet.RIDELEADERCOLUMNNAME, onoff);
       return this;
@@ -235,7 +242,7 @@ const Schedule = function () {
     setRideLink(name, url) {
       let rtv = this.createRTV(name, url);
       this.richTextValues[this.schedule.getColumnIndex(RideSheet.RIDECOLUMNNAME)] = rtv;
-      this.schedule.saveRideRow(this);
+      this.schedule.addDirtyRow(this);
     }
 
     deleteRideLink() {
@@ -244,7 +251,7 @@ const Schedule = function () {
     setRouteLink(name, url) {
       let rtv = this.createRTV(name, url);
       this.richTextValues[this.schedule.getColumnIndex(RideSheet.ROUTECOLUMNNAME)] = rtv;
-      this.schedule.saveRouteRow(this);
+      this.schedule.addDirtyRow(this);
     }
     /**
     * Resolve and link the name and the url in the Route column
