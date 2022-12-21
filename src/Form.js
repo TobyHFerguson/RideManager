@@ -11,10 +11,10 @@ const Form = function () {
         }
         throw new Error(`Column name: ${name} is not known`);
       }
-      getReferenceCell(range) {
-        let nr = range.offset(0, this.getColumnIndex(FormSheet.RIDEREFERENCECOLUMNNAME), 1, 1);
-        let value =  nr.getValues();
-        return value;
+      getReferenceCellFormula(range) {
+        const nr = range.offset(0, this.getColumnIndex(FormSheet.RIDEREFERENCECOLUMNNAME), 1, 1);
+        const formula =  nr.getFormula();
+        return formula;
       }
       setReferenceCell(range, formula) {
         let nr = range.offset(0, this.getColumnIndex(FormSheet.RIDEREFERENCECOLUMNNAME), 1, 1);

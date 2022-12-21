@@ -141,7 +141,7 @@ const Schedule = function () {
         return rowRanges;
       }
       function getRowRanges() {
-        let selection = activeSheet.getSelection();
+        let selection = this.activeSheet.getSelection();
         const rangeList = selection.getActiveRangeList();
         // The rangeList is a list of single celled ranges
         // We need to convert these ranges ranges that capture a whole row.
@@ -158,6 +158,30 @@ const Schedule = function () {
           rows.push(new Row(this, range, offset, values, richTextValues))
         }
       });
+      return rows;
+    }
+    /**
+     * Return the rows from the range given by A1 or R1C1 notation.
+     * 
+     * If the range is a single cell it will be extended left and right to get the full row.
+     * @param {string} A1 range specified in  A1 or R1C1 notation
+     * @returns {Row[]} An array of Row objects from the given range
+     */
+    _getRowsFromRangeA1(A1) {
+      const sourceRange = this.activeSheet.getRange(A1);
+      const rowNum = sourceRange.getRowIndex();
+      const lastRow = rowNum + sourceRange.getNumRows() - 1;
+      const lastColumn = `C${this.activeSheet.getMaxColumns()}`;
+      const rangeA1 = `R${rowNum}C1:R${lastRow}${lastColumn}`;
+      console.log(`Schedule - getting rows from rangeA1: ${rangeA1}`)
+      const range = this.activeSheet.getRange(rangeA1);
+      const rows = this.convertRangeToRows(range);
+      return rows;
+    }
+    _createRowsFromRange(range) {
+      const values = range.getValues();
+      const richTextValues = range.getRichTextValues();
+      const rows = values.map((v, i) => new Row(this, range, i, v, richTextValues[i]))
       return rows;
     }
 
@@ -193,6 +217,10 @@ const Schedule = function () {
       const numcols = sheet.getLastColumn();
       const range = sheet.getRange(rownum, colnum, numrows, numcols);
       return this.convertRangeToRows(range)[0];
+    }
+
+    getRow(A1) {
+
     }
 
   }
