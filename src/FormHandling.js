@@ -10,7 +10,7 @@ const FormHandling = function () {
       return Form.getReferenceCell(event.range)
     },
     // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
-    processEvent: (event) => {
+    processEvent: function (event) {
       if (!this.reSubmission(event)) {
         const result = this.scheduleRide(event);
         Form.setReferenceCell(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
