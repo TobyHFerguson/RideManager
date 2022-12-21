@@ -17,7 +17,7 @@ function onOpen() {
 }
 
 function onFormSubmit(event) {
-  log_(event);
+  // log_(event);
   FormHandling.processEvent(event);
 }
 
