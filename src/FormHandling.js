@@ -1,29 +1,84 @@
-
-
-
-
-
 const FormHandling = function () {
   function _getRow(range) {
     const formula = Form.getReferenceCellFormula(range);
     const A1 = formula.split('!')[1];
-    console.log(`FormHandling - A1: ${A1}`)
     const row = Schedule._getRowsFromRangeA1(A1)[0];
-    console.log(`FormHandling - row ${row.rowNum} values: ${row.myRowValues}`)
     return row;
   }
 
-  function _updateRow(row, namedValues, result) {
-    console.log(`FormHandling - Updating row ${row.rowNum} with following changes`)
-    console.log(namedValues);
-  }
-  
+
+
   // A resubmission is when the form range contains a reference to a row.
   function _reSubmission(event) {
     return Form.getReferenceCellFormula(event.range)
   }
-  
-  function _scheduleRide(event, result) {
+
+  /**
+   * Update the given row from the selection of namedValues.
+   * 
+   * Although the function will always complete if there are any errors then the underlying ride 
+   * won't have been updated. 
+   * @param {Row} row The row to be updated
+   * @param {Object} namedValues The NV object from the Form Submit event
+   * @param {RWGPS} rwgp The rwgps connection to update the actual event
+   * @param {Object} result the result object to be updated
+   */
+  function _updateRow(row, namedValues, rwgps, result) {
+    console.log(`FormHandling - updating row`)
+    console.log(namedValues);
+    let dirty = false;
+    let v = namedValues[`${FormSheet.RIDEDATECOLUMNNAME}`][0];
+    if (v) row.StartDate = dates.convert(v);
+    v = namedValues[`${FormSheet.STARTTIMECOLUMNNAME}`][0];
+    console.log(dates.convert(v));
+    if (v) row.StartTime = dates.convert(`12/30/1899 ${v}`);
+    console.log(v);
+
+    const mapping = [
+      [FormSheet.GROUPCOLUMNNAME, "Group"],
+      [FormSheet.ROUTEURLCOLUMNNAME, "RouteName"],
+    ]
+    mapping.forEach((m) => {
+      let v = namedValues[`${m[0]}`][0];
+      console.log(`FormHandling - namedValues[${m[0]}] = ${v}`);
+      if (v) {
+        try {
+          row[`${m[1]}`] = v;
+          dirty = true;
+        } catch (e) {
+          result.errors.push(e);
+        }
+      }
+    });
+    if (namedValues[`${FormSheet.FIRSTNAMECOLUMNNAME}`][0] || namedValues[`${FormSheet.LASTNAMECOLUMNNAME}`][0]) {
+      let oldRideLeader = row.RideLeaders[0];
+      let newRideLeader = oldRideLeader;
+
+      let [oldFirst, oldLast] = oldRideLeader.split();
+      let newFirst = namedValues[`${FormSheet.FIRSTNAMECOLUMNNAME}`][0].trim();
+      let newLast = namedValues[`${FormSheet.LASTNAMECOLUMNNAME}`][0].trim();
+      console.log(`FormHandling - newFirst: '${newFirst}' ${typeof newFirst}`);
+      console.log(`FormHandling - newLast: '${newLast}' ${typeof newLast}`)
+      if (newFirst || newLast) {
+        newFirst = (newFirst && newFirst != oldFirst) ? newFirst : oldFirst;
+        newLast = (newLast && newLast != oldLast) ? newLast : oldLast;
+        newRideLeader = `${newFirst} ${newLast}`;
+        console.log(`'${newRideLeader}'`);
+      }
+      if (newRideLeader !== oldRideLeader) {
+        row.RideLeaders = [newRideLeader];
+        dirty = true;
+      }
+    }
+    if (dirty) {
+      // checkRow(row, result);
+      RideManager.updateRows([row], rwgps);
+    }
+    result.row = row;
+    return result;
+  }
+
+  function _scheduleRide(event, rwgps, result) {
     console.log(event.namedValues);
     function createRowData(event) {
       const nv = event.namedValues;
@@ -39,7 +94,7 @@ const FormHandling = function () {
     }
     const rowData = createRowData(event);
     console.log(rowData);
-    const rwgps = new RWGPS(new RWGPSService(credentials.email, credentials.password));
+
     // eval_rows([rowData], rwgps, [rowCheck.badRoute, rowCheck.noRideLeader], []);
     // if (rowData.errors && rowData.errors.length) {
     //   result.errors = rowData.errors;
@@ -51,27 +106,28 @@ const FormHandling = function () {
     result.row = lastRow;
     return result;
   }
-  
+
   return {
     // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
-    processEvent: function (event) {
-      const result = {};
+    processEvent: function (event, rwgps) {
+      const result = { errors: [], warnings: [] };
       if (!_reSubmission(event)) {
-        _scheduleRide(event, result);
+        _scheduleRide(event, rwgps, result);
         Form.setReferenceCell(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
         // const email = composeScheduleEmailBody(result);
         // sendEmail(event[FormSheet.EMAILADDRESSCOLUMNNAME], email);
         console.log(result);
       } else {
         const row = _getRow(event.range);
-        _updateRow(row, event.namedValues, result);
+        _updateRow(row, event.namedValues, rwgps, result);
+        console.log(result);
         // Need to handle cancel/reinstate
       }
       // Need to handle help
       Schedule.save();
     },
     tests: {
-      testGoodRide: function ()  {
+      testGoodRide: function () {
         let namedValues = {}
         namedValues[`${FormSheet.RIDEDATECOLUMNNAME}`] = ["12/31/2024"];
         namedValues[`${FormSheet.GROUPCOLUMNNAME}`] = ["A"];

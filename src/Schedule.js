@@ -141,7 +141,7 @@ const Schedule = function () {
         return rowRanges;
       }
       function getRowRanges() {
-        let selection = this.activeSheet.getSelection();
+        let selection = activeSheet.getSelection();
         const rangeList = selection.getActiveRangeList();
         // The rangeList is a list of single celled ranges
         // We need to convert these ranges ranges that capture a whole row.
@@ -173,7 +173,7 @@ const Schedule = function () {
       const lastRow = rowNum + sourceRange.getNumRows() - 1;
       const lastColumn = `C${this.activeSheet.getMaxColumns()}`;
       const rangeA1 = `R${rowNum}C1:R${lastRow}${lastColumn}`;
-      console.log(`Schedule - getting rows from rangeA1: ${rangeA1}`)
+      // console.log(`Schedule - getting rows from rangeA1: ${rangeA1}`)
       const range = this.activeSheet.getRange(rangeA1);
       const rows = this.convertRangeToRows(range);
       return rows;
@@ -253,7 +253,7 @@ const Schedule = function () {
     set StartDate(v) { this.schedule.setStartDate(v, this.myRowValues); this.schedule.addDirtyRow(this); }
     set StartTime(v) { this.schedule.setStartTime(v, this.myRowValues); this.schedule.addDirtyRow(this); }
     set Group(v) { this.schedule.setGroup(v, this.myRowValues); this.schedule.addDirtyRow(this); }
-    set RideLeaders(v) { this.schedule.setRideLeaders(v.join(','), this.myRowValues); this.schedule.addDirtyRow(this); }
+    set RideLeaders(v) { this.schedule.setRideLeader(v.join(','), this.myRowValues); this.schedule.addDirtyRow(this); }
     set Location(v) { this.schedule.setLocation(v, this.myRowValues); this.schedule.addDirtyRow(this); }
     set Address(v) { this.schedule.setAddress(v, this.myRowValues); this.schedule.addDirtyRow(this); }
 

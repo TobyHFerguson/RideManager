@@ -18,7 +18,8 @@ function onOpen() {
 
 function onFormSubmit(event) {
   // log_(event);
-  FormHandling.processEvent(event);
+  const rwgps = new RWGPS(new RWGPSService(credentials.email, credentials.password));
+  FormHandling.processEvent(event, rwgps);
 }
 
 function log_(event) {

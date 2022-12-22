@@ -1,6 +1,3 @@
-if (typeof require !== 'undefined') {
-  Globals = require('./Globals.js')
-}
 function DEBUG_(message) {
   Logger.log(`DEBUG: ${message}`);
 }
