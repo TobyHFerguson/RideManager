@@ -28,28 +28,15 @@ const FormHandling = function () {
     console.log(namedValues);
     let dirty = false;
     let v = namedValues[`${FormSheet.RIDEDATECOLUMNNAME}`][0];
-    if (v) row.StartDate = dates.convert(v);
+    if (v) { row.StartDate = dates.convert(v); dirty = true; }
     v = namedValues[`${FormSheet.STARTTIMECOLUMNNAME}`][0];
-    console.log(dates.convert(v));
-    if (v) row.StartTime = dates.convert(`12/30/1899 ${v}`);
-    console.log(v);
+    if (v) { row.StartTime = dates.convert(`12/30/1899 ${v}`); dirty = true; }
+    v = namedValues[`${FormSheet.GROUPCOLUMNNAME}`][0];
+    if (v) { row.Group = v; dirty = true; }
+    v = namedValues[`${FormSheet.ROUTEURLCOLUMNNAME}`][0];
+    if (v) { row.setRouteLink(v, v); row.linkRouteURL(); dirty = true; };
 
-    const mapping = [
-      [FormSheet.GROUPCOLUMNNAME, "Group"],
-      [FormSheet.ROUTEURLCOLUMNNAME, "RouteName"],
-    ]
-    mapping.forEach((m) => {
-      let v = namedValues[`${m[0]}`][0];
-      console.log(`FormHandling - namedValues[${m[0]}] = ${v}`);
-      if (v) {
-        try {
-          row[`${m[1]}`] = v;
-          dirty = true;
-        } catch (e) {
-          result.errors.push(e);
-        }
-      }
-    });
+  
     if (namedValues[`${FormSheet.FIRSTNAMECOLUMNNAME}`][0] || namedValues[`${FormSheet.LASTNAMECOLUMNNAME}`][0]) {
       let oldRideLeader = row.RideLeaders[0];
       let newRideLeader = oldRideLeader;
@@ -72,6 +59,7 @@ const FormHandling = function () {
     }
     if (dirty) {
       // checkRow(row, result);
+      row.linkRouteURL();
       RideManager.updateRows([row], rwgps);
     }
     result.row = row;
