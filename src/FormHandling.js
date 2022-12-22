@@ -36,22 +36,17 @@ const FormHandling = function () {
     v = namedValues[`${FormSheet.ROUTEURLCOLUMNNAME}`][0];
     if (v) { row.setRouteLink(v, v); row.linkRouteURL(); dirty = true; };
 
-  
+
     if (namedValues[`${FormSheet.FIRSTNAMECOLUMNNAME}`][0] || namedValues[`${FormSheet.LASTNAMECOLUMNNAME}`][0]) {
       let oldRideLeader = row.RideLeaders[0];
       let newRideLeader = oldRideLeader;
 
-      let [oldFirst, oldLast] = oldRideLeader.split();
+      const [oldFirst, oldLast] = oldRideLeader.split(' ');
       let newFirst = namedValues[`${FormSheet.FIRSTNAMECOLUMNNAME}`][0].trim();
       let newLast = namedValues[`${FormSheet.LASTNAMECOLUMNNAME}`][0].trim();
-      console.log(`FormHandling - newFirst: '${newFirst}' ${typeof newFirst}`);
-      console.log(`FormHandling - newLast: '${newLast}' ${typeof newLast}`)
-      if (newFirst || newLast) {
-        newFirst = (newFirst && newFirst != oldFirst) ? newFirst : oldFirst;
-        newLast = (newLast && newLast != oldLast) ? newLast : oldLast;
-        newRideLeader = `${newFirst} ${newLast}`;
-        console.log(`'${newRideLeader}'`);
-      }
+      newFirst = (newFirst && newFirst !== oldFirst) ? newFirst : oldFirst;
+      newLast = (newLast && newLast !== oldLast) ? newLast : oldLast;
+      newRideLeader = `${newFirst} ${newLast}`;
       if (newRideLeader !== oldRideLeader) {
         row.RideLeaders = [newRideLeader];
         dirty = true;
@@ -104,11 +99,11 @@ const FormHandling = function () {
         Form.setReferenceCell(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
         // const email = composeScheduleEmailBody(result);
         // sendEmail(event[FormSheet.EMAILADDRESSCOLUMNNAME], email);
-        console.log(result);
+        // console.log(result);
       } else {
         const row = _getRow(event.range);
         _updateRow(row, event.namedValues, rwgps, result);
-        console.log(result);
+        // console.log(result);
         // Need to handle cancel/reinstate
       }
       // Need to handle help
