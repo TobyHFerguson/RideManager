@@ -2,7 +2,14 @@ if (typeof require !== 'undefined') {
   dates = require('./dates.js');
 }
 
-const MANAGED_RE = /(?<prefix>[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABC]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\))))( \[(\d{1,2})\])*(?<suffix>.*$)/
+// Managed names can be of the form:
+// Mon A 1/1 10:00 AM Ride route name
+// Mon A 1/1 10:00 route name
+// Mon A 1/1 10:00 AM Ride [12] route name
+// Mon A 1/1 10:00 [12] route name
+
+// In addition, there can be an optional 'CANCELLED: ' prefix. 
+const MANAGED_RE = /(?<prefix>(CANCELLED: )*[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABC]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\))))( \[(\d{1,2})\])*(?<suffix>.*$)/
 
 
 
@@ -40,7 +47,7 @@ class Event {
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEventName(eventName) {
-    return !eventName || MANAGED_RE.test(eventName);
+    return (!eventName) || MANAGED_RE.test(eventName);
   }
 
   static updateCountInName(name, count) {
