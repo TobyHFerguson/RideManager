@@ -22,19 +22,20 @@ const FormHandling = function () {
    * @param {Object} namedValues The NV object from the Form Submit event
    * @param {RWGPS} rwgp The rwgps connection to update the actual event
    * @param {Object} result the result object to be updated
+   * @return {boolean} true iff the row has been updated
    */
   function _updateRow(row, namedValues, rwgps, result) {
     console.log(`FormHandling - updating row`)
     console.log(namedValues);
-    let dirty = false;
+    let updated = false;
     let v = namedValues[`${FormSheet.RIDEDATECOLUMNNAME}`][0];
-    if (v) { row.StartDate = dates.convert(v); dirty = true; }
+    if (v) { row.StartDate = dates.convert(v); updated = true; }
     v = namedValues[`${FormSheet.STARTTIMECOLUMNNAME}`][0];
-    if (v) { row.StartTime = dates.convert(`12/30/1899 ${v}`); dirty = true; }
+    if (v) { row.StartTime = dates.convert(`12/30/1899 ${v}`); updated = true; }
     v = namedValues[`${FormSheet.GROUPCOLUMNNAME}`][0];
-    if (v) { row.Group = v; dirty = true; }
+    if (v) { row.Group = v; updated = true; }
     v = namedValues[`${FormSheet.ROUTEURLCOLUMNNAME}`][0];
-    if (v) { row.setRouteLink(v, v); row.linkRouteURL(); dirty = true; };
+    if (v) { row.setRouteLink(v, v); row.linkRouteURL(); updated = true; };
 
 
     if (namedValues[`${FormSheet.FIRSTNAMECOLUMNNAME}`][0] || namedValues[`${FormSheet.LASTNAMECOLUMNNAME}`][0]) {
@@ -49,14 +50,22 @@ const FormHandling = function () {
       newRideLeader = `${newFirst} ${newLast}`;
       if (newRideLeader !== oldRideLeader) {
         row.RideLeaders = [newRideLeader];
-        dirty = true;
+        updated = true;
       }
     }
-    if (dirty) {
-      // checkRow(row, result);
-      row.linkRouteURL();
-      RideManager.updateRows([row], rwgps);
-    }
+    return updated;
+  }
+
+  /**
+   * Using the given row, update the corresponding ride
+   * @param {Row} row Row from which to update the ride
+   * @param {RWGPS} rwgps RWGPS object to connect to ride
+   * @param {Result} result result object to collect result of underlying operations
+   * @returns {Result} result object
+   */
+  function updateRide(row, rwgps, result) {
+    row.linkRouteURL();
+    RideManager.updateRows([row], rwgps);
     result.row = row;
     return result;
   }
@@ -102,7 +111,9 @@ const FormHandling = function () {
         // console.log(result);
       } else {
         const row = _getRow(event.range);
-        _updateRow(row, event.namedValues, rwgps, result);
+        if (_updateRow(row, event.namedValues, result)) {
+          updateRide(row, rwgps, result);
+        };
         // console.log(result);
         // Need to handle cancel/reinstate
       }
