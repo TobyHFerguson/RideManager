@@ -70,30 +70,31 @@ const FormHandling = function () {
     return result;
   }
 
+  function copyFormDataIntoRow(event, row) {
+    const rng = event.range;
+    row.StartDate = Form.getRideDate(rng);
+    row.Group = Form.getGroup(rng);
+    row.StartTime = Form.getStartTime(rng);
+    row.RouteURL = Form.getRouteURL(rng);
+    row.RouteName = Form.getRouteURL(rng);
+    row.RideLeaders = Form.getFirstName(rng) + " " + Form.getLastName(rng);
+    row.Email = Form.getEmail(rng);
+    return row;
+  }
+
   function _scheduleRide(event, rwgps, result) {
-    console.log(event.namedValues);
-    function createRowData(event) {
-      const nv = event.namedValues;
-      const rowData = {}
-      rowData.StartDate = nv[`${FormSheet.RIDEDATECOLUMNNAME}`][0];
-      rowData.Group = nv[`${FormSheet.GROUPCOLUMNNAME}`][0];
-      rowData.StartTime = nv[`${FormSheet.STARTTIMECOLUMNNAME}`][0];
-      rowData.RouteURL = nv[`${FormSheet.ROUTEURLCOLUMNNAME}`][0];
-      rowData.RouteName = nv[`${FormSheet.ROUTEURLCOLUMNNAME}`][0];
-      rowData.RideLeaders = nv[`${FormSheet.FIRSTNAMECOLUMNNAME}`] + "  " + nv[`${FormSheet.LASTNAMECOLUMNNAME}`][0];
-      rowData.Email = nv[`${FormSheet.EMAILADDRESSCOLUMNNAME}`][0];
-      return rowData;
-    }
-    const rowData = createRowData(event);
-    console.log(rowData);
+  
+    
 
     // eval_rows([rowData], rwgps, [rowCheck.badRoute, rowCheck.noRideLeader], []);
     // if (rowData.errors && rowData.errors.length) {
     //   result.errors = rowData.errors;
     //   return result;
     // }
-
-    const lastRow = Schedule.appendRow(rowData);
+    const newRow = {};
+    copyFormDataIntoRow(event, newRow);
+    console.log(newRow);
+    const lastRow = Schedule.appendRow(newRow);
     RideManager.scheduleRows([lastRow], rwgps);
     result.row = lastRow;
     return result;
@@ -105,7 +106,7 @@ const FormHandling = function () {
       const result = { errors: [], warnings: [] };
       if (!_reSubmission(event)) {
         _scheduleRide(event, rwgps, result);
-        Form.setReferenceCell(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
+        Form.setReferenceCellFormula(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
         // const email = composeScheduleEmailBody(result);
         // sendEmail(event[FormSheet.EMAILADDRESSCOLUMNNAME], email);
         // console.log(result);
