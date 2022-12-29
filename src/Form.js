@@ -56,6 +56,9 @@ const Form = function () {
     getRideCancelled(range) {
       return this._getValue(range, FormSheet.RIDECANCELLEDCOLUMNNAME);
     }
+    isRideCancelled(range) {
+      return this.getRideCancelled(range).toLowerCase().startsWith('yes')
+    }
     getRideDeleted(range) {
       return this._getValue(range, FormSheet.RIDEDELETEDCOLUMNNAME);
     }

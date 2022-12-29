@@ -39,6 +39,14 @@ const FormHandling = function () {
     return row;
   }
 
+  function _cancelRide(row, rwgps, result) {
+    RideManager.cancelRows([row], rwgps);
+  }
+
+  function _reinstateRide(row, rwgps, result) {
+    RideManager.reinstateRows([row], rwgps);
+  }
+
   function _scheduleRide(event, rwgps, result) {
   
     
@@ -70,8 +78,11 @@ const FormHandling = function () {
         const row = _getRow(event.range);
         _copyFormDataIntoRow(event, row);
         _updateRide(row, rwgps, result);
-        // console.log(result);
-        // Need to handle cancel/reinstate
+        if (Form.isRideCancelled(event.range)) {
+          _cancelRide(row, rwgps, result);
+        } else {
+          _reinstateRide(row, rwgps, result);
+        }
       }
       // Need to handle help
       Schedule.save();
