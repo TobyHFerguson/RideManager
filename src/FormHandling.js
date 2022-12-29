@@ -1,4 +1,20 @@
 const FormHandling = function () {
+  function _cancelRide(row, rwgps, result) {
+    RideManager.cancelRows([row], rwgps);
+  }
+
+  function _copyFormDataIntoRow(event, row) {
+    const rng = event.range;
+    row.StartDate = Form.getRideDate(rng);
+    row.Group = Form.getGroup(rng);
+    row.StartTime = Form.getStartTime(rng);
+    row.setRouteLink(Form.getRouteURL(rng), Form.getRouteURL(rng));
+    row.RideLeaders = [Form.getFirstName(rng) + " " + Form.getLastName(rng)];
+    row.Email = Form.getEmail(rng);
+    Schedule.save();
+    return row;
+  }
+
   function _getRow(range) {
     const formula = Form.getReferenceCellFormula(range);
     const A1 = formula.split('!')[1];
@@ -6,13 +22,30 @@ const FormHandling = function () {
     return row;
   }
 
-function _helpNeeded(event) {
+function _isHelpNeeded(event) {
   return Form.isHelpNeeded(event.range);
 }
 
   // A resubmission is when the form range contains a reference to a row.
-  function _reSubmission(event) {
+  function _isReSubmission(event) {
     return Form.getReferenceCellFormula(event.range)
+  }
+
+  function _notifyHelpNeeded(event) {
+    console.log('Help Needed');
+  }
+
+  function _reinstateRide(row, rwgps, result) {
+    RideManager.reinstateRows([row], rwgps);
+  }
+
+  function _scheduleRide(event, rwgps, result) {
+    const newRow = {};
+    _copyFormDataIntoRow(event, newRow);
+    const lastRow = Schedule.appendRow(newRow);
+    RideManager.scheduleRows([lastRow], rwgps);
+    result.row = lastRow;
+    return result;
   }
 
   /**
@@ -29,52 +62,11 @@ function _helpNeeded(event) {
     return result;
   }
 
-  function _copyFormDataIntoRow(event, row) {
-    const rng = event.range;
-    row.StartDate = Form.getRideDate(rng);
-    row.Group = Form.getGroup(rng);
-    row.StartTime = Form.getStartTime(rng);
-    row.setRouteLink(Form.getRouteURL(rng), Form.getRouteURL(rng));
-    row.RideLeaders = [Form.getFirstName(rng) + " " + Form.getLastName(rng)];
-    row.Email = Form.getEmail(rng);
-    Schedule.save();
-    return row;
-  }
-
-  function _cancelRide(row, rwgps, result) {
-    RideManager.cancelRows([row], rwgps);
-  }
-
-  function _notifyHelpNeeded(event) {
-    console.log('Help Needed');
-  }
-
-  function _reinstateRide(row, rwgps, result) {
-    RideManager.reinstateRows([row], rwgps);
-  }
-
-  function _scheduleRide(event, rwgps, result) {
-  
-    
-
-    // eval_rows([rowData], rwgps, [rowCheck.badRoute, rowCheck.noRideLeader], []);
-    // if (rowData.errors && rowData.errors.length) {
-    //   result.errors = rowData.errors;
-    //   return result;
-    // }
-    const newRow = {};
-    _copyFormDataIntoRow(event, newRow);
-    const lastRow = Schedule.appendRow(newRow);
-    RideManager.scheduleRows([lastRow], rwgps);
-    result.row = lastRow;
-    return result;
-  }
-
   return {
     // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
     processEvent: function (event, rwgps) {
       const result = { errors: [], warnings: [] };
-      if (!_reSubmission(event)) {
+      if (!_isReSubmission(event)) {
         _scheduleRide(event, rwgps, result);
         Form.setReferenceCellFormula(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
         // const email = composeScheduleEmailBody(result);
@@ -90,7 +82,7 @@ function _helpNeeded(event) {
           _reinstateRide(row, rwgps, result);
         }
       }
-      if (_helpNeeded(event)) {
+      if (_isHelpNeeded(event)) {
         _notifyHelpNeeded(event);
       }
       // Need to handle help
