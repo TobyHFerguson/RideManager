@@ -53,6 +53,9 @@ const Form = function () {
     getHelpNeeded(range) {
       return this._getValue(range, FormSheet.HELPNEEDEDCOLUMNNAME);
     }
+    isHelpNeeded(range) {
+      return this.getHelpNeeded(range).toLowerCase().startsWith('yes')
+    }
     getRideCancelled(range) {
       return this._getValue(range, FormSheet.RIDECANCELLEDCOLUMNNAME);
     }

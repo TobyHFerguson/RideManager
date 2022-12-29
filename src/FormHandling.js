@@ -6,7 +6,9 @@ const FormHandling = function () {
     return row;
   }
 
-
+function _helpNeeded(event) {
+  return Form.isHelpNeeded(event.range);
+}
 
   // A resubmission is when the form range contains a reference to a row.
   function _reSubmission(event) {
@@ -41,6 +43,10 @@ const FormHandling = function () {
 
   function _cancelRide(row, rwgps, result) {
     RideManager.cancelRows([row], rwgps);
+  }
+
+  function _notifyHelpNeeded(event) {
+    console.log('Help Needed');
   }
 
   function _reinstateRide(row, rwgps, result) {
@@ -83,6 +89,9 @@ const FormHandling = function () {
         } else {
           _reinstateRide(row, rwgps, result);
         }
+      }
+      if (_helpNeeded(event)) {
+        _notifyHelpNeeded(event);
       }
       // Need to handle help
       Schedule.save();
