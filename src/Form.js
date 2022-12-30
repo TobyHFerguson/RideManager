@@ -65,7 +65,13 @@ const Form = function () {
     getRideDeleted(range) {
       return this._getValue(range, FormSheet.RIDEDELETEDCOLUMNNAME);
     }
-
+    getImportedRouteURL(range) {
+      return this._getValue(range, FormSheet.IMPORTEDROUTECOLUMNNAME);
+    }
+    setImportedRouteURL(range, url) {
+      let nr = range.offset(0, this.getColumnIndex(FormSheet.IMPORTEDROUTECOLUMNNAME), 1, 1);
+      nr.setValue(url);
+    }
     _getValue(range, columnName) {
       const nr = range.offset(0, this.getColumnIndex(columnName), 1, 1);
       const value = nr.getValue();

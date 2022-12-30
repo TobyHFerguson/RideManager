@@ -73,7 +73,7 @@ const FormHandling = function () {
     _copyFormDataIntoRow(event, row);
     // Save here in case anything goes wrong later on.
     row.save();
-     _updateRide(row, rwgps, result);
+    _updateRide(row, rwgps, result);
     if (Form.isRideCancelled(event.range)) {
       _cancelRide(row, rwgps, result);
     } else {
@@ -86,9 +86,37 @@ const FormHandling = function () {
     RideManager.reinstateRows([row], rwgps);
   }
 
+  function _routeNotYetImported(event) {
+    return !(Form.getImportedRouteURL(event.range));
+  }
   function _scheduleRide(event, rwgps, result) {
-    const newRow = {};
+    function _notifySubmissionErrors(event, errors) {
+      console.log("Errors during submission");
+      console.log(errors);
+      console.log();
+    }
+    const newRow = { setRouteLink: function(text, url) { this.RouteURL = url; },
+    linkRouteURL: () => {}
+  };
     _copyFormDataIntoRow(event, newRow);
+    evalRows([newRow], rwgps, [rowCheck.badRoute], []);
+    console.log("FormHandling - errors")
+    console.log(newRow.errors);
+    let fridx = newRow.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
+    if (fridx !== -1) {
+      console.log("foreign route")
+      newRow.errors.splice(fridx, 1);
+      if (_routeNotYetImported(event)) {
+        console.log("importing foreign route")
+        RideManager.importRows([newRow], rwgps);
+        Form.setImportedRouteURL(event.range, newRow.RouteURL);
+        console.log(`Foreign route recorded as ${Form.getImportedRouteURL(event.range)}`)
+      }
+      newRow.warnings.push(`Foreign route detected. Please resubmit using this URL for the route: ${newRow.RouteURL}`)
+    }
+    if (newRow.errors.length) {
+      _notifySubmissionErrors(event, newRow.errors);
+    }
     const lastRow = Schedule.appendRow(newRow);
     RideManager.scheduleRows([lastRow], rwgps);
     lastRow.save();

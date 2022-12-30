@@ -15,6 +15,7 @@ const FormSheet = {
     RIDECANCELLEDCOLUMNNAME: "Ride cancelled",
     RIDEDELETEDCOLUMNNAME: "Ride Deleted",
     RIDEREFERENCECOLUMNNAME: "Ride Reference",
+    IMPORTEDROUTECOLUMNNAME: "Imported Route"
 };
 
 if (typeof module !== 'undefined') {
