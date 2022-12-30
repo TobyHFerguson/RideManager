@@ -8,31 +8,78 @@ const FormHandling = function () {
     row.StartDate = Form.getRideDate(rng);
     row.Group = Form.getGroup(rng);
     row.StartTime = Form.getStartTime(rng);
-    row.setRouteLink(Form.getRouteURL(rng), Form.getRouteURL(rng));
-    row.RideLeaders = [Form.getFirstName(rng) + " " + Form.getLastName(rng)];
+    if (row.setRouteLink) {
+      row.setRouteLink(Form.getRouteURL(rng), Form.getRouteURL(rng));
+    } else {
+      row.RouteURL = Form.getRouteURL(rng);
+    }
+    row.RideLeaders = Form.getFirstName(rng) + " " + Form.getLastName(rng);
     row.Email = Form.getEmail(rng);
-    Schedule.save();
     return row;
   }
 
-  function _getRow(range) {
+  function _getRowFromSchedule(range) {
     const formula = Form.getReferenceCellFormula(range);
     const A1 = formula.split('!')[1];
     const row = Schedule._getRowsFromRangeA1(A1)[0];
     return row;
   }
 
-function _isHelpNeeded(event) {
-  return Form.isHelpNeeded(event.range);
-}
+  function _isHelpNeeded(event) {
+    return Form.isHelpNeeded(event.range);
+  }
 
   // A resubmission is when the form range contains a reference to a row.
   function _isReSubmission(event) {
     return Form.getReferenceCellFormula(event.range)
   }
 
+  // Linking the form row to the ride row allows us to find the ride row when the form is 
+  // resubmitted. By using formulas we're guaranteed that this reference is stable over
+  // operations such as sorting and filtering.
+  function _linkFormRowToRideRow(range, row) {
+    Form.setReferenceCellFormula(range, `='${RideSheet.NAME}'!A${row.rowNum}`)
+  }
+
+  /**
+   * Notify the required people that help is needed
+   * @param {Event} event The Form Submit event
+   */
   function _notifyHelpNeeded(event) {
     console.log('Help Needed');
+  }
+
+  /**
+   * Process an initial ride request, updating the result appropriately.
+   * 
+   * @param {Event} event The Form Submit event to be processed
+   * @param {RWGPS} rwgps The RWGPS connection
+   * @param {Object} result the result object to be marked up
+   */
+  function _processInitialSubmission(event, rwgps, result) {
+    _scheduleRide(event, rwgps, result);
+    _linkFormRowToRideRow(event.range, result.row);
+  }
+
+  /**
+   * Process a resubmitted ride request, updating the result appropriately.
+   * 
+   * @param {Event} event The Form Submit event to be processed
+   * @param {RWGPS} rwgps The RWGPS connection
+   * @param {Ojbect} result The Result object
+   */
+  function _processResubmission(event, rwgps, result) {
+    const row = _getRowFromSchedule(event.range);
+    _copyFormDataIntoRow(event, row);
+    // Save here in case anything goes wrong later on.
+    row.save();
+     _updateRide(row, rwgps, result);
+    if (Form.isRideCancelled(event.range)) {
+      _cancelRide(row, rwgps, result);
+    } else {
+      _reinstateRide(row, rwgps, result);
+    }
+    row.save();
   }
 
   function _reinstateRide(row, rwgps, result) {
@@ -44,6 +91,7 @@ function _isHelpNeeded(event) {
     _copyFormDataIntoRow(event, newRow);
     const lastRow = Schedule.appendRow(newRow);
     RideManager.scheduleRows([lastRow], rwgps);
+    lastRow.save();
     result.row = lastRow;
     return result;
   }
@@ -67,26 +115,13 @@ function _isHelpNeeded(event) {
     processEvent: function (event, rwgps) {
       const result = { errors: [], warnings: [] };
       if (!_isReSubmission(event)) {
-        _scheduleRide(event, rwgps, result);
-        Form.setReferenceCellFormula(event.range, `='${RideSheet.NAME}'!A${result.row.rowNum}`)
-        // const email = composeScheduleEmailBody(result);
-        // sendEmail(event[FormSheet.EMAILADDRESSCOLUMNNAME], email);
-        // console.log(result);
+        _processInitialSubmission(event, rwgps, result);
       } else {
-        const row = _getRow(event.range);
-        _copyFormDataIntoRow(event, row);
-        _updateRide(row, rwgps, result);
-        if (Form.isRideCancelled(event.range)) {
-          _cancelRide(row, rwgps, result);
-        } else {
-          _reinstateRide(row, rwgps, result);
-        }
+        _processResubmission(event, rwgps, result);
       }
       if (_isHelpNeeded(event)) {
         _notifyHelpNeeded(event);
       }
-      // Need to handle help
-      Schedule.save();
     },
     tests: {
       testGoodRide: function () {
@@ -100,7 +135,6 @@ function _isHelpNeeded(event) {
         namedValues[`${FormSheet.EMAILADDRESSCOLUMNNAME}`] = ["toby.h.ferguson@icloud.com"];
 
         _scheduleRide({ namedValues: namedValues });
-        Schedule.save();
       }
     }
   }

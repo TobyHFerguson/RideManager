@@ -253,7 +253,10 @@ const Schedule = function () {
     set StartDate(v) { this.schedule.setStartDate(v, this.myRowValues); this.schedule.addDirtyRow(this); }
     set StartTime(v) { this.schedule.setStartTime(v, this.myRowValues); this.schedule.addDirtyRow(this); }
     set Group(v) { this.schedule.setGroup(v, this.myRowValues); this.schedule.addDirtyRow(this); }
-    set RideLeaders(v) { this.schedule.setRideLeader(v.join(','), this.myRowValues); this.schedule.addDirtyRow(this); }
+    set RideLeaders(v) {
+      this.schedule.setRideLeader(Array.isArray(v) ? v.join(',') : v, this.myRowValues);
+      this.schedule.addDirtyRow(this);
+    }
     set Location(v) { this.schedule.setLocation(v, this.myRowValues); this.schedule.addDirtyRow(this); }
     set Address(v) { this.schedule.setAddress(v, this.myRowValues); this.schedule.addDirtyRow(this); }
 
@@ -280,6 +283,9 @@ const Schedule = function () {
       let rtv = this.createRTV(name, url);
       this.richTextValues[this.schedule.getColumnIndex(RideSheet.ROUTECOLUMNNAME)] = rtv;
       this.schedule.addDirtyRow(this);
+    }
+    save() {
+      this.schedule.save();
     }
     /**
     * Resolve and link the name and the url in the Route column
