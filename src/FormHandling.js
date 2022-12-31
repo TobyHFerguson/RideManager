@@ -50,6 +50,14 @@ const FormHandling = function () {
   }
 
   /**
+   * Notify the result of a submission
+   */
+  function _notifySubmissionResult(row) {
+    console.log("Submitted a ride");
+    console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
+    console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
+  }
+  /**
    * Process an initial ride request, updating the result appropriately.
    * 
    * @param {Event} event The Form Submit event to be processed
@@ -57,8 +65,11 @@ const FormHandling = function () {
    * @param {Object} result the result object to be marked up
    */
   function _processInitialSubmission(event, rwgps, result) {
-    _scheduleRide(event, rwgps, result);
-    _linkFormRowToRideRow(event.range, result.row);
+    const row = _scheduleRide(event, rwgps);
+    if (!(row.errors && row.errors.length)) {
+      _linkFormRowToRideRow(event.range, result.row);
+    }
+    _notifySubmissionResult(row);
   }
 
   /**
@@ -90,18 +101,13 @@ const FormHandling = function () {
     return !(Form.getImportedRouteURL(event.range));
   }
   function _scheduleRide(event, rwgps, result) {
-    function _notifySubmissionErrors(event, errors) {
-      console.log("Errors during submission");
-      console.log(errors);
-      console.log();
-    }
-    const newRow = { setRouteLink: function(text, url) { this.RouteURL = url; },
-    linkRouteURL: () => {}
-  };
+    const newRow = {
+      setRouteLink: function (text, url) { this.RouteURL = url; },
+      linkRouteURL: () => { }
+    };
     _copyFormDataIntoRow(event, newRow);
     evalRows([newRow], rwgps, [rowCheck.badRoute], []);
-    console.log("FormHandling - errors")
-    console.log(newRow.errors);
+    // If the badRoute is simply that its a foreign route then import it
     let fridx = newRow.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
     if (fridx !== -1) {
       console.log("foreign route")
@@ -115,13 +121,13 @@ const FormHandling = function () {
       newRow.warnings.push(`Foreign route detected. Please resubmit using this URL for the route: ${newRow.RouteURL}`)
     }
     if (newRow.errors.length) {
-      _notifySubmissionErrors(event, newRow.errors);
+      return newRow;
     }
     const lastRow = Schedule.appendRow(newRow);
     RideManager.scheduleRows([lastRow], rwgps);
     lastRow.save();
-    result.row = lastRow;
-    return result;
+    lastRow.warnings = newRow.warnings;
+    return lastRow;
   }
 
   /**
