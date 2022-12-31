@@ -64,10 +64,10 @@ const FormHandling = function () {
    * @param {RWGPS} rwgps The RWGPS connection
    * @param {Object} result the result object to be marked up
    */
-  function _processInitialSubmission(event, rwgps, result) {
+  function _processInitialSubmission(event, rwgps) {
     const row = _scheduleRide(event, rwgps);
     if (!(row.errors && row.errors.length)) {
-      _linkFormRowToRideRow(event.range, result.row);
+      _linkFormRowToRideRow(event.range, row);
     }
     _notifySubmissionResult(row);
   }
@@ -121,9 +121,11 @@ const FormHandling = function () {
       newRow.warnings.push(`Foreign route detected. Please resubmit using this URL for the route: ${newRow.RouteURL}`)
     }
     if (newRow.errors.length) {
+      console.log(`FormHandling._scheduleRide - returning error`)
       return newRow;
     }
     const lastRow = Schedule.appendRow(newRow);
+    console.log(`FormHandling rowNum: ${lastRow.rowNum}`)
     RideManager.scheduleRows([lastRow], rwgps);
     lastRow.save();
     lastRow.warnings = newRow.warnings;
