@@ -25,6 +25,35 @@ const FormHandling = function () {
     return row;
   }
 
+  /**
+   * Check the given row and if the route is foreign and not yet imported then import it and record the import
+   * @param {Row} row the row object
+   * @param {Event} event the Form Submission object
+   * @param {RWGPS} rwgps the RWGPS connection
+   */
+  function _importForeignRoute(row, event, rwgps) {
+    function _routeNotYetImported(event) {
+      return !(Form.getImportedRouteURL(event.range));
+    }
+    
+    let fridx = row.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
+    if (fridx === -1) { 
+      // If the route isn't foreign then be sure to clear the foreign route record
+      Form.setImportedRouteURL(event.range, '');
+    }
+    else {
+      console.log("foreign route");
+      row.errors.splice(fridx, 1);
+      if (_routeNotYetImported(event)) {
+        console.log("importing foreign route");
+        RideManager.importRows([row], rwgps);
+        Form.setImportedRouteURL(event.range, row.RouteURL);
+        console.log(`Foreign route recorded as ${Form.getImportedRouteURL(event.range)}`);
+      }
+      row.warnings.push(`Foreign route detected. Please resubmit using this URL for the route: ${row.RouteURL}`);
+    }
+  }
+
   function _isHelpNeeded(event) {
     return Form.isHelpNeeded(event.range);
   }
@@ -47,6 +76,15 @@ const FormHandling = function () {
    */
   function _notifyHelpNeeded(event) {
     console.log('Help Needed');
+  }
+
+  /**
+   * Notify the result of a resubmission
+   */
+   function _notifyResubmissionResult(row) {
+    console.log("Resubmitted a ride");
+    console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
+    console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
   }
 
   /**
@@ -82,24 +120,27 @@ const FormHandling = function () {
   function _processResubmission(event, rwgps, result) {
     const row = _getRowFromSchedule(event.range);
     _copyFormDataIntoRow(event, row);
+    evalRows([row], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader]);
+    _importForeignRoute(row, event, rwgps);
     // Save here in case anything goes wrong later on.
     row.save();
-    _updateRide(row, rwgps, result);
+    if (!row.errors.length) {
+      _updateRide(row, rwgps);
+    }
+    
     if (Form.isRideCancelled(event.range)) {
       _cancelRide(row, rwgps, result);
     } else {
       _reinstateRide(row, rwgps, result);
     }
     row.save();
+    _notifyResubmissionResult(row);
   }
 
   function _reinstateRide(row, rwgps, result) {
     RideManager.reinstateRows([row], rwgps);
   }
 
-  function _routeNotYetImported(event) {
-    return !(Form.getImportedRouteURL(event.range));
-  }
   function _scheduleRide(event, rwgps, result) {
     const newRow = {
       highlight: false, 
@@ -109,19 +150,7 @@ const FormHandling = function () {
     };
     _copyFormDataIntoRow(event, newRow);
     evalRows([newRow], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader]);
-    // If the badRoute is simply that its a foreign route then import it
-    let fridx = newRow.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
-    if (fridx !== -1) {
-      console.log("foreign route")
-      newRow.errors.splice(fridx, 1);
-      if (_routeNotYetImported(event)) {
-        console.log("importing foreign route")
-        RideManager.importRows([newRow], rwgps);
-        Form.setImportedRouteURL(event.range, newRow.RouteURL);
-        console.log(`Foreign route recorded as ${Form.getImportedRouteURL(event.range)}`)
-      }
-      newRow.warnings.push(`Foreign route detected. Please resubmit using this URL for the route: ${newRow.RouteURL}`)
-    }
+    _importForeignRoute(newRow, event, rwgps);
     if (newRow.errors.length) {
       console.log(`FormHandling._scheduleRide - returning error`)
       return newRow;
@@ -135,18 +164,18 @@ const FormHandling = function () {
     return lastRow;
   }
 
+  
+
   /**
    * Using the given row, update the corresponding ride
    * @param {Row} row Row from which to update the ride
    * @param {RWGPS} rwgps RWGPS object to connect to ride
-   * @param {Result} result result object to collect result of underlying operations
-   * @returns {Result} result object
+   * @returns {Row} row object
    */
-  function _updateRide(row, rwgps, result) {
+  function _updateRide(row, rwgps) {
     row.linkRouteURL();
     RideManager.updateRows([row], rwgps);
-    result.row = row;
-    return result;
+    return row;
   }
 
   return {

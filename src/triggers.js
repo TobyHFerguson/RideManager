@@ -35,7 +35,12 @@ function log_(event) {
 
 
 function linkRouteURLs() {
-  Schedule.getSelectedRows().forEach(r => r.linkRouteURL());
+  Schedule.getSelectedRows().forEach(r => {
+    try {
+      r.linkRouteURL();
+    } catch (e) {
+      SpreadsheetApp.getUi().alert(`Row ${r.rowNum}: ${e.message}`);
+    }});
   Schedule.save();
 }
 
