@@ -90,7 +90,8 @@ const rowCheck = function () {
             if (!row.RideLeaders || row.RideLeaders.length === 0) {
                 return `No ride leader given. Defaulting to '${Globals.RIDE_LEADER_TBD_NAME}'`;
             } else {
-                const rls = row.RideLeaders.reduce((p, rl) => {
+                const ldrs = Array.isArray(row.RideLeaders) ? row.RideLeaders : [row.RideLeaders];
+                const rls = ldrs.reduce((p, rl) => {
                     if (rwgps.knownRideLeader(rl)) {
                         p.known.push(rl)
                     } else {

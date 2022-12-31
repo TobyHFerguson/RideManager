@@ -102,11 +102,13 @@ const FormHandling = function () {
   }
   function _scheduleRide(event, rwgps, result) {
     const newRow = {
+      highlight: false, 
       setRouteLink: function (text, url) { this.RouteURL = url; },
-      linkRouteURL: () => { }
+      linkRouteURL: () => { },
+      highlightRideLeader: function (h) { this.highlight = h; }
     };
     _copyFormDataIntoRow(event, newRow);
-    evalRows([newRow], rwgps, [rowCheck.badRoute], []);
+    evalRows([newRow], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader]);
     // If the badRoute is simply that its a foreign route then import it
     let fridx = newRow.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
     if (fridx !== -1) {
@@ -126,6 +128,7 @@ const FormHandling = function () {
     }
     const lastRow = Schedule.appendRow(newRow);
     console.log(`FormHandling rowNum: ${lastRow.rowNum}`)
+    if (newRow.highlight) lastRow.highlightRideLeader(true);
     RideManager.scheduleRows([lastRow], rwgps);
     lastRow.save();
     lastRow.warnings = newRow.warnings;
