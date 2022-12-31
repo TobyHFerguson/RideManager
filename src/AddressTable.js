@@ -1,6 +1,11 @@
 class AddressTable {
+    // Addresses is an array of arrays
+    // Each of the inner arrays is of the form
+    // prefix, address, location_nickname, latitude, longitude
     constructor(addresses) {
+        // All the addresses
         this.addresses = addresses
+        // Addresses organized by prefix
         this.byPrefix = addresses.reduce((p,c) => {
             p[`${c[0]}`] = {address: c[1], location: c[2]};
             return p;
@@ -17,5 +22,5 @@ class AddressTable {
 }
 
 if (typeof module !== 'undefined') {
-    module.exports = Address;
+    module.exports = AddressTable;
 }

@@ -6,7 +6,9 @@
  */
 
 /**
- * Calculate the straight line distance between two points in lat/long format
+ * Calculate the absolute straight line distance between two points
+ * @param{Point} p1
+ * @param{Point} p2
  */
  function haversine_distance(p1, p2) {
     // var R = 6371.0710 // Radius of the Earth in Km
@@ -17,14 +19,11 @@
     var difflon = (p2.lng - p1.lng) * (Math.PI / 180); // Radian difference (longitudes)
   
     var d = 2 * R * Math.asin(Math.sqrt(Math.sin(difflat / 2) * Math.sin(difflat / 2) + Math.cos(rlat1) * Math.cos(rlat2) * Math.sin(difflon / 2) * Math.sin(difflon / 2)));
-    return d;
+    return Math.abs(d);
   }
   
+  if (typeof module !== 'undefined') {
+    module.exports = haversine_distance;
+} 
   
-  function testHaversine() {
-    const p1 = { lng: -156.66578, lat: 20.99424 };
-    const p2 = { lat: 20.99417, lng: -156.6655 };
-    const distance = haversine_distance(p1, p2)
-    console.log(`${distance} yards`)
-  }
   
