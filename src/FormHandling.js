@@ -42,13 +42,10 @@ const FormHandling = function () {
       Form.setImportedRouteURL(event.range, '');
     }
     else {
-      console.log("foreign route");
       row.errors.splice(fridx, 1);
       if (_routeNotYetImported(event)) {
-        console.log("importing foreign route");
         RideManager.importRows([row], rwgps);
         Form.setImportedRouteURL(event.range, row.RouteURL);
-        console.log(`Foreign route recorded as ${Form.getImportedRouteURL(event.range)}`);
       }
       row.warnings.push(`Foreign route detected. Please resubmit using this URL for the route: ${row.RouteURL}`);
     }
@@ -152,11 +149,9 @@ const FormHandling = function () {
     evalRows([newRow], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader]);
     _importForeignRoute(newRow, event, rwgps);
     if (newRow.errors.length) {
-      console.log(`FormHandling._scheduleRide - returning error`)
       return newRow;
     }
     const lastRow = Schedule.appendRow(newRow);
-    console.log(`FormHandling rowNum: ${lastRow.rowNum}`)
     if (newRow.highlight) lastRow.highlightRideLeader(true);
     RideManager.scheduleRows([lastRow], rwgps);
     lastRow.save();

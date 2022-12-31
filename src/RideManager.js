@@ -10,6 +10,9 @@ const RideManager = {
         rows.forEach(row => cancel(row, rwgps));
     },
     importRows: function (rows, rwgps) {
+        function getRouteNumber(url) {
+            return url.split('/')[4];
+        }
         function importRow(row, rwgps) {
             const route = {
                 url: row.RouteURL ? row.RouteURL : row.RouteName,
@@ -20,6 +23,7 @@ const RideManager = {
             row.setRouteLink(url, url);
             //TODO remove dependency on Schedule
             row.linkRouteURL();
+            console.log(`Imported foreign route ${getRouteNumber(route.url)} as ${getRouteNumber(url)}`)
         }
 
         rows.forEach(row => importRow(row, rwgps));
@@ -100,6 +104,7 @@ const RideManager = {
             event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]));
             row.setRideLink(event.name, row.RideURL);
             rwgps.edit_event(row.RideURL, event);
+            console.log(`Updated event ${event.name} ${row.RideURL}`)
         }
 
         rows.forEach(row => updateRow(row));
