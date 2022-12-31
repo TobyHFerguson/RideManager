@@ -91,10 +91,11 @@ const FormHandling = function () {
   /**
    * Notify the result of a submission
    */
-  function _notifySubmissionResult(row) {
+  function _notifySubmissionResult(row, email) {
     console.log("Submitted a ride");
     console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
     console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
+    Email.rideSubmitted(row, email);
   }
 
   /**
@@ -121,7 +122,7 @@ const FormHandling = function () {
     if (!(row.errors && row.errors.length)) {
       _linkFormRowToRideRow(event.range, row);
     }
-    _notifySubmissionResult(row);
+    _notifySubmissionResult(row, Form.getEmail(event.range));
   }
 
   /**
@@ -140,12 +141,17 @@ const FormHandling = function () {
     }
 
     if (Form.isRideDeleted(event.range)) {
-      _deleteRide(row, rwgps)
+      // We send the notification first because once we've deleted the 
+      // ride there is no name to use to tell anyone about it!
+      Email.rideDeleted(row, Form.getEmail(event.range));
+      _deleteRide(row, rwgps);
     } else {
       if (Form.isRideCancelled(event.range)) {
         _cancelRide(row, rwgps);
+        Email.rideCancelled(row, Form.getEmail(event.range))
       } else {
         _reinstateRide(row, rwgps);
+        Email.rideResubmitted(row, Form.getEmail(event.range))
       }
     }
     row.save();
@@ -202,6 +208,9 @@ const FormHandling = function () {
         _processResubmission(event, rwgps);
       }
       if (_isHelpNeeded(event)) {
+        let row = {};
+        _copyFormDataIntoRow(event, row);
+        Email.help(row, Form.getEmail(event.range))
         _notifyHelpNeeded(event);
       }
     },
