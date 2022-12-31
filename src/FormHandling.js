@@ -1,5 +1,5 @@
 const FormHandling = function () {
-  function _cancelRide(row, rwgps, result) {
+  function _cancelRide(row, rwgps) {
     RideManager.cancelRows([row], rwgps);
   }
 
@@ -16,6 +16,10 @@ const FormHandling = function () {
     row.RideLeaders = Form.getFirstName(rng) + " " + Form.getLastName(rng);
     row.Email = Form.getEmail(rng);
     return row;
+  }
+
+  function _deleteRide(row, rwgps) {
+    RideManager.unscheduleRows([row], rwgps);
   }
 
   function _getRowFromSchedule(range) {
@@ -35,9 +39,9 @@ const FormHandling = function () {
     function _routeNotYetImported(event) {
       return !(Form.getImportedRouteURL(event.range));
     }
-    
+
     let fridx = row.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
-    if (fridx === -1) { 
+    if (fridx === -1) {
       // If the route isn't foreign then be sure to clear the foreign route record
       Form.setImportedRouteURL(event.range, '');
     }
@@ -78,7 +82,7 @@ const FormHandling = function () {
   /**
    * Notify the result of a resubmission
    */
-   function _notifyResubmissionResult(row) {
+  function _notifyResubmissionResult(row) {
     console.log("Resubmitted a ride");
     console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
     console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
@@ -93,11 +97,10 @@ const FormHandling = function () {
     console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
   }
   /**
-   * Process an initial ride request, updating the result appropriately.
+   * Process an initial ride request.
    * 
    * @param {Event} event The Form Submit event to be processed
    * @param {RWGPS} rwgps The RWGPS connection
-   * @param {Object} result the result object to be marked up
    */
   function _processInitialSubmission(event, rwgps) {
     const row = _scheduleRide(event, rwgps);
@@ -108,13 +111,12 @@ const FormHandling = function () {
   }
 
   /**
-   * Process a resubmitted ride request, updating the result appropriately.
+   * Process a resubmitted ride request
    * 
    * @param {Event} event The Form Submit event to be processed
    * @param {RWGPS} rwgps The RWGPS connection
-   * @param {Ojbect} result The Result object
    */
-  function _processResubmission(event, rwgps, result) {
+  function _processResubmission(event, rwgps) {
     const row = _getRowFromSchedule(event.range);
     _copyFormDataIntoRow(event, row);
     evalRows([row], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader]);
@@ -124,23 +126,28 @@ const FormHandling = function () {
     if (!row.errors.length) {
       _updateRide(row, rwgps);
     }
-    
-    if (Form.isRideCancelled(event.range)) {
-      _cancelRide(row, rwgps, result);
+
+    if (Form.isRideDeleted(event.range)) {
+      _deleteRide(row, rwgps)
     } else {
-      _reinstateRide(row, rwgps, result);
+      if (Form.isRideCancelled(event.range)) {
+        _cancelRide(row, rwgps);
+      } else {
+        _reinstateRide(row, rwgps);
+      }
     }
+    console.log(row.RideURL);
     row.save();
     _notifyResubmissionResult(row);
   }
 
-  function _reinstateRide(row, rwgps, result) {
+  function _reinstateRide(row, rwgps) {
     RideManager.reinstateRows([row], rwgps);
   }
 
-  function _scheduleRide(event, rwgps, result) {
+  function _scheduleRide(event, rwgps) {
     const newRow = {
-      highlight: false, 
+      highlight: false,
       setRouteLink: function (text, url) { this.RouteURL = url; },
       linkRouteURL: () => { },
       highlightRideLeader: function (h) { this.highlight = h; }
@@ -159,7 +166,7 @@ const FormHandling = function () {
     return lastRow;
   }
 
-  
+
 
   /**
    * Using the given row, update the corresponding ride
@@ -169,18 +176,21 @@ const FormHandling = function () {
    */
   function _updateRide(row, rwgps) {
     row.linkRouteURL();
-    RideManager.updateRows([row], rwgps);
+    if (row.RideURL) {
+      RideManager.updateRows([row], rwgps);
+    } else {
+      RideManager.scheduleRows([row], rwgps);
+    }
     return row;
   }
 
   return {
     // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
     processEvent: function (event, rwgps) {
-      const result = { errors: [], warnings: [] };
       if (!_isReSubmission(event)) {
-        _processInitialSubmission(event, rwgps, result);
+        _processInitialSubmission(event, rwgps);
       } else {
-        _processResubmission(event, rwgps, result);
+        _processResubmission(event, rwgps);
       }
       if (_isHelpNeeded(event)) {
         _notifyHelpNeeded(event);

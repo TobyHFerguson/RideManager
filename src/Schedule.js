@@ -97,6 +97,7 @@ const Schedule = function () {
       }
       // Use the start row to first write out all the values in the range, then overlay the ride column and route column rtvs
       this.getRowSet(this.dirtyRows).forEach(row => {
+        console.log(row.values);
         row.range.setValues(row.values);
         saveColumn(this.getColumnIndex(RideSheet.RIDECOLUMNNAME), row.range, row.rtvs);
         saveColumn(this.getColumnIndex(RideSheet.ROUTECOLUMNNAME), row.range, row.rtvs);
@@ -104,10 +105,13 @@ const Schedule = function () {
       this.dirtyRows = new Set();
     }
 
-
-
+    /**
+     * Delete the ride link for the given row number.
+     * @param {number} rowNum row number from which to delete ride link
+     * @returns the rtv for the cell;
+     */
     deleteRideLink(rowNum) {
-      this.activeSheet.getRange(rowNum, this.getColumnIndex(RideSheet.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
+      return this.activeSheet.getRange(rowNum, this.getColumnIndex(RideSheet.RIDECOLUMNNAME) + 1).clearContent().getRichTextValues()[0][0];
     }
 
     convertRangeToRows(range) {
@@ -275,9 +279,11 @@ const Schedule = function () {
       this.richTextValues[this.schedule.getColumnIndex(RideSheet.RIDECOLUMNNAME)] = rtv;
       this.schedule.addDirtyRow(this);
     }
-
+    
     deleteRideLink() {
-      this.schedule.deleteRideLink(this.rowNum);
+      const nrtv = this.schedule.deleteRideLink(this.rowNum);
+      this.richTextValues[this.schedule.getColumnIndex(RideSheet.RIDECOLUMNNAME)] = nrtv;
+      this.schedule.addDirtyRow(this);
     }
     setRouteLink(name, url) {
       let rtv = this.createRTV(name, url);

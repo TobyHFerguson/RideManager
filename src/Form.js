@@ -65,6 +65,9 @@ const Form = function () {
     getRideDeleted(range) {
       return this._getValue(range, FormSheet.RIDEDELETEDCOLUMNNAME);
     }
+    isRideDeleted(range) {
+      return this.getRideDeleted(range).toLowerCase().startsWith('yes');
+    }
     getImportedRouteURL(range) {
       return this._getValue(range, FormSheet.IMPORTEDROUTECOLUMNNAME);
     }
