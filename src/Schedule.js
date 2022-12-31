@@ -97,7 +97,6 @@ const Schedule = function () {
       }
       // Use the start row to first write out all the values in the range, then overlay the ride column and route column rtvs
       this.getRowSet(this.dirtyRows).forEach(row => {
-        console.log(row.values);
         row.range.setValues(row.values);
         saveColumn(this.getColumnIndex(RideSheet.RIDECOLUMNNAME), row.range, row.rtvs);
         saveColumn(this.getColumnIndex(RideSheet.ROUTECOLUMNNAME), row.range, row.rtvs);

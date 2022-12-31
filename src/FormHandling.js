@@ -136,7 +136,6 @@ const FormHandling = function () {
         _reinstateRide(row, rwgps);
       }
     }
-    console.log(row.RideURL);
     row.save();
     _notifyResubmissionResult(row);
   }
