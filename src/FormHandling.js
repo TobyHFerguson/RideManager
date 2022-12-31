@@ -96,6 +96,20 @@ const FormHandling = function () {
     console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
     console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
   }
+
+  /**
+   * Using the given event, copy the relevant data into the given row, check it for errors
+   * and import any foreign route
+   * @param {Event} event the form submission event
+   * @param {Row} row the row to be prepared
+   * @param {RWGPS} rwgps RWGPS connection
+   */
+  function _prepareRowFromEvent(event, row, rwgps) {
+    _copyFormDataIntoRow(event, row);
+    evalRows([row], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader, rowCheck.inappropiateGroup]);
+    _importForeignRoute(row, event, rwgps);
+  }
+
   /**
    * Process an initial ride request.
    * 
@@ -118,9 +132,7 @@ const FormHandling = function () {
    */
   function _processResubmission(event, rwgps) {
     const row = _getRowFromSchedule(event.range);
-    _copyFormDataIntoRow(event, row);
-    evalRows([row], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader]);
-    _importForeignRoute(row, event, rwgps);
+    _prepareRowFromEvent(event, row, rwgps)
     // Save here in case anything goes wrong later on.
     row.save();
     if (!row.errors.length) {
@@ -151,9 +163,7 @@ const FormHandling = function () {
       linkRouteURL: () => { },
       highlightRideLeader: function (h) { this.highlight = h; }
     };
-    _copyFormDataIntoRow(event, newRow);
-    evalRows([newRow], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader]);
-    _importForeignRoute(newRow, event, rwgps);
+    _prepareRowFromEvent(event, newRow, rwgps);
     if (newRow.errors.length) {
       return newRow;
     }
