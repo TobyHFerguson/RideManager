@@ -195,5 +195,3 @@ function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
 
     return rows.map(row => evalRow_(row, rwgps, efs, wfs));
 }
-
-console.log(rowCheck.FOREIGN_ROUTE);
