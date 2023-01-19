@@ -1,4 +1,7 @@
 const FormHandling = function () {
+  function _log(m, event) {
+    console.log(`FormHandling: ${m}`, event ? event.namedValues : '');
+  }
   function _cancelRide(row, rwgps) {
     RideManager.cancelRows([row], rwgps);
   }
@@ -78,25 +81,25 @@ const FormHandling = function () {
    * @param {Event} event The Form Submit event
    */
   function _notifyHelpNeeded(event) {
-    console.log('Help Needed');
+    _log('Help Needed');
   }
 
   /**
    * Notify the result of a resubmission
    */
   function _notifyResubmissionResult(row) {
-    console.log("FormHandling.js - Resubmitted a ride");
-    console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
-    console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
+    _log("Resubmitted a ride");
+    _log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
+    _log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
   }
 
   /**
    * Notify the result of a submission
    */
   function _notifySubmissionResult(row, email) {
-    console.log("FormHandling.js - Submitted a ride");
-    console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
-    console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
+    _log("Submitted a ride");
+    _log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
+    _log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
     Email.rideSubmitted(row, email);
   }
 
@@ -133,8 +136,8 @@ const FormHandling = function () {
    * @param {Event} event The Form Submit event to be processed
    * @param {RWGPS} rwgps The RWGPS connection
    */
-  function _processInitialSubmission(event, rwgps) {
-    console.log('Processing an Initial Submission');
+  function _processRideCreation(event, rwgps) {
+    _log('RideCreation', event);
     // The row Data Object here is not attached to the spreadsheet!
     let rowDO = _prepareRowFromEvent(event, rwgps);
     if (!(rowDO.errors && rowDO.errors.length)) {
@@ -156,8 +159,8 @@ const FormHandling = function () {
    * @param {Event} event The Form Submit event to be processed
    * @param {RWGPS} rwgps The RWGPS connection
    */
-  function _processResubmission(event, rwgps) {
-    console.log('Processing a resubmission');
+  function _processRideModification(event, rwgps) {
+    _log('Ride Modification', event);
     const row = _getRowFromSchedule(event.range);
     _prepareRowFromEvent(event, rwgps, row)
     // Save here in case anything goes wrong later on.
@@ -208,9 +211,9 @@ const FormHandling = function () {
     // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
     processEvent: function (event, rwgps) {
       if (!_isReSubmission(event)) {
-        _processInitialSubmission(event, rwgps);
+        _processRideCreation(event, rwgps);
       } else {
-        _processResubmission(event, rwgps);
+        _processRideModification(event, rwgps);
       }
       if (_isHelpNeeded(event)) {
         let row = {};
