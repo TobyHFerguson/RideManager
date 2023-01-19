@@ -35,6 +35,7 @@ const Email = function () {
             this.sendEmail('Ride updated', body, email);
         },
         sendEmail(subject, body, recipient) {
+            console.log('Email.js - sendingEmail');
             console.log(recipient);
             console.log(body);
             body = `${body}<p>SCCCC Ride Director`

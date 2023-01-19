@@ -13,7 +13,7 @@ const FormHandling = function () {
     } else {
       row.RouteURL = Form.getRouteURL(rng);
     }
-    row.RideLeaders = [Form.getFirstName(rng) + " " + Form.getLastName(rng)];
+    row.RideLeaders = Form.getFirstName(rng) + " " + Form.getLastName(rng);
     row.Email = Form.getEmail(rng);
     return row;
   }
@@ -85,7 +85,7 @@ const FormHandling = function () {
    * Notify the result of a resubmission
    */
   function _notifyResubmissionResult(row) {
-    console.log("Resubmitted a ride");
+    console.log("FormHandling.js - Resubmitted a ride");
     console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
     console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
   }
@@ -94,7 +94,7 @@ const FormHandling = function () {
    * Notify the result of a submission
    */
   function _notifySubmissionResult(row, email) {
-    console.log("Submitted a ride");
+    console.log("FormHandling.js - Submitted a ride");
     console.log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
     console.log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
     Email.rideSubmitted(row, email);
@@ -109,12 +109,18 @@ const FormHandling = function () {
    * @returns the given row, or the default row object
    */
   function _prepareRowFromEvent(event, rwgps, row) {
-    row = row ? row : {
-      highlight: false,
-      setRouteLink: function (text, url) { this.RouteURL = url; },
-      linkRouteURL: () => { },
-      highlightRideLeader: function (h) { this.highlight = h; }
-    };
+    if (!row) {
+      row = {
+        highlight: false,
+        setRouteLink: function (text, url) { this.RouteURL = url; },
+        linkRouteURL: () => { },
+        highlightRideLeader: function (h) { this.highlight = h; },
+        set RideLeaders(v) {
+          this.rls = [v];
+        },
+        get RideLeaders() { return this.rls; }
+      };
+    }
     _copyFormDataIntoRow(event, row);
     evalRows([row], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader, rowCheck.inappropiateGroup]);
     _importForeignRoute(row, event, rwgps);
@@ -128,6 +134,7 @@ const FormHandling = function () {
    * @param {RWGPS} rwgps The RWGPS connection
    */
   function _processInitialSubmission(event, rwgps) {
+    console.log('Processing an Initial Submission');
     // The row Data Object here is not attached to the spreadsheet!
     let rowDO = _prepareRowFromEvent(event, rwgps);
     if (!(rowDO.errors && rowDO.errors.length)) {
@@ -150,6 +157,7 @@ const FormHandling = function () {
    * @param {RWGPS} rwgps The RWGPS connection
    */
   function _processResubmission(event, rwgps) {
+    console.log('Processing a resubmission');
     const row = _getRowFromSchedule(event.range);
     _prepareRowFromEvent(event, rwgps, row)
     // Save here in case anything goes wrong later on.
