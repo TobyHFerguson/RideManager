@@ -9,6 +9,12 @@ const RideManager = {
 
         rows.forEach(row => cancel(row, rwgps));
     },
+    /**
+     * Import the given routes, using the given RWGPS connection. The RouteURL of each row
+     * is updated with the new local route URL. 
+     * @param {Row | Row[]} rows A Row or an array of Rows whose routes are to be imported.
+     * @param {RWGPS} rwgps The RWGPS Connection
+     */
     importRows: function (rows, rwgps) {
         function getRouteNumber(url) {
             return url.split('/')[4];
@@ -26,7 +32,7 @@ const RideManager = {
             console.log(`Imported foreign route ${getRouteNumber(route.url)} as ${getRouteNumber(url)}`)
         }
 
-        rows.forEach(row => importRow(row, rwgps));
+        (Array.isArray(rows) ? rows : [rows]).forEach(row => importRow(row, rwgps));
     },
     reinstateRows: function (rows, rwgps) {
         function reinstate(row, rwgps) {

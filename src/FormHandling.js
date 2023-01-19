@@ -50,6 +50,8 @@ const FormHandling = function () {
       if (_routeNotYetImported(event)) {
         RideManager.importRows([row], rwgps);
         Form.setImportedRouteURL(event.range, row.RouteURL);
+      } else {
+        row.RouteURL = Form.getImportedRouteURL(event.range);
       }
       row.errors.push(`Foreign route detected. Please resubmit using this URL for the route: ${row.RouteURL}`);
     }

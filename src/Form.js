@@ -11,15 +11,34 @@ const Form = function () {
       }
       throw new Error(`In sheet 'Form' column name: ${name} is not known`);
     }
+    /**
+     * Return the formula from the reference cell of the given range.
+     * 
+     * The range is assumed to contain a single row from the Form
+     * @param {Range} range Range whose reference cell formula is required
+     * @returns{String} the formula
+     */
     getReferenceCellFormula(range) {
       const nr = range.offset(0, this.getColumnIndex(FormSheet.RIDEREFERENCECOLUMNNAME), 1, 1);
       const formula = nr.getFormula();
       return formula;
     }
+    /**
+     * Set the reference cell's contents to be the given formula.
+     * 
+     * The range is assumed to contain a single row
+     * @param {Range} range Range whose reference cell formula is to be set
+     * @param {String} formula The formula
+     */
     setReferenceCellFormula(range, formula) {
       let nr = range.offset(0, this.getColumnIndex(FormSheet.RIDEREFERENCECOLUMNNAME), 1, 1);
       nr.setFormula(formula);
     }
+    /**
+     * Return the timestamp value from the given range
+     * @param {Range} range Range whose timestamp is to be returned
+     * @returns{Date} the timestamp
+     */
     getTimestamp(range) {
       return this._getValue(range, FormSheet.TIMESTAMPCOLUMNNAME);
     }
@@ -68,9 +87,19 @@ const Form = function () {
     isRideDeleted(range) {
       return this.getRideDeleted(range).toLowerCase().startsWith('yes');
     }
+    /**
+     * Return the imported route url value from the given range
+     * @param {Range} range target range
+     * @returns{String} the imported route url value
+     */
     getImportedRouteURL(range) {
       return this._getValue(range, FormSheet.IMPORTEDROUTECOLUMNNAME);
     }
+    /**
+     * Set the imported route url for the given range
+     * @param {Range} range target Range
+     * @param {string} url The URL to set the imported route url to
+     */
     setImportedRouteURL(range, url) {
       let nr = range.offset(0, this.getColumnIndex(FormSheet.IMPORTEDROUTECOLUMNNAME), 1, 1);
       nr.setValue(url);
