@@ -13,7 +13,7 @@ const FormHandling = function () {
     } else {
       row.RouteURL = Form.getRouteURL(rng);
     }
-    row.RideLeaders = Form.getFirstName(rng) + " " + Form.getLastName(rng);
+    row.RideLeaders = [Form.getFirstName(rng) + " " + Form.getLastName(rng)];
     row.Email = Form.getEmail(rng);
     return row;
   }
@@ -51,7 +51,7 @@ const FormHandling = function () {
         RideManager.importRows([row], rwgps);
         Form.setImportedRouteURL(event.range, row.RouteURL);
       }
-      row.warnings.push(`Foreign route detected. Please resubmit using this URL for the route: ${row.RouteURL}`);
+      row.errors.push(`Foreign route detected. Please resubmit using this URL for the route: ${row.RouteURL}`);
     }
   }
 
@@ -102,13 +102,21 @@ const FormHandling = function () {
    * Using the given event, copy the relevant data into the given row, check it for errors
    * and import any foreign route
    * @param {Event} event the form submission event
-   * @param {Row} row the row to be prepared
    * @param {RWGPS} rwgps RWGPS connection
+   * @param {[Row]} row the row to be prepared - defaults to a suitable row object
+   * @returns the given row, or the default row object
    */
-  function _prepareRowFromEvent(event, row, rwgps) {
+  function _prepareRowFromEvent(event, rwgps, row) {
+    row = row ? row : {
+      highlight: false,
+      setRouteLink: function (text, url) { this.RouteURL = url; },
+      linkRouteURL: () => { },
+      highlightRideLeader: function (h) { this.highlight = h; }
+    };
     _copyFormDataIntoRow(event, row);
     evalRows([row], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader, rowCheck.inappropiateGroup]);
     _importForeignRoute(row, event, rwgps);
+    return row;
   }
 
   /**
@@ -118,11 +126,19 @@ const FormHandling = function () {
    * @param {RWGPS} rwgps The RWGPS connection
    */
   function _processInitialSubmission(event, rwgps) {
-    const row = _scheduleRide(event, rwgps);
-    if (!(row.errors && row.errors.length)) {
-      _linkFormRowToRideRow(event.range, row);
+    // The row Data Object here is not attached to the spreadsheet!
+    let rowDO = _prepareRowFromEvent(event, rwgps);
+    if (!(rowDO.errors && rowDO.errors.length)) {
+      // The following line creates a row that is attached to the spreadsheet.
+      const newRow = Schedule.appendRow(rowDO);
+      // Copy over the other values from the DO to the newRow object.
+      if (rowDO.highlight) newRow.highlightRideLeader(true);
+      RideManager.scheduleRows([newRow], rwgps);
+      newRow.save();
+      _linkFormRowToRideRow(event.range, newRow);
+      rowDO = newRow;
     }
-    _notifySubmissionResult(row, Form.getEmail(event.range));
+    _notifySubmissionResult(rowDO, Form.getEmail(event.range));
   }
 
   /**
@@ -133,10 +149,10 @@ const FormHandling = function () {
    */
   function _processResubmission(event, rwgps) {
     const row = _getRowFromSchedule(event.range);
-    _prepareRowFromEvent(event, row, rwgps)
+    _prepareRowFromEvent(event, rwgps, row)
     // Save here in case anything goes wrong later on.
     row.save();
-    if (!row.errors.length) {
+    if (!(row.errors && row.errors.length)) {
       _updateRide(row, rwgps);
     }
 
@@ -161,27 +177,6 @@ const FormHandling = function () {
   function _reinstateRide(row, rwgps) {
     RideManager.reinstateRows([row], rwgps);
   }
-
-  function _scheduleRide(event, rwgps) {
-    const newRow = {
-      highlight: false,
-      setRouteLink: function (text, url) { this.RouteURL = url; },
-      linkRouteURL: () => { },
-      highlightRideLeader: function (h) { this.highlight = h; }
-    };
-    _prepareRowFromEvent(event, newRow, rwgps);
-    if (newRow.errors.length) {
-      return newRow;
-    }
-    const lastRow = Schedule.appendRow(newRow);
-    if (newRow.highlight) lastRow.highlightRideLeader(true);
-    RideManager.scheduleRows([lastRow], rwgps);
-    lastRow.save();
-    lastRow.warnings = newRow.warnings;
-    return lastRow;
-  }
-
-
 
   /**
    * Using the given row, update the corresponding ride
@@ -225,7 +220,6 @@ const FormHandling = function () {
         namedValues[`${FormSheet.LASTNAMECOLUMNNAME}`] = ["Ferguson"];
         namedValues[`${FormSheet.EMAILADDRESSCOLUMNNAME}`] = ["toby.h.ferguson@icloud.com"];
 
-        _scheduleRide({ namedValues: namedValues });
       }
     }
   }
