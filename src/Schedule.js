@@ -262,7 +262,7 @@ const Schedule = function () {
             Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
             this.setRouteLink(name, url);
           } catch (e) {
-            SpreadsheetApp.getUi().alert(`Row ${this.rowNum}: ${e.message}`);
+            Logger.log(`Row ${this.rowNum}: ${e.message}`);
           }
         }
       }
