@@ -10,7 +10,9 @@ function updateSelectedRides() {
 
 
 function updateSelectedRidesWithCredentials(rows, rwgps) {
-  UIManager.processRows(rows, [rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.notCancelled], [], rwgps, RideManager.updateRows);
+  UIManager.processRows(rows,
+    [rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute],
+    [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup], rwgps, RideManager.updateRows);
 }
 
 

@@ -36,7 +36,7 @@ const rowCheck = {
                 row.Group = row.Group;
                 break;
             default:
-                return `Unknown group: ${row.Group}`;
+                return `Unknown group: '${row.Group}'. Expected one of 'A', 'B', or 'C'`;
         }
     },
     routeInaccessibleOrOwnedByClub: function (row) {
@@ -109,12 +109,12 @@ const rowCheck = {
             }
         }
     },
-    cancelled: function (row) {
+    notCancelled: function (row) {
         if (!(row.RideName.toLowerCase().startsWith('cancelled'))) {
             return 'Not Cancelled';
         }
     },
-    notCancelled: function (row) {
+    cancelled: function (row) {
         if (row.RideName.toLowerCase().startsWith('cancelled')) {
             return 'Cancelled';
         }
@@ -160,7 +160,7 @@ const rowCheck = {
                     }
                     break;
                 default:
-                    throw Error(`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
+                    return(`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
             }
         }
         if (!row.RouteURL) return;
