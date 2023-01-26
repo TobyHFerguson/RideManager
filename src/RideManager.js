@@ -68,7 +68,7 @@ const RideManager = function () {
                 rwgps.unTagEvents([new_event_url], ["template"]);
                 _log(`Scheduled row: ${row.rowNum} event: ${event.name}`)
             }
-
+            _log(`Scheduling ${rows.length} rides`);
             rows.map(row => schedule_row(row, rwgps));
         },
         unscheduleRows: function (rows, rwgps) {

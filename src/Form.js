@@ -81,11 +81,17 @@ const Form = function () {
     isRideCancelled(range) {
       return this.getRideCancelled(range).toLowerCase().startsWith('yes')
     }
+    isRideUncancelled(range) {
+      return this.getRideCancelled(range).toLowerCase().startsWith('no')
+    }
     getRideDeleted(range) {
       return this._getValue(range, FormSheet.RIDEDELETEDCOLUMNNAME);
     }
     isRideDeleted(range) {
       return this.getRideDeleted(range).toLowerCase().startsWith('yes');
+    }
+    isRideUndeleted(range) {
+      return this.getRideDeleted(range).toLowerCase().startsWith('no');
     }
     /**
      * Return the imported route url value from the given range

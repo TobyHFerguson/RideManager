@@ -53,10 +53,8 @@ const FormHandling = function () {
       if (_routeNotYetImported(event)) {
         RideManager.importRows([row], rwgps);
         Form.setImportedRouteURL(event.range, row.RouteURL);
-      } else {
-        row.RouteURL = Form.getImportedRouteURL(event.range);
       }
-      row.errors.push(`Foreign route detected. Please resubmit using this URL for the route: ${row.RouteURL}`);
+      row.errors.push(`Foreign route detected. Please resubmit using this URL for the route: ${Form.getImportedRouteURL(event.range)}`);
     }
   }
 
@@ -100,7 +98,7 @@ const FormHandling = function () {
     _log("Submitted a ride");
     _log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
     _log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
-    Email.rideSubmitted(row, email);
+    Email.rideScheduled(row, email);
   }
 
   /**
@@ -165,24 +163,36 @@ const FormHandling = function () {
     _prepareRowFromEvent(event, rwgps, row)
     // Save here in case anything goes wrong later on.
     row.save();
+    // Only act if there are no errors to report
     if (!(row.errors && row.errors.length)) {
+      // Update the ride, even if it is to be deleted/cancelled!
       _updateRide(row, rwgps);
-    }
-
-    if (Form.isRideDeleted(event.range)) {
-      // We send the notification first because once we've deleted the 
-      // ride there is no name to use to tell anyone about it!
-      Email.rideDeleted(row, Form.getEmail(event.range));
-      _deleteRide(row, rwgps);
-    } else {
+      // Ride (un)deletion will result in ride (un)cancellation being ignored.
+      // This is written without else ifs so that no matter which path an email will be sent,
+      // errors or no. 
+      if (Form.isRideDeleted(event.range)) {
+        // We send the notification first because once we've deleted the 
+        // ride there is no name to use to tell anyone about it!
+        Email.rideDeleted(row, Form.getEmail(event.range));
+        _deleteRide(row, rwgps);
+        return;
+      }
+      if (Form.isRideUndeleted(event.range)) {
+        RideManager.scheduleRows([row], rwgps);
+        Email.rideScheduled(row, Form.getEmail(event.range));
+        return;
+      }
       if (Form.isRideCancelled(event.range)) {
         _cancelRide(row, rwgps);
-        Email.rideCancelled(row, Form.getEmail(event.range))
-      } else {
+        Email.rideCancelled(row, Form.getEmail(event.range));
+        return;
+      }
+      if (Form.isRideUncancelled(event.range)) {
         _reinstateRide(row, rwgps);
-        Email.rideResubmitted(row, Form.getEmail(event.range))
+        // No need to provide a separate email for ride reinstatement.
       }
     }
+    Email.rideUpdated(row, Form.getEmail(event.range))
     row.save();
     _notifyResubmissionResult(row);
   }
