@@ -2,116 +2,133 @@ const FormHandling = function () {
   function _log(m, event) {
     console.log(`FormHandling: ${m}`, event ? event.namedValues : '');
   }
-  function _cancelRide(row, rwgps) {
-    RideManager.cancelRows([row], rwgps);
+  function _cancelRide(rideRow, rwgps) {
+    RideManager.cancelRows([rideRow], rwgps);
   }
-
-  function _copyFormDataIntoRow(event, row) {
-    const rng = event.range;
-    row.StartDate = Form.getRideDate(rng);
-    row.Group = Form.getGroup(rng);
-    row.StartTime = Form.getStartTime(rng);
-    if (row.setRouteLink) {
-      row.setRouteLink(Form.getRouteURL(rng), Form.getRouteURL(rng));
+/**
+ * 
+ * @param {FormRow} formRow 
+ * @param {Row} rideRow 
+ * @returns 
+ */
+  function _copyFormRowIntoRideRow(formRow, rideRow) {
+    rideRow.StartDate = formRow.RideDate;
+    rideRow.Group = formRow.Group;
+    rideRow.StartTime = formRow.StartTime;
+    if (rideRow.setRouteLink) {
+      rideRow.setRouteLink(formRow.RouteURL, formRow.RouteURL);
     } else {
-      row.RouteURL = Form.getRouteURL(rng);
+      rideRow.RouteURL = formRow.RouteURL;
     }
-    row.RideLeaders = Form.getFirstName(rng) + " " + Form.getLastName(rng);
-    row.Email = Form.getEmail(rng);
-    return row;
+    rideRow.RideLeaders = formRow.FirstName + " " + formRow.LastName;
+    rideRow.Email = formRow.Email;
+    return rideRow;
   }
 
-  function _deleteRide(row, rwgps) {
-    RideManager.unscheduleRows([row], rwgps);
+  function _deleteRide(rideRow, rwgps) {
+    RideManager.unrideRows([rideRow], rwgps);
   }
 
-  function _getRowFromSchedule(range) {
-    const formula = Form.getReferenceCellFormula(range);
+  function _getRideRowFromReferenceFormula(formula) {
     const A1 = formula.split('!')[1];
-    const row = Schedule._getRowsFromRangeA1(A1)[0];
-    return row;
+    const rideRow = Schedule._getRowsFromRangeA1(A1)[0];
+    return rideRow;
   }
 
   /**
-   * Check the given row and if the route is foreign and not yet imported then import it and record the import
-   * @param {Row} row the row object
-   * @param {Event} event the Form Submission object
+   * Check the given form row and if the route is foreign and not yet imported then import it
+   * into the given ride row, recording the import
+   * 
+   * The rideRow has been created from the given formRow
+   * 
+   * @param {Row} rideRow the row object
+   * @param {FormRow} formRow the form row
    * @param {RWGPS} rwgps the RWGPS connection
    */
-  function _importForeignRoute(row, event, rwgps) {
-    function _routeNotYetImported(event) {
-      return !(Form.getImportedRouteURL(event.range));
-    }
-
-    let fridx = row.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
+  //TODO - tidy up - I don't like the assumption that the rideRow has been created from the 
+  // given form row. how do I check that? 
+  function _importForeignRoute(rideRow, formRow, rwgps) {
+    let fridx = rideRow.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
     if (fridx === -1) {
-      // If the route isn't foreign then be sure to clear the foreign route record
-      Form.setImportedRouteURL(event.range, '');
+      // If the route in the ride row isn't foreign then clear the foreign route record in the form row
+      formRow.ImportedRouteURL = '';
     }
     else {
-      row.errors.splice(fridx, 1);
-      if (_routeNotYetImported(event)) {
-        RideManager.importRows([row], rwgps);
-        Form.setImportedRouteURL(event.range, row.RouteURL);
+      // remove the foreign route error from the list of errors
+      rideRow.errors.splice(fridx, 1);
+      // If the route has not been imported (there's no reference to it in the form row)
+      // then import it.
+      if (!(formRow.ImportedRouteURL)) {
+        RideManager.importRows([rideRow], rwgps);
+        formRow.ImportedRouteURL = rideRow.RouteURL;
       }
-      row.errors.push(`Foreign route detected. Please resubmit using this URL for the route: ${Form.getImportedRouteURL(event.range)}`);
+      // Ensure that the foreign route info is sent to the user
+      rideRow.errors.push(`Foreign route detected. Please resubmit using this URL for the route: ${formRow.ImportedRouteURL}`);
     }
   }
 
-  function _isHelpNeeded(event) {
-    return Form.isHelpNeeded(event.range);
-  }
 
-  // A resubmission is when the form range contains a reference to a row.
-  function _isReSubmission(event) {
-    return Form.getReferenceCellFormula(event.range)
+
+  // Ride creation is when the form row doesn't contain a reference to a ride row.
+  /**
+   * 
+   * @param {FormRow} formRow 
+   * @returns 
+   */
+  function _isRideCreation(formRow) {
+    return !(formRow.ReferenceCellFormula)
   }
 
   // Linking the form row to the ride row allows us to find the ride row when the form is 
   // resubmitted. By using formulas we're guaranteed that this reference is stable over
   // operations such as sorting and filtering.
-  function _linkFormRowToRideRow(range, row) {
-    Form.setReferenceCellFormula(range, `='${RideSheet.NAME}'!A${row.rowNum}`)
+  /**
+   * 
+   * @param {FormRow} formRow 
+   * @param {Row} rideRow 
+   */
+  function _linkFormRowToRideRow(formRow, rideRow) {
+    formRow.ReferenceCellFormula = `='${RideSheet.NAME}'!A${rideRow.rowNum}`;
   }
 
   /**
    * Notify the required people that help is needed
-   * @param {Event} event The Form Submit event
+   * @param {FormRow} formRow 
    */
-  function _notifyHelpNeeded(event) {
+  function _notifyHelpNeeded(formRow) {
     _log('Help Needed');
   }
 
   /**
    * Notify the result of a resubmission
    */
-  function _notifyResubmissionResult(row) {
+  function _notifyResubmissionResult(rideRow) {
     _log("Resubmitted a ride");
-    _log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
-    _log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
+    _log(`Errors: ${rideRow.errors ? rideRow.errors.join(', ') : []}`);
+    _log(`Warnings: ${rideRow.warnings ? rideRow.warnings.join(', ') : []}`)
   }
 
   /**
    * Notify the result of a submission
    */
-  function _notifySubmissionResult(row, email) {
+  function _notifySubmissionResult(rideRow, email) {
     _log("Submitted a ride");
-    _log(`Errors: ${row.errors ? row.errors.join(', ') : []}`);
-    _log(`Warnings: ${row.warnings ? row.warnings.join(', ') : []}`)
-    Email.rideScheduled(row, email);
+    _log(`Errors: ${rideRow.errors ? rideRow.errors.join(', ') : []}`);
+    _log(`Warnings: ${rideRow.warnings ? rideRow.warnings.join(', ') : []}`)
+    Email.rideScheduled(rideRow, email);
   }
 
   /**
-   * Using the given event, copy the relevant data into the given row, check it for errors
+   * Using the given form row, copy the relevant data into the given ride row, check it for errors
    * and import any foreign route
-   * @param {Event} event the form submission event
+   * @param {FormRow} formRow the form row
    * @param {RWGPS} rwgps RWGPS connection
-   * @param {[Row]} row the row to be prepared - defaults to a suitable row object
-   * @returns the given row, or the default row object
+   * @param {[Row]} rideRow the ride row to be prepared - defaults to a suitable row object
+   * @returns the given ride row, or a default ride row object
    */
-  function _prepareRowFromEvent(event, rwgps, row) {
-    if (!row) {
-      row = {
+  function _prepareRideRowFromFormRow(formRow, rwgps, rideRow) {
+    if (!rideRow) {
+      rideRow = {
         highlight: false,
         setRouteLink: function (text, url) { this.RouteURL = url; },
         linkRouteURL: () => { },
@@ -122,114 +139,123 @@ const FormHandling = function () {
         get RideLeaders() { return this.rls; }
       };
     }
-    _copyFormDataIntoRow(event, row);
-    evalRows([row], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader, rowCheck.inappropiateGroup]);
-    _importForeignRoute(row, event, rwgps);
-    return row;
+    _copyFormRowIntoRideRow(formRow, rideRow);
+    evalRows([rideRow], rwgps, [rowCheck.badRoute], [rowCheck.noRideLeader, rowCheck.inappropiateGroup]);
+    _importForeignRoute(rideRow, formRow, rwgps);
+    return rideRow;
   }
 
   /**
    * Process an initial ride request.
    * 
-   * @param {Event} event The Form Submit event to be processed
+   * @param {FormRow} formRow The form row to be processed
    * @param {RWGPS} rwgps The RWGPS connection
    */
-  function _processRideCreation(event, rwgps) {
-    _log('RideCreation', event);
-    // The row Data Object here is not attached to the spreadsheet!
-    let rowDO = _prepareRowFromEvent(event, rwgps);
-    if (!(rowDO.errors && rowDO.errors.length)) {
-      // The following line creates a row that is attached to the spreadsheet.
-      const newRow = Schedule.appendRow(rowDO);
-      // Copy over the other values from the DO to the newRow object.
-      if (rowDO.highlight) newRow.highlightRideLeader(true);
-      RideManager.scheduleRows([newRow], rwgps);
-      newRow.save();
-      _linkFormRowToRideRow(event.range, newRow);
-      rowDO = newRow;
+  function _processRideCreation(formRow, rwgps) {
+    _log('RideCreation');
+    // The ride row here is not attached to the spreadsheet, hence the 'Data Object' name
+    let rideRowDO = _prepareRideRowFromFormRow(formRow, rwgps);
+    // If there are errors then report them and quit.
+    if (rideRowDO.errors && rideRowDO.errors.length) {
+      _notifySubmissionResult(rideRowDO, formRow.Email);
+      return;
     }
-    _notifySubmissionResult(rowDO, Form.getEmail(event.range));
+    // No errors - create the ride
+    // The following line creates a row that is attached to the spreadsheet.
+    const rideRow = Schedule.appendRow(rideRowDO);
+    // Copy over the other values from the ride row DO to the rideRow object.
+    if (rideRowDO.highlight) rideRow.highlightRideLeader(true);
+    rideRow.errors = rideRowDO.errors;
+    rideRow.warnings = rideRowDO.warnings;
+    RideManager.scheduleRows([rideRow], rwgps);
+    rideRow.save();
+    _linkFormRowToRideRow(formRow, rideRow);
+    _notifySubmissionResult(rideRow, formRow.Email);
   }
 
   /**
-   * Process a resubmitted ride request
+   * Process a resubmitted ride request from the given form row
    * 
-   * @param {Event} event The Form Submit event to be processed
+   * @param {FormRow} formRow The form row
    * @param {RWGPS} rwgps The RWGPS connection
    */
-  function _processRideModification(event, rwgps) {
-    _log('Ride Modification', event);
-    const row = _getRowFromSchedule(event.range);
-    _prepareRowFromEvent(event, rwgps, row)
+  function _processRideModification(formRow, rwgps) {
+    _log('Ride Modification');
+    const rideRow = _getRideRowFromReferenceFormula(formRow.ReferenceCellFormula);
+    console.log('formRow.deleteRequested', formRow.deleteRequested);
+    _prepareRideRowFromFormRow(formRow, rwgps, rideRow)
     // Save here in case anything goes wrong later on.
-    row.save();
+    rideRow.save();
     // Only act if there are no errors to report
-    if (!(row.errors && row.errors.length)) {
+    if (!(rideRow.errors && rideRow.errors.length)) {
       // Update the ride, even if it is to be deleted/cancelled!
-      _updateRide(row, rwgps);
+      _updateRide(rideRow, rwgps);
       // Ride (un)deletion will result in ride (un)cancellation being ignored.
       // This is written without else ifs so that no matter which path an email will be sent,
       // errors or no. 
-      if (Form.isRideDeleted(event.range)) {
+      if (formRow.deleteRequested) {
         // We send the notification first because once we've deleted the 
         // ride there is no name to use to tell anyone about it!
-        Email.rideDeleted(row, Form.getEmail(event.range));
-        _deleteRide(row, rwgps);
+        Email.rideDeleted(rideRow, formRow.Email);
+        _deleteRide(rideRow, rwgps);
         return;
       }
-      if (Form.isRideUndeleted(event.range)) {
-        RideManager.scheduleRows([row], rwgps);
-        Email.rideScheduled(row, Form.getEmail(event.range));
+      if (formRow.undeleteRequested) {
+        RideManager.rideRows([rideRow], rwgps);
+        Email.rideScheduled(rideRow, formRow.Email);
         return;
       }
-      if (Form.isRideCancelled(event.range)) {
-        _cancelRide(row, rwgps);
-        Email.rideCancelled(row, Form.getEmail(event.range));
+      if (formRow.cancelRequested) {
+        _cancelRide(rideRow, rwgps);
+        Email.rideCancelled(rideRow, formRow.Email);
         return;
       }
-      if (Form.isRideUncancelled(event.range)) {
-        _reinstateRide(row, rwgps);
+      if (formRow.reinstatementRequested) {
+        _reinstateRide(rideRow, rwgps);
         // No need to provide a separate email for ride reinstatement.
       }
     }
-    Email.rideUpdated(row, Form.getEmail(event.range))
-    row.save();
-    _notifyResubmissionResult(row);
+    Email.rideUpdated(rideRow, formRow.Email)
+    rideRow.save();
+    _notifyResubmissionResult(rideRow);
   }
 
-  function _reinstateRide(row, rwgps) {
-    RideManager.reinstateRows([row], rwgps);
+  function _reinstateRide(rideRow, rwgps) {
+    RideManager.reinstateRows([rideRow], rwgps);
   }
 
   /**
-   * Using the given row, update the corresponding ride
-   * @param {Row} row Row from which to update the ride
+   * Using the given schedule row, update the corresponding ride
+   * @param {Row} rideRow Row from which to update the ride
    * @param {RWGPS} rwgps RWGPS object to connect to ride
-   * @returns {Row} row object
+   * @returns {Row} updated schedule row object
    */
-  function _updateRide(row, rwgps) {
-    row.linkRouteURL();
-    if (row.RideURL) {
-      RideManager.updateRows([row], rwgps);
+  function _updateRide(rideRow, rwgps) {
+    rideRow.linkRouteURL();
+    if (rideRow.RideURL) {
+      RideManager.updateRows([rideRow], rwgps);
     } else {
-      RideManager.scheduleRows([row], rwgps);
+      RideManager.scheduleRows([rideRow], rwgps);
     }
-    return row;
+    return rideRow;
   }
 
   return {
     // docs for the event: https://developers.google.com/apps-script/guides/triggers/events
     processEvent: function (event, rwgps) {
-      if (!_isReSubmission(event)) {
-        _processRideCreation(event, rwgps);
+      _log("processEvent", event);
+      const formRow = FormRowBuilder.createFormRow(event);
+      if (_isRideCreation(formRow)) {
+        _processRideCreation(formRow, rwgps);
       } else {
-        _processRideModification(event, rwgps);
+        _processRideModification(formRow, rwgps);
       }
-      if (_isHelpNeeded(event)) {
-        let row = {};
-        _copyFormDataIntoRow(event, row);
-        Email.help(row, Form.getEmail(event.range))
-        _notifyHelpNeeded(event);
+      if (formRow.helpRequested) {
+        const rideRow = {};
+        //TODO - make copyForm ... create a default ride row that will work everywhere
+        _copyFormRowIntoRideRow(formRow, rideRow);
+        Email.help(rideRow, formRow)
+        _notifyHelpNeeded(formRow);
       }
     },
     tests: {
