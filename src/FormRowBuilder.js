@@ -71,7 +71,7 @@ const FormRowBuilder = function () {
     // extracted from the form state itself.
     get isScheduledEvent() { return this._stateIs('scheduled'); }
     get isCancelledEvent() { return this._stateIs('cancelled'); }
-    get isDeletedEvent() { return this._stateIs('deleted'); }
+    get isUnscheduledEvent() { return this._stateIs('unscheduled'); }
     // We only need to handle help when its requested, so on the change itself.
     get helpRequestedEvent() { 
       const hn = this.event.namedValues[FormSheet.HELPNEEDEDCOLUMNNAME][0];
@@ -101,9 +101,7 @@ const FormRowBuilder = function () {
  * @property{string} LastName
  * @property{string} PhoneNumber
  * @property{string} ReferenceCellFormula
- * @property{string} RideCancelled
  * @property{Date} RideDate
- * @property{string} RideDeleted
  * @property{string} RideState
  * @property{string} RouteURL
  * @property{string} StartLocation
@@ -112,7 +110,7 @@ const FormRowBuilder = function () {
  * @property{boolean} helpRequestedEvent - true iff help has been requested
  * @property{boolean} isScheduledEvent - true iff the ride should be scheduled
  * @property{boolean} isCancelledEvent - true iff the ride should be cancelled
- * @property{boolean} isDeletedEvent - true iff the ride should be deleted
+ * @property{boolean} isUnscheduledEvent - true iff the ride should be unscheduled
  */
 function testForm() {
   const f = Form;

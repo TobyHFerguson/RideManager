@@ -10,9 +10,9 @@ const Email = function () {
         return html;
     };
 
-    function _formatDeletionEmail(row) {
+    function _formatUnscheduleEmail(row) {
         var html = `${row.RideLeaders[0]},`
-        html += `<p> The ride ${row.RideName} has been deleted and is no longer visible on the schedule.`
+        html += `<p> The ride ${row.RideName} has been unscheduled and is no longer visible on the schedule.`
         html += '<p>However the ride can still be managed by editing the Google Form you originally used to create the ride.'
         return html;
     };
@@ -26,9 +26,12 @@ const Email = function () {
     };
 
     function _formatOnlyScheduleAllowedEmail(row) {
-        var html = `${row.RideLeaders[0]},`
-        html += `<p>you attempted to either cancel or delete the ride ${row.RideName}, however the only thing `
-        html += `you're permitted to do is to schedule it. Please edit the form and select the 'Schedule' button `
+        let ride = row.RideName ? `the ride '${_makeLink(row.RideURL, row.RideName.replace('CANCELLED: ', ''))}'` : 'a ride'
+        let html = `${row.RideLeaders[0]},`
+
+        html += `<p>you attempted to either cancel or unschedule ${ride}, however the only thing `
+        html += `you're permitted to do is to <i>schedule</i> it.`
+        html += `<p>Please edit the form and select the 'Schedule' button `
         html += `in the Ride Management section and resubmit the ride`;
         return html;
     };
@@ -131,9 +134,9 @@ const Email = function () {
             const body = _formatCancellationEmail(row);
             _sendEmail(subject, body, email);
         },
-        rideDeleted(row, email) {
-            const subject = _formatSubject('Ride Deleted');
-            const body = _formatDeletionEmail(row);
+        rideUnscheduled(row, email) {
+            const subject = _formatSubject('Ride Unscheduled');
+            const body = _formatUnscheduleEmail(row);
             _sendEmail(subject, body, email);
         },
         rideScheduled(row, email) {

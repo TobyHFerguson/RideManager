@@ -30,11 +30,13 @@ const FormHandling = function () {
 
   /**
    * Return true iff the system is in the initial state
+   * 
+   * The system is in the initial state when the form row reference cell formula is empty
    * @param {FormRow} formRow 
    * @returns true iff the system is in the initial state
    */
   function _isInitialState(formRow) {
-    return formRow.ReferenceCellFormula;
+    return !formRow.ReferenceCellFormula;
   }
 
   /**
@@ -117,15 +119,17 @@ const FormHandling = function () {
      * 
      * The rideRow has been created from the given formRow
      * 
-     * @param {Row} rideRow the row object
      * @param {FormRow} formRow the form row
+     * @param {Row} rideRow the row object
      * @param {RWGPS} rwgps the RWGPS connection
     */
     //TODO - tidy up - I don't like the assumption that the rideRow has been created from the 
     // given form row. how do I check that? 
     function _importForeignRoute(formRow, rideRow, rwgps) {
+      console.log('_iFR entered');
       let fridx = rideRow.errors.findIndex(e => e === rowCheck.FOREIGN_ROUTE);
       if (fridx === -1) {
+        console.log('_iFR', 'not foreign')
         // If the route in the ride row isn't foreign then clear the foreign route record in the form row
         formRow.ImportedRouteURL = '';
       }
@@ -160,6 +164,38 @@ const FormHandling = function () {
     return rideRow;
   }
 
+
+  /**
+   * Initial State - process the events
+   * 
+   * scheduled - schedule the ride
+   * cancelled - warning
+   * unscheduled - warning
+   * @param {FormRow} formRow 
+   * @param {RWGPS} rwgps 
+   */
+  function _processInitialState(formRow, rwgps) {
+    if (!formRow.isScheduledEvent) {
+      Email.onlyScheduleAllowed({}, formRow.Email);
+      return;
+    }
+    let rideRowDO = _prepareRideRowFromFormRow(formRow, rwgps);
+    if (rideRowDO.errors && rideRowDO.errors.length) {
+      Email.rideScheduled(rideRowDO, formRow.Email);
+      _logActionResult('scheduled', rideRowDO);
+    }
+    // No errors - create the ride
+    // The following line creates a row that is attached to the spreadsheet.
+    const rideRow = Schedule.appendRow(rideRowDO);
+    // Copy over the other values from the ride row DO to the rideRow object.
+    rideRow.highlightRideLeader(rideRowDO.highlight);
+    rideRow.errors = rideRowDO.errors;
+    rideRow.warnings = rideRowDO.warnings;
+    _scheduleRide(rideRow, rwgps);
+    _linkFormRowToRideRow(formRow, rideRow);
+    Email.rideScheduled(rideRow, formRow.Email);
+    _logActionResult('scheduled', rideRow);
+  }
   /**
    * Planned State - process the events from the formRow, using the given rideRow and RWGPS instance 
    * 
@@ -171,21 +207,22 @@ const FormHandling = function () {
    */
   function _processPlannedState(formRow, rideRow, rwgps) {
     if (!formRow.isScheduledEvent) {
-      Email.onlyScheduleAllowed(formRow.Email);
+      Email.onlyScheduleAllowed(rideRow, formRow.Email);
       return;
     }
-    if (!rideRow.errors) {
-      _scheduleRide(formRow, rideRow, rwgps);
+    _prepareRideRowFromFormRow(formRow, rwgps, rideRow);
+    if (!(rideRow.errors && rideRow.errors.length)) {
+      _scheduleRide(rideRow, rwgps);
     }
     Email.rideScheduled(rideRow, formRow.Email);
-    _logActionResult('undeleted', rideRow);
+    _logActionResult('rescheduled', rideRow);
   }
 
   /**
    * ScheduledState - process events
    * 
    * scheduled event - update the ride
-   * deleted event - delete the ride, thereby moving to the planned state
+   * unscheduled event - unschedule the ride, thereby moving to the planned state
    * canceled event - cancel the ride, thereby moving to the canceled state
    * @param {FormRow} formRow 
    * @param {Row} rideRow 
@@ -194,39 +231,42 @@ const FormHandling = function () {
   function _processScheduledState(formRow, rideRow, rwgps) {
     function _updateRide(formRow, rideRow, rwgps) {
       _prepareRideRowFromFormRow(formRow, rwgps, rideRow);
-      if (!rideRow.errors) {
+      if (!(rideRow.errors && rideRow.errors.length)) {
         rideRow.linkRouteURL();
         RideManager.updateRows([rideRow], rwgps);
         rideRow.save();
       }
-      Email.rideUpdated(rideRow, form.Email);
+      Email.rideUpdated(rideRow, formRow.Email);
       _logActionResult('updated', rideRow);
     }
     function _cancelRide(formRow, rideRow, rwgps) {
-      if (!rideRow.errors) {
+      if (!(rideRow.errors && rideRow.errors.length)) {
         RideManager.cancelRows([rideRow], rwgps);
         rideRow.save();
       }
       Email.rideCancelled(rideRow, formRow.Email);
       _logActionResult('cancelled', rideRow);
     }
-    function _deleteRide(rideRow, rwgps) {
-      // We send the notification first because once we've deleted the 
+    function _unscheduleRide(formRow, rideRow, rwgps) {
+      // We send the notification first because once we've unscheduled the 
       // ride there is no name to use to tell anyone about it!
-      Email.rideDeleted(rideRow, formRow.Email);
-      if (!rideRow.errors) {
+      Email.rideUnscheduled(rideRow, formRow.Email);
+      if (!(rideRow.errors && rideRow.errors.length)) {
         RideManager.unscheduleRows([rideRow], rwgps);
         rideRow.save();
       }
-      _logActionResult('deleted', rideRow);
+      _logActionResult('unscheduled', rideRow);
     }
 
     if (formRow.isScheduledEvent) {
       _updateRide(formRow, rideRow, rwgps);
-    } else if (formRow.isCanceledEvent) {
+    } else if (formRow.isCancelledEvent) {
       _cancelRide(formRow, rideRow, rwgps)
+    } else if (formRow.isUnscheduledEvent) {
+      _unscheduleRide(formRow, rideRow, rwgps);
     } else {
-      _deleteRide(formRow, rideRow, rwgps);
+      console.log('Scheduled State', formRow.RideState.toLowerCase().startsWith("cancelled"));
+      throw new Error(`Scheduled State - unknown event: ${formRow.RideState}`);
     }
   }
   /**
@@ -234,24 +274,24 @@ const FormHandling = function () {
    * 
    * scheduled event - reinstate the ride, moving to the scheduled state
    * canceled event - issue a warning
-   * deleted event - issue a warning
+   * unscheduled event - issue a warning
    * @param {FormRow} formRow 
    * @param {Row} rideRow 
    * @param {RWGPS} rwgps 
    */
   function _processCanceledState(formRow, rideRow, rwgps) {
     if (!formRow.isScheduledEvent) {
-      Email.onlyScheduleAllowed(formRow.Email);
+      Email.onlyScheduleAllowed(rideRow, formRow.Email);
       return;
     }
     _prepareRideRowFromFormRow(formRow, rwgps, rideRow);
-    if (!rideRow.errors) {
+    if (!(rideRow.errors && rideRow.errors.length)) {
       rideRow.linkRouteURL();
       RideManager.reinstateRows([rideRow], rwgps);
       RideManager.updateRows([rideRow], rwgps);
       rideRow.save();
     }
-    Email.rideScheduled(rideRow, form.Email);
+    Email.rideScheduled(rideRow, formRow.Email);
     _logActionResult('uncancelled', rideRow);
   }
 
@@ -259,11 +299,10 @@ const FormHandling = function () {
   /**
    * Schedule the given ride, ensuring the route is resolved and the row saved.
    * 
-   * @param {FormRow} formRow 
    * @param {RideRow} rideRow 
    * @param {RWGPS} rwgps 
    */
-  function _scheduleRide(formRow, rideRow, rwgps) {
+  function _scheduleRide(rideRow, rwgps) {
     rideRow.linkRouteURL();
     RideManager.scheduleRows([rideRow], rwgps);
     rideRow.save();
