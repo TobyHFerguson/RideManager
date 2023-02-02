@@ -43,16 +43,8 @@ const FormRowBuilder = function () {
       nr.setFormula(formula);
     }
 
-    _changeIs(columnName, value) {
-      return this.event.namedValues[columnName][0].toLowerCase().startsWith(value);
-    }
-
-    _changeIsYes(columnName) {
-      return this._changeIs(columnName, 'yes');
-    }
-
-    _changeIsNo(columnName) {
-      return this._changeIs(columnName, 'no');
+    _stateIs(value) {
+      return this.RideState.toLowerCase().startsWith(value);
     }
 
     get ReferenceCellFormula() { return this._getFormula(FormSheet.RIDEREFERENCECOLUMNNAME) }
@@ -68,15 +60,23 @@ const FormRowBuilder = function () {
     get RouteURL() { return this._getValue(FormSheet.ROUTEURLCOLUMNNAME); }
     get StartLocation() { return this._getValue(FormSheet.STARTLOCATIONCOLUMNNAME); }
     get HelpNeeded() { return this._getValue(FormSheet.HELPNEEDEDCOLUMNNAME); }
-    get helpRequested() { return this.HelpNeeded.toLowerCase().startsWith('yes') }
-    get RideCancelled() { return this._getValue(FormSheet.RIDECANCELLEDCOLUMNNAME); }
-    get cancelRequested() { return this._changeIsYes(FormSheet.RIDECANCELLEDCOLUMNNAME); }
-    get reinstatementRequested() { return this._changeIsNo(FormSheet.RIDECANCELLEDCOLUMNNAME); }
-    get RideDeleted() { return this._getValue(FormSheet.RIDEDELETEDCOLUMNNAME); }
-    get deleteRequested() { return this._changeIsYes(FormSheet.RIDEDELETEDCOLUMNNAME); }
-    get undeleteRequested() { return this._changeIsNo(FormSheet.RIDEDELETEDCOLUMNNAME); }
     get ImportedRouteURL() { return this._getValue(FormSheet.IMPORTEDROUTECOLUMNNAME); }
     set ImportedRouteURL(url) { this._setValue(FormSheet.IMPORTEDROUTECOLUMNNAME, url) }
+    get RideState() { return this._getValue(FormSheet.RIDESTATECOLUMNNAME); }
+    // schedule/cancel/delete are 'events' in the sense that whenever something
+    // changes in the form we want to make sure that we get to the state that the
+    // user wanted. The reason we do this is that we might reject a requested state change
+    // (bad route url, for example) and then when the issue is fixed the onSubmit event we
+    // get no longer has the requested state change in the event.namedValues, but must be
+    // extracted from the form state itself.
+    get isScheduledEvent() { return this._stateIs('scheduled'); }
+    get isCancelledEvent() { return this._stateIs('cancelled'); }
+    get isDeletedEvent() { return this._stateIs('deleted'); }
+    // We only need to handle help when its requested, so on the change itself.
+    get helpRequestedEvent() { 
+      const hn = this.event.namedValues[FormSheet.HELPNEEDEDCOLUMNNAME][0];
+      return hn && hn.toLowerCase().startsWith('yes');
+     }
   }
   return {
     createFormRow(event) {
@@ -85,6 +85,11 @@ const FormRowBuilder = function () {
   }
 }()
 
+/**
+ * @typeDef FormRowBuilder
+ * @type {object}
+ * @property createFormRow
+ */
 /**
  * @typedef FormRow
  * @type {object}
@@ -97,17 +102,17 @@ const FormRowBuilder = function () {
  * @property{string} PhoneNumber
  * @property{string} ReferenceCellFormula
  * @property{string} RideCancelled
- * @property{string} RideDate
+ * @property{Date} RideDate
  * @property{string} RideDeleted
+ * @property{string} RideState
  * @property{string} RouteURL
  * @property{string} StartLocation
- * @property{string} StartTime
- * @property{string} Timestamp
- * @property{string} cancelRequested
- * @property{string} deleteRequested
- * @property{string} helpRequested
- * @property{string} reinstatementRequested
- * @property{string} undeleteRequested
+ * @property{Date} StartTime
+ * @property{Date} Timestamp
+ * @property{boolean} helpRequestedEvent - true iff help has been requested
+ * @property{boolean} isScheduledEvent - true iff the ride should be scheduled
+ * @property{boolean} isCancelledEvent - true iff the ride should be cancelled
+ * @property{boolean} isDeletedEvent - true iff the ride should be deleted
  */
 function testForm() {
   const f = Form;

@@ -12,9 +12,8 @@ const FormSheet = {
     ROUTEURLCOLUMNNAME: "Route URL",
     STARTLOCATIONCOLUMNNAME: "Start Location",
     HELPNEEDEDCOLUMNNAME: "Help needed",
-    RIDECANCELLEDCOLUMNNAME: "Ride cancelled",
-    RIDEDELETEDCOLUMNNAME: "Ride Deleted",
     RIDEREFERENCECOLUMNNAME: "Ride Reference",
+    RIDESTATECOLUMNNAME: "Ride State",
     IMPORTEDROUTECOLUMNNAME: "Imported Route"
 };
 
