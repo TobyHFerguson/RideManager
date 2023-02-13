@@ -9,7 +9,7 @@ function scheduleSelectedRides() {
 }
 
 function scheduleSelectedRidesWithCredentials(rows, rwgps) {
-  const errorFuns = [ rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute]
+  const errorFuns = [ rowCheck.unmanagedRide, rowCheck.scheduled, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute]
   const warningFuns = [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
   UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.scheduleRows, true);
 
