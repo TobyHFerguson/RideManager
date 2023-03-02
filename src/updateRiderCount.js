@@ -18,5 +18,6 @@ function updateRiderCountWithCreds(rows, rwgps) {
   duration("getYoungerRows", start, end);
 
   RideManager.updateRiderCounts(rows, rwgps);
+  Schedule.save();
   
 }
