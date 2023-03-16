@@ -48,8 +48,8 @@ const Schedule = function () {
       throw new Error(`Column name: ${name} is not known`);
     }
 
-    getStartDate(values) { return values[this.getColumnIndex(Globals.STARTDATECOLUMNNAME)]; };
-    getStartTime(values) { return values[this.getColumnIndex(Globals.STARTTIMECOLUMNNAME)]; };
+    getStartDate(values) { return values[this.getColumnIndex(Globals.STARTDATETIMECOLUMNNAME)]; };
+    getStartTime(values) { return values[this.getColumnIndex(Globals.STARTDATETIMECOLUMNNAME)]; };
     getGroup(values) { return values[this.getColumnIndex(Globals.GROUPCOLUMNNAME)]; };
     getRouteCell(values) { return values[this.getColumnIndex(Globals.ROUTECOLUMNNAME)]; };
     getRideLeader(values) { return values[this.getColumnIndex(Globals.RIDELEADERCOLUMNNAME)]; };

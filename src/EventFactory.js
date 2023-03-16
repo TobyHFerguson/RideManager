@@ -56,8 +56,8 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             start.setUTCMinutes(time.getUTCMinutes())
             start.setUTCSeconds(time.getUTCSeconds())
             start.setUTCMilliseconds(0);
-            event.start_time = start.toISOString();
-            event.start_date = start.toISOString();
+            event.start_time = row.StartTime;
+            event.start_date = row.StartDate;
             event.name = makeRideName(row, organizers.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID).length);
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";

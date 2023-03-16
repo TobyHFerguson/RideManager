@@ -2,10 +2,9 @@
  * This file contains definitions of constants that impact the end users of the system.
  */
 const Globals = {
-    STARTDATECOLUMNNAME: "Date",
+    STARTDATETIMECOLUMNNAME: "Date Time",
     GROUPCOLUMNNAME: "Group",
     STARTLOCATIONCOLUMNNAME: "Start Location",
-    STARTTIMECOLUMNNAME: "Start Time",
     ROUTECOLUMNNAME: "Route",
     RIDELEADERCOLUMNNAME: "Ride Leader",
     RIDECOLUMNNAME: "Ride",
