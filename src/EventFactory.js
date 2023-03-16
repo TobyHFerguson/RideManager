@@ -73,7 +73,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             event.name = rwgpsEvent.name;
             event.organizer_tokens = rwgpsEvent.organizer_ids;
             event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map(r => r.id + "") : [];
-            const sd = (rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date()).toISOString();
+            const sd = (rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date());
             event.start_date = sd;
             event.start_time = sd;
             event.visibility = rwgpsEvent.visibility;

@@ -13,7 +13,7 @@ const dates = {
     //  an object     : Interpreted as an object with year, month and date
     //                  attributes.  **NOTE** month is 0-11.
     return (
-      d.constructor === Date ? d :
+      d.constructor === Date ? new Date(d) :
         d.constructor === Array ? new Date(d[0], d[1], d[2]) :
           d.constructor === Number ? new Date(d) :
             d.constructor === String ? new Date(d) :
