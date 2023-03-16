@@ -2,6 +2,9 @@ if (typeof require !== 'undefined') {
   Globals = require('./Globals.js');
 }
 const Schedule = function () {
+  function log(nm, msg) {
+    // console.log(`Schedule.${nm}: ${msg}`)
+  }
   class Schedule {
     constructor() {
       this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
@@ -86,6 +89,7 @@ const Schedule = function () {
       function saveColumn(colIdx, range, rtvs) {
         const colRange = range.offset(0, colIdx, range.getNumRows(), 1);
         const col_rtvs = rtvs.map(rtv => [rtv[colIdx]]);
+        col_rtvs.forEach(row => row.map(col =>log(`saving link ${col.getText()} ${col.getLinkUrl()}`)))
         colRange.setRichTextValues(col_rtvs);
       }
       this.getRowSet(this.rideRows).forEach(row => saveColumn(this.getColumnIndex(Globals.RIDECOLUMNNAME), row.range, row.rtvs));
@@ -151,7 +155,7 @@ const Schedule = function () {
       return rows;
     }
 
-   
+
 
     /**
      * Get the last row in the spreadsheet
@@ -219,57 +223,61 @@ const Schedule = function () {
       this.richTextValues[this.schedule.getColumnIndex(Globals.ROUTECOLUMNNAME)] = rtv;
       this.schedule.saveRouteRow(this);
     }
-     /**
-     * Resolve and link the name and the url in the Route column
-     * @param {Row} row - row whose route url is to be resolved and linked
-     * @returns {Row} the row
-     */
-      linkRouteURL() {
-        // Skip the header column
-        if (this.rowNum === 1) return;
+    /**
+    * Resolve and link the name and the url in the Route column
+    * @param {Row} row - row whose route url is to be resolved and linked
+    * @returns {Row} the row
+    */
+    linkRouteURL() {
+      // Skip the header column
+      if (this.rowNum === 1) return;
 
-        const row = this;
-        function getRouteJson() {
-          const error = rowCheck.badRoute(row);
-          if (error) {
-            throw new Error(error);
-          }
-          let url = row.RouteURL;
-          const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
-          switch (response.getResponseCode()) {
-            case 403:
-              throw new Error(`This route: ${url} is not publicly accessible`);
-            case 404:
-              throw new Error(`This route: ${url} cannot be found on the server`);
-            case 200:
-              break;
-            default:
-              throw new Error(`Uknown error retrieving data for ${url}`);
-          }
-          const json = JSON.parse(response.getContentText());
-          return json;
+      const row = this;
+      function getRouteJson() {
+        const error = rowCheck.badRoute(row);
+        if (error) {
+          throw new Error(error);
         }
-        let url = this.RouteURL;
-        let text = this.RouteName;
-        if (!url) {
-          this.setRouteLink(text, text);
-          url = text;
+        let url = row.RouteURL;
+        const response = UrlFetchApp.fetch(`${url}.json`, { muteHttpExceptions: true });
+        switch (response.getResponseCode()) {
+          case 403:
+            throw new Error(`This route: ${url} is not publicly accessible`);
+          case 404:
+            throw new Error(`This route: ${url} cannot be found on the server`);
+          case 200:
+            break;
+          default:
+            throw new Error(`Uknown error retrieving data for ${url}`);
         }
-        if (url && url === text) {
-          try {
-            let route = getRouteJson();
-            let name = route.name;
-            Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
-            this.setRouteLink(name, url);
-          } catch (e) {
-            Logger.log(`Row ${this.rowNum}: ${e.message}`);
-          }
+        const json = JSON.parse(response.getContentText());
+        return json;
+      }
+      let url = this.RouteURL;
+      let text = this.RouteName;
+      if (!url) {
+        this.setRouteLink(text, text);
+        url = text;
+      }
+      if (url && url === text) {
+        try {
+          let route = getRouteJson();
+          let name = route.name;
+          Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
+          this.setRouteLink(name, url);
+        } catch (e) {
+          Logger.log(`Row ${this.rowNum}: ${e.message}`);
         }
       }
+    }
   }
 
   return new Schedule();
 }()
+
+if (typeof module !== 'undefined') {
+  module.exports = Schedule;
+}
 
 // ======== TESTS ============
 // getRowSet returns 2 when 3 rows are provided, two of which reference the same row. In the 
