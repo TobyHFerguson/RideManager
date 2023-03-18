@@ -19,7 +19,7 @@ const Schedule = function () {
      */
     getYoungerRows(date) {
       const ss = this.activeSheet;
-      const dateColumn = this.getColumnIndex("Date") + 1; // +1 because we need to convert to spreadsheet indexing
+      const dateColumn = this.getColumnIndex(Globals.STARTDATETIMECOLUMNNAME) + 1; // +1 because we need to convert to spreadsheet indexing
       // We start the range at row 2 to allow for the heading row (row 1)
       ss.getRange(2, 1, ss.getLastRow(), ss.getLastColumn()).sort(dateColumn);
       var spreadsheet = SpreadsheetApp.getActive();
