@@ -39,4 +39,8 @@ function tableColumns(type) {
   return html;
 }
 
+function duration(msg, start, end = new Date()) {
+  console.log(`${msg} duration: ${(end - start) / 1000}S`);
+}
+
 

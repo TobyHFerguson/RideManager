@@ -1,0 +1,45 @@
+const Commands = (() => {
+    return Object.freeze({
+        cancelSelectedRidesWithCreds(rows, rwgps) {
+            UIManager.processRows(rows, [rowCheck.unscheduled], [], rwgps, RideManager.cancelRows);
+        },
+        clearCredentials() {
+            PropertiesService.getUserProperties().deleteAllProperties();
+        },
+        importSelectedRoutesWithCredentials(rows, rwgps) {
+            UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows);
+        },
+        linkSelectedRouteUrlsWithCredentials(rows, rwgps) {
+            const errorFuns = [rowCheck.badRoute]
+            const warningFuns = []
+            UIManager.processRows(rows, errorFuns, warningFuns, rwgps, () => { }, true);
+        },
+        reinstateSelectedRidesWithCreds(rows, rwgps) {
+            UIManager.processRows(rows, [rowCheck.notCancelled], [], rwgps, RideManager.reinstateRows);
+        },
+        scheduleSelectedRidesWithCredentials(rows, rwgps) {
+            const errorFuns = [rowCheck.unmanagedRide, rowCheck.scheduled, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute]
+            const warningFuns = [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
+            UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.scheduleRows, true);
+
+        },
+        unscheduleSelectedRidesWithCreds(rows, rwgps) {
+            UIManager.processRows(rows, [rowCheck.unscheduled, rowCheck.unmanagedRide], [], rwgps, RideManager.unscheduleRows);
+        },
+        updateRiderCountWithCreds(rows, rwgps) {
+            let start = new Date().getTime();
+            rows = Schedule.getYoungerRows(dates.add(new Date(), - 1));
+            let end = new Date().getTime();
+            duration(`Schedule.getYoungerRows found ${rows.length} to be processed`, start, end);
+
+            RideManager.updateRiderCounts(rows, rwgps);
+            Schedule.save();
+
+        },
+        updateSelectedRidesWithCredentials(rows, rwgps) {
+            UIManager.processRows(rows,
+                [rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute],
+                [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup], rwgps, RideManager.updateRows);
+        },
+    })
+})()

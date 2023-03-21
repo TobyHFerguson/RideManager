@@ -2,18 +2,20 @@
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ride Lead Coordinators')
-    .addItem('Schedule Selected Rides', scheduleSelectedRides.name)
-    .addItem('Update Selected Rides', updateSelectedRides.name)
-    .addItem('Cancel Selected Rides', cancelSelectedRides.name)
-    .addItem('Reinstate Selected Rides', reinstateSelectedRides.name)
-    .addItem('Unschedule Selected Rides', unscheduleSelectedRides.name)
+    .addItem('Schedule Selected Rides', "MenuFunctions.scheduleSelectedRides")
+    .addItem('Update Selected Rides', "MenuFunctions.updateSelectedRides")
+    .addItem('Cancel Selected Rides', "MenuFunctions.cancelSelectedRides")
+    .addItem('Reinstate Selected Rides', "MenuFunctions.reinstateSelectedRides")
+    .addItem('Unschedule Selected Rides', "MenuFunctions.unscheduleSelectedRides")
     .addSeparator()
-    .addItem('Import Selected Routes', importSelectedRoutes.name)
-    .addItem('Link Selected Route URLs', linkSelectedRouteUrls.name)
-    .addItem('Update Rider Count', updateRiderCount.name)
+    .addItem('Import Selected Routes', "MenuFunctions.importSelectedRoutes")
+    .addItem('Link Selected Route URLs', "MenuFunctions.linkSelectedRouteUrls")
+    .addItem('Update Rider Count', "MenuFunctions.updateRiderCount")
     .addSeparator()
-    .addItem('Clear User Credentials', clearCredentials.name)
+    .addItem('Clear User Credentials', clearCredentials)
     .addToUi();
 }
+
+
 
 

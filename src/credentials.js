@@ -1,16 +1,11 @@
 var credentials = PropertiesService.getUserProperties().getProperties();
 
-function askForCredentials(method) {
+function askForCredentials(command) {
   var template = HtmlService.createTemplateFromFile('getCredentialsDialog');
-  template.method=method;
+  template.command=command;
   var html = template.evaluate();
   SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.
       .showModalDialog(html, 'RWGPS Credentials')
-}
-
-
-function clearCredentials() {
-  PropertiesService.getUserProperties().deleteAllProperties();
 }
 
 function saveCredentials(obj) {
