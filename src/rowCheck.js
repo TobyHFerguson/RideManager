@@ -41,7 +41,9 @@ const rowCheck = {
     },
     routeInaccessibleOrOwnedByClub: function (row) {
         const url = row.RouteURL ? row.RouteURL : row.RouteName;
-
+        if (!url) {
+          return `No Route URL in row ${row.rowNum}. Are you sure you've selected the right row?`
+        }
         const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
 
         switch (response.getResponseCode()) {
