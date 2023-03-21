@@ -23,6 +23,7 @@ const UIManager = {
                     message += errors.join("\n");
                     message += "\n\n";
                 }
+                if (message) console.error(message);
                 return message;
             }
 
@@ -35,6 +36,7 @@ const UIManager = {
                     message += warnings.join("\n");
                     message += "\n\n";
                 }
+                if (message) console.warn(message);
                 return message;
             }
 

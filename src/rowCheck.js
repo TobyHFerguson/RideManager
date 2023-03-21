@@ -42,29 +42,34 @@ const rowCheck = {
     routeInaccessibleOrOwnedByClub: function (row) {
         const url = row.RouteURL ? row.RouteURL : row.RouteName;
         if (!url) {
-          return `No Route URL in row ${row.rowNum}. Are you sure you've selected the right row?`
+            return `No Route URL in row ${row.rowNum}. Are you sure you've selected the right row?`
         }
-        const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
+        try {
+            const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: false });
 
-        switch (response.getResponseCode()) {
-            case 200:
-                let route = JSON.parse(response.getContentText());
-                if (route.user_id === Globals.SCCCC_USER_ID) {
-                    return 'Route is owned by SCCCC';
-                }
-                break;
-            case 403: return 'Route URL does not have public access';
-            case 404: return `This route cannot be found on the server`;
-            default: return "Unknown issue with Route URL";
+            switch (response.getResponseCode()) {
+                case 200:
+                    let route = JSON.parse(response.getContentText());
+                    if (route.user_id === Globals.SCCCC_USER_ID) {
+                        return 'Route is owned by SCCCC';
+                    }
+                    break;
+                case 403: return 'Route URL does not have public access';
+                case 404: return `This route cannot be found on the server`;
+                default: return "Unknown issue with Route URL";
+            }
+        } catch (e) {
+            console.error("Route URL error: %s", e)
+            return "Unknown issue with Route URL - please check it and try again"
         }
     },
     badRoute: function (row) {
-        if (row.RouteURL === undefined || row.RouteURL === null) {
+        if (!row.RouteURL) {
             return "No route url"
         }
         let re = /(https:\/\/ridewithgps.com\/routes\/(\d+))/
         let url = row.RouteURL.match(re);
-        if (url === null) {
+        if (!url) {
             return "Route URL doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS"
         }
         url = url[1];
@@ -162,7 +167,7 @@ const rowCheck = {
                     }
                     break;
                 default:
-                    return(`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
+                    return (`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
             }
         }
         if (!row.RouteURL) return;
