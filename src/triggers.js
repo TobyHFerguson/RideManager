@@ -12,7 +12,7 @@ function onOpen() {
     .addItem('Link Selected Route URLs', "MenuFunctions.linkSelectedRouteUrls")
     .addItem('Update Rider Count', "MenuFunctions.updateRiderCount")
     .addSeparator()
-    .addItem('Clear User Credentials', clearCredentials)
+    .addItem('Clear User Credentials', "MenuFunctions.clearCredentials")
     .addToUi();
 }
 

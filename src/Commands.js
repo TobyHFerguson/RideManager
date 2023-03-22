@@ -3,9 +3,6 @@ const Commands = (() => {
         cancelSelectedRidesWithCreds(rows, rwgps) {
             UIManager.processRows(rows, [rowCheck.unscheduled], [], rwgps, RideManager.cancelRows);
         },
-        clearCredentials() {
-            PropertiesService.getUserProperties().deleteAllProperties();
-        },
         importSelectedRoutesWithCredentials(rows, rwgps) {
             UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows);
         },

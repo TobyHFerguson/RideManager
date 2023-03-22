@@ -643,6 +643,10 @@ class RWGPSService {
   }
 }
 
+if (typeof module !== 'undefined'){
+  module.exports = { RWGPS, RWGPSService }
+}
+
 function printTimings_(times, prefix) {
   const total = times.reduce((p, t) => p + t, 0);
   const avg = total / times.length;
