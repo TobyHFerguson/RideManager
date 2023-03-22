@@ -40,3 +40,7 @@ const Commands = (() => {
         },
     })
 })()
+
+if (typeof module !== 'undefined') {
+    module.exports = Commands;
+}

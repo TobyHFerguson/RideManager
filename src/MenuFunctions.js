@@ -1,5 +1,5 @@
 if (typeof require !== 'undefined') {
-    const { RWGPS, RWGPSService } = require('./RWGPS')
+    const Exports = require('./Exports')
 }
 
 // These functions need to be global so that they can be
@@ -12,7 +12,7 @@ function executeCommand(form) {
     }
 }
 function saveCredentials(obj) {
-    new RWGPSService(obj.email, obj.password);
+    new (Exports.getRWGPSService())(obj.email, obj.password);
     PropertiesService.getUserProperties().setProperties(obj);
     credentials = obj;
     return "Credentials Saved!";
@@ -28,13 +28,13 @@ function askForCredentials(command) {
         .showModalDialog(html, 'RWGPS Credentials')
 }
 function executeCommandWithCredentials(form) {
-    const rwgpsService = new RWGPSService(form.email, form.password);
-    const rwgps = new RWGPS(rwgpsService);
+    const rwgpsService = new (Exports.getRWGPSService())(form.email, form.password);
+    const rwgps = new (Exports.getRWGPS())(rwgpsService);
     let rows = Schedule.getSelectedRows();
     console.info('User %s', Session.getActiveUser());
     console.info('processing rows', rows.map(row => row.rowNum));
     try {
-        Commands[form.command](rows, rwgps);
+        Exports.getCommands()[form.command](rows, rwgps);
     } catch (e) {
         console.error(e);
         throw (e);
