@@ -9,7 +9,7 @@ const Commands = (() => {
         linkSelectedRouteUrlsWithCredentials(rows, rwgps) {
             const errorFuns = [rowCheck.badRoute]
             const warningFuns = []
-            UIManager.processRows(rows, errorFuns, warningFuns, rwgps, () => { }, true);
+            UIManager.processRows(rows, errorFuns, warningFuns, rwgps);
         },
         reinstateSelectedRidesWithCreds(rows, rwgps) {
             UIManager.processRows(rows, [rowCheck.notCancelled], [], rwgps, RideManager.reinstateRows);
@@ -17,7 +17,7 @@ const Commands = (() => {
         scheduleSelectedRidesWithCredentials(rows, rwgps) {
             const errorFuns = [rowCheck.unmanagedRide, rowCheck.scheduled, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute]
             const warningFuns = [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
-            UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.scheduleRows, true);
+            UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.scheduleRows);
 
         },
         unscheduleSelectedRidesWithCreds(rows, rwgps) {

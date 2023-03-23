@@ -1,6 +1,6 @@
 const UIManager = {
-    processRows: function (rows, errors, warnings, rwgps, fun, linkRouteURLs = false) {
-        if (linkRouteURLs) rows.forEach(row => row.linkRouteURL());
+    processRows: function (rows, errors, warnings, rwgps, fun=()=>{}) {
+        rows.forEach(row => row.linkRouteURL());
         evalRows(rows, rwgps, errors, warnings);
         let message = create_message(rows);
         sidebar.create(rows);
