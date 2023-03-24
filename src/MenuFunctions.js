@@ -4,14 +4,53 @@ if (typeof require !== 'undefined') {
 
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
+/**
+ * Execute the given command with the given credentials.
+ * 
+ * If no credentials are found then collect them from the user and try again.
+ * @param {Object} form form collected from html. form.command MUST be present
+ */
 function executeCommand(form) {
+    /**
+     * Collect credentials using an html based dialog and then execute the given command on the server
+     * @param {string} command the name of the command (from Commands)
+     */
+    function askForCredentials(command) {
+        var template = HtmlService.createTemplateFromFile('getCredentialsDialog');
+        template.command = command;
+        var html = template.evaluate();
+        SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.
+            .showModalDialog(html, 'RWGPS Credentials')
+    }
+    /**
+     * 
+     * @param {*} form 
+     */
+    function executeCommandWithCredentials(form) {
+        const rwgpsService = new (Exports.getRWGPSService())(form.email, form.password);
+        const rwgps = new (Exports.getRWGPS())(rwgpsService);
+        let rows = Schedule.getSelectedRows();
+        console.info('User %s', Session.getActiveUser());
+        console.info('Selected rows', rows.map(row => row.rowNum));
+        try {
+            Exports.getCommands()[form.command](rows, rwgps);
+        } catch (e) {
+            console.error(e);
+            throw (e);
+        }
+        finally {
+            Schedule.save();
+        }
+    }
     if (!(form.email && form.password)) {
-        askForCredentials_(form.command);
+        askForCredentials(form.command);
     } else {
-        executeCommandWithCredentials_(form);
+        executeCommandWithCredentials(form);
     }
 }
 function saveCredentials(obj) {
+    // Check that the credentials are valid - this will fail if they're not, and control
+    // passed back to the forms 'onError' handler.
     new (Exports.getRWGPSService())(obj.email, obj.password);
     PropertiesService.getUserProperties().setProperties(obj);
     credentials = obj;
@@ -20,32 +59,6 @@ function saveCredentials(obj) {
 function updateRiderCount() {
     MenuFunctions.updateRiderCount();
 }
-// These functions are called by the above two and seem to 
-// need to be global too, although I'd like to eliminate that!
-function askForCredentials_(command) {
-    var template = HtmlService.createTemplateFromFile('getCredentialsDialog');
-    template.command = command;
-    var html = template.evaluate();
-    SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.
-        .showModalDialog(html, 'RWGPS Credentials')
-}
-function executeCommandWithCredentials_(form) {
-    const rwgpsService = new (Exports.getRWGPSService())(form.email, form.password);
-    const rwgps = new (Exports.getRWGPS())(rwgpsService);
-    let rows = Schedule.getSelectedRows();
-    console.info('User %s', Session.getActiveUser());
-    console.info('Selected rows', rows.map(row => row.rowNum));
-    try {
-        Exports.getCommands()[form.command](rows, rwgps);
-    } catch (e) {
-        console.error(e);
-        throw (e);
-    }
-    finally {
-        Schedule.save();
-    }
-}
-
 
 const MenuFunctions = (() => {
     const credentials = PropertiesService.getUserProperties().getProperties();
