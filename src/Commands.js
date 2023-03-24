@@ -24,11 +24,10 @@ const Commands = (() => {
             UIManager.processRows(rows, [rowCheck.unscheduled, rowCheck.unmanagedRide], [], rwgps, RideManager.unscheduleRows);
         },
         updateRiderCountWithCreds(rows, rwgps) {
-            let start = new Date().getTime();
+            const logName = "Schedule.getYoungerRows"
+            console.time(logName)
             rows = Schedule.getYoungerRows(dates.add(new Date(), - 1));
-            let end = new Date().getTime();
-            duration(`Schedule.getYoungerRows found ${rows.length} to be processed`, start, end);
-
+            console.timeEnd(logName)
             RideManager.updateRiderCounts(rows, rwgps);
             Schedule.save();
 

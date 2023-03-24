@@ -3,12 +3,12 @@ if (typeof require !== 'undefined') {
 }
 
 // These functions need to be global so that they can be
-// accessed from the html client
+// accessed from the html client or from timers
 function executeCommand(form) {
     if (!(form.email && form.password)) {
-        askForCredentials(form.command);
+        askForCredentials_(form.command);
     } else {
-        executeCommandWithCredentials(form);
+        executeCommandWithCredentials_(form);
     }
 }
 function saveCredentials(obj) {
@@ -17,22 +17,24 @@ function saveCredentials(obj) {
     credentials = obj;
     return "Credentials Saved!";
 }
-
+function updateRiderCount() {
+    MenuFunctions.updateRiderCount();
+}
 // These functions are called by the above two and seem to 
 // need to be global too, although I'd like to eliminate that!
-function askForCredentials(command) {
+function askForCredentials_(command) {
     var template = HtmlService.createTemplateFromFile('getCredentialsDialog');
     template.command = command;
     var html = template.evaluate();
     SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.
         .showModalDialog(html, 'RWGPS Credentials')
 }
-function executeCommandWithCredentials(form) {
+function executeCommandWithCredentials_(form) {
     const rwgpsService = new (Exports.getRWGPSService())(form.email, form.password);
     const rwgps = new (Exports.getRWGPS())(rwgpsService);
     let rows = Schedule.getSelectedRows();
     console.info('User %s', Session.getActiveUser());
-    console.info('processing rows', rows.map(row => row.rowNum));
+    console.info('Selected rows', rows.map(row => row.rowNum));
     try {
         Exports.getCommands()[form.command](rows, rwgps);
     } catch (e) {
