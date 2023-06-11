@@ -12,7 +12,7 @@ const EventFactory = function () {
      * @param {date} start_time - starting time
      * @returns string describing the ride
      */
-    function createDescription(leaders, address, meet_time, start_time) {
+    function createDescription(leaders, address, meet_time, start_time, event_id) {
 
 
         return `Ride Leader${leaders.length > 1 ? 's' : ''}: ${leaders.join(', ')}
@@ -20,6 +20,8 @@ const EventFactory = function () {
     ${address}
           
 Arrive ${dates.T12(meet_time)} for a ${dates.T12(start_time)} rollout.
+
+Participant List: ${Globals.RSVP_BASE_URL}?event=${event_id}
   
 All participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709
   
@@ -42,7 +44,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
          * @param {Organizers[]} organizers the organizers (i.e. ride leaders) for this event
          * @returns 
          */
-        newEvent: function (row, organizers) {
+        newEvent: function (row, organizers, event_id) {
             if (!organizers || !organizers.length) {
                 organizers = [{ id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME }]
             }
@@ -62,7 +64,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
             let meet_time = dates.addMinutes(row.StartTime, -15);
-            event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime);
+            event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime, event_id);
             return event;
         },
         fromRwgpsEvent: function (rwgpsEvent) {

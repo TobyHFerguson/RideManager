@@ -2,6 +2,9 @@ const RideManager = (function () {
     function _log(name, msg) {
         console.log(`RideManager.${name}: ${msg}`);
     }
+    function _extractEventID(event_url) {
+        return event_url.substring(event_url.lastIndexOf('/') +1).split('-')[0]
+    }
     return {
         cancelRows: function (rows, rwgps) {
             function cancel(row, rwgps) {
@@ -48,8 +51,10 @@ const RideManager = (function () {
                         default: throw new Error(`Unknown group: ${group}`);
                     }
                 }
-                const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
+
                 const new_event_url = rwgps.copy_template_(get_template_(row.Group));
+                const event_id = _extractEventID(new_event_url);
+                const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
                 rwgps.edit_event(new_event_url, event);
                 rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
                 row.setRideLink(event.name, new_event_url);
@@ -105,7 +110,8 @@ const RideManager = (function () {
                 if (!Event.managedEventName(row.RideName)) {
                     event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
                 } else {
-                    event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders));
+                    const event_id = _extractEventID(row.RideURL);
+                    event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
                     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
                 }
                 event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]));
