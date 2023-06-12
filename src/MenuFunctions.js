@@ -48,7 +48,6 @@ function executeCommand(form) {
         executeCommandWithCredentials(form);
     }
 }
-// These functions are here to provide a debug execution path
 function saveCredentials(obj) {
     // Check that the credentials are valid - this will fail if they're not, and control
     // passed back to the forms 'onError' handler.

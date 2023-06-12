@@ -12,6 +12,69 @@ class RWGPS {
   constructor(rwgpsService) {
     this.rwgpsService = rwgpsService;
   }
+  getRSVPObject(event_id) {
+    return this.getRSVPObjectByURL(Globals.EVENTS_URI + event_id)
+  }
+  getRSVPObjectByURL(e_url) {
+    function getEventName(response) {
+      if (response.getResponseCode() !== 200) {
+        console.log(`Response code: ${response.getResponseCode()} body: ${response.getContentText()}`)
+        return JSON.parse(response.getContentText()).status
+      }
+      return JSON.parse(response.getContentText())["event"]["name"]
+    }
+    function getParticipants(response) {
+      if (response.getResponseCode() !== 200) {
+        console.log(`Response code: ${response.getResponseCode()} body: ${response.getContentText()}`)
+        return []
+      }
+      const body = response.getContentText();
+      const json = JSON.parse(body);
+      return json.filter(p => {
+        return p.rsvp_status.toLowerCase() === "yes" && (p.first_name.length || p.last_name.length)
+      }).map(p => { return { first_name: p.first_name, last_name: p.last_name } })
+    }
+    function getLeaders(response) {
+      if (response.getResponseCode() !== 200) {
+        Logger.log(`Response code: ${response.getResponseCode()} body: ${response.getContentText()}`)
+        return []
+      }
+      const body = response.getContentText();
+      const json = JSON.parse(body);
+      return json.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID).map(o => {
+        const n = o.text.split(' ')
+        return { first_name: n[0], last_name: n[1], leader: true }
+      })
+    }
+    function compareNames(l, r) {
+      const a = (l.last_name + l.first_name).toLowerCase()
+      const b = (r.last_name + r.first_name).toLowerCase()
+      const result = a < b ? -1 : a > b ? 1 : 0
+      return result;
+    }
+    const p_url = e_url + "/participants.json";
+    const o_url = e_url + "/organizer_ids.json";
+    const responses = this.rwgpsService.getAll([e_url, p_url, o_url])
+    let participants = getParticipants(responses[1]);
+    const leaders = getLeaders(responses[2]);
+    participants.forEach(p => {
+      const li = leaders.findIndex(l => {
+        return compareNames(l, p) === 0;
+      });
+      if (li !== -1) {
+        p.leader = true;
+        leaders.splice(li, 1)
+      }
+    })
+    participants = participants.concat(leaders).sort(compareNames)
+
+    const rsvpObject = {
+      name: getEventName(responses[0]),
+      participants: participants
+    }
+    return rsvpObject
+  }
+
 
   /**
    * Return the counts for each of the given event urls.
@@ -24,30 +87,7 @@ class RWGPS {
     if (!event_urls || event_urls.length === 0) {
       return [0]
     }
-    // rideLeaders is an array where each ride leader is a string of 'first last'. We need to remove the space
-
-    const urls = event_urls.map(url => url + "/participants.json");
-    const responses = this.rwgpsService.getAll(urls);
-    const counts = responses.map((r, i) => {
-      const body = r.getContentText();
-      const rls = rideLeaders && rideLeaders[i] ? rideLeaders[i].map(rl => rl.replaceAll(' ', '').toLowerCase()) : [];
-      try {
-        const participants = JSON.parse(body);
-        const riders = participants.filter(p => {
-          // Some names are returned with null for both first and last - we need to cope with that!
-          let name = `${p.first_name}${p.last_name}`;
-          name = name ? name.toLowerCase().replaceAll(' ', '') : name;
-          const result = p.rsvp_status === "Yes" && (name ? !(rls.includes(name)) : true);
-          return result;
-        })
-        const total = riders.length + rls.length
-        return total;
-      } catch (e) {
-        console.log(`RWGPS.getRSPVCounts() - Error: event_url ${urls[i]} had this body: ${body} which led to this error: ${e}`);
-        return 0;
-      }
-    });
-    return counts;
+    return event_urls.map(u => this.getRSVPObjectByURL(u).participants.length)
   }
 
   /**
@@ -643,7 +683,7 @@ class RWGPSService {
   }
 }
 
-if (typeof module !== 'undefined'){
+if (typeof module !== 'undefined') {
   module.exports = { RWGPS, RWGPSService }
 }
 
@@ -657,7 +697,7 @@ function printTimings_(times, prefix) {
 
 //=========== Tests ===========
 function testGetRSVPCounts() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   const test_cases = [
     ['https://ridewithgps.com/events/196660-copied-event', 15],
@@ -674,7 +714,7 @@ function testGetRSVPCounts() {
   })
 }
 function testGetEvents() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   const events = rwgps.get_events([Globals.A_TEMPLATE, Globals.B_TEMPLATE]);
   if (!(events.length == 2)) console.log("didn't get the expected number of events");
@@ -682,7 +722,7 @@ function testGetEvents() {
 function testEditEvents() {
   const NUMTESTS = 1;
   const NUMEVENTS = 5;
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   function createTestEvents() {
     const urls = [];
@@ -740,7 +780,7 @@ function testGetAll() {
     return new Date() - start;
   }
 
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const events = ['https://ridewithgps.com/events/198070', 'https://ridewithgps.com/events/196909'];
   const urls = [];
   let timings = [];
@@ -758,7 +798,7 @@ function testGetAll() {
 }
 //------------------------------
 // function testEditNameOnly() {
-//   const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+//   const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
 //   const rwgps = new RWGPS(rwgpsService);
 //   const event_URL = rwgps.copy_template_("https://ridewithgps.com/events/196961-test-event");
 //   console.log(`New Event URL: ${event_URL}`);
@@ -785,17 +825,23 @@ function testEditEvent() {
     start_time: '21899-12-30T10:00.000-08:00',
     visibility: 0,
   }
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   const event_URL = rwgps.copy_template_("https://ridewithgps.com/events/194877");
   console.log(`New Event URL: ${event_URL}`);
   rwgps.edit_event(event_URL, event);
   console.log(rwgps.get_event(event_URL));
 }
+// function testGetParticipants() {
+//   let rwgps, event_URL;
+//   const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
+//   rwgps = new RWGPS(rwgpsService);
+
+// }
 function testRoundTrip() {
   let rwgps, event_URL;
   try {
-    const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+    const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
     rwgps = new RWGPS(rwgpsService);
     event_URL = rwgps.copy_template_("https://ridewithgps.com/events/196910");
     console.log(`New Event URL: ${event_URL}`);
@@ -820,14 +866,14 @@ function testRoundTrip() {
 }
 
 function testImportRoute() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   console.log(rwgps.importRoute('https://ridewithgps.com/routes/19551869'));
   console.log(rwgps.importRoute({ url: 'https://ridewithgps.com/routes/19551869', visibility: 2, name: "Toby's new route", expiry: '12/24/2022' }));
 }
 
 function testUdatingRouteExpiration() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/22/2023");
   rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/23/2023");
@@ -841,7 +887,7 @@ function testUdatingRouteExpiration() {
   }
 }
 function testDeletingRouteExpiration() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/22/2023");
   rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882");
@@ -851,7 +897,7 @@ function testDeletingRouteExpiration() {
   }
 }
 function testSetRouteExpiration() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
   rwgps.setRouteExpiration("https://ridewithgps.com/routes/41365882", "11/22/2023");
   const tag_found = rwgps.getRouteObject("https://ridewithgps.com/routes/41365882").tag_names.includes("expires: 11/22/2023")
@@ -860,23 +906,23 @@ function testSetRouteExpiration() {
   }
 }
 function testTagEvents() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   rwgpsService.tagEvents(['189081'], ['Tobys Tag']);
 }
 function testUntagEvents() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   rwgpsService.unTagEvents(['189081'], ['Tobys Tag']);
 }
 function testUnTagRoutes() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   rwgpsService.unTagRoutes(['41365882'], ['Tobys Tag']);
 }
 function testTagRoutes() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   rwgpsService.tagRoutes(['41365882'], ['Tobys Tag']);
 }
 function testGetEvent() {
-  let rwgps = new RWGPS(new RWGPSService("toby.h.ferguson@icloud.com", "1rider1"));
+  let rwgps = new RWGPS(new RWGPSService(Credentials.username, Credentials.password));
   let url = "https://ridewithgps.com/events/189081-copied-event";
   const event = rwgps.get_event(url);
   Logger.log(event.starts_at);
@@ -886,7 +932,7 @@ function testGetEvent() {
 }
 
 function testLookupOrganizer() {
-  const rwgpsService = new RWGPSService('toby.h.ferguson@icloud.com', '1rider1');
+  const rwgpsService = new RWGPSService(Credentials.username, Credentials.password);
   const rwgps = new RWGPS(rwgpsService);
 
   const name = 'Peter Stanger';
@@ -896,6 +942,12 @@ function testLookupOrganizer() {
   console.log(rwgps.knownRideLeader(name))
 }
 
+function testGetRSVPObject() {
+  const id = 215744
+  let rwgps = new RWGPS(new RWGPSService(Credentials.username, Credentials.password));
+  const rsvpObject = rwgps.getRSVPObject(id);
+  console.log(rsvpObject);
+}
 if (typeof module !== 'undefined') {
   module.exports = RWGPS;
 }
