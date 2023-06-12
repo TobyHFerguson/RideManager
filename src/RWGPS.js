@@ -13,7 +13,19 @@ class RWGPS {
     this.rwgpsService = rwgpsService;
   }
   getRSVPObject(event_id) {
-    return this.getRSVPObjectByURL(Globals.EVENTS_URI + event_id)
+    if (null === event_id || undefined === event_id || !event_id.length ) {
+      console.log(`RWGPS.getRSVPObject(${event_id}) with no event_id`)
+      return { name: 'No event id given', participants: [] }
+    }
+    if (isNaN(event_id)) {
+      console.log(`RWGPS.getRSVPObject(${event_id}) has been called with a non-number argument`);
+      return { name: `I was expecting a numeric event id but got this: ${event_id}`, participants: []}
+    }
+    try {
+      return this.getRSVPObjectByURL(Globals.EVENTS_URI + event_id)
+    } catch {
+      return { name: `No such event: ${event_id}`, participants: []}
+    }
   }
   getRSVPObjectByURL(e_url) {
     function getEventName(response) {
@@ -54,7 +66,7 @@ class RWGPS {
     }
     const p_url = e_url + "/participants.json";
     const o_url = e_url + "/organizer_ids.json";
-    const responses = this.rwgpsService.getAll([e_url, p_url, o_url])
+    const responses = this.rwgpsService.getAll([e_url, p_url, o_url], { muteHttpExceptions: false })
     let participants = getParticipants(responses[1]);
     const leaders = getLeaders(responses[2]);
     participants.forEach(p => {
@@ -642,7 +654,7 @@ class RWGPSService {
     return this._send_request(url, options);
   }
 
-  getAll(urls) {
+  getAll(urls, override = {}) {
     const requests = urls.map(url => {
       let r = {
         url,
@@ -652,7 +664,8 @@ class RWGPSService {
           Accept: "application/json" // Note use of Accept header - returns a 404 otherwise. 
         },
         followRedirects: false,
-        muteHttpExceptions: true
+        muteHttpExceptions: true,
+        ...override
       };
       return r;
     })
