@@ -13,7 +13,7 @@ class RWGPS {
     this.rwgpsService = rwgpsService;
   }
   getRSVPObject(event_id) {
-    if (null === event_id || undefined === event_id || !event_id.length ) {
+    if (!event_id) {
       console.log(`RWGPS.getRSVPObject(${event_id}) with no event_id`)
       return { name: 'No event id given', participants: [] }
     }
@@ -23,7 +23,8 @@ class RWGPS {
     }
     try {
       return this.getRSVPObjectByURL(Globals.EVENTS_URI + event_id)
-    } catch {
+    } catch (e) {
+      Logger.log(e)
       return { name: `No such event: ${event_id}`, participants: []}
     }
   }
@@ -43,8 +44,8 @@ class RWGPS {
       const body = response.getContentText();
       const json = JSON.parse(body);
       return json.filter(p => {
-        return p.rsvp_status.toLowerCase() === "yes" && (p.first_name.length || p.last_name.length)
-      }).map(p => { return { first_name: p.first_name, last_name: p.last_name } })
+        return p.rsvp_status.toLowerCase() === "yes" && (p.first_name || p.last_name)
+      }).map(p => { return { first_name: p.first_name ? p.first_name.trim() : p.first_name, last_name: p.last_name ? p.last_name.trim() : p.last_name} })
     }
     function getLeaders(response) {
       if (response.getResponseCode() !== 200) {
@@ -54,8 +55,8 @@ class RWGPS {
       const body = response.getContentText();
       const json = JSON.parse(body);
       return json.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID).map(o => {
-        const n = o.text.split(' ')
-        return { first_name: n[0], last_name: n[1], leader: true }
+        const n = o.text.trim().split(/\s+/)
+        return { first_name: n[0], last_name: n.length > 1 ? n[1] : '', leader: true }
       })
     }
     function compareNames(l, r) {
@@ -78,7 +79,7 @@ class RWGPS {
         leaders.splice(li, 1)
       }
     })
-    participants = participants.concat(leaders).sort(compareNames)
+    participants = [...participants, ...leaders].sort(compareNames)
 
     const rsvpObject = {
       name: getEventName(responses[0]),
