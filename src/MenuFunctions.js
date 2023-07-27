@@ -62,6 +62,9 @@ function updateRiderCount() {
 function updateSelectedRides() {
   MenuFunctions.updateSelectedRides();
 }
+function updateRiderCounts() {
+  MenuFunctions.updateRiderCount();
+}
 
 const MenuFunctions = (() => {
     const credentials = PropertiesService.getUserProperties().getProperties();

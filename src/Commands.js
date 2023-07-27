@@ -26,7 +26,9 @@ const Commands = (() => {
         updateRiderCountWithCreds(rows, rwgps) {
             const logName = "Schedule.getYoungerRows"
             console.time(logName)
-            rows = Schedule.getYoungerRows(dates.add(new Date(), - 1));
+            const refDate = dates.add(new Date(), - 1)
+            rows = Schedule.getYoungerRows(refDate);
+            console.log(`${rows.length} rows found younger than ${refDate}`)
             console.timeEnd(logName)
             RideManager.updateRiderCounts(rows, rwgps);
             Schedule.save();
