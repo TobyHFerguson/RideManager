@@ -23,6 +23,7 @@ function updateRiderCounts() {
 }
 
 const MenuFunctions = (() => {
+    PropertiesService.getUserProperties().deleteAllProperties();
     function executeCommand(command) {
         const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, Globals);
         const rwgps = RWGPSLib.newRWGPS(rwgpsService);
@@ -43,9 +44,6 @@ const MenuFunctions = (() => {
         cancelSelectedRides() {
             let command = Exports.getCommands().cancelSelectedRidesWithCreds;
             executeCommand(command);
-        },
-        clearCredentials() {
-            PropertiesService.getUserProperties().deleteAllProperties();
         },
         importSelectedRoutes() {
             let command = Exports.getCommands().importSelectedRoutesWithCredentials;
