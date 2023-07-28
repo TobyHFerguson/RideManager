@@ -5,12 +5,6 @@ if (typeof require !== 'undefined') {
 }
 
 var Exports = {
-    getRWGPS() {
-        return RWGPS;
-    },
-    getRWGPSService() {
-        return RWGPSService;
-    },
     getMenuFunctions(){
         return MenuFunctions;
     },

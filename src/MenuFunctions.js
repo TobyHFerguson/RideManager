@@ -27,8 +27,8 @@ function executeCommand(form) {
      * @param {*} form 
      */
     function executeCommandWithCredentials(form) {
-        const rwgpsService = new (Exports.getRWGPSService())(form.email, form.password);
-        const rwgps = new (Exports.getRWGPS())(rwgpsService);
+        const rwgpsService = RWGPSLib.newRWGPSService(form.email, form.password, Globals);
+        const rwgps = RWGPSLib.newRWGPS(rwgpsService);
         let rows = Schedule.getSelectedRows();
         console.info('User %s', Session.getActiveUser());
         console.info('Selected rows', rows.map(row => row.rowNum));
@@ -51,7 +51,7 @@ function executeCommand(form) {
 function saveCredentials(obj) {
     // Check that the credentials are valid - this will fail if they're not, and control
     // passed back to the forms 'onError' handler.
-    new (Exports.getRWGPSService())(obj.email, obj.password);
+    RWGPSLib.newRWGPSService(obj.email, obj.password, Globals);
     PropertiesService.getUserProperties().setProperties(obj);
     credentials = obj;
     return "Credentials Saved!";
