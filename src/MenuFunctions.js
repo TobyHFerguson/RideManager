@@ -11,23 +11,13 @@ if (typeof require !== 'undefined') {
  * @param {Object} form form collected from html. form.command MUST be present
  */
 function executeCommand(form) {
-    /**
-     * Collect credentials using an html based dialog and then execute the given command on the server
-     * @param {string} command the name of the command (from Commands)
-     */
-    function askForCredentials(command) {
-        var template = HtmlService.createTemplateFromFile('getCredentialsDialog');
-        template.command = command;
-        var html = template.evaluate();
-        SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.
-            .showModalDialog(html, 'RWGPS Credentials')
-    }
+
     /**
      * 
      * @param {*} form 
      */
     function executeCommandWithCredentials(form) {
-        const rwgpsService = RWGPSLib.newRWGPSService(form.username, form.password, Globals);
+        const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, Globals);
         const rwgps = RWGPSLib.newRWGPS(rwgpsService);
         let rows = Schedule.getSelectedRows();
         console.info('User %s', Session.getActiveUser());
@@ -42,11 +32,7 @@ function executeCommand(form) {
             Schedule.save();
         }
     }
-    if (!(form.username && form.password)) {
-        askForCredentials(form.command);
-    } else {
-        executeCommandWithCredentials(form);
-    }
+    executeCommandWithCredentials(form);
 }
 function saveCredentials(obj) {
     // Check that the credentials are valid - this will fail if they're not, and control
@@ -71,39 +57,39 @@ const MenuFunctions = (() => {
 
     return Object.freeze({
         cancelSelectedRides() {
-            let form = { ...credentials, command: "cancelSelectedRidesWithCreds" };
+            let form = { command: "cancelSelectedRidesWithCreds" };
             executeCommand(form);
         },
         clearCredentials() {
             PropertiesService.getUserProperties().deleteAllProperties();
         },
         importSelectedRoutes() {
-            let form = { ...credentials, command: "importSelectedRoutesWithCredentials" };
+            let form = { command: "importSelectedRoutesWithCredentials" };
             executeCommand(form);
         },
         linkSelectedRouteUrls() {
-            let form = { ...credentials, command: "linkSelectedRouteUrlsWithCredentials" };
+            let form = { command: "linkSelectedRouteUrlsWithCredentials" };
             executeCommand(form);
         },
         reinstateSelectedRides() {
-            let form = { ...credentials, command: "reinstateSelectedRidesWithCreds" };
+            let form = { command: "reinstateSelectedRidesWithCreds" };
             executeCommand(form);
         },
         scheduleSelectedRides() {
-            let form = { ...credentials, command: "scheduleSelectedRidesWithCredentials" };
+            let form = { command: "scheduleSelectedRidesWithCredentials" };
             executeCommand(form);
         },
         unscheduleSelectedRides() {
-            let form = { ...credentials, command: "unscheduleSelectedRidesWithCreds" };
+            let form = { command: "unscheduleSelectedRidesWithCreds" };
             executeCommand(form);
         },
 
         updateRiderCount() {
-            let form = { ...credentials, command: "updateRiderCountWithCreds" };
+            let form = { command: "updateRiderCountWithCreds" };
             executeCommand(form);
         },
         updateSelectedRides() {
-            let form = { ...credentials, command: "updateSelectedRidesWithCredentials" };
+            let form = { command: "updateSelectedRidesWithCredentials" };
             executeCommand(form);
         },
     })
