@@ -27,7 +27,7 @@ function executeCommand(form) {
      * @param {*} form 
      */
     function executeCommandWithCredentials(form) {
-        const rwgpsService = RWGPSLib.newRWGPSService(form.email, form.password, Globals);
+        const rwgpsService = RWGPSLib.newRWGPSService(form.username, form.password, Globals);
         const rwgps = RWGPSLib.newRWGPS(rwgpsService);
         let rows = Schedule.getSelectedRows();
         console.info('User %s', Session.getActiveUser());
@@ -42,7 +42,7 @@ function executeCommand(form) {
             Schedule.save();
         }
     }
-    if (!(form.email && form.password)) {
+    if (!(form.username && form.password)) {
         askForCredentials(form.command);
     } else {
         executeCommandWithCredentials(form);
@@ -67,7 +67,7 @@ function updateRiderCounts() {
 }
 
 const MenuFunctions = (() => {
-    const credentials = PropertiesService.getUserProperties().getProperties();
+    const credentials = Credentials;
 
     return Object.freeze({
         cancelSelectedRides() {
