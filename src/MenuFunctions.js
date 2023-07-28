@@ -8,22 +8,29 @@ if (typeof require !== 'undefined') {
  * Execute the given command with the given credentials.
  * 
  * If no credentials are found then collect them from the user and try again.
- * @param {Object} form form collected from html. form.command MUST be present
+ * @param {Function} command command to execute
  */
-function executeCommand(form) {
 
-    /**
-     * 
-     * @param {*} form 
-     */
-    function executeCommandWithCredentials(form) {
+
+function updateRiderCount() {
+    MenuFunctions.updateRiderCount();
+}
+function updateSelectedRides() {
+    MenuFunctions.updateSelectedRides();
+}
+function updateRiderCounts() {
+    MenuFunctions.updateRiderCount();
+}
+
+const MenuFunctions = (() => {
+    function executeCommand(command) {
         const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, Globals);
         const rwgps = RWGPSLib.newRWGPS(rwgpsService);
         let rows = Schedule.getSelectedRows();
         console.info('User %s', Session.getActiveUser());
         console.info('Selected rows', rows.map(row => row.rowNum));
         try {
-            Exports.getCommands()[form.command](rows, rwgps);
+            command(rows, rwgps);
         } catch (e) {
             console.error(e);
             throw (e);
@@ -32,65 +39,42 @@ function executeCommand(form) {
             Schedule.save();
         }
     }
-    executeCommandWithCredentials(form);
-}
-function saveCredentials(obj) {
-    // Check that the credentials are valid - this will fail if they're not, and control
-    // passed back to the forms 'onError' handler.
-    RWGPSLib.newRWGPSService(obj.email, obj.password, Globals);
-    PropertiesService.getUserProperties().setProperties(obj);
-    credentials = obj;
-    return "Credentials Saved!";
-}
-function updateRiderCount() {
-    MenuFunctions.updateRiderCount();
-}
-function updateSelectedRides() {
-  MenuFunctions.updateSelectedRides();
-}
-function updateRiderCounts() {
-  MenuFunctions.updateRiderCount();
-}
-
-const MenuFunctions = (() => {
-    const credentials = Credentials;
-
     return Object.freeze({
         cancelSelectedRides() {
-            let form = { command: "cancelSelectedRidesWithCreds" };
-            executeCommand(form);
+            let command = Exports.getCommands().cancelSelectedRidesWithCreds;
+            executeCommand(command);
         },
         clearCredentials() {
             PropertiesService.getUserProperties().deleteAllProperties();
         },
         importSelectedRoutes() {
-            let form = { command: "importSelectedRoutesWithCredentials" };
-            executeCommand(form);
+            let command = Exports.getCommands().importSelectedRoutesWithCredentials;
+            executeCommand(command);
         },
         linkSelectedRouteUrls() {
-            let form = { command: "linkSelectedRouteUrlsWithCredentials" };
-            executeCommand(form);
+            let command = Exports.getCommands().linkSelectedRouteUrlsWithCredentials;
+            executeCommand(command);
         },
         reinstateSelectedRides() {
-            let form = { command: "reinstateSelectedRidesWithCreds" };
-            executeCommand(form);
+            let command = Exports.getCommands().reinstateSelectedRidesWithCreds;
+            executeCommand(command);
         },
         scheduleSelectedRides() {
-            let form = { command: "scheduleSelectedRidesWithCredentials" };
-            executeCommand(form);
+            let command = Exports.getCommands().scheduleSelectedRidesWithCredentials;
+            executeCommand(command);
         },
         unscheduleSelectedRides() {
-            let form = { command: "unscheduleSelectedRidesWithCreds" };
-            executeCommand(form);
+            let command = Exports.getCommands().unscheduleSelectedRidesWithCreds;
+            executeCommand(command);
         },
 
         updateRiderCount() {
-            let form = { command: "updateRiderCountWithCreds" };
-            executeCommand(form);
+            let command = Exports.getCommands().updateRiderCountWithCreds;
+            executeCommand(command);
         },
         updateSelectedRides() {
-            let form = { command: "updateSelectedRidesWithCredentials" };
-            executeCommand(form);
+            let command = Exports.getCommands().updateSelectedRidesWithCredentials;
+            executeCommand(command);
         },
     })
 
