@@ -21,6 +21,9 @@ function updateSelectedRides() {
 function updateRiderCounts() {
     MenuFunctions.updateRiderCount();
 }
+function scheduleSelectedRides() {
+    MenuFunctions.scheduleSelectedRides();
+}
 
 const MenuFunctions = (() => {
     PropertiesService.getUserProperties().deleteAllProperties();

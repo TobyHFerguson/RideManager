@@ -14,13 +14,13 @@ const rowCheck = {
         }
     },
     noStartDate: function (row) {
-        if (row.StartDate === undefined || row.StartDate.constructor !== Date) {
-            return "No Start Date"
+        if ((!row.StartDate) || (dates.convert(row.StartDate).toString() === "Invalid Date")) {
+            return `Invalid row.StartDate: "${row.StartDate} ${dates.convert(row.StartDate)}"`
         }
     },
     noStartTime: function (row) {
-        if (row.StartTime === undefined || row.StartTime.constructor !== Date) {
-            return "No Start Time"
+        if ((!row.StartTime) || (dates.convert(row.StartTime).toString() === "Invalid Date")) {
+            return `Invalid row.StartTime: "${row.StartTime} ${dates.convert(row.StartTime)}"`
         }
     },
     noGroup: function (row) {
