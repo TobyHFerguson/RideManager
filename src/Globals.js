@@ -18,7 +18,8 @@ const Globals = {
     B_TEMPLATE: `https://ridewithgps.com/events/186234-b-template`,
     C_TEMPLATE: `https://ridewithgps.com/events/186235-c-template`,
     SIGN_IN_URI: `https://ridewithgps.com/organizations/47/sign_in`,
-    RSVP_BASE_URL: 'https://tinyurl.com/2xcrmekv', // Version 14 of RSVPers
+    RSVP_BASE_URL: 'https://tinyurl.com/2xcrmekv', // Version 14 of RSVPers,
+    RSVP_BASE_URL: 'https://tinyurl.com/2p63yvwy', // Version 15 of RSVPers,
 
     SCCCC_USER_ID: 621846,
     RIDE_LEADER_TBD_ID: 4733240,
