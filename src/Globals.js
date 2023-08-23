@@ -22,6 +22,8 @@ const Globals = {
     RSVP_BASE_URL: 'https://tinyurl.com/2p63yvwy', // Version 15 of RSVPers,
     RSVP_BASE_URL: 'https://tinyurl.com/yw98jf34', // Version 16 of RSVPers
     RSVP_BASE_URL: 'https://tinyurl.com/2upxk94n', // Version 20 of RSVPers
+    RSVP_BASE_URL: 'https://tinyurl.com/2zzkw562', // Dev version of RSVPers
+    RSVP_BASE_URL: 'https://tinyurl.com/3k29mpdr', // Version 21 of RSVPers
 
     SCCCC_USER_ID: 621846,
     RIDE_LEADER_TBD_ID: 4733240,
