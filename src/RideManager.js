@@ -48,6 +48,7 @@ const RideManager = (function () {
                         case 'A': return Globals.A_TEMPLATE;
                         case 'B': return Globals.B_TEMPLATE;
                         case 'C': return Globals.C_TEMPLATE;
+                        case 'D': return Globals.D_TEMPLATE;
                         default: throw new Error(`Unknown group: ${group}`);
                     }
                 }

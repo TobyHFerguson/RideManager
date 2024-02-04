@@ -33,10 +33,11 @@ const rowCheck = {
             case "A":
             case "B":
             case "C":
+            case "D":
                 row.Group = row.Group;
                 break;
             default:
-                return `Unknown group: '${row.Group}'. Expected one of 'A', 'B', or 'C'`;
+                return `Unknown group: '${row.Group}'. Expected one of 'A', 'B', 'C' or 'D'`;
         }
     },
     routeInaccessibleOrOwnedByClub: function (row) {
@@ -166,8 +167,16 @@ const rowCheck = {
                         return `Distance (${distance} miles) too long for C group (<= ${Globals.C_RIDE_MAX_LENGTH} miles)`
                     }
                     break;
+                case 'D':
+                    if (elevation > Globals.D_RIDE_MAX_ELEVATION_GAIN) {
+                        return `Elevation gain (${elevation}') too great for D group (<= ${Globals.D_RIDE_MAX_ELEVATION_GAIN}')`
+                    }
+                    if (distance > Globals.D_RIDE_MAX_LENGTH) {
+                        return `Distance (${distance} miles) too long for D group (<= ${Globals.D_RIDE_MAX_LENGTH} miles)`
+                    }
+                    break;
                 default:
-                    return (`Unknown group: ${group}. Expected one of 'A', 'B', or 'C'`);
+                    return (`Unknown group: ${group}. Expected one of 'A', 'B', 'C' or 'D'`);
             }
         }
         if (!row.RouteURL) return;

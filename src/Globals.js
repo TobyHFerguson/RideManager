@@ -17,6 +17,7 @@ const Globals = {
     A_TEMPLATE: `https://ridewithgps.com/events/186557-a-template`,
     B_TEMPLATE: `https://ridewithgps.com/events/186234-b-template`,
     C_TEMPLATE: `https://ridewithgps.com/events/186235-c-template`,
+    D_TEMPLATE: `https://ridewithgps.com/events/298649-d-template`,
     SIGN_IN_URI: `https://ridewithgps.com/organizations/47/sign_in`,
     RSVP_BASE_URL: 'https://tinyurl.com/2xcrmekv', // Version 14 of RSVPers,
     RSVP_BASE_URL: 'https://tinyurl.com/2p63yvwy', // Version 15 of RSVPers,
@@ -33,6 +34,8 @@ const Globals = {
 
     // LENGTHS are in miles
     // ELEVATION_GAINS are in feet
+    D_RIDE_MAX_LENGTH: 15,
+    D_RIDE_MAX_ELEVATION_GAIN: 1000,
     C_RIDE_MAX_LENGTH: 35,
     C_RIDE_MAX_ELEVATION_GAIN: 2000,
     B_RIDE_MAX_LENGTH: 50,

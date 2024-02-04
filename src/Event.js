@@ -8,8 +8,14 @@ if (typeof require !== 'undefined') {
 // Mon A 1/1 10:00 AM Ride [12] route name
 // Mon A 1/1 10:00 [12] route name
 
+// the sub patterns are:
+// 3 letter capitalized day name
+// 2 digit month / 2 digit day (US Style dates)
+// 2 digit hour : 2 digit minute AM or PM (12 hour times)
+// Number of participants surrounded by square brackets
+
 // In addition, there can be an optional 'CANCELLED: ' prefix. 
-const MANAGED_RE = /(?<prefix>(CANCELLED: )*[MTWFS][a-z]{2} (([ABC] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABC]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\))))( \[(\d{1,2})\])*(?<suffix>.*$)/
+const MANAGED_RE = /(?<prefix>(CANCELLED: )*[MTWFS][a-z]{2} (([ABCD] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABCD]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\))))( \[(\d{1,2})\])*(?<suffix>.*$)/
 
 
 
@@ -22,7 +28,7 @@ class Event {
    * @param {number} numRiders number of riders for this event
    * @param {date} start_date event start date
    * @param {date} start_time event start time
-   * @param {Group} group one of 'A', 'B', or 'C'
+   * @param {Group} group one of 'A', 'B', 'C' or 'D'
    * @param {string} route_name name of route
    * @returns {string} name of event
    */
