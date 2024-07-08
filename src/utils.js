@@ -43,4 +43,9 @@ function duration(msg, start, end = new Date()) {
   console.log(`${msg} duration: ${(end - start) / 1000}S`);
 }
 
-
+function printCallerError(...args) {
+  // Error object provides stack trace where calling function is visible
+  const error = new Error();
+  const callerName = error.stack.split('\n')[3].match(/at (.*?)\s\(.*/)[1] || "Unknown caller"; // Extract method name
+  console.error(callerName, ...args);
+}

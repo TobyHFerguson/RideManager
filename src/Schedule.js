@@ -18,28 +18,40 @@ const Schedule = function () {
      * @return {Row[]} the rows that are younger than the given date
      */
     getYoungerRows(date) {
-      const ss = this.activeSheet;
-      const dateColumn = this.getColumnIndex(Globals.STARTDATETIMECOLUMNNAME) + 1; // +1 because we need to convert to spreadsheet indexing
-      // We start the range at row 2 to allow for the heading row (row 1)
-      ss.getRange(2, 1, ss.getLastRow(), ss.getLastColumn()).sort(dateColumn);
-      var spreadsheet = SpreadsheetApp.getActive();
-      spreadsheet.getDataRange().activate();
-      try {
-        spreadsheet.getDataRange().createFilter();
-        spreadsheet.getActiveSheet().getRange(1, dateColumn, spreadsheet.getActiveSheet().getLastRow()).activate();
-        var criteria = SpreadsheetApp.newFilterCriteria()
-          .whenDateAfter(SpreadsheetApp.RelativeDate.YESTERDAY)
-          .build();
-        spreadsheet.getActiveSheet().getFilter().setColumnFilterCriteria(dateColumn, criteria);
-        for (var i = ss.getLastRow(); i >= 2 && !ss.isRowHiddenByFilter(i); i--) {
-        }
-      } finally {
-        spreadsheet.getActiveSheet().getFilter().remove();
-      }
-      const rows = this.convertRangeToRows(ss.getRange(i, 1, ss.getLastRow() - i + 1, ss.getLastColumn()));
+      const i = this.findLastRowBeforeYesterday();
+      const rows = this.convertRangeToRows(this.activeSheet.getRange(i, 1, this.activeSheet.getLastRow() - i + 1, this.activeSheet.getLastColumn()));
       return rows;
     }
 
+    findLastRowBeforeYesterday() {
+      // Get the spreadsheet object
+      var sheet = this.activeSheet;
+    
+      // Get the data range including the header row
+      var dataRange = sheet.getDataRange();
+      var values = dataRange.getValues();
+    
+      // Identify the date column index (assuming the date is in the first column)
+      var dateColumnIndex = this.getColumnIndex(Globals.STARTDATETIMECOLUMNNAME); // +1 because we need to convert to spreadsheet indexing
+    
+      // Sort the data based on the date column
+      values.sort(function(row1, row2) {
+        return new Date(row1[dateColumnIndex]) - new Date(row2[dateColumnIndex]);
+      });
+    
+      // Get yesterday's date
+      var yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+    
+      // Find the last row number before yesterday by iterating backwards
+      var lastRowBeforeYesterday = values.length - 1;
+      while (lastRowBeforeYesterday >= 0 && new Date(values[lastRowBeforeYesterday][dateColumnIndex]) >= yesterday) {
+        lastRowBeforeYesterday--;
+      }
+    
+      // Return the row number (excluding header row)
+      return lastRowBeforeYesterday;
+    }
     getColumnIndex(name) {
       let ix = this.columnNames.indexOf(name);
       if (ix !== -1) {

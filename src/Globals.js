@@ -34,6 +34,7 @@ const Globals = {
 
     // LENGTHS are in miles
     // ELEVATION_GAINS are in feet
+    D_RIDE_MIN_LENGTH: 10,
     D_RIDE_MAX_LENGTH: 15,
     D_RIDE_MAX_ELEVATION_GAIN: 1000,
     C_RIDE_MAX_LENGTH: 35,
