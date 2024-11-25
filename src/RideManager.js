@@ -44,12 +44,10 @@ const RideManager = (function () {
         scheduleRows: function (rows, rwgps) {
             function schedule_row(row, rwgps) {
                 function get_template_(group) {
-                    switch (group.toUpperCase()) {
-                        case 'A': return Globals.A_TEMPLATE;
-                        case 'B': return Globals.B_TEMPLATE;
-                        case 'C': return Globals.C_TEMPLATE;
-                        case 'D': return Globals.D_TEMPLATE;
-                        default: throw new Error(`Unknown group: ${group}`);
+                    try {
+                        return Globals.groups[group].TEMPLATE
+                    } catch {
+                        throw new Error(`Unknown group: ${group}. Expected one of ${Object.keys(Globals.groups).join(', ')}`);
                     }
                 }
 

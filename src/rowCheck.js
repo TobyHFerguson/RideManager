@@ -23,23 +23,13 @@ const rowCheck = {
             return `Invalid row.StartTime: "${row.StartTime} ${dates.convert(row.StartTime)}"`
         }
     },
-    noGroup: function (row) {
-        switch (row.Group) {
-            case undefined:
-            case null:
-            case "":
-                return "Group column is empty";
-                break;
-            case "A":
-            case "B":
-            case "C":
-            case "D":
-                row.Group = row.Group;
-                break;
-            default:
-                return `Unknown group: '${row.Group}'. Expected one of 'A', 'B', 'C' or 'D'`;
-        }
-    },
+  noGroup: function (row) {
+    if (!row.Group) return "Group column is empty";
+    const groups = Object.keys(Globals.groups)
+    if (!groups.includes(row.Group)) {
+      return `Unknown group: '${row.Group}'. Expected one of ${groups.join(', ')}`;
+    }
+  },
     routeInaccessibleOrOwnedByClub: function (row) {
         const url = row.RouteURL ? row.RouteURL : row.RouteName;
         if (!url) {
@@ -137,48 +127,24 @@ const rowCheck = {
             return "Unknown address";
         }
     },
-    inappropiateGroup: function (row) {
+    inappropiateGroup: function (row)  {
+        const nrg = this.noGroup(row);
+        if (nrg) return nrg;
         function __inappropriateGroup(group, elevation, distance) {
-            switch (group) {
-                case 'A':
-                    if (elevation < Globals.A_RIDE_MIN_ELEVATION_GAIN) {
-                        return `Elevation gain (${elevation}') too low for A group (>= ${Globals.A_RIDE_MIN_ELEVATION_GAIN}')`
-                    }
-                    if (distance < Globals.A_RIDE_MIN_LENGTH) {
-                        return `Distance (${distance} miles) too short for A group (>= ${Globals.A_RIDE_MIN_LENGTH} miles)`
-                    }
-                    if (distance > Globals.A_RIDE_MAX_LENGTH) {
-                        return `Distance (${distance} miles) too long for A group (<= ${Globals.A_RIDE_MAX_LENGTH} miles)`
-                    }
-                    break;
-                case 'B':
-                    if (elevation > Globals.B_RIDE_MAX_ELEVATION_GAIN) {
-                        return `Elevation gain (${elevation}') too great for B group (<= ${Globals.B_RIDE_MAX_ELEVATION_GAIN}')`
-                    }
-                    if (distance > Globals.B_RIDE_MAX_LENGTH) {
-                        return `Distance (${distance} miles) too long for B group (<= ${Globals.B_RIDE_MAX_LENGTH} miles)`
-                    }
-                    break;
-                case 'C':
-                    if (elevation > Globals.C_RIDE_MAX_ELEVATION_GAIN) {
-                        return `Elevation gain (${elevation}') too great for C group (<= ${Globals.C_RIDE_MAX_ELEVATION_GAIN}')`
-                    }
-                    if (distance > Globals.C_RIDE_MAX_LENGTH) {
-                        return `Distance (${distance} miles) too long for C group (<= ${Globals.C_RIDE_MAX_LENGTH} miles)`
-                    }
-                    break;
-                case 'D':
-                    if (elevation > Globals.D_RIDE_MAX_ELEVATION_GAIN) {
-                        return `Elevation gain (${elevation}') too great for D group (<= ${Globals.D_RIDE_MAX_ELEVATION_GAIN}')`
-                    }
-                    if (distance > Globals.D_RIDE_MAX_LENGTH) {
-                        return `Distance (${distance} miles) too long for D group (<= ${Globals.D_RIDE_MAX_LENGTH} miles)`
-                    }
-                    break;
-                default:
-                    return (`Unknown group: ${group}. Expected one of 'A', 'B', 'C' or 'D'`);
-            }
+          if (elevation < Globals.groups[group].MIN_ELEVATION_GAIN) {
+            return `Elevation gain (${elevation}') too low for ${group} group (>= ${Globals.groups[group].MIN_ELEVATION_GAIN}')`
+          }
+          if (elevation > Globals.groups[group].MAX_ELEVATION_GAIN) {
+            return `Elevation gain (${elevation}') too great for ${group} group (<= ${Globals.groups[group].MAX_ELEVATION_GAIN}')`
+          }
+          if (distance < Globals.groups[group].MIN_LENGTH) {
+            return `Distance (${distance} miles) too short for ${group} group (>= ${Globals.groups[group].MIN_LENGTH} miles)`
+          }
+          if (distance > Globals.groups[group].MAX_LENGTH) {
+            return `Distance (${distance} miles) too long for ${group} group (<= ${Globals.groups[group].MAX_LENGTH} miles)`
+          }
         }
+            
         if (!row.RouteURL) return;
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
         const route = JSON.parse(response.getContentText());
@@ -200,9 +166,9 @@ const warningFuns = [rowCheck.noRideLeader, rowCheck.cancelled, rowCheck.noLocat
 function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
     function evalRow_(row, rwgps, efs, wfs) {
         row.errors = [];
-        efs.map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
+        efs.map(f => f.bind(rowCheck)).map(f => f(row, rwgps)).filter(e => e).forEach(e => row.errors.push(e));
         row.warnings = []
-        wfs.map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
+        wfs.map(f => f.bind(rowCheck)).map(f => f(row, rwgps)).filter(w => w).forEach(w => row.warnings.push(w));
         return row;
     }
 

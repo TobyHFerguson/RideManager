@@ -40,6 +40,13 @@ const MenuFunctions = (() => {
       return acc;
     }, []);
     // groups = [ {"A": {"TEMPLATE": ..., "MIN_LENGTH": ...}}, {"B": {{"TEMPLATE": ..., "MIN_LENGTH": ...}}}]
+    const g2 = groups.reduce((acc, curr) => {
+      const [key, value] = Object.entries(curr)[0];
+      acc[key] = value;
+      return acc;
+    }, {});
+    Globals.groups = g2;
+
 
     // Input: {"A": {"TEMPLATE": ..., "MIN_LENGTH": ...}}
     // output: {"A_RIDE_TEMPLATE": ..., "A_RIDE_MIN_LENGTH": ...}
