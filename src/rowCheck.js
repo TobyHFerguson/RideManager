@@ -131,17 +131,17 @@ const rowCheck = {
         const nrg = this.noGroup(row);
         if (nrg) return nrg;
         function __inappropriateGroup(group, elevation, distance) {
-          if (elevation < Globals.groups[group].MIN_ELEVATION_GAIN) {
-            return `Elevation gain (${elevation}') too low for ${group} group (>= ${Globals.groups[group].MIN_ELEVATION_GAIN}')`
+          if (Globals.groups[group].MIN_ELEVATION_GAIN && elevation < Globals.groups[group].MIN_ELEVATION_GAIN) {
+            return `Elevation gain (${elevation}') too low for ${group} group (must be at least ${Globals.groups[group].MIN_ELEVATION_GAIN}')`
           }
-          if (elevation > Globals.groups[group].MAX_ELEVATION_GAIN) {
-            return `Elevation gain (${elevation}') too great for ${group} group (<= ${Globals.groups[group].MAX_ELEVATION_GAIN}')`
+          if (Globals.groups[group].MAX_ELEVATION_GAIN && elevation > Globals.groups[group].MAX_ELEVATION_GAIN) {
+            return `Elevation gain (${elevation}') too great for ${group} group (must be no more than ${Globals.groups[group].MAX_ELEVATION_GAIN}')`
           }
-          if (distance < Globals.groups[group].MIN_LENGTH) {
-            return `Distance (${distance} miles) too short for ${group} group (>= ${Globals.groups[group].MIN_LENGTH} miles)`
+          if (Globals.groups[group].MIN_LENGTH && distance < Globals.groups[group].MIN_LENGTH) {
+            return `Distance (${distance} miles) too short for ${group} group (must be at least ${Globals.groups[group].MIN_LENGTH} miles)`
           }
-          if (distance > Globals.groups[group].MAX_LENGTH) {
-            return `Distance (${distance} miles) too long for ${group} group (<= ${Globals.groups[group].MAX_LENGTH} miles)`
+          if (Globals.groups[group].MAX_LENGTH && distance > Globals.groups[group].MAX_LENGTH) {
+            return `Distance (${distance} miles) too long for ${group} group (must be no more than ${Globals.groups[group].MAX_LENGTH} miles)`
           }
         }
             
