@@ -85,7 +85,7 @@ const RideManager = (function () {
         updateRows: function (rows, rwgps) {
             function updateRow(row) {
                 let event
-                if (!Event.managedEventName(row.RideName)) {
+                if (!Event.managedEventName(row.RideName, Globals.groups)) {
                     event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
                 } else {
                     const event_id = _extractEventID(row.RideURL);

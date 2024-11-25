@@ -24,6 +24,9 @@ function updateRiderCounts() {
 function scheduleSelectedRides() {
   MenuFunctions.scheduleSelectedRides();
 }
+function unScheduleSelectedRides() {
+  MenuFunctions.unscheduleSelectedRides();
+}
 
 const MenuFunctions = (() => {
   PropertiesService.getUserProperties().deleteAllProperties();
@@ -46,22 +49,6 @@ const MenuFunctions = (() => {
       return acc;
     }, {});
     Globals.groups = g2;
-
-
-    // Input: {"A": {"TEMPLATE": ..., "MIN_LENGTH": ...}}
-    // output: {"A_RIDE_TEMPLATE": ..., "A_RIDE_MIN_LENGTH": ...}
-    function flattenObject(obj) {
-      const flattened = {};
-      for (const [outerKey, innerObj] of Object.entries(obj)) {
-        for (const [innerKey, value] of Object.entries(innerObj)) {
-          flattened[`${outerKey}_RIDE_${innerKey}`] = value;
-        }
-      }
-      return flattened;
-    }
-
-    const group_props = groups.map(g => flattenObject(g))
-    group_props.forEach(obj => Object.assign(Globals, obj));
 
     const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, Globals);
     const rwgps = RWGPSLib.newRWGPS(rwgpsService);

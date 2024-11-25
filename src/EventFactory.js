@@ -31,7 +31,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
 
 
     function makeRideName(row, numRiders) {
-        const name = (!row.RideName || Event.managedEventName(row.RideName))
+        const name = (!row.RideName || Event.managedEventName(row.RideName, Globals.groups))
             ? Event.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName)
             : Event.makeUnmanagedRideName(row.RideName, numRiders);
         return name;

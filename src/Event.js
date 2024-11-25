@@ -14,11 +14,14 @@ if (typeof require !== 'undefined') {
 // 2 digit hour : 2 digit minute AM or PM (12 hour times)
 // Number of participants surrounded by square brackets
 
-// In addition, there can be an optional 'CANCELLED: ' prefix. 
-const MANAGED_RE = /(?<prefix>(CANCELLED: )*[MTWFS][a-z]{2} (([ABCD] \(\d{1,2}\/\d{1,2} \d\d:\d\d\))|('[ABCD]' Ride \(\d{1,2}\/\d{1,2} \d\d:\d\d [AP]M\))))( \[(\d{1,2})\])*(?<suffix>.*$)/
-
-
-
+// In addition, there can be an optional 'CANCELLED: ' prefix.
+function makeManagedRE(groups) {
+  const grps = Object.keys(groups).join('')
+  // const grps = 'ABCD'
+  const MANAGED_RE_STR = `(?<prefix>(CANCELLED: )*[MTWFS][a-z]{2} (([${grps}] \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d\\))|('[${grps}]' Ride \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d [AP]M\\))))( \\[(\\d{1,2})\\])*(?<suffix>.*$)`;
+  const MANAGED_RE = RegExp(MANAGED_RE_STR);
+  return MANAGED_RE
+}
 class Event {
   /**
    * Create the name of a Managed Event. A Managed Event is one where this code is
@@ -50,14 +53,15 @@ class Event {
   /**
    * Return true iff this is a Managed Ride
    * @param {string} eventName the event name
+   * @param{string[]} groups a list of all possible groups
    * @returns {boolean} true iff this is a managed ride
    */
-  static managedEventName(eventName) {
-    return (!eventName) || MANAGED_RE.test(eventName);
+  static managedEventName(eventName, groups) {
+    return (!eventName) || makeManagedRE(groups).test(eventName);
   }
 
-  static updateCountInName(name, count) {
-    let match = MANAGED_RE.exec(name);
+  static updateCountInName(name, count, groups) {
+    let match = makeManagedRE(groups).exec(name);
     if (match) {
       return `${match.groups.prefix} [${count}] ${match.groups.suffix.trim()}`;
     }
@@ -92,12 +96,12 @@ class Event {
    */
   updateRiderCount(numRiders) {
     const currentName = this.name;
-    this.name = Event.updateCountInName(this.name, numRiders);
+    this.name = Event.updateCountInName(this.name, numRiders, Globals.groups);
     return currentName !== this.name
   }
 
   managedEvent() { 
-    const result = Event.managedEventName(this.name); 
+    const result = Event.managedEventName(this.name, Globals.groups); 
     return result;
   }
 }
