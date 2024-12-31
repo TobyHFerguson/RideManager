@@ -1,7 +1,7 @@
 const Commands = (() => {
     return Object.freeze({
         cancelSelectedRidesWithCreds(rows, rwgps) {
-            UIManager.processRows(rows, [rowCheck.unscheduled], [], rwgps, RideManager.cancelRows);
+            UIManager.processRows(rows, [rowCheck.cancelled, rowCheck.unscheduled], [], rwgps, RideManager.cancelRows);
         },
         importSelectedRoutesWithCredentials(rows, rwgps) {
             UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows);
@@ -36,7 +36,7 @@ const Commands = (() => {
         },
         updateSelectedRidesWithCredentials(rows, rwgps) {
             UIManager.processRows(rows,
-                [rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute],
+                [rowCheck.cancelled, rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute],
                 [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup], rwgps, RideManager.updateRows);
         },
     })

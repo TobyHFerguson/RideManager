@@ -109,12 +109,12 @@ const rowCheck = {
     },
     notCancelled: function (row) {
         if (!(row.RideName.toLowerCase().startsWith('cancelled'))) {
-            return 'Not Cancelled';
+            return 'Operation not permitted when ride is not cancelled';
         }
     },
     cancelled: function (row) {
         if (row.RideName.toLowerCase().startsWith('cancelled')) {
-            return 'Cancelled';
+            return 'Operation not permitted on cancelled ride';
         }
     },
     noLocation: function (row) {
