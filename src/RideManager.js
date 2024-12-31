@@ -78,9 +78,30 @@ const RideManager = (function () {
          * @param {RWGPS} rwgps connector
          */
         updateRiderCounts: function (rows, rwgps) {
-            this.updateRows(rows.filter(row => rowCheck.scheduled(row)), rwgps)
-            return;
-            
+           // This works on all rows at once as a performance measure. Its more complicated,
+            // but helps keep the execution time down.
+            start = new Date().getTime();
+            rows.forEach(row => row.linkRouteURL());
+            const scheduledRows = rows.filter(row => rowCheck.scheduled(row))
+            const scheduledRowURLs = scheduledRows.map(row => row.RideURL);
+            const scheduledRowLeaders = scheduledRows.map(row => row.RideLeaders)
+            const rwgpsEvents = rwgps.get_events(scheduledRowURLs);
+            const scheduledEvents = rwgpsEvents.map(e => e ? EventFactory.fromRwgpsEvent(e) : e);
+            const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
+            //updatedEvents is a boolean array, where true values mean that the count has changed.
+            const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i]) : false);
+            // We only want to edit events which have changed.
+            const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, [])
+            rwgps.edit_events(edits.map(({ row, event }) => { 
+                _log(`Editing ${event.name}`)
+                return { url: row.RideURL, event } }));
+            edits.forEach(({ row, event }) => {
+                row.setRideLink(event.name, row.RideURL);
+            })
+            const updatedRows = edits.map(({ row, event }) => row.rowNum);
+            end = new Date().getTime();
+            duration(`row processing (${scheduledRows.length} rows, ${updatedRows.length} updated)`, start, end);
+            if (updatedRows.length) _log(`row #s updated: ${updatedRows.join(', ')}`);
         },
         updateRows: function (rows, rwgps) {
             function updateRow(row) {
