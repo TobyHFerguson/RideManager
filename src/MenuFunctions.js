@@ -11,7 +11,9 @@ if (typeof require !== 'undefined') {
  * @param {Function} command command to execute
  */
 
-
+function importSelectedRoutes() {
+  MenuFunctions.importSelectedRoutes();
+}
 function updateRiderCount() {
   MenuFunctions.updateRiderCount();
 }

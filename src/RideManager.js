@@ -18,13 +18,18 @@ const RideManager = (function () {
         },
         importRows: function (rows, rwgps) {
             function importRow(row, rwgps) {
-                const route = {
+                let route = {
                     url: row.RouteURL ? row.RouteURL : row.RouteName,
                     //TODO use dates as native objects, not strings
-                    expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), Globals.EXPIRY_DELAY))
-                };
+                    expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), Globals.EXPIRY_DELAY)),
+                    tags: [row.Group]
+                }
+                let rn = row.RouteName;
+                let ru = row.RouteURL;
+                if (rn !== ru ) route.name = row.RouteName;
+
                 const url = rwgps.importRoute(route);
-                row.setRouteLink(url, url);
+                row.setRouteLink(route.name || url, url);
                 //TODO remove dependency on Schedule
                 row.linkRouteURL();
             }
