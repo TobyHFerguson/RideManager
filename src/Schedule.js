@@ -267,14 +267,20 @@ const Schedule = function () {
       }
       let url = this.RouteURL;
       let text = this.RouteName;
+
+      // Its possible to not have an URL but to have the text, and that text be an URL string! 
+      // In that case then make the url be the text and set both parts of the RichTextValue to be that url string
       if (!url) {
-        this.setRouteLink(text, text);
-        url = text;
+        url = text
+        this.setRouteLink(text, url);
       }
-      if (url && url === text) {
+      // However we got here then the url and the text are the same - the Route Name is not being displayed to
+      // the user. So lets try and put in the correct route name.  iff the route is foreign we'll prefix the name
+      // to make that clear to the user.
+      if (url === text) {
         try {
           let route = getRouteJson();
-          let name = route.name;
+          let name = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX  : ''}` + route.name;
           Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
           this.setRouteLink(name, url);
         } catch (e) {

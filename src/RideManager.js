@@ -28,6 +28,8 @@ const RideManager = (function () {
                 let ru = row.RouteURL;
                 if (rn !== ru ) route.name = row.RouteName;
 
+                // Delete any foreign prefix in the name
+                if (route.name.startsWith(Globals.FOREIGN_PREFIX)) route.name = route.name.substring(Globals.FOREIGN_PREFIX.length);
                 const url = rwgps.importRoute(route);
                 row.setRouteLink(route.name || url, url);
                 //TODO remove dependency on Schedule

@@ -15,7 +15,7 @@ const Commands = (() => {
             UIManager.processRows(rows, [rowCheck.notCancelled], [], rwgps, RideManager.reinstateRows);
         },
         scheduleSelectedRidesWithCredentials(rows, rwgps) {
-            const errorFuns = [rowCheck.unmanagedRide, rowCheck.scheduled, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute]
+            const errorFuns = [rowCheck.unmanagedRide, rowCheck.scheduled, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute, rowCheck.foreignRoute]
             const warningFuns = [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
             UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.scheduleRows);
 
@@ -35,9 +35,10 @@ const Commands = (() => {
 
         },
         updateSelectedRidesWithCredentials(rows, rwgps) {
-            UIManager.processRows(rows,
-                [rowCheck.cancelled, rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute],
-                [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup], rwgps, RideManager.updateRows);
+          const errorFuns = 
+                [rowCheck.cancelled, rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute, rowCheck.foreignRoute]
+          const warningFuns = [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
+            UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.updateRows);
         },
     })
 })()

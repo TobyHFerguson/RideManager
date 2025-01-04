@@ -14,6 +14,8 @@ let Globals = {
 
     RIDE_LEADER_TBD_NAME: 'To Be Determined',
 
+    FOREIGN_PREFIX: '(FOREIGN) ',
+
     // A_TEMPLATE: `https://ridewithgps.com/events/186557-a-template`,
     // B_TEMPLATE: `https://ridewithgps.com/events/186234-b-template`,
     // C_TEMPLATE: `https://ridewithgps.com/events/186235-c-template`,

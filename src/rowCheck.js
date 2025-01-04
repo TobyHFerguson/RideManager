@@ -61,16 +61,12 @@ const rowCheck = {
         let re = /(https:\/\/ridewithgps.com\/routes\/(\d+))/
         let url = row.RouteURL.match(re);
         if (!url) {
-            return "Route URL doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS"
+            return "Invalid URL. It doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS"
         }
         url = url[1];
         const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
         switch (response.getResponseCode()) {
             case 200:
-                let route = JSON.parse(response.getContentText());
-                if (route.user_id !== Globals.SCCCC_USER_ID) {
-                    return 'Route is not owned by SCCCC';
-                }
                 break;
             case 403:
                 return 'Route URL does not have public access';
@@ -156,12 +152,25 @@ const rowCheck = {
         if (row.RideURL !== null) {
             return "This ride has already been scheduled";
         }
+    },
+    foreignRoute: function(row) {
+      let re = /(https:\/\/ridewithgps.com\/routes\/(\d+))/
+      let url = row.RouteURL.match(re);
+      try {
+        const response = UrlFetchApp.fetch(url[1] + ".json", { muteHttpExceptions: true });
+        let route = JSON.parse(response.getContentText());
+                if (route.user_id !== Globals.SCCCC_USER_ID) {
+                    return 'Route is not owned by SCCCC';
+                }
+      } catch (e) {
+        return e.message;
+      }
     }
 }
 
-const errorFuns = [rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute]
+const errorFuns = [rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute, rowCheck.scheduled]
 
-const warningFuns = [rowCheck.noRideLeader, rowCheck.cancelled, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
+const warningFuns = [rowCheck.noRideLeader, rowCheck.cancelled, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup, rowCheck.foreignRoute]
 
 function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
     function evalRow_(row, rwgps, efs, wfs) {
