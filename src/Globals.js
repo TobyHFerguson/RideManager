@@ -34,18 +34,7 @@ let Globals = {
     METERS_TO_FEET: 3.28084,
     METERS_TO_MILES: 6.213712e-4,
 
-    // LENGTHS are in miles
-    // ELEVATION_GAINS are in feet
-    // D_RIDE_MIN_LENGTH: 10,
-    // D_RIDE_MAX_LENGTH: 15,
-    // D_RIDE_MAX_ELEVATION_GAIN: 1000,
-    // C_RIDE_MAX_LENGTH: 35,
-    // C_RIDE_MAX_ELEVATION_GAIN: 2000,
-    // B_RIDE_MAX_LENGTH: 50,
-    // B_RIDE_MAX_ELEVATION_GAIN: 3000,
-    // A_RIDE_MIN_LENGTH: 40,
-    // A_RIDE_MAX_LENGTH: 80,
-    // A_RIDE_MIN_ELEVATION_GAIN: 3000,
+    CONSOLIDATED_RIDE_SHEET: 'Consolidated Rides',
 
     // Number of days after an event or an import that a route will expire
     EXPIRY_DELAY: 30,
