@@ -21,7 +21,7 @@ function onEdit(event) {
   if (event.range.getRow() > 1) {
     switch (event.range.getColumn() - 1) { // convert from Spreadsheet numbering (1 ...) to object numbering (0 ...)
       case Schedule.getColumnIndex(Globals.ROUTECOLUMNNAME):
-        if (Globals.CONSOLIDATED_RIDE_SHEET === event.range.getSheet.getName()) _editRouteColumn(event);
+        if (Globals.CONSOLIDATED_RIDE_SHEET === event.range.getSheet().getName()) _editRouteColumn(event);
         break;
     }
   }
