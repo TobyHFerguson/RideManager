@@ -23,16 +23,6 @@ function onEdit(event) {
       case Schedule.getColumnIndex(Globals.ROUTECOLUMNNAME):
         if (Globals.CONSOLIDATED_RIDE_SHEET === event.range.getSheet().getName()) _editRouteColumn(event);
         break;
-      case Schedule.getColumnIndex(Globals.RIDECOLUMNNAME): {
-        console.log('old value', event.oldValue)
-        if ((Globals.CONSOLIDATED_RIDE_SHEET === event.range.getSheet().getName())) {
-          SpreadsheetApp.getUi().alert('The Ride column must not be modified directly by the user!\nReverting to the previous value');
-
-          event.range.setValue(event.oldValue);
-        }
-        break;
-      }
-
     }
   }
 }
