@@ -17,33 +17,43 @@ function onOpen() {
 function onEdit(event) {
   console.log('onEdit()')
   console.log(`Editing: ${event.range.getA1Notation()}`)
-  
+
   if (event.range.getRow() > 1) {
     switch (event.range.getColumn() - 1) { // convert from Spreadsheet numbering (1 ...) to object numbering (0 ...)
       case Schedule.getColumnIndex(Globals.ROUTECOLUMNNAME):
         if (Globals.CONSOLIDATED_RIDE_SHEET === event.range.getSheet().getName()) _editRouteColumn(event);
         break;
+      case Schedule.getColumnIndex(Globals.RIDECOLUMNNAME): {
+        console.log('old value', event.oldValue)
+        if ((Globals.CONSOLIDATED_RIDE_SHEET === event.range.getSheet().getName())) {
+          SpreadsheetApp.getUi().alert('The Ride column must not be modified directly by the user!\nReverting to the previous value');
+
+          event.range.setValue(event.oldValue);
+        }
+        break;
+      }
+
     }
   }
 }
 
 // The value could be an rtv.
-  // if the url & text are defined and equal then this rtv has been auto-linked and we need to look up the url
-  // if the url & text are defined and unequal then linking has occurred. Return false
-  // if the text is defined it contains an url (that's why we have an RTV!). Return it.
-  // otherwise return whatever the url has
+// if the url & text are defined and equal then this rtv has been auto-linked and we need to look up the url
+// if the url & text are defined and unequal then linking has occurred. Return false
+// if the text is defined it contains an url (that's why we have an RTV!). Return it.
+// otherwise return whatever the url has
 
-  function _rtvNeedingFetch(rtv) {
-    console.log(`rtv.getLinkUrl(): ${rtv.getLinkUrl()}, rtv.getText(): ${rtv.getText()}`)
-    if (!rtv) return false;
-    let result;
-    const url = rtv.getLinkUrl();
-    const text = rtv.getText();
-    result = (url && text) ? ((url == text) ? url : false) : text ? text : url
+function _rtvNeedingFetch(rtv) {
+  console.log(`rtv.getLinkUrl(): ${rtv.getLinkUrl()}, rtv.getText(): ${rtv.getText()}`)
+  if (!rtv) return false;
+  let result;
+  const url = rtv.getLinkUrl();
+  const text = rtv.getText();
+  result = (url && text) ? ((url == text) ? url : false) : text ? text : url
 
-    console.log(`result: ${result}`)
-    return result
-  }
+  console.log(`result: ${result}`)
+  return result
+}
 
 function _editRouteColumn(event) {
   let url = event.value || _rtvNeedingFetch(event.range.getRichTextValue())
