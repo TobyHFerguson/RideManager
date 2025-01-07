@@ -149,7 +149,7 @@ const rowCheck = {
         return __inappropriateGroup(row.Group, e, d);
     },
     scheduled: function (row) {
-        if (row.RideURL !== null) {
+        if (row.RideURL) {
             return "This ride has already been scheduled";
         }
     },
