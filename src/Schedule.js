@@ -15,24 +15,21 @@ const Schedule = function () {
             this.rows = new Set();
         }
 
+        _getRideColumnRange() {
+            const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
+            return this.activeSheet.getRange(2, rideColumnIndex, this.activeSheet.getLastRow() - 1)
+        }
         storeOriginalFormulas() {
-            const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            const formulas = this.activeSheet.getRange(2, rideColumnIndex, this.activeSheet.getLastRow() - 1).getFormulas();
-            const formulaMap = formulas.map(row => row[0]);
+            const formulas = this._getRideColumnRange().getFormulas();
             Logger.log(`Formulas retrieved from range: ${JSON.stringify(formulas)}`);
-            Logger.log(`Storing formulas: ${JSON.stringify(formulaMap)}`);
-            PropertiesService.getDocumentProperties().setProperty('rideColumnFormulas', JSON.stringify(formulaMap));
+            PropertiesService.getDocumentProperties().setProperty('rideColumnFormulas', JSON.stringify(formulas));
         }
 
-        restoreOriginalFormula(rowNum) {
-            const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            const formulaMap = JSON.parse(PropertiesService.getDocumentProperties().getProperty('rideColumnFormulas'));
-            Logger.log(`Restoring formulas: ${JSON.stringify(formulaMap)}`);
-            const formula = formulaMap[rowNum - 2]; // Adjust for header row
-            Logger.log(`Restoring formula: ${formula} to row: ${rowNum}, column: ${rideColumnIndex}`);
-            this.activeSheet.getRange(rowNum, rideColumnIndex).setFormula(formula);
+        restoreOriginalFormula() {
+            const formulas = JSON.parse(PropertiesService.getDocumentProperties().getProperty('rideColumnFormulas'));
+            Logger.log(`Formulas being restored: ${JSON.stringify(formulas)}`);
+            this._getRideColumnRange().setFormulas(formulas);
         }
-
         /**
          * Find and return all rows that are scheduled after the given day
          * @param {Date} date the day after which rows should be returned
@@ -213,7 +210,7 @@ const Schedule = function () {
                 SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
                 this.restoreOriginalFormula(rowNum);
             } else if (editedColumn === routeColumnIndex) {
-               Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
+                Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
                 this._editRouteColumn(e);
             }
         }
@@ -224,44 +221,36 @@ const Schedule = function () {
             // if the url & text are defined and unequal then linking has occurred. Return false
             // if the text is defined it contains an url (that's why we have an RTV!). Return it.
             // otherwise return whatever the url has
-          
+
             function _rtvNeedingFetch(rtv) {
-              console.log(`rtv.getLinkUrl(): ${rtv.getLinkUrl()}, rtv.getText(): ${rtv.getText()}`)
-              if (!rtv) return false;
-              let result;
-              const url = rtv.getLinkUrl();
-              const text = rtv.getText();
-              result = (url && text) ? ((url == text) ? url : false) : text ? text : url
-          
-              console.log(`result: ${result}`)
-              return result
+                console.log(`rtv.getLinkUrl(): ${rtv.getLinkUrl()}, rtv.getText(): ${rtv.getText()}`)
+                if (!rtv) return false;
+                let result;
+                const url = rtv.getLinkUrl();
+                const text = rtv.getText();
+                result = (url && text) ? ((url == text) ? url : false) : text ? text : url
+
+                console.log(`result: ${result}`)
+                return result
             }
             let url = event.value || _rtvNeedingFetch(event.range.getRichTextValue())
             if (url) {
-              const options = {
-                headers: {
-                  Accept: "application/json" // Return json, not html
-                },
-              }
-              try {
-                const response = UrlFetchApp.fetch(url, options)
-                const route = JSON.parse(response.getContentText());
-                const name = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}` + route.name;
-                event.range.setValue(`=hyperlink("${url}", "${name}")`)
-              } catch (e) {
-                console.log(`onEdit._editRouteColumn() - fetching ${url} got exception: ${e}`)
-              }
+                const options = {
+                    headers: {
+                        Accept: "application/json" // Return json, not html
+                    },
+                }
+                try {
+                    const response = UrlFetchApp.fetch(url, options)
+                    const route = JSON.parse(response.getContentText());
+                    const name = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}` + route.name;
+                    event.range.setValue(`=hyperlink("${url}", "${name}")`)
+                } catch (e) {
+                    console.log(`onEdit._editRouteColumn() - fetching ${url} got exception: ${e}`)
+                }
             }
-          }
-        restoreOriginalFormula(rowNum) {
-            Logger.log(`restoreOriginalFormula called for rowNum: ${rowNum}`);
-            const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            const formulaMap = JSON.parse(PropertiesService.getDocumentProperties().getProperty('rideColumnFormulas'));
-            Logger.log(`Formula map: ${JSON.stringify(formulaMap)}`);
-            const formula = formulaMap[rowNum - 2]; // Adjust for header row
-            Logger.log(`Restoring formula: ${formula} to row: ${rowNum}, column: ${rideColumnIndex}`);
-            this.activeSheet.getRange(rowNum, rideColumnIndex).setFormula(formula);
         }
+
 
     }
 
@@ -301,7 +290,7 @@ const Schedule = function () {
         }
 
         get RideName() {
-            const cellValue =  this.myRowValues[this.schedule.getColumnIndex(Globals.RIDECOLUMNNAME)];
+            const cellValue = this.myRowValues[this.schedule.getColumnIndex(Globals.RIDECOLUMNNAME)];
             const { name } = parseHyperlinkFormula(cellValue);
             return name;
         }
