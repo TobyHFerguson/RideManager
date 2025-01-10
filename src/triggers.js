@@ -13,13 +13,17 @@ function onOpen() {
     .addItem('Update Rider Count', "MenuFunctions.updateRiderCount")
     .addToUi();
 
+    // We store the original formulas here so that we can restore them if the user
+    // accidentally overwrites them. They need to be stored outside of the spreadsheet 
+    // because the onEdit trigger will overwrite them if they are stored in the spreadsheet itself
+    // and onEdit only has access to old values, not formulas.
   const schedule = Schedule;
   schedule.storeOriginalFormulas();
 }
 
 function onEdit(event) {
-  console.log('onEdit triggered');
-  console.log(`Event: ${JSON.stringify(event)}`);
+  // console.log('onEdit triggered');
+  // console.log(`Event: ${JSON.stringify(event)}`);
   const schedule = Schedule;
   schedule.onEdit(event);
 }

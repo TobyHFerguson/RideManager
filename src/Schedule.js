@@ -21,13 +21,13 @@ const Schedule = function () {
         }
         storeOriginalFormulas() {
             const formulas = this._getRideColumnRange().getFormulas();
-            Logger.log(`Formulas retrieved from range: ${JSON.stringify(formulas)}`);
+            // Logger.log(`Formulas retrieved from range: ${JSON.stringify(formulas)}`);
             PropertiesService.getDocumentProperties().setProperty('rideColumnFormulas', JSON.stringify(formulas));
         }
 
         restoreOriginalFormula() {
             const formulas = JSON.parse(PropertiesService.getDocumentProperties().getProperty('rideColumnFormulas'));
-            Logger.log(`Formulas being restored: ${JSON.stringify(formulas)}`);
+            // Logger.log(`Formulas being restored: ${JSON.stringify(formulas)}`);
             this._getRideColumnRange().setFormulas(formulas);
         }
         /**
@@ -197,20 +197,32 @@ const Schedule = function () {
         }
 
         onEdit(e) {
+            
+            /**
+            * Checks if a given range contains a specific column index.
+            * @param {Range} range The range to check.
+            * @param {number} columnIndex The column index (1-based) to check for.
+            * @return {boolean} True if the range contains the column, false otherwise.
+            */
+            function rangeContainsColumn(range, columnIndex) {
+                const startColumn = range.getColumn();
+                const endColumn = range.getLastColumn();
 
+                return columnIndex >= startColumn && columnIndex <= endColumn;
+            }
             const editedRange = e.range;
             const editedColumn = editedRange.getColumn();
             const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
             const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
 
-            Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
+            // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
 
-            if (editedColumn === rideColumnIndex) {
+            if (rangeContainsColumn(editedRange, rideColumnIndex)) {    
                 const rowNum = editedRange.getRow();
                 SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
                 this.restoreOriginalFormula(rowNum);
             } else if (editedColumn === routeColumnIndex) {
-                Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
+                // Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
                 this._editRouteColumn(e);
             }
         }
@@ -324,7 +336,7 @@ const Schedule = function () {
             let formula = createHyperlinkFormula(name, url);
             this.myRowFormulas[this.schedule.getColumnIndex(Globals.ROUTECOLUMNNAME)] = formula;
             this.myRowValues[this.schedule.getColumnIndex(Globals.ROUTECOLUMNNAME)] = formula;
-            Logger.log(`Row ${this.rowNum}: Setting route link to ${name} at ${url} with formula ${formula}`);
+            // Logger.log(`Row ${this.rowNum}: Setting route link to ${name} at ${url} with formula ${formula}`);
             this.schedule.saveRow(this);
         }
 
@@ -374,7 +386,7 @@ const Schedule = function () {
                 try {
                     let route = getRouteJson();
                     let name = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}` + route.name;
-                    Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
+                    // Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
                     this.setRouteLink(name, url);
                 } catch (e) {
                     Logger.log(`Row ${this.rowNum}: ${e.message}`);
