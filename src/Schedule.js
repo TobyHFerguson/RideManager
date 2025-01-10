@@ -233,10 +233,45 @@ const Schedule = function () {
                 Logger.log(`Restoring original route formula for row: ${rowNum}`);
                 this.restoreOriginalRouteFormula(rowNum);
                 Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
-                _editRouteColumn(e);
+                this._editRouteColumn(e);
             }
         }
-
+        
+        _editRouteColumn(event) {
+            // The value could be an rtv.
+            // if the url & text are defined and equal then this rtv has been auto-linked and we need to look up the url
+            // if the url & text are defined and unequal then linking has occurred. Return false
+            // if the text is defined it contains an url (that's why we have an RTV!). Return it.
+            // otherwise return whatever the url has
+          
+            function _rtvNeedingFetch(rtv) {
+              console.log(`rtv.getLinkUrl(): ${rtv.getLinkUrl()}, rtv.getText(): ${rtv.getText()}`)
+              if (!rtv) return false;
+              let result;
+              const url = rtv.getLinkUrl();
+              const text = rtv.getText();
+              result = (url && text) ? ((url == text) ? url : false) : text ? text : url
+          
+              console.log(`result: ${result}`)
+              return result
+            }
+            let url = event.value || _rtvNeedingFetch(event.range.getRichTextValue())
+            if (url) {
+              const options = {
+                headers: {
+                  Accept: "application/json" // Return json, not html
+                },
+              }
+              try {
+                const response = UrlFetchApp.fetch(url, options)
+                const route = JSON.parse(response.getContentText());
+                const name = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}` + route.name;
+                event.range.setValue(`=hyperlink("${url}", "${name}")`)
+              } catch (e) {
+                console.log(`onEdit._editRouteColumn() - fetching ${url} got exception: ${e}`)
+              }
+            }
+          }
         restoreOriginalFormula(rowNum) {
             Logger.log(`restoreOriginalFormula called for rowNum: ${rowNum}`);
             const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
