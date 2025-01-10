@@ -12,19 +12,16 @@ function onOpen() {
     .addItem('Link Selected Route URLs', "MenuFunctions.linkSelectedRouteUrls")
     .addItem('Update Rider Count', "MenuFunctions.updateRiderCount")
     .addToUi();
+  
+  const schedule = Schedule;
+  schedule.storeOriginalFormulas();
 }
 
 function onEdit(event) {
-  console.log('onEdit()')
-  console.log(`Editing: ${event.range.getA1Notation()}`)
-
-  if (event.range.getRow() > 1) {
-    switch (event.range.getColumn() - 1) { // convert from Spreadsheet numbering (1 ...) to object numbering (0 ...)
-      case Schedule.getColumnIndex(Globals.ROUTECOLUMNNAME):
-        if (Globals.CONSOLIDATED_RIDE_SHEET === event.range.getSheet().getName()) _editRouteColumn(event);
-        break;
-    }
-  }
+  console.log('onEdit triggered');
+  console.log(`Event: ${JSON.stringify(event)}`);
+  const schedule = Schedule;
+  schedule.onEdit(event);
 }
 
 // The value could be an rtv.
