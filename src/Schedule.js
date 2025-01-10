@@ -13,22 +13,15 @@ const Schedule = function () {
             this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
             this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0];
             this.rows = new Set();
-            // this.storeOriginalFormulas();
         }
 
         storeOriginalFormulas() {
             const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
             const formulas = this.activeSheet.getRange(2, rideColumnIndex, this.activeSheet.getLastRow() - 1).getFormulas();
-            const routeFormulas = this.activeSheet.getRange(2, routeColumnIndex, this.activeSheet.getLastRow() - 1).getFormulas();
             const formulaMap = formulas.map(row => row[0]);
-            const routeFormulaMap = routeFormulas.map(row => row[0]);
             Logger.log(`Formulas retrieved from range: ${JSON.stringify(formulas)}`);
-            Logger.log(`Route formulas retrieved from range: ${JSON.stringify(routeFormulas)}`);
             Logger.log(`Storing formulas: ${JSON.stringify(formulaMap)}`);
-            Logger.log(`Storing route formulas: ${JSON.stringify(routeFormulaMap)}`);
             PropertiesService.getDocumentProperties().setProperty('rideColumnFormulas', JSON.stringify(formulaMap));
-            PropertiesService.getDocumentProperties().setProperty('routeColumnFormulas', JSON.stringify(routeFormulaMap));
         }
 
         restoreOriginalFormula(rowNum) {
@@ -38,15 +31,6 @@ const Schedule = function () {
             const formula = formulaMap[rowNum - 2]; // Adjust for header row
             Logger.log(`Restoring formula: ${formula} to row: ${rowNum}, column: ${rideColumnIndex}`);
             this.activeSheet.getRange(rowNum, rideColumnIndex).setFormula(formula);
-        }
-
-        restoreOriginalRouteFormula(rowNum) {
-            const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
-            const routeFormulaMap = JSON.parse(PropertiesService.getDocumentProperties().getProperty('routeColumnFormulas'));
-            Logger.log(`Restoring route formulas: ${JSON.stringify(routeFormulaMap)}`);
-            const formula = routeFormulaMap[rowNum - 2]; // Adjust for header row
-            Logger.log(`Restoring route formula: ${formula} to row: ${rowNum}, column: ${routeColumnIndex}`);
-            this.activeSheet.getRange(rowNum, routeColumnIndex).setFormula(formula);
         }
 
         /**
@@ -229,14 +213,11 @@ const Schedule = function () {
                 SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
                 this.restoreOriginalFormula(rowNum);
             } else if (editedColumn === routeColumnIndex) {
-                const rowNum = editedRange.getRow();
-                Logger.log(`Restoring original route formula for row: ${rowNum}`);
-                this.restoreOriginalRouteFormula(rowNum);
-                Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
+               Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
                 this._editRouteColumn(e);
             }
         }
-        
+
         _editRouteColumn(event) {
             // The value could be an rtv.
             // if the url & text are defined and equal then this rtv has been auto-linked and we need to look up the url
@@ -282,15 +263,6 @@ const Schedule = function () {
             this.activeSheet.getRange(rowNum, rideColumnIndex).setFormula(formula);
         }
 
-        restoreOriginalRouteFormula(rowNum) {
-            Logger.log(`restoreOriginalRouteFormula called for rowNum: ${rowNum}`);
-            const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
-            const routeFormulaMap = JSON.parse(PropertiesService.getDocumentProperties().getProperty('routeColumnFormulas'));
-            Logger.log(`Route formula map: ${JSON.stringify(routeFormulaMap)}`);
-            const formula = routeFormulaMap[rowNum - 2]; // Adjust for header row
-            Logger.log(`Restoring route formula: ${formula} to row: ${rowNum}, column: ${routeColumnIndex}`);
-            this.activeSheet.getRange(rowNum, routeColumnIndex).setFormula(formula);
-        }
     }
 
     class Row {
