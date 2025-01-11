@@ -93,14 +93,12 @@ const Schedule = function () {
 
         saveRow(row) {
             this.rows.add(row);
-            this.save();
-            this.storeOriginalFormulas(); // Ensure formulas are persisted after saving the row
         }
 
         /**
          * Given a set of rows reduce it to those rows which have disjoint ranges
          * @param {Set(Row)} rows 
-         */
+        */
         getRowSet(rows) {
             let rrs = Array.from(rows).reduce((p, row) => {
                 if (!p.ranges.has(row.range)) {
@@ -118,10 +116,12 @@ const Schedule = function () {
             this.getRowSet(this.rows).forEach(row => {
                 const range = row.range;
                 const values = row.values;
-                console.log(`Saving row: ${row.rowNum} with values: ${values}`);
                 range.setValues(values);
             });
+            this.storeOriginalFormulas(); // Ensure formulas are persisted after saving the row
+            console.time('SpreadsheetApp.flush()');
             SpreadsheetApp.flush();
+            console.timeEnd('SpreadsheetApp.flush()');
 
             this.rows = new Set();
         }
@@ -197,7 +197,7 @@ const Schedule = function () {
         }
 
         onEdit(e) {
-            
+
             /**
             * Checks if a given range contains a specific column index.
             * @param {Range} range The range to check.
@@ -217,7 +217,7 @@ const Schedule = function () {
 
             // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
 
-            if (rangeContainsColumn(editedRange, rideColumnIndex)) {    
+            if (rangeContainsColumn(editedRange, rideColumnIndex)) {
                 const rowNum = editedRange.getRow();
                 SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
                 this.restoreOriginalFormula(rowNum);

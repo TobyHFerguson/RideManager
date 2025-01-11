@@ -3,7 +3,7 @@ const RideManager = (function () {
         console.log(`RideManager.${name}: ${msg}`);
     }
     function _extractEventID(event_url) {
-        return event_url.substring(event_url.lastIndexOf('/') +1).split('-')[0]
+        return event_url.substring(event_url.lastIndexOf('/') + 1).split('-')[0]
     }
     return {
         cancelRows: function (rows, rwgps) {
@@ -26,7 +26,7 @@ const RideManager = (function () {
                 }
                 let rn = row.RouteName;
                 let ru = row.RouteURL;
-                if (rn !== ru ) route.name = row.RouteName;
+                if (rn !== ru) route.name = row.RouteName;
 
                 // Delete any foreign prefix in the name
                 if (route.name.startsWith(Globals.FOREIGN_PREFIX)) route.name = route.name.substring(Globals.FOREIGN_PREFIX.length);
@@ -85,30 +85,30 @@ const RideManager = (function () {
          * @param {RWGPS} rwgps connector
          */
         updateRiderCounts: function (rows, rwgps) {
-           // This works on all rows at once as a performance measure. Its more complicated,
+            // This works on all rows at once as a performance measure. Its more complicated,
             // but helps keep the execution time down.
-            start = new Date().getTime();
-            rows.forEach(row => row.linkRouteURL());
-            const scheduledRows = rows.filter(row => rowCheck.scheduled(row))
+            console.time('updateRiderCounts');
+            const scheduledRows = rows.filter(row => rowCheck.scheduled(row));
             const scheduledRowURLs = scheduledRows.map(row => row.RideURL);
-            const scheduledRowLeaders = scheduledRows.map(row => row.RideLeaders)
+            const scheduledRowLeaders = scheduledRows.map(row => row.RideLeaders);
             const rwgpsEvents = rwgps.get_events(scheduledRowURLs);
             const scheduledEvents = rwgpsEvents.map(e => e ? EventFactory.fromRwgpsEvent(e) : e);
             const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
-            //updatedEvents is a boolean array, where true values mean that the count has changed.
             const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i]) : false);
-            // We only want to edit events which have changed.
-            const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, [])
-            rwgps.edit_events(edits.map(({ row, event }) => { 
-                _log(`Editing ${event.name}`)
-                return { url: row.RideURL, event } }));
+            const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
+
+            rwgps.edit_events(edits.map(({ row, event }) => {
+                _log('updateRiderCounts', `Row ${row.rowNum} Updating count for: ${event.name}`);
+                return { url: row.RideURL, event };
+            }));
+
             edits.forEach(({ row, event }) => {
                 row.setRideLink(event.name, row.RideURL);
-            })
-            const updatedRows = edits.map(({ row, event }) => row.rowNum);
-            end = new Date().getTime();
-            duration(`row processing (${scheduledRows.length} rows, ${updatedRows.length} updated)`, start, end);
-            if (updatedRows.length) _log(`row #s updated: ${updatedRows.join(', ')}`);
+            });
+
+            const updatedRows = edits.map(({ row, _ }) => row.rowNum);
+            if (updatedRows.length) _log(`UpdateRiderCounts`, `row #s updated: ${updatedRows.join(', ')}`);
+            console.timeEnd('updateRiderCounts');
         },
         updateRows: function (rows, rwgps) {
             function updateRow(row) {
