@@ -44,15 +44,26 @@ function myEdit(event) {
    * Edits the route column in the schedule.
    */
   function _editRouteColumn(event) {
-    const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText()
+    const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText();
     const route = getRoute(url);
-    const prefix = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}`
-    const name = prefix + route.name;
-    event.range.setValue(`=hyperlink("${url}", "${name}")`)
+    let name;
+    if (route.user_id !== Globals.SCCCC_USER_ID) {
+      const ui = SpreadsheetApp.getUi();
+      const response = ui.prompt('Foreign Route Detected', 'Please enter a name for the foreign route:', ui.ButtonSet.OK_CANCEL);
+      if (response.getSelectedButton() == ui.Button.OK) {
+        name = response.getResponseText();
+        name = name || Globals.FOREIGN_PREFIX + route.name;
+      } else {
+        name = Globals.FOREIGN_PREFIX + route.name;
+      }
+    } else {
+      name = route.name;
+    }
+    event.range.setValue(`=hyperlink("${url}", "${name}")`);
     schedule.storeRouteFormulas();
   }
 
-  
+
   const editedRange = event.range;
   const rideColumnIndex = schedule.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
   const routeColumnIndex = schedule.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
