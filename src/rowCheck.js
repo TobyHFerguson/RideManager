@@ -56,7 +56,7 @@ const rowCheck = {
     },
     badRoute: function (row) {
         try {
-            this.getRoute(row.RouteURL);
+            getRoute(row.RouteURL);
         }
         catch (e) {
             return e.message

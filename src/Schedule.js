@@ -15,21 +15,47 @@ const Schedule = function () {
             this.rows = new Set();
         }
 
-        _getRideColumnRange() {
+        _getRideColumnRange(rowNum = 2) {
             const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            return this.activeSheet.getRange(2, rideColumnIndex, this.activeSheet.getLastRow() - 1)
+            return this.activeSheet.getRange(rowNum, rideColumnIndex, this.activeSheet.getLastRow() - 1)
         }
-        storeOriginalFormulas() {
-            const formulas = this._getRideColumnRange().getFormulas();
-            // Logger.log(`Formulas retrieved from range: ${JSON.stringify(formulas)}`);
-            PropertiesService.getDocumentProperties().setProperty('rideColumnFormulas', JSON.stringify(formulas));
+        _getRouteColumnRange() {
+            const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
+            return this.activeSheet.getRange(2, routeColumnIndex, this.activeSheet.getLastRow() - 1)
+        }
+        storeFormulas() {
+           this.storeRideFormulas();
+           this.storeRouteFormulas();
+        }
+        storeRouteFormulas() {
+            const routeFormulas = this._getRouteColumnRange().getFormulas();
+            Logger.log(`Route Formulas retrieved from range: ${JSON.stringify(routeFormulas)}`);
+            PropertiesService.getDocumentProperties().setProperty('routeColumnFormulas', JSON.stringify(routeFormulas));
+        }
+        storeRideFormulas() {
+            const rideFormulas = this._getRideColumnRange().getFormulas();
+            Logger.log(`Ride Formulas retrieved from range: ${JSON.stringify(rideFormulas)}`);
+            PropertiesService.getDocumentProperties().setProperty('rideColumnFormulas', JSON.stringify(rideFormulas));
         }
 
-        restoreOriginalFormula() {
-            const formulas = JSON.parse(PropertiesService.getDocumentProperties().getProperty('rideColumnFormulas'));
-            // Logger.log(`Formulas being restored: ${JSON.stringify(formulas)}`);
-            this._getRideColumnRange().setFormulas(formulas);
+        restoreFormula(rowNum) {
+            this.restoreRideFormula(rowNum);
+            this.restoreRouteFormula(rowNum);
         }
+        restoreRouteFormula(rowNum) {
+            const indexNum = rowNum - 2; // -2 because the first row is the header row & the first row of data is row 2
+            const routeFormula = JSON.parse(PropertiesService.getDocumentProperties().getProperty('routeColumnFormulas'))[indexNum];
+            Logger.log(`route Formulas being restored to row ${rowNum}: ${JSON.stringify(routeFormula)}`);
+            this._getRouteColumnRange(rowNum).setFormula(routeFormula);
+        }
+
+        restoreRideFormula(rowNum) {
+            const indexNum = rowNum - 2; // -2 because the first row is the header row & the first row of data is row 2
+            const rideFormula = JSON.parse(PropertiesService.getDocumentProperties().getProperty('rideColumnFormulas'))[indexNum];
+            Logger.log(`ride Formula being restored to row ${rowNum}: ${JSON.stringify(rideFormula)}`);
+            this._getRideColumnRange(rowNum).setFormula(rideFormula);
+        }
+
         /**
          * Find and return all rows that are scheduled after the given day
          * @param {Date} date the day after which rows should be returned
@@ -118,7 +144,7 @@ const Schedule = function () {
                 const values = row.values;
                 range.setValues(values);
             });
-            this.storeOriginalFormulas(); // Ensure formulas are persisted after saving the row
+            this.storeFormulas(); // Ensure formulas are persisted after saving the row
             console.time('SpreadsheetApp.flush()');
             SpreadsheetApp.flush();
             console.timeEnd('SpreadsheetApp.flush()');
@@ -196,7 +222,7 @@ const Schedule = function () {
             return this.convertRangeToRows(range)[0];
         }
 
-        onEdit(e) {
+        onEdit(event) {
 
             /**
             * Checks if a given range contains a specific column index.
@@ -210,33 +236,35 @@ const Schedule = function () {
 
                 return columnIndex >= startColumn && columnIndex <= endColumn;
             }
-            const editedRange = e.range;
+            const editedRange = event.range;
             const editedColumn = editedRange.getColumn();
             const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
             const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
 
             // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
 
+            const rowNum = editedRange.getRow();
             if (rangeContainsColumn(editedRange, rideColumnIndex)) {
-                const rowNum = editedRange.getRow();
                 SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
-                this.restoreOriginalFormula(rowNum);
+                this.restoreFormula(rowNum);
             } else if (editedColumn === routeColumnIndex) {
                 // Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
-                this._editRouteColumn(e);
+                try {
+                    this._editRouteColumn(event);
+                } catch (e) {
+                    SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
+                    this.restoreFormula(rowNum);
+                }
             }
         }
 
         _editRouteColumn(event) {
             const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText()
-            try {
-                const route = getRoute(url);
-                const prefix = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}`
-                const name = prefix + route.name;
-                event.range.setValue(`=hyperlink("${url}", "${name}")`)
-            } catch (e) {
-                console.log(`onEdit._editRouteColumn() - ${e.message}`)
-            }
+            const route = getRoute(url);
+            const prefix = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}`
+            const name = prefix + route.name;
+            event.range.setValue(`=hyperlink("${url}", "${name}")`)
+            this.storeRouteFormulas();
         }
 
 

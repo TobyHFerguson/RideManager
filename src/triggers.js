@@ -18,10 +18,10 @@ function onOpen() {
     // because the onEdit trigger will overwrite them if they are stored in the spreadsheet itself
     // and onEdit only has access to old values, not formulas.
   const schedule = Schedule;
-  schedule.storeOriginalFormulas();
+  schedule.storeFormulas();
 }
 
-function onEdit(event) {
+function myEdit(event) {
   // console.log('onEdit triggered');
   // console.log(`Event: ${JSON.stringify(event)}`);
   const schedule = Schedule;
