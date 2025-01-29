@@ -32,7 +32,7 @@ function unScheduleSelectedRides() {
 
 const MenuFunctions = (() => {
   PropertiesService.getUserProperties().deleteAllProperties();
-  function executeCommand(command) {
+  function executeCommand(command, autoconfirm = false) {
     const fiddler = bmPreFiddler.PreFiddler().getFiddler({
       sheetName: 'Groups',
       createIfMissing: false
@@ -59,7 +59,7 @@ const MenuFunctions = (() => {
     console.info('User %s', Session.getActiveUser());
     console.info('Selected rows', rows.map(row => row.rowNum));
     try {
-      command(rows, rwgps);
+      command(rows, rwgps, autoconfirm);
     } catch (e) {
       console.error(e);
       throw (e);
@@ -73,9 +73,9 @@ const MenuFunctions = (() => {
       let command = Exports.getCommands().cancelSelectedRidesWithCreds;
       executeCommand(command);
     },
-    importSelectedRoutes() {
+    importSelectedRoutes(autoconfirm = false) {
       let command = Exports.getCommands().importSelectedRoutesWithCredentials;
-      executeCommand(command);
+      executeCommand(command, autoconfirm);
     },
     linkSelectedRouteUrls() {
       let command = Exports.getCommands().linkSelectedRouteUrlsWithCredentials;

@@ -3,8 +3,8 @@ const Commands = (() => {
         cancelSelectedRidesWithCreds(rows, rwgps) {
             UIManager.processRows(rows, [rowCheck.cancelled, rowCheck.unscheduled], [], rwgps, RideManager.cancelRows);
         },
-        importSelectedRoutesWithCredentials(rows, rwgps) {
-            UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows);
+        importSelectedRoutesWithCredentials(rows, rwgps, autoconfirm=false) {
+            UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows, autoconfirm);
         },
         linkSelectedRouteUrlsWithCredentials(rows, rwgps) {
             const errorFuns = [rowCheck.badRoute]

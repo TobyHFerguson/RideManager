@@ -1,5 +1,5 @@
 const UIManager = {
-    processRows: function (rows, errors, warnings, rwgps, fun=()=>{}) {
+    processRows: function (rows, errors, warnings, rwgps, fun=()=>{}, autoconfirm=false) {
         rows.forEach(row => row.linkRouteURL());
         evalRows(rows, rwgps, errors, warnings);
         let message = create_message(rows);
@@ -62,6 +62,7 @@ const UIManager = {
         }
 
         function confirm_schedule(message) {
+            if (autoconfirm) return true;
             message += `Do you want to continue to process all processable rides?`;
             let ui = SpreadsheetApp.getUi();
             let result = ui.alert(message, ui.ButtonSet.YES_NO);

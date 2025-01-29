@@ -61,7 +61,7 @@ function myEdit(event) {
     }
     event.range.setValue(`=hyperlink("${url}", "${name}")`);
     schedule.storeRouteFormulas();
-    if (route.user_id !== Globals.SCCCC_USER_ID) { MenuFunctions.importSelectedRoutes(); }
+    if (route.user_id !== Globals.SCCCC_USER_ID) { MenuFunctions.importSelectedRoutes(true); }
   }
   
   
