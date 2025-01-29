@@ -228,6 +228,7 @@ const Schedule = function () {
         }
 
         onEdit(event) {
+            if (event.range.getSheet().getName() !== 'Consolidated Rides') { return; } // Don't worry about other sheets
 
             /**
             * Checks if a given range contains a specific column index.
@@ -246,7 +247,6 @@ const Schedule = function () {
             const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
 
             // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
-            if (editedRange.getRow() === 1) { return; } // Don't worry about the headers
             if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
                 if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
                     SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
