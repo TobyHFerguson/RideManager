@@ -19,6 +19,7 @@ function onOpen() {
   // and onEdit only has access to old values, not formulas.
   const schedule = Schedule;
   schedule.storeFormulas();
+  initializeGroupCache()
 }
 
 function myEdit(event) {
