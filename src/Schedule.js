@@ -15,17 +15,19 @@ const Schedule = function () {
             this.rows = new Set();
         }
 
-        _getRideColumnRange(rowNum = 2) {
+        _getRideColumnRange(rowNum = 2, numCols = 0) {
+            numCols = numCols || this.activeSheet.getLastColumn() -1;
             const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            return this.activeSheet.getRange(rowNum, rideColumnIndex, this.activeSheet.getLastRow() - 1)
+            return this.activeSheet.getRange(rowNum, rideColumnIndex, numCols)
         }
-        _getRouteColumnRange() {
+        _getRouteColumnRange(rowNum = 2, numCols = 0) {
+            numCols = numCols || this.activeSheet.getLastColumn() -1;
             const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
-            return this.activeSheet.getRange(2, routeColumnIndex, this.activeSheet.getLastRow() - 1)
+            return this.activeSheet.getRange(rowNum, routeColumnIndex, numCols)
         }
         storeFormulas() {
-           this.storeRideFormulas();
-           this.storeRouteFormulas();
+            this.storeRideFormulas();
+            this.storeRouteFormulas();
         }
         storeRouteFormulas() {
             const routeFormulas = this._getRouteColumnRange().getFormulas();
@@ -45,15 +47,15 @@ const Schedule = function () {
         restoreRouteFormula(rowNum) {
             const indexNum = rowNum - 2; // -2 because the first row is the header row & the first row of data is row 2
             const routeFormula = JSON.parse(PropertiesService.getDocumentProperties().getProperty('routeColumnFormulas'))[indexNum];
-            Logger.log(`route Formulas being restored to row ${rowNum}: ${JSON.stringify(routeFormula)}`);
-            this._getRouteColumnRange(rowNum).setFormula(routeFormula);
+            Logger.log(`route Formula being restored to row ${rowNum}: ${JSON.stringify(routeFormula)}`);
+            this._getRouteColumnRange(rowNum, 1).setFormula(routeFormula);
         }
 
         restoreRideFormula(rowNum) {
             const indexNum = rowNum - 2; // -2 because the first row is the header row & the first row of data is row 2
             const rideFormula = JSON.parse(PropertiesService.getDocumentProperties().getProperty('rideColumnFormulas'))[indexNum];
             Logger.log(`ride Formula being restored to row ${rowNum}: ${JSON.stringify(rideFormula)}`);
-            this._getRideColumnRange(rowNum).setFormula(rideFormula);
+            this._getRideColumnRange(rowNum, 1).setFormula(rideFormula);
         }
 
         /**
@@ -237,23 +239,31 @@ const Schedule = function () {
                 return columnIndex >= startColumn && columnIndex <= endColumn;
             }
             const editedRange = event.range;
-            const editedColumn = editedRange.getColumn();
             const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
             const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
 
             // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
 
-            const rowNum = editedRange.getRow();
-            if (rangeContainsColumn(editedRange, rideColumnIndex)) {
-                SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
-                this.restoreFormula(rowNum);
-            } else if (editedColumn === routeColumnIndex) {
-                // Logger.log(`Editing route column for event: ${JSON.stringify(e)}`);
-                try {
-                    this._editRouteColumn(event);
-                } catch (e) {
-                    SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
-                    this.restoreFormula(rowNum);
+            if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
+                if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
+                    SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
+                    for (let i = 0; i < editedRange.getNumRows(); i++) {
+                        this.restoreFormula(editedRange.getRow() + i);
+                    }
+                    return;
+                }
+                if (rangeContainsColumn(editedRange, rideColumnIndex)) {
+                    SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
+                    this.restoreRideFormula(editedRange.getRow());
+                    return;
+                }
+                if (rangeContainsColumn(editedRange, routeColumnIndex)) {
+                    try {
+                        this._editRouteColumn(event);
+                    } catch (e) {
+                        SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
+                        this.restoreRouteFormula(editedRange.getRow());
+                    }
                 }
             }
         }
