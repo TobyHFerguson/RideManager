@@ -51,24 +51,37 @@ function printCallerError(...args) {
 }
 
 function getRoute(url) {
-  const re = /(https:\/\/ridewithgps.com\/routes\/\d+)/
+  const cache = CacheService.getScriptCache();
+  let cachedRoute = cache.get(url);
+  if (cachedRoute) {
+    return JSON.parse(cachedRoute);
+  }
+
+  const re = /(https:\/\/ridewithgps.com\/routes\/\d+)/;
   if (!re.test(url)) {
-      throw new Error(`Invalid URL: '${url}'. It doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS'`)
+    throw new Error(`Invalid URL: '${url}'. It doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS'`);
   }
   const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
   switch (response.getResponseCode()) {
-      case 200:
-          break;
-      case 403:
-          throw new Error('Route URL does not have public access');
-          break;
-      case 404:
-          throw new Error(`This route cannot be found on the server`);
-          break;
-      default:
-          throw new Error("Unknown issue with Route URL");
+    case 200:
+      break;
+    case 403:
+      throw new Error('Route URL does not have public access');
+    case 404:
+      throw new Error(`This route cannot be found on the server`);
+    default:
+      throw new Error("Unknown issue with Route URL");
   }
-  return JSON.parse(response.getContentText())
+  const route = JSON.parse(response.getContentText());
+  delete route.course_points;
+  delete route.points_of_interest;
+  delete route.track_points;
+  route.has_course_points = false;
+  const val = JSON.stringify(route);
+  const byteSize = Utilities.newBlob(val).getBytes().length;
+  console.log(`Caching route: ${val} which has a size: ${byteSize} bytes`);
+  cache.put(url, JSON.stringify(route), 21600); // Cache for 6 hours
+  return route;
 }
 
 function testGetRoute1() {
