@@ -61,13 +61,14 @@ function myEdit(event) {
     }
     event.range.setValue(`=hyperlink("${url}", "${name}")`);
     schedule.storeRouteFormulas();
+    if (route.user_id !== Globals.SCCCC_USER_ID) { MenuFunctions.importSelectedRoutes(); }
   }
-
-
+  
+  
   const editedRange = event.range;
   const rideColumnIndex = schedule.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
   const routeColumnIndex = schedule.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
-
+  
   // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
   if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
     if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
@@ -88,8 +89,15 @@ function myEdit(event) {
       } catch (e) {
         SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
         schedule.restoreRouteFormula(editedRange.getRow());
+        return;
       }
     }
+  }
+  console.log(`schedule.getSelectedRows()[0].RideURL: ${schedule.getSelectedRows()[0].RideURL}`);
+  if (schedule.getSelectedRows()[0].RideURL) {
+    MenuFunctions.updateSelectedRides();
+  } else {
+    MenuFunctions.scheduleSelectedRides();
   }
 }
 
