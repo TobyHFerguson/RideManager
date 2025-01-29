@@ -51,7 +51,7 @@ function printCallerError(...args) {
 }
 
 function getRoute(url) {
-  const cache = CacheService.getScriptCache();
+  const cache = CacheService.getScriptCache(); // See https://developers.google.com/apps-script/reference/cache
   let cachedRoute = cache.get(url);
   if (cachedRoute) {
     return JSON.parse(cachedRoute);
@@ -73,6 +73,7 @@ function getRoute(url) {
       throw new Error("Unknown issue with Route URL");
   }
   const route = JSON.parse(response.getContentText());
+  // Routes are too big for the cache, but we don't need all the data!
   delete route.course_points;
   delete route.points_of_interest;
   delete route.track_points;
