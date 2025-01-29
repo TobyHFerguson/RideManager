@@ -10,15 +10,15 @@ const Schedule = function () {
 
     class Schedule {
         constructor() {
-            this.activeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
-            this.columnNames = this.activeSheet.getRange(1, 1, 1, this.activeSheet.getLastColumn()).getValues()[0];
+            this.crSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
+            this.columnNames = this.crSheet.getRange(1, 1, 1, this.crSheet.getLastColumn()).getValues()[0];
             this.rows = new Set();
         }
 
         _getColumnRange(columnName, rowNum = 2, numCols = 0) {
-            numCols = numCols || this.activeSheet.getLastColumn() - 1;
+            numCols = numCols || this.crSheet.getLastColumn() - 1;
             const columnIndex = this.getColumnIndex(columnName) + 1;
-            return this.activeSheet.getRange(rowNum, columnIndex, numCols);
+            return this.crSheet.getRange(rowNum, columnIndex, numCols);
         }
 
         _getRideColumnRange(rowNum = 2, numCols = 0) {
@@ -68,13 +68,13 @@ const Schedule = function () {
          */
         getYoungerRows(date) {
             const i = this.findLastRowBeforeYesterday();
-            const rows = this.convertRangeToRows(this.activeSheet.getRange(i, 1, this.activeSheet.getLastRow() - i + 1, this.activeSheet.getLastColumn()));
+            const rows = this.convertRangeToRows(this.crSheet.getRange(i, 1, this.crSheet.getLastRow() - i + 1, this.crSheet.getLastColumn()));
             return rows;
         }
 
         findLastRowBeforeYesterday() {
             // Get the spreadsheet object
-            var sheet = this.activeSheet;
+            var sheet = this.crSheet;
 
             // Get the data range including the header row
             var dataRange = sheet.getDataRange();
@@ -118,7 +118,7 @@ const Schedule = function () {
         getAddress(values) { return values[this.getColumnIndex(Globals.ADDRESSCOLUMNNAME)]; }
 
         highlightCell(rowNum, colName, onoff) {
-            let cell = this.activeSheet.getRange(rowNum, this.getColumnIndex(colName) + 1);
+            let cell = this.crSheet.getRange(rowNum, this.getColumnIndex(colName) + 1);
             cell.setFontColor(onoff ? "red" : null);
         }
 
@@ -158,7 +158,7 @@ const Schedule = function () {
         }
 
         deleteRideLink(rowNum) {
-            this.activeSheet.getRange(rowNum, this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
+            this.crSheet.getRange(rowNum, this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
         }
 
         convertRangeToRows(range) {
@@ -177,7 +177,7 @@ const Schedule = function () {
          * @returns {[Row]} rows - an array of row objects, each one having been selected
          */
         getSelectedRows() {
-            let activeSheet = this.activeSheet;
+            let sheet = this.crSheet;
 
             /**
              * Convert the given ranges (assumed to be single cell ranges) to ranges
@@ -187,15 +187,15 @@ const Schedule = function () {
              */
             function convertCellRangesToRowRanges(cellRangeList) {
                 const cellRanges = cellRangeList.getRanges();
-                const lastColumn = `C${activeSheet.getMaxColumns()}`;
+                const lastColumn = `C${sheet.getMaxColumns()}`;
                 const rowRangeExpression = cellRanges.map(r => `R${r.getRow()}C1:R${r.getRow() + r.getNumRows() - 1}${lastColumn}`);
-                const rowRangeList = activeSheet.getRangeList(rowRangeExpression);
+                const rowRangeList = sheet.getRangeList(rowRangeExpression);
                 const rowRanges = rowRangeList.getRanges();
                 return rowRanges;
             }
 
             function getRowRanges() {
-                let selection = activeSheet.getSelection();
+                let selection = sheet.getSelection();
                 const rangeList = selection.getActiveRangeList();
                 // The rangeList is a list of single celled ranges
                 // We need to convert these ranges ranges that capture a whole row.
@@ -217,18 +217,16 @@ const Schedule = function () {
          * @returns {Row}
          */
         getLastRow() {
-            var ss = SpreadsheetApp.getActiveSpreadsheet();
-            var sheet = ss.getSheetByName('Consolidated Rides');
             let rownum = sheet.getLastRow();
             let colnum = 1;
             let numrows = 1;
-            let numcols = sheet.getLastColumn();
-            let range = sheet.getRange(rownum, colnum, numrows, numcols);
+            let numcols = this.crSheet.getLastColumn();
+            let range = this.crSheet.getRange(rownum, colnum, numrows, numcols);
             return this.convertRangeToRows(range)[0];
         }
 
         onEdit(event) {
-            if (event.range.getSheet().getName() !== 'Consolidated Rides') { return; } // Don't worry about other sheets
+            if (event.range.getSheet().getName() !== this.crSheet.getName()) { return; } // Don't worry about other sheets
 
             /**
             * Checks if a given range contains a specific column index.
