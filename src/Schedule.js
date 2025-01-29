@@ -225,59 +225,7 @@ const Schedule = function () {
             return this.convertRangeToRows(range)[0];
         }
 
-        onEdit(event) {
-            if (event.range.getSheet().getName() !== this.crSheet.getName()) { return; } // Don't worry about other sheets
-
-            /**
-            * Checks if a given range contains a specific column index.
-            * @param {Range} range The range to check.
-            * @param {number} columnIndex The column index (1-based) to check for.
-            * @return {boolean} True if the range contains the column, false otherwise.
-            */
-            function rangeContainsColumn(range, columnIndex) {
-                const startColumn = range.getColumn();
-                const endColumn = range.getLastColumn();
-
-                return columnIndex >= startColumn && columnIndex <= endColumn;
-            }
-            const editedRange = event.range;
-            const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
-
-            // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
-            if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
-                if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
-                    SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
-                    for (let i = 0; i < editedRange.getNumRows(); i++) {
-                        this.restoreFormula(editedRange.getRow() + i);
-                    }
-                    return;
-                }
-                if (rangeContainsColumn(editedRange, rideColumnIndex)) {
-                    SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
-                    this.restoreRideFormula(editedRange.getRow());
-                    return;
-                }
-                if (rangeContainsColumn(editedRange, routeColumnIndex)) {
-                    try {
-                        this._editRouteColumn(event);
-                    } catch (e) {
-                        SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
-                        this.restoreRouteFormula(editedRange.getRow());
-                    }
-                }
-            }
-        }
-
-        _editRouteColumn(event) {
-            const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText()
-            const route = getRoute(url);
-            const prefix = `${(route.user_id !== Globals.SCCCC_USER_ID) ? Globals.FOREIGN_PREFIX : ''}`
-            const name = prefix + route.name;
-            event.range.setValue(`=hyperlink("${url}", "${name}")`)
-            this.storeRouteFormulas();
-        }
-
+        
 
     }
 
