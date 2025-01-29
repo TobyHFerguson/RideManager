@@ -49,3 +49,44 @@ function printCallerError(...args) {
   const callerName = error.stack.split('\n')[3].match(/at (.*?)\s\(.*/)[1] || "Unknown caller"; // Extract method name
   console.error(callerName, ...args);
 }
+
+function getRoute(url) {
+  const re = /(https:\/\/ridewithgps.com\/routes\/\d+)/
+  if (!re.test(url)) {
+      throw new Error(`Invalid URL: '${url}'. It doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS'`)
+  }
+  const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
+  switch (response.getResponseCode()) {
+      case 200:
+          break;
+      case 403:
+          throw new Error('Route URL does not have public access');
+          break;
+      case 404:
+          throw new Error(`This route cannot be found on the server`);
+          break;
+      default:
+          throw new Error("Unknown issue with Route URL");
+  }
+  return JSON.parse(response.getContentText())
+}
+
+function testGetRoute1() {
+  getRoute('')
+}
+function testGetRoute2() {
+  getRoute('https://ridewithgps.com/routes/2126861')
+}
+
+function testGetRoute3() {
+  getRoute('https://ridewithgps.com/routes/2126861')
+}
+
+function testGetRoute4() {
+  try {
+      getRoute('https://ridewithgps.com/routes/2126')
+  }
+  catch (e) {
+      console.log(e)
+  }
+}

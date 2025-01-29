@@ -23,13 +23,13 @@ const rowCheck = {
             return `Invalid row.StartTime: "${row.StartTime} ${dates.convert(row.StartTime)}"`
         }
     },
-  noGroup: function (row) {
-    if (!row.Group) return "Group column is empty";
-    const groups = Object.keys(Globals.groups)
-    if (!groups.includes(row.Group)) {
-      return `Unknown group: '${row.Group}'. Expected one of ${groups.join(', ')}`;
-    }
-  },
+    noGroup: function (row) {
+        if (!row.Group) return "Group column is empty";
+        const groups = Object.keys(Globals.groups)
+        if (!groups.includes(row.Group)) {
+            return `Unknown group: '${row.Group}'. Expected one of ${groups.join(', ')}`;
+        }
+    },
     routeInaccessibleOrOwnedByClub: function (row) {
         const url = row.RouteURL ? row.RouteURL : row.RouteName;
         if (!url) {
@@ -55,27 +55,11 @@ const rowCheck = {
         }
     },
     badRoute: function (row) {
-        if (!row.RouteURL) {
-            return "No route url"
+        try {
+            this.getRoute(row.RouteURL);
         }
-        let re = /(https:\/\/ridewithgps.com\/routes\/(\d+))/
-        let url = row.RouteURL.match(re);
-        if (!url) {
-            return "Invalid URL. It doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS"
-        }
-        url = url[1];
-        const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
-        switch (response.getResponseCode()) {
-            case 200:
-                break;
-            case 403:
-                return 'Route URL does not have public access';
-                break;
-            case 404:
-                return `This route cannot be found on the server`;
-                break;
-            default:
-                return "Unknown issue with Route URL";
+        catch (e) {
+            return e.message
         }
     },
     // Warnings
@@ -123,24 +107,24 @@ const rowCheck = {
             return "Unknown address";
         }
     },
-    inappropiateGroup: function (row)  {
+    inappropiateGroup: function (row) {
         const nrg = this.noGroup(row);
         if (nrg) return nrg;
         function __inappropriateGroup(group, elevation, distance) {
-          if (Globals.groups[group].MIN_ELEVATION_GAIN && elevation < Globals.groups[group].MIN_ELEVATION_GAIN) {
-            return `Elevation gain (${elevation}') too low for ${group} group (must be at least ${Globals.groups[group].MIN_ELEVATION_GAIN}')`
-          }
-          if (Globals.groups[group].MAX_ELEVATION_GAIN && elevation > Globals.groups[group].MAX_ELEVATION_GAIN) {
-            return `Elevation gain (${elevation}') too great for ${group} group (must be no more than ${Globals.groups[group].MAX_ELEVATION_GAIN}')`
-          }
-          if (Globals.groups[group].MIN_LENGTH && distance < Globals.groups[group].MIN_LENGTH) {
-            return `Distance (${distance} miles) too short for ${group} group (must be at least ${Globals.groups[group].MIN_LENGTH} miles)`
-          }
-          if (Globals.groups[group].MAX_LENGTH && distance > Globals.groups[group].MAX_LENGTH) {
-            return `Distance (${distance} miles) too long for ${group} group (must be no more than ${Globals.groups[group].MAX_LENGTH} miles)`
-          }
+            if (Globals.groups[group].MIN_ELEVATION_GAIN && elevation < Globals.groups[group].MIN_ELEVATION_GAIN) {
+                return `Elevation gain (${elevation}') too low for ${group} group (must be at least ${Globals.groups[group].MIN_ELEVATION_GAIN}')`
+            }
+            if (Globals.groups[group].MAX_ELEVATION_GAIN && elevation > Globals.groups[group].MAX_ELEVATION_GAIN) {
+                return `Elevation gain (${elevation}') too great for ${group} group (must be no more than ${Globals.groups[group].MAX_ELEVATION_GAIN}')`
+            }
+            if (Globals.groups[group].MIN_LENGTH && distance < Globals.groups[group].MIN_LENGTH) {
+                return `Distance (${distance} miles) too short for ${group} group (must be at least ${Globals.groups[group].MIN_LENGTH} miles)`
+            }
+            if (Globals.groups[group].MAX_LENGTH && distance > Globals.groups[group].MAX_LENGTH) {
+                return `Distance (${distance} miles) too long for ${group} group (must be no more than ${Globals.groups[group].MAX_LENGTH} miles)`
+            }
         }
-            
+
         if (!row.RouteURL) return;
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
         const route = JSON.parse(response.getContentText());
@@ -153,18 +137,15 @@ const rowCheck = {
             return "This ride has already been scheduled";
         }
     },
-    foreignRoute: function(row) {
-      let re = /(https:\/\/ridewithgps.com\/routes\/(\d+))/
-      let url = row.RouteURL.match(re);
-      try {
-        const response = UrlFetchApp.fetch(url[1] + ".json", { muteHttpExceptions: true });
-        let route = JSON.parse(response.getContentText());
-                if (route.user_id !== Globals.SCCCC_USER_ID) {
-                    return 'Route is not owned by SCCCC';
-                }
-      } catch (e) {
-        return e.message;
-      }
+    foreignRoute: function (row) {
+        try {
+            const route = getRoute(row.RouteURL)
+            if (route.user_id !== Globals.SCCCC_USER_ID) {
+                return 'Route is not owned by SCCCC';
+            }
+        } catch (e) {
+            return e.message;
+        }
     }
 }
 
@@ -183,3 +164,6 @@ function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
 
     return rows.map(row => evalRow_(row, rwgps, efs, wfs));
 }
+
+
+
