@@ -15,15 +15,18 @@ const Schedule = function () {
             this.rows = new Set();
         }
 
-        _getRideColumnRange(rowNum = 2, numCols = 0) {
-            numCols = numCols || this.activeSheet.getLastColumn() -1;
-            const rideColumnIndex = this.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-            return this.activeSheet.getRange(rowNum, rideColumnIndex, numCols)
+        _getColumnRange(columnName, rowNum = 2, numCols = 0) {
+            numCols = numCols || this.activeSheet.getLastColumn() - 1;
+            const columnIndex = this.getColumnIndex(columnName) + 1;
+            return this.activeSheet.getRange(rowNum, columnIndex, numCols);
         }
+
+        _getRideColumnRange(rowNum = 2, numCols = 0) {
+            return this._getColumnRange(Globals.RIDECOLUMNNAME, rowNum, numCols);
+        }
+
         _getRouteColumnRange(rowNum = 2, numCols = 0) {
-            numCols = numCols || this.activeSheet.getLastColumn() -1;
-            const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
-            return this.activeSheet.getRange(rowNum, routeColumnIndex, numCols)
+            return this._getColumnRange(Globals.ROUTECOLUMNNAME, rowNum, numCols);
         }
         storeFormulas() {
             this.storeRideFormulas();
@@ -243,7 +246,7 @@ const Schedule = function () {
             const routeColumnIndex = this.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
 
             // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
-
+            if (editedRange.getRow() === 1) { return; } // Don't worry about the headers
             if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
                 if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
                     SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
