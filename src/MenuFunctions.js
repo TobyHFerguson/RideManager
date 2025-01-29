@@ -31,7 +31,6 @@ function unScheduleSelectedRides() {
 }
 
 const MenuFunctions = (() => {
-  PropertiesService.getUserProperties().deleteAllProperties();
   function executeCommand(command, autoconfirm = false) {
     const g2 = getGroups();
     Globals.groups = g2;
