@@ -32,17 +32,23 @@ function unScheduleSelectedRides() {
 
 const MenuFunctions = (() => {
   function executeCommand(command, autoconfirm = false) {
+    console.time('getGroups');
     const g2 = getGroups();
+    console.timeEnd('getGroups');
     Globals.groups = g2;
     Globals.A_TEMPLATE = g2.A.TEMPLATE // Needed because RWGPSLib expects Globals.A_TEMPLATE
 
     const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, Globals);
     const rwgps = RWGPSLib.newRWGPS(rwgpsService);
+    console.time('getSelectedRows');
     let rows = Schedule.getSelectedRows();
+    console.timeEnd('getSelectedRows');
     console.info('User %s', Session.getActiveUser());
     console.info('Selected rows', rows.map(row => row.rowNum));
     try {
+      console.time('executeCommand');
       command(rows, rwgps, autoconfirm);
+      console.timeEnd('executeCommand');
     } catch (e) {
       console.error(e);
       throw (e);

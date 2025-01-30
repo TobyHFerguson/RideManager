@@ -1,7 +1,12 @@
 const UIManager = {
     processRows: function (rows, errors, warnings, rwgps, fun=()=>{}, autoconfirm=false) {
+        console.time('linkRouteURL');
         rows.forEach(row => row.linkRouteURL());
+        console.timeEnd('linkRouteURL');
+
+        console.time('evalRows');
         evalRows(rows, rwgps, errors, warnings);
+        console.timeEnd('evalRows');
         let message = create_message(rows);
         sidebar.create(rows);
         const processableRows = rows.filter(r => r.errors.length === 0);

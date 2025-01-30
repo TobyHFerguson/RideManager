@@ -97,9 +97,16 @@ function myEdit(event) {
   console.log(`schedule.getSelectedRows()[0].RideURL: ${schedule.getSelectedRows()[0].RideURL}`);
   if (schedule.getSelectedRows()[0].RideURL) {
     MenuFunctions.updateSelectedRides();
+    tellTheUser("Ride updated !");
   } else {
     MenuFunctions.scheduleSelectedRides();
+    tellTheUser("Ride")
   }
+}
+
+function tellTheUser(message='') {
+  const ui = SpreadsheetApp.getUi();
+  ui.alert(message);
 }
 
 

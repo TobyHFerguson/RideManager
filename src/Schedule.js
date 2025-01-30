@@ -243,7 +243,7 @@ const Schedule = function () {
             this.myRowValues[this.schedule.getColumnIndex(Globals.RIDECOLUMNNAME)] = this.myRowFormulas[this.schedule.getColumnIndex(Globals.RIDECOLUMNNAME)];
         }
 
-        get StartDate() { return this.schedule.getStartDate(this.myRowValues); }
+        get StartDate() { return new Date('2026-12-31 10:00') }
         get StartTime() { return this.schedule.getStartTime(this.myRowValues); }
         get Group() { return this.schedule.getGroup(this.myRowValues); }
 
