@@ -94,17 +94,17 @@ function myEdit(event) {
       }
     }
   }
-  console.log(`schedule.getSelectedRows()[0].RideURL: ${schedule.getSelectedRows()[0].RideURL}`);
+  const force = true;
   if (schedule.getSelectedRows()[0].RideURL) {
-    MenuFunctions.updateSelectedRides();
+    MenuFunctions.updateSelectedRides(force);
     tellTheUser("Ride updated !");
   } else {
-    MenuFunctions.scheduleSelectedRides();
+    MenuFunctions.scheduleSelectedRides(force);
     tellTheUser("Ride")
   }
 }
 
-function tellTheUser(message='') {
+function tellTheUser(message = '') {
   const ui = SpreadsheetApp.getUi();
   ui.alert(message);
 }

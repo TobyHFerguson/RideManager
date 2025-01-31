@@ -80,7 +80,6 @@ function getRoute(url) {
   route.has_course_points = false;
   const val = JSON.stringify(route);
   const byteSize = Utilities.newBlob(val).getBytes().length;
-  console.log(`Caching route: ${val} which has a size: ${byteSize} bytes`);
   cache.put(url, JSON.stringify(route), 21600); // Cache for 6 hours
   return route;
 }
