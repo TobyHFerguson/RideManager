@@ -1,7 +1,7 @@
 /** @OnlyCurrentDoc */
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
-  ui.createMenu('Ride Lead Coordinators')
+  ui.createMenu('Ride Schedulers')
     .addItem('Schedule Selected Rides', "MenuFunctions.scheduleSelectedRides")
     .addItem('Update Selected Rides', "MenuFunctions.updateSelectedRides")
     .addItem('Cancel Selected Rides', "MenuFunctions.cancelSelectedRides")
