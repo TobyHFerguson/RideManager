@@ -97,10 +97,10 @@ function myEdit(event) {
   const force = true;
   if (schedule.getSelectedRows()[0].RideURL) {
     MenuFunctions.updateSelectedRides(force);
-    tellTheUser("Ride updated !");
+    tellTheUser("Ride Updating Completed");
   } else {
     MenuFunctions.scheduleSelectedRides(force);
-    tellTheUser("Ride")
+    tellTheUser("Ride Scheduling Completed")
   }
 }
 
