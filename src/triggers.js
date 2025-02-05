@@ -27,6 +27,19 @@ function myEdit(event) {
   console.log(`Event: ${JSON.stringify(event)}`);
   const schedule = Schedule;
   if (event.range.getSheet().getName() !== schedule.crSheet.getName()) { return; } // Don't worry about other sheets
+  SpreadsheetApp.getActiveSpreadsheet().toast('Processing your edit...', 'Edit Processing');
+
+  // 2. Store a flag in PropertiesService to indicate processing is happening
+  PropertiesService.getScriptProperties().setProperty('processingEdit', 'true');
+
+  // 3. Set a time-driven trigger to clear the toast after a short delay (e.g., 5 seconds)
+  var now = new Date();
+  var triggerTime = new Date(now.getTime() + (5* 1000)); // 5 seconds from now
+
+  ScriptApp.newTrigger('clearToast')
+      .timeBased()
+      .at(triggerTime)
+      .create();
 
   /**
   * Checks if a given range contains a specific column index.
@@ -64,12 +77,12 @@ function myEdit(event) {
     schedule.storeRouteFormulas();
     if (route.user_id !== Globals.SCCCC_USER_ID) { MenuFunctions.importSelectedRoutes(true); }
   }
-  
-  
+
+
   const editedRange = event.range;
   const rideColumnIndex = schedule.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
   const routeColumnIndex = schedule.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
-  
+
   // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
   if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
     if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
@@ -109,7 +122,23 @@ function tellTheUser(message = '') {
   ui.alert(message);
 }
 
-
+function clearToast() {
+  // 1. Check if we are still in the middle of an edit
+  var properties = PropertiesService.getScriptProperties();
+  if (properties.getProperty('processingEdit') == 'true') {
+    // 2. If the edit is still being processed, clear the flag and display a final toast.
+    properties.deleteProperty('processingEdit');
+    SpreadsheetApp.getActiveSpreadsheet().toast('Edit complete!', 'Edit Complete', 3); // Display for 3 seconds
+  }
+  // 3. Delete the trigger to prevent it from running repeatedly.
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() == 'clearToast') {
+      ScriptApp.deleteTrigger(triggers[i]);
+      break;
+    }
+  }
+}
 
 
 
