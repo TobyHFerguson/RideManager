@@ -110,17 +110,11 @@ function myEdit(event) {
   const force = true;
   if (schedule.getSelectedRows()[0].RideURL) {
     MenuFunctions.updateSelectedRides(force);
-    tellTheUser("Ride Updating Completed");
   } else {
     MenuFunctions.scheduleSelectedRides(force);
-    tellTheUser("Ride Scheduling Completed")
   }
 }
 
-function tellTheUser(message = '') {
-  const ui = SpreadsheetApp.getUi();
-  ui.alert(message);
-}
 
 function clearToast() {
   // 1. Check if we are still in the middle of an edit
