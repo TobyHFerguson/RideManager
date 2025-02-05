@@ -23,8 +23,8 @@ function onOpen() {
 }
 
 function myEdit(event) {
-  console.log('onEdit triggered');
-  console.log(`Event: ${JSON.stringify(event)}`);
+  // console.log('onEdit triggered');
+  // console.log(`Event: ${JSON.stringify(event)}`);
   const schedule = Schedule;
   if (event.range.getSheet().getName() !== schedule.crSheet.getName()) { return; } // Don't worry about other sheets
   SpreadsheetApp.getActiveSpreadsheet().toast('Processing your edit...', 'Edit Processing');

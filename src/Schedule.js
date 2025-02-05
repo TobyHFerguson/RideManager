@@ -34,12 +34,12 @@ const Schedule = function () {
         }
         storeRouteFormulas() {
             const routeFormulas = this._getRouteColumnRange().getFormulas();
-            Logger.log(`Route Formulas retrieved from range: ${JSON.stringify(routeFormulas)}`);
+            // Logger.log(`Route Formulas retrieved from range: ${JSON.stringify(routeFormulas)}`);
             PropertiesService.getDocumentProperties().setProperty('routeColumnFormulas', JSON.stringify(routeFormulas));
         }
         storeRideFormulas() {
             const rideFormulas = this._getRideColumnRange().getFormulas();
-            Logger.log(`Ride Formulas retrieved from range: ${JSON.stringify(rideFormulas)}`);
+            // Logger.log(`Ride Formulas retrieved from range: ${JSON.stringify(rideFormulas)}`);
             PropertiesService.getDocumentProperties().setProperty('rideColumnFormulas', JSON.stringify(rideFormulas));
         }
 
@@ -50,7 +50,7 @@ const Schedule = function () {
         restoreRouteFormula(rowNum) {
             const indexNum = rowNum - 2; // -2 because the first row is the header row & the first row of data is row 2
             const routeFormula = JSON.parse(PropertiesService.getDocumentProperties().getProperty('routeColumnFormulas'))[indexNum];
-            Logger.log(`route Formula being restored to row ${rowNum}: ${JSON.stringify(routeFormula)}`);
+            // Logger.log(`route Formula being restored to row ${rowNum}: ${JSON.stringify(routeFormula)}`);
             this._getRouteColumnRange(rowNum, 1).setFormula(routeFormula);
         }
 
@@ -148,16 +148,11 @@ const Schedule = function () {
                 const range = row.range;
                 const values = row.values;
                 const formulas = row.formulas;
-                console.log(`Saving row ${row.rowNum} with values ${values}`);
-                console.log(`row ${row.rowNum} has formulas: ${formulas}`);
                 range.setFormulas(formulas)
                 range.setValues(values);
             });
             this.storeFormulas(); // Ensure formulas are persisted after saving the row
-            console.time('SpreadsheetApp.flush()');
             SpreadsheetApp.flush();
-            console.timeEnd('SpreadsheetApp.flush()');
-
             this.rows = new Set();
         }
 

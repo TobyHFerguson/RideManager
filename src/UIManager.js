@@ -1,10 +1,6 @@
 const UIManager = {
-    processRows: function (rows, errors, warnings, rwgps, fun=()=>{}, force=false) {
-        
-
-        console.time('evalRows');
+    processRows: function (rows, errors, warnings, rwgps, fun = () => { }, force = false) {
         evalRows(rows, rwgps, errors, warnings);
-        console.timeEnd('evalRows');
         let message = create_message(rows);
         sidebar.create(rows);
         const processableRows = rows.filter(r => r.errors.length === 0);
