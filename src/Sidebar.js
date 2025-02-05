@@ -26,14 +26,16 @@ const sidebar = {
     html.append("</tbody></table>");
     SpreadsheetApp.getUi() // Or DocumentApp or SlidesApp or FormApp.
       .showSidebar(html);
+    this.sidebarOpen = true;
   },
   close: function () {
     if (this.isOpen()) {
       SpreadsheetApp.getUi().showSidebar(HtmlService.createHtmlOutput("<script>google.script.host.close();</script>"));
+      this.sidebarOpen = false;
     }
   },
   isOpen: function () {
-    return !!SpreadsheetApp.getUi().getMenu();
+    return !!this.sidebarOpen;
   }
 
 }
