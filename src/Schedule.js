@@ -147,6 +147,10 @@ const Schedule = function () {
             this.getRowSet(this.rows).forEach(row => {
                 const range = row.range;
                 const values = row.values;
+                const formulas = row.formulas;
+                console.log(`Saving row ${row.rowNum} with values ${values}`);
+                console.log(`row ${row.rowNum} has formulas: ${formulas}`);
+                range.setFormulas(formulas)
                 range.setValues(values);
             });
             this.storeFormulas(); // Ensure formulas are persisted after saving the row
