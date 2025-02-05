@@ -1,8 +1,6 @@
 const UIManager = {
     processRows: function (rows, errors, warnings, rwgps, fun=()=>{}, force=false) {
-        console.time('linkRouteURL');
-        rows.forEach(row => row.linkRouteURL());
-        console.timeEnd('linkRouteURL');
+        
 
         console.time('evalRows');
         evalRows(rows, rwgps, errors, warnings);
