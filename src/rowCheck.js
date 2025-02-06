@@ -1,8 +1,7 @@
 
 const rowCheck = {
     unmanagedRide: function (row) {
-        const keys = Globals.groupSpecs ? Object.keys(Globals.groupSpecs) : [];
-        if (!Event.managedEventName(row.RideName, keys)) {
+        if (!Event.managedEventName(row.RideName)) {
             return "Ride is unmanaged";
         }
     },
