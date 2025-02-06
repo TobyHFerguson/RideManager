@@ -23,6 +23,14 @@ function onOpen() {
 }
 
 function myEdit(event) {
+  try {
+    myEdit_(event)
+  } catch (e) {
+    SpreadsheetApp.getUi().alert(e.message)
+    throw e
+  }
+}
+function myEdit_(event) {
   // console.log('onEdit triggered');
   // console.log(`Event: ${JSON.stringify(event)}`);
   const schedule = Schedule;
