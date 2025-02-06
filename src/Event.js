@@ -12,8 +12,8 @@
 // Number of participants surrounded by square brackets
 
 // In addition, there can be an optional 'CANCELLED: ' prefix.
-function makeManagedRE(groups) {
- const grps = groups.join('|');
+function makeManagedRE(groupNames = Globals.groupSpecs ? Object.keys(Globals.groupSpecs) : []) {
+ const grps = groupNames.join('|');
   const MANAGED_RE_STR = `(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)\\[(?<count>\\d{1,2})\\](?<suffix>.*$)`;
   const MANAGED_RE = new RegExp(MANAGED_RE_STR);
   return MANAGED_RE;
@@ -27,12 +27,12 @@ class Event {
    * @param {number} numRiders number of riders for this event
    * @param {date} start_date event start date
    * @param {date} start_time event start time
-   * @param {Group} group one of 'A', 'B', 'C' or 'D'
+   * @param {string} groupName name of group
    * @param {string} route_name name of route
    * @returns {string} name of event
    */
-  static makeManagedRideName(numRiders, start_date, start_time, group, route_name) {
-    return `${dates.weekday(start_date)} ${group} (${dates.MMDD(start_date)} ${dates.T24(start_time)}) [${numRiders}] ${route_name}`;
+  static makeManagedRideName(numRiders, start_date, start_time, groupName, route_name) {
+    return `${dates.weekday(start_date)} ${groupName} (${dates.MMDD(start_date)} ${dates.T24(start_time)}) [${numRiders}] ${route_name}`;
   }
   /**
    * Create the unmanaged event name by appending or updating the participant count to the main name
@@ -52,12 +52,12 @@ class Event {
    * @param{string[]} groups a list of all possible groups
    * @returns {boolean} true iff this is a managed ride
    */
-  static managedEventName(eventName, groupNames = Globals.groupSpecs ? Object.keys(Globals.groupSpecs) : []) {
+  static managedEventName(eventName, groupNames) {
     return (!eventName) || makeManagedRE(groupNames).test(eventName);
   }
 
-  static updateCountInName(name, count, groups = []) {
-    let match = makeManagedRE(groups).exec(name);
+  static updateCountInName(name, count, groupNames) {
+    let match = makeManagedRE(groupNames).exec(name);
     if (match) {
       return `${match.groups.cancelled}${match.groups.meta}[${count}]${match.groups.suffix}`.trim();
     }
@@ -90,13 +90,13 @@ class Event {
    * @param {Number} numRiders - number of riders
    * @returns true iff the rider count has changed
    */
-  updateRiderCount(numRiders, groupNames = Globals.groupSpecs ? Object.keys(Globals.groupSpecs) : []) {
+  updateRiderCount(numRiders, groupNames) {
     const currentName = this.name;
     this.name = Event.updateCountInName(this.name, numRiders, groupNames);
     return currentName !== this.name
   }
 
-  managedEvent(groupNames = Globals.groupSpecs ? Object.keys(Globals.groupSpecs) : []) { 
+  managedEvent(groupNames) { 
      const result = Event.managedEventName(this.name, groupNames); 
     return result;
   }
