@@ -1,4 +1,4 @@
-function getGroups() {
+function getGroupSpecs() {
   const cache = CacheService.getScriptCache();
   let cachedGroups = cache.get('groups');
   if (cachedGroups) {
@@ -10,28 +10,25 @@ function getGroups() {
 
 function initializeGroupCache() {
   const cache = CacheService.getScriptCache();
-  let groups = getGroupsFromSheet();
+  let groups = getGroupsFromSheet_();
   cache.put('groups', JSON.stringify(groups), 21600); // Cache for 6 hours
   return groups;
 }
 
-function getGroupsFromSheet() {
+function getGroupsFromSheet_() {
   const fiddler = bmPreFiddler.PreFiddler().getFiddler({
     sheetName: 'Groups',
     createIfMissing: false
   });
-  let groups = fiddler.getData();
+  let groups = flatten(fiddler.getData());
+  return groups;
+}
+
+function flatten(groups) {
   // groups = [ {"Group": "A", "Template": ..., "MIN_LENGTH": ...}]
-  groups = groups.reduce((acc, curr) => {
-    const { Group, ...rest } = curr;
-    acc.push({ [`${Group}`]: rest });
-    return acc;
-  }, []);
-  // groups = [ {"A": {"TEMPLATE": ..., "MIN_LENGTH": ...}}, {"B": {{"TEMPLATE": ..., "MIN_LENGTH": ...}}}]
-  const g2 = groups.reduce((acc, curr) => {
-    const [key, value] = Object.entries(curr)[0];
-    acc[key] = value;
+  groups = groups.reduce((acc, { Group, ...rest }) => {
+    acc[Group] = rest;
     return acc;
   }, {});
-  return g2;
+  return groups;
 }

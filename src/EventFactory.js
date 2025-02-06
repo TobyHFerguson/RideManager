@@ -1,8 +1,4 @@
-if (typeof require !== 'undefined') {
-    dates = require('./dates.js');
-    Globals = require('./Globals.js');
-    Event = require('./Event.js')
-}
+
 const EventFactory = function () {
     /**
      * Get a string that describes the ride
@@ -31,7 +27,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
 
 
     function makeRideName(row, numRiders) {
-        const name = (!row.RideName || Event.managedEventName(row.RideName, Globals.groups))
+        const name = (!row.RideName || Event.managedEventName(row.RideName))
             ? Event.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName)
             : Event.makeUnmanagedRideName(row.RideName, numRiders);
         return name;

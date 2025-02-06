@@ -1,10 +1,8 @@
-if (typeof require !== 'undefined') {
-    Globals = require('./Globals.js');
-}
 
 const rowCheck = {
     unmanagedRide: function (row) {
-        if (!Event.managedEventName(row.RideName, Globals.groups)) {
+        const keys = Globals.groupSpecs ? Object.keys(Globals.groupSpecs) : [];
+        if (!Event.managedEventName(row.RideName, keys)) {
             return "Ride is unmanaged";
         }
     },
@@ -25,7 +23,7 @@ const rowCheck = {
     },
     noGroup: function (row) {
         if (!row.Group) return "Group column is empty";
-        const groups = Object.keys(Globals.groups)
+        const groups = Object.keys(Globals.groupSpecs)
         if (!groups.includes(row.Group)) {
             return `Unknown group: '${row.Group}'. Expected one of ${groups.join(', ')}`;
         }
@@ -110,18 +108,18 @@ const rowCheck = {
     inappropiateGroup: function (row) {
         const nrg = this.noGroup(row);
         if (nrg) return nrg;
-        function __inappropriateGroup(group, elevation, distance) {
-            if (Globals.groups[group].MIN_ELEVATION_GAIN && elevation < Globals.groups[group].MIN_ELEVATION_GAIN) {
-                return `Elevation gain (${elevation}') too low for ${group} group (must be at least ${Globals.groups[group].MIN_ELEVATION_GAIN}')`
+        function __inappropriateGroup(groupName, elevation, distance) {
+            if (Globals.groupSpecs[groupName].MIN_ELEVATION_GAIN && elevation < Globals.groupSpecs[groupName].MIN_ELEVATION_GAIN) {
+                return `Elevation gain (${elevation}') too low for ${groupName} group (must be at least ${Globals.groupSpecs[groupName].MIN_ELEVATION_GAIN}')`
             }
-            if (Globals.groups[group].MAX_ELEVATION_GAIN && elevation > Globals.groups[group].MAX_ELEVATION_GAIN) {
-                return `Elevation gain (${elevation}') too great for ${group} group (must be no more than ${Globals.groups[group].MAX_ELEVATION_GAIN}')`
+            if (Globals.groupSpecs[groupName].MAX_ELEVATION_GAIN && elevation > Globals.groupSpecs[groupName].MAX_ELEVATION_GAIN) {
+                return `Elevation gain (${elevation}') too great for ${groupName} group (must be no more than ${Globals.groupSpecs[groupName].MAX_ELEVATION_GAIN}')`
             }
-            if (Globals.groups[group].MIN_LENGTH && distance < Globals.groups[group].MIN_LENGTH) {
-                return `Distance (${distance} miles) too short for ${group} group (must be at least ${Globals.groups[group].MIN_LENGTH} miles)`
+            if (Globals.groupSpecs[groupName].MIN_LENGTH && distance < Globals.groupSpecs[groupName].MIN_LENGTH) {
+                return `Distance (${distance} miles) too short for ${groupName} group (must be at least ${Globals.groupSpecs[groupName].MIN_LENGTH} miles)`
             }
-            if (Globals.groups[group].MAX_LENGTH && distance > Globals.groups[group].MAX_LENGTH) {
-                return `Distance (${distance} miles) too long for ${group} group (must be no more than ${Globals.groups[group].MAX_LENGTH} miles)`
+            if (Globals.groupSpecs[groupName].MAX_LENGTH && distance > Globals.groupSpecs[groupName].MAX_LENGTH) {
+                return `Distance (${distance} miles) too long for ${groupName} group (must be no more than ${Globals.groupSpecs[groupName].MAX_LENGTH} miles)`
             }
         }
 

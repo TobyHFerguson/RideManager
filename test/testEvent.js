@@ -1,152 +1,102 @@
 const Event = require("../src/Event");
-const should = require('chai').should();
 
-describe("Event Tests", () => {
-    describe("test managedEventName()", () => {
-        it("regexp matches Tue 'B' Ride (1/1 10:00 AM)", () => {
-            Event.managedEventName("Tue 'B' Ride (1/1 10:00 AM) [3] fargle").should.be.true;
-            let event = new Event();
-            event.name = "Tue 'B' Ride (1/1 10:00 AM) [3] fargle";
-            event.managedEvent().should.be.true;
-        })
-        it("regexp matches CANCELLED Tue 'B' Ride (1/1 10:00 AM)", () => {
-            Event.managedEventName("CANCELLED Tue 'B' Ride (1/1 10:00 AM) [3] fargle").should.be.true;
-            let event = new Event();
-            event.name = "CANCELLED Tue 'B' Ride (1/1 10:00 AM) [3] fargle";
-            event.managedEvent().should.be.true;
-        })
-        it("regexp matches Tue 'B' Ride (11/15 10:00 AM)", () => {
-            Event.managedEventName("Tue 'B' Ride (11/15 10:00 AM)").should.be.true;
-        })
-        it("regexp matches CANCELLED Tue 'B' Ride (11/15 10:00 AM)", () => {
-            Event.managedEventName("CANCELLED Tue 'B' Ride (11/15 10:00 AM)").should.be.true;
-        })
-        it("regexp matches Sat A (12/31 10:00)", () => {
-            Event.managedEventName("Sat A (12/31 10:00)").should.be.true;
-        })
-        it("regexp matches CANCELLED Sat A (12/31 10:00)", () => {
-            Event.managedEventName("CANCELLED Sat A (12/31 10:00)").should.be.true;
-        })
-        it("regexp does not matches FARGLE Sat A (12/31 10:00)", () => {
-            Event.managedEventName("FARGLE Sat A (12/31 10:00)").should.be.true;
-        })
-        it("doesn't match a non managed ride", () => {
-            (Event.managedEventName("My Non Managed Ride")).should.be.false;
-            const event = new Event();
-            event.name = "My Non Managed Ride";
-            let actual = event.managedEvent();
-            actual.should.be.false;
-            event.name = 'Tobys Simple Event [1]';
-            (!event.managedEvent()).should.be.true;
-        })
-        it("an empty ride is managed", () => {
-            Event.managedEventName("").should.be.true;
-        })
-        it("no name will be managed", () => {
-            Event.managedEventName().should.be.true;
-        })
-        it("detects 'foobar [12]' as unmanaged", () => {
-            (!Event.managedEventName("foobar [12]")).should.be.true;
-        })
-    })
-    describe("test makeUnmanagedRideName()", () => {
-        it("returns the original name with the rsvp appended", () => {
-            Event.makeUnmanagedRideName("Name", 10).should.equal("Name [10]");
-        })
-        it("updates the rsvp only", () => {
-            Event.makeUnmanagedRideName("Name [1]", 12).should.equal("Name [12]");
-        })
-    })
-    describe("test updateCountInName()", () => {
-        it("updates the unmanaged name", () => {
-            Event.updateCountInName("foobar [12]", 9).should.equal("foobar [9]")
-        })
-        it("updates the managed name", () => {
-            Event.updateCountInName("Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", 12).should.equal("Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos")
-        })
-    })
-    describe("test updateRiderCount()", () => {
-        describe("updating unmanaged rides", () => {
-            it("updates the unmanaged name", () => {
-                const uut = new Event();
-                uut.name = "foobar [12]";
-                const expected = new Event();
-                expected.name = "foobar [9]";
-                const changed = uut.updateRiderCount(9);
-                uut.should.deep.equal(expected);
-                changed.should.be.true;
-            })
-            it("updates a canceled unmanaged name", () => {
-                const uut = new Event();
-                uut.name = "CANCELLED foobar [12]";
-                const expected = new Event();
-                expected.name = "CANCELLED foobar [9]";
-                const changed = uut.updateRiderCount(9);
-                uut.should.deep.equal(expected);
-                changed.should.be.true;
-            })
-            it("should return false if the count hasn't changed (unmanaged)", () => {
-                const uut = new Event();
-                uut.name = "foobar [12]";
-                const changed = uut.updateRiderCount(12);
-                changed.should.be.false;
-            })
-        })
-        describe("updating managed rides", () => {
-            it("updates the managed name", () => {
-                const uut = new Event();
-                uut.name = "Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos";
-                const expected = new Event();
-                expected.name = "Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos";
-                const changed = uut.updateRiderCount(12);
-                uut.should.deep.equal(expected);
-                changed.should.be.true;
-            })
-            it("updates a canceled managed name", () => {
-                const uut = new Event();
-                uut.name = "CANCELLED Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos";
-                const expected = new Event();
-                expected.name = "CANCELLED Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos";
-                const changed = uut.updateRiderCount(12);
-                uut.should.deep.equal(expected);
-                changed.should.be.true;
-            })
-            it("should return false if the count hasn't changed (managed)", () => {
-                const uut = new Event();
-                uut.name = "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos";
-                const changed = uut.updateRiderCount(11);
-                changed.should.be.false;
-            })
-        })  
-    })
-    describe("cancellation", () => {
-        it("the new ride name should say cancelled", () => {
-            const uut = new Event();
-            uut.name = "Some Name";
-            let old_name = uut.name;
-            let new_name = `CANCELLED: ${old_name}`;
-            let expected = { ...uut, name: new_name };
-            let actual = uut.cancel();
-            actual.should.deep.equal(expected)
-        })
-        it("cancel should be idempotent on an already cancelled event", () => {
-            const uut = new Event();
-            uut.name = "Some Name";
-            let old_name = uut.name;
-            let new_name = `CANCELLED: ${old_name}`;
-            let expected = { ...uut, name: new_name };
-            let actual = uut.cancel().cancel();
-            actual.should.deep.equal(expected)
-        })
-    })
-    describe("reinstation", () => {
-        it('should become uncanceled', () => {
-            const uut = new Event();
-            uut.name = "CANCELLED: Some Name";
-            let new_name = "Some Name";
-            let expected = { ...uut, name: new_name };
-            let actual = uut.reinstate();
-            actual.should.deep.equal(expected)
-        })
-    })
-})
+function assertEqual(actual, expected, message) {
+  if (actual !== expected) {
+    throw new Error(`Assertion failed: ${message}. Expected ${expected}, but got ${actual}`);
+  }
+}
+
+function assertTrue(condition, message) {
+  if (!condition) {
+    throw new Error(`Assertion failed: ${message}`);
+  }
+}
+
+function assertFalse(condition, message) {
+  if (condition) {
+    throw new Error(`Assertion failed: ${message}`);
+  }
+}
+
+function runTests() {
+  console.log("Running tests...");
+
+  const managedEventCases = [
+    { name: "Tue 'B' Ride (1/1 10:00 AM) [3] fargle", expected: true },
+    { name: "CANCELLED Tue 'B' Ride (1/1 10:00 AM) [3] fargle", expected: true },
+    { name: "Tue 'B' Ride (11/15 10:00 AM)", expected: true },
+    { name: "CANCELLED Tue 'B' Ride (11/15 10:00 AM)", expected: true },
+    { name: "Sat A (12/31 10:00)", expected: true },
+    { name: "CANCELLED Sat A (12/31 10:00)", expected: true },
+    { name: "O1 Ride (12/31 10:00)", expected: true },
+    { name: "CANCELLED O1 Ride (12/31 10:00)", expected: true },
+    { name: "O2 Ride (12/31 10:00)", expected: true },
+    { name: "CANCELLED O2 Ride (12/31 10:00)", expected: true },
+    { name: "O3 Ride (12/31 10:00)", expected: true },
+    { name: "CANCELLED O3 Ride (12/31 10:00)", expected: true },
+    { name: "FARGLE Sat A (12/31 10:00)", expected: false },
+    { name: "My Non Managed Ride", expected: false },
+    { name: "", expected: true },
+    { name: undefined, expected: true },
+    { name: "foobar [12]", expected: false }
+  ];
+
+  managedEventCases.forEach(testCase => {
+    assertEqual(Event.managedEventName(testCase.name, ['A', 'B', 'C', 'D']), testCase.expected, `managedEventName failed for '${testCase.name}'`);
+  });
+
+  // Test makeUnmanagedRideName
+  assertEqual(Event.makeUnmanagedRideName("Name", 10), "Name [10]", "makeUnmanagedRideName failed for 'Name'");
+  assertEqual(Event.makeUnmanagedRideName("Name [1]", 12), "Name [12]", "makeUnmanagedRideName failed for 'Name [1]'");
+
+  // Test updateCountInName
+  assertEqual(Event.updateCountInName("foobar [12]", 9, ['A', 'B', 'C', 'D']), "foobar [9]", "updateCountInName failed for 'foobar [12]'");
+  assertEqual(Event.updateCountInName("Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", 12, ['A', 'B', 'C', 'D']), "Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos", "updateCountInName failed for 'Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos'");
+
+  // Test updateRiderCount
+  const updateRiderCountCases = [
+    { name: "foobar [12]", newCount: 9, expectedName: "foobar [9]", expectedChanged: true },
+    { name: "CANCELLED foobar [12]", newCount: 9, expectedName: "CANCELLED foobar [9]", expectedChanged: true },
+    { name: "foobar [12]", newCount: 12, expectedName: "foobar [12]", expectedChanged: false },
+    { name: "Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", newCount: 12, expectedName: "Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos", expectedChanged: true },
+    { name: "CANCELLED Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", newCount: 12, expectedName: "CANCELLED Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos", expectedChanged: true },
+    { name: "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos", newCount: 11, expectedName: "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos", expectedChanged: false }
+  ];
+
+  updateRiderCountCases.forEach(testCase => {
+    const event = new Event();
+    event.name = testCase.name;
+    const changed = event.updateRiderCount(testCase.newCount);
+    assertEqual(event.name, testCase.expectedName, `updateRiderCount failed to update name for '${testCase.name}'`);
+    assertEqual(changed, testCase.expectedChanged, `updateRiderCount failed for '${testCase.name}'`);
+  });
+
+  // Test cancel
+  const cancelCases = [
+    { name: "Some Name", expectedName: "CANCELLED: Some Name" },
+    { name: "CANCELLED: Some Name", expectedName: "CANCELLED: Some Name" }
+  ];
+
+  cancelCases.forEach(testCase => {
+    const event = new Event();
+    event.name = testCase.name;
+    event.cancel();
+    assertEqual(event.name, testCase.expectedName, `cancel failed for '${testCase.name}'`);
+  });
+
+  // Test reinstate
+  const reinstateCases = [
+    { name: "CANCELLED: Some Name", expectedName: "Some Name" }
+  ];
+
+  reinstateCases.forEach(testCase => {
+    const event = new Event();
+    event.name = testCase.name;
+    event.reinstate();
+    assertEqual(event.name, testCase.expectedName, `reinstate failed for '${testCase.name}'`);
+  });
+
+  console.log("All tests passed!");
+}
+
+runTests();

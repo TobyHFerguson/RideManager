@@ -12,7 +12,8 @@
     "dev:push": "npx clasp-env --folder . --scriptId 1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya && clasp push -w",
     "dev:pull": "npx clasp-env --folder . --scriptId 1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya && clasp pull",
     "prod:push": "npx clasp-env --folder . --scriptId 1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc && clasp push",
-    "prod:pull": "npx clasp-env --folder . --scriptId 1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc & clasp pull"
+    "prod:pull": "npx clasp-env --folder . --scriptId 1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc & clasp pull",
+    "testEvent": "node test/testEvent.js"
   },
   "keywords": [],
   "author": "",

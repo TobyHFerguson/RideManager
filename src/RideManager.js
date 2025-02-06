@@ -1,3 +1,5 @@
+
+
 const RideManager = (function () {
     function _log(name, msg) {
         console.log(`RideManager.${name}: ${msg}`);
@@ -50,11 +52,11 @@ const RideManager = (function () {
         },
         scheduleRows: function (rows, rwgps) {
             function schedule_row(row, rwgps) {
-                function get_template_(group) {
+                function get_template_(groupName) {
                     try {
-                        return Globals.groups[group].TEMPLATE
+                        return Globals.groupSpecs[groupName].TEMPLATE
                     } catch {
-                        throw new Error(`Unknown group: ${group}. Expected one of ${Object.keys(Globals.groups).join(', ')}`);
+                        throw new Error(`Unknown group: ${groupName}. Expected one of ${Object.keys(Globals.groupSpecs).join(', ')}`);
                     }
                 }
 
@@ -113,7 +115,7 @@ const RideManager = (function () {
         updateRows: function (rows, rwgps) {
             function updateRow(row) {
                 let event
-                if (!Event.managedEventName(row.RideName, Globals.groups)) {
+                if (!Event.managedEventName(row.RideName)) {
                     event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
                 } else {
                     const event_id = _extractEventID(row.RideURL);

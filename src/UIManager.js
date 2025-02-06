@@ -2,7 +2,6 @@ const UIManager = {
     processRows: function (rows, errors, warnings, rwgps, fun = () => { }, force = false) {
         evalRows(rows, rwgps, errors, warnings);
         let message = create_message(rows);
-        sidebar.create(rows);
         const processableRows = rows.filter(r => r.errors.length === 0);
         if (processableRows.length === 0) {
             inform_of_errors(message);
