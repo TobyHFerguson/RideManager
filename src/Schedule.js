@@ -148,8 +148,8 @@ const Schedule = function () {
                 const range = row.range;
                 const values = row.values;
                 const formulas = row.formulas;
-                range.setFormulas(formulas)
-                range.setValues(values);
+                const merged = values[0].map((v, i) => formulas[0][i] ? formulas[0][i] : v); 
+                range.setValues([merged])
             });
             this.storeFormulas(); // Ensure formulas are persisted after saving the row
             SpreadsheetApp.flush();
