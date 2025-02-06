@@ -34,7 +34,7 @@ const MenuFunctions = (() => {
   function executeCommand(command, force = false) {
     const g2 = getGroupSpecs();
     Globals.groupSpecs = g2;
-    Globals.A_TEMPLATE = g2["A"].TEMPLATE // Needed because RWGPSLib expects Globals.A_TEMPLATE
+    Globals.A_TEMPLATE = g2.A.TEMPLATE // Needed because RWGPSLib expects Globals.A_TEMPLATE
 
     const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, Globals);
     const rwgps = RWGPSLib.newRWGPS(rwgpsService);
