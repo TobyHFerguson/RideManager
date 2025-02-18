@@ -1,40 +1,78 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <base target="_top">
     <style>
-      body { font-family: Arial, sans-serif; padding: 10px; }
-      .progress { font-size: 16px; margin-top: 20px; }
-      .error { color: red; font-weight: bold; display: none; margin-top: 20px; white-space: pre-line; }
-      .btn { margin-top: 10px; padding: 5px 10px; cursor: pointer; }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 10px;
+        }
+
+        .progress {
+            font-size: 16px;
+            margin-top: 20px;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+            display: none;
+            margin-top: 20px;
+            white-space: pre-line;
+        }
+
+        .btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
     <h3>Processing Progress</h3>
     <div class="progress" id="progress">Loading...</div>
     <div class="error" id="error"></div>
     <button class="btn" id="ackBtn" style="display:none;" onclick="acknowledgeErrors()">Acknowledge</button>
 
     <script>
-      function checkProgress() {
-        google.script.run.withSuccessHandler(function(progress) {
-          document.getElementById('progress').innerText = progress;
-        }).getProgress();
+        function checkProgress() {
+            let actualProgress;
+            let actualErrors;
+            google.script.run.withSuccessHandler(function (progress) {
+                actualProgress = progress;
+                document.getElementById('progress').innerText = progress;
+            }).getProgress();
 
-        google.script.run.withSuccessHandler(function(errors) {
-          if (errors.length > 0) {
-            document.getElementById('error').innerText = "Errors:\n" + errors.join("\n");
-            document.getElementById('error').style.display = 'block';
-            document.getElementById('ackBtn').style.display = 'block';
-          }
-        }).getErrors();
-      }
+            google.script.run.withSuccessHandler(function (errors) {
+                let actualErrors = errors;
+                if (errors.length > 0) {
+                    document.getElementById('error').innerText = "Errors:\n" + errors.join("\n");
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('ackBtn').style.display = 'block';
+                }
+            }).getErrors();
+            if (!actualErrors && actualProgress === 'Processing complete! Closing...') {
+                setTimeout(function() {
+                    closeSidebar();
+                  }, 3000)
+            }
+        }
 
-      function acknowledgeErrors() {
-        google.script.run.acknowledgeErrors();
-      }
+        function acknowledgeErrors() {
+            google.script.run.acknowledgeErrors();
+            closeSidebar();
+        }
 
-      setInterval(checkProgress, 1000);
+        
+        function closeSidebar() {
+            clearInterval(errorCheckInterval);
+            google.script.host.close();
+        }
+        
+        var errorCheckInterval = setInterval(checkProgress, 1000);
     </script>
-  </body>
+</body>
+
 </html>
