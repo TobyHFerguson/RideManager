@@ -56,13 +56,7 @@ class ProcessingManager {
     }
 
     finalizeProcessing() {
-        if (this.getErrors().length === 0) {
-            this.setProgress('Processing complete! Closing...');
-            Utilities.sleep(2000); // Give UI time to update
-            SpreadsheetApp.getUi().showSidebar(null); // Auto-close sidebar if no errors
-        } else {
-            this.setProgress('Processing complete with errors.');
-        }
+        this.setProgress(this.getErrors().length === 0 ? 'Processing complete! Closing...' : 'Processing complete with errors.');
     }
 
     acknowledgeErrors() {
