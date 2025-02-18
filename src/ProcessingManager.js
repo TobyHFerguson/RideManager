@@ -1,9 +1,9 @@
 class ProcessingManager {
     constructor(processFunction) {
       this.props = PropertiesService.getScriptProperties();
-      this.processFunction = processFunction; // Store the provided function
+      this.processFunction = processFunction;
+      this.clearErrors();
       this.clearProgress();
-      this.clearError();
       this.setProgress('Starting processing...');
       this.showSidebar();
       this.startProcessing();
@@ -28,16 +28,18 @@ class ProcessingManager {
       this.props.deleteProperty('progress');
     }
   
-    setError(message) {
-      this.props.setProperty('error', message);
+    addError(message) {
+      let errors = this.getErrors();
+      errors.push(message);
+      this.props.setProperty('errors', JSON.stringify(errors));
     }
   
-    getError() {
-      return this.props.getProperty('error') || '';
+    getErrors() {
+      return JSON.parse(this.props.getProperty('errors') || '[]');
     }
   
-    clearError() {
-      this.props.deleteProperty('error');
+    clearErrors() {
+      this.props.deleteProperty('errors');
     }
   
     endProcessing() {
@@ -46,15 +48,26 @@ class ProcessingManager {
   
     startProcessing() {
       try {
-        this.processFunction(this); // Call the provided function with this instance
+        this.processFunction(this); // Call the provided function
       } catch (error) {
-        this.setError(`Unexpected error: ${error.message}`);
+        this.addError(`Unexpected error: ${error.message}`);
+      }
+      this.finalizeProcessing();
+    }
+  
+    finalizeProcessing() {
+      if (this.getErrors().length === 0) {
+        this.setProgress('Processing complete! Closing...');
+        Utilities.sleep(2000); // Give UI time to update
+        SpreadsheetApp.getUi().showSidebar(null); // Auto-close sidebar if no errors
+      } else {
+        this.setProgress('Processing complete with errors.');
       }
     }
   
-    resumeProcessing() {
-      this.clearError();
-      this.startProcessing();
+    acknowledgeErrors() {
+      this.clearErrors();
+      SpreadsheetApp.getUi().showSidebar(null); // Close sidebar after acknowledgment
     }
   }
   
@@ -63,31 +76,29 @@ class ProcessingManager {
     new ProcessingManager(exampleProcess);
   }
   
-  // Example processing function (replace with actual logic)
+  // Example processing function (simulated)
   function exampleProcess(manager) {
     for (let i = 1; i <= 10; i++) {
-      Utilities.sleep(1000); // Simulated work
+      Utilities.sleep(500); // Simulated work
       manager.setProgress(`Processing: ${i * 10}%`);
   
-      if (i === 5) {
-        manager.setError('An issue occurred at step 5.');
-        return; // Stop execution until user acknowledges
+      if (i === 5 || i === 8) {
+        manager.addError(`Error at step ${i}`);
       }
     }
-    manager.endProcessing();
   }
   
-  // Functions for Sidebar UI
+  // Sidebar UI-related functions
   function getProgress() {
     return PropertiesService.getScriptProperties().getProperty('progress');
   }
   
-  function getError() {
-    return PropertiesService.getScriptProperties().getProperty('error');
+  function getErrors() {
+    return JSON.parse(PropertiesService.getScriptProperties().getProperty('errors') || '[]');
   }
   
-  function acknowledgeError() {
-    const manager = new ProcessingManager(exampleProcess);
-    manager.resumeProcessing();
+  function acknowledgeErrors() {
+    PropertiesService.getScriptProperties().deleteProperty('errors');
+    SpreadsheetApp.getUi().showSidebar(null);
   }
   
