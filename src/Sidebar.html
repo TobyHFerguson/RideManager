@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; padding: 10px; }
+      .progress { font-size: 16px; margin-top: 20px; }
+      .error { color: red; font-weight: bold; display: none; margin-top: 20px; }
+      .btn { margin-top: 10px; padding: 5px 10px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <h3>Processing Progress</h3>
+    <div class="progress" id="progress">Loading...</div>
+    <div class="error" id="error"></div>
+    <button class="btn" id="ackBtn" style="display:none;" onclick="acknowledgeError()">Acknowledge</button>
+
+    <script>
+      function checkProgress() {
+        google.script.run.withSuccessHandler(function(progress) {
+          document.getElementById('progress').innerText = progress;
+          
+          if (progress === 'Processing complete!') {
+            google.script.host.close();
+          } else {
+            setTimeout(checkProgress, 1000);
+          }
+        }).getProgress();
+
+        google.script.run.withSuccessHandler(function(error) {
+          if (error) {
+            document.getElementById('error').innerText = error;
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('ackBtn').style.display = 'block';
+          }
+        }).getError();
+      }
+
+      function acknowledgeError() {
+        google.script.run.withSuccessHandler(function() {
+          document.getElementById('error').style.display = 'none';
+          document.getElementById('ackBtn').style.display = 'none';
+          checkProgress();
+        }).acknowledgeError();
+      }
+
+      checkProgress();
+    </script>
+  </body>
+</html>
