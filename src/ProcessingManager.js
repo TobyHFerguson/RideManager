@@ -5,15 +5,17 @@ class ProcessingManager {
     this.clearErrors();
     this.clearProgress();
     this.addProgress('Starting processing...');
-    this.showSidebar();
+    ProcessingManager.showModalDialog();
     this.startProcessing();
   }
 
-  showSidebar() {
+  static showModalDialog() {
     const html = HtmlService.createHtmlOutputFromFile('Sidebar')
-      .setWidth(300);
+      .setWidth(300)
+      .setHeight(200)
     SpreadsheetApp.getUi().showModalDialog(html, 'Processing Progress');
   }
+
 
   addProgress(message) {
     let messages = this.getProgress();
