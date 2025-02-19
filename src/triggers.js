@@ -12,10 +12,7 @@ function onOpen() {
     .addItem('Link Selected Route URLs', "MenuFunctions.linkSelectedRouteUrls")
     .addItem('Update Rider Count', "MenuFunctions.updateRiderCount")
     .addToUi();
-  ui.createMenu('Progress')
-  .addItem('Start Process With Errors', startProcessWithErrors.name)
-  .addItem('Start Process Without Errors', startProcessWithoutErrors.name)
-  .addToUi();
+
 
   // We store the original formulas here so that we can restore them if the user
   // accidentally overwrites them. They need to be stored outside of the spreadsheet 
