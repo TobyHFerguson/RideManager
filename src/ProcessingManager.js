@@ -11,9 +11,8 @@ class ProcessingManager {
 
   showSidebar() {
     const html = HtmlService.createHtmlOutputFromFile('Sidebar')
-      .setTitle('Processing Progress')
       .setWidth(300);
-    SpreadsheetApp.getUi().showSidebar(html);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Processing Progress');
   }
 
   addProgress(message) {
