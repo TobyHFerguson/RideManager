@@ -12,7 +12,7 @@ class ProcessingManager {
   static showModalDialog() {
     const html = HtmlService.createHtmlOutputFromFile('Sidebar')
       .setWidth(300)
-      .setHeight(200)
+      .setHeight(400)
     SpreadsheetApp.getUi().showModalDialog(html, 'Processing Progress');
   }
 

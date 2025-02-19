@@ -21,15 +21,14 @@ function onOpen() {
   // accidentally overwrites them. They need to be stored outside of the spreadsheet 
   // because the onEdit trigger will overwrite them if they are stored in the spreadsheet itself
   // and onEdit only has access to old values, not formulas.
-  const schedule = Schedule;
-  schedule.storeFormulas();
+  Schedule.storeFormulas();
   initializeGroupCache()
 }
 
 function myEdit(event) {
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
-      const processingManager = new ProcessingManager((pr) => myEdit_(event, pm));
+      const processingManager = new ProcessingManager((pm) => myEdit_(event, pm));
       processingManager.startProcessing
     }
   } catch (e) {
@@ -63,7 +62,7 @@ function myEdit_(event, pm) {
    * Edits the route column in the schedule.
    */
   function _editRouteColumn(event) {
-    pm.setProgress('Editing route column');
+    pm.addProgress('Editing route column');
     const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText();
     const route = getRoute(url);
     let name;
@@ -80,32 +79,32 @@ function myEdit_(event, pm) {
       name = route.name;
     }
     event.range.setValue(`=hyperlink("${url}", "${name}")`);
-    schedule.storeRouteFormulas();
+    Schedule.storeRouteFormulas();
     if (route.user_id !== Globals.SCCCC_USER_ID) {
-      pm.setProgress('Importing foreign route');
+      pm.addProgress('Importing foreign route');
       MenuFunctions.importSelectedRoutes(true);
-      pm.setProgress('Foreign route imported');
+      pm.addProgress('Foreign route imported');
     }
-    pm.setProgress('Route column edited');
+    pm.addProgress('Route column edited');
   }
 
 
   const editedRange = event.range;
-  const rideColumnIndex = schedule.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
-  const routeColumnIndex = schedule.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
+  const rideColumnIndex = Schedule.getColumnIndex(Globals.RIDECOLUMNNAME) + 1;
+  const routeColumnIndex = Schedule.getColumnIndex(Globals.ROUTECOLUMNNAME) + 1;
 
   // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
   if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
     if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
       SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
       for (let i = 0; i < editedRange.getNumRows(); i++) {
-        schedule.restoreFormula(editedRange.getRow() + i);
+        Schedule.restoreFormula(editedRange.getRow() + i);
       }
       return;
     }
     if (rangeContainsColumn(editedRange, rideColumnIndex)) {
       SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
-      schedule.restoreRideFormula(editedRange.getRow());
+      Schedule.restoreRideFormula(editedRange.getRow());
       return;
     }
     if (rangeContainsColumn(editedRange, routeColumnIndex)) {
@@ -113,20 +112,20 @@ function myEdit_(event, pm) {
         _editRouteColumn(event);
       } catch (e) {
         SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
-        schedule.restoreRouteFormula(editedRange.getRow());
+        Schedule.restoreRouteFormula(editedRange.getRow());
         return;
       }
     }
   }
   const force = true;
-  if (schedule.getSelectedRows()[0].RideURL) {
-    pm.setProgress('Ride already scheduled - updating it');
+  if (Schedule.getSelectedRows()[0].RideURL) {
+    pm.addProgress('Updating ride');
     MenuFunctions.updateSelectedRides(force);
-    pm.setProgress('Ride updated');
+    pm.addProgress('Ride updated');
   } else {
-    pm.setProgress('Scheduling ride');
+    pm.addProgress('Scheduling ride');
     MenuFunctions.scheduleSelectedRides(force);
-    pm.setProgress('Ride scheduled');
+    pm.addProgress('Ride scheduled');
   }
   pm.endProcessing();
 }
