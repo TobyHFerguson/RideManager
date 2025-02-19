@@ -37,11 +37,11 @@
     <button class="btn" id="ackBtn" style="display:none;" onclick="acknowledgeErrors()">Acknowledge</button>
 
     <script>
-        var errorCheckInterval = setInterval(checkProgress, 1000);
+        var errorCheckInterval = setInterval(checkProgress, 500);
         
         function checkProgress() {
             google.script.run.withSuccessHandler(function (progress) {
-                document.getElementById('progress').innerText = progress;
+                document.getElementById('progress').innerText = progress.join("\n");
                 checkIfShouldClose(progress);
             }).getProgress();
     
@@ -57,7 +57,7 @@
         }
     
         function checkIfShouldClose(progress) {
-            if (!document.getElementById('error').style.display && progress === 'Processing complete! Closing...') {
+            if (!document.getElementById('error').style.display && document.getElementById('progress').innerText.endsWith('Processing complete! Closing...')) {
                 setTimeout(closeSidebar, 3000); // Delay closing for 3 seconds
             }
         }
