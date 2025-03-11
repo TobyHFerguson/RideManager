@@ -1,4 +1,7 @@
 
+if(typeof require !== 'undefined') {
+  var dates = require('../submodules/Dates/src/dates');
+}
 // Managed names can be of the form:
 // Mon A 1/1 10:00 AM Ride route name
 // Mon A 1/1 10:00 route name
