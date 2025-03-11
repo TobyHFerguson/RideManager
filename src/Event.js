@@ -12,9 +12,10 @@
 // Number of participants surrounded by square brackets
 
 // In addition, there can be an optional 'CANCELLED: ' prefix.
-function makeManagedRE(groupNames = Globals.groupSpecs ? Object.keys(Globals.groupSpecs) : []) {
+
+function makeManagedRE(groupNames = []) {
  const grps = groupNames.join('|');
-  const MANAGED_RE_STR = `(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)\\[(?<count>\\d{1,2})\\](?<suffix>.*$)`;
+  const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)\\[(?<count>\\d{1,2})\\](?<suffix>.*$)`;
   const MANAGED_RE = new RegExp(MANAGED_RE_STR);
   return MANAGED_RE;
 }
@@ -53,7 +54,8 @@ class Event {
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEventName(eventName, groupNames) {
-    return (!eventName) || makeManagedRE(groupNames).test(eventName);
+    const RE = makeManagedRE(groupNames);
+    return eventName && RE.test(eventName);
   }
 
   static updateCountInName(name, count, groupNames) {

@@ -1,102 +1,168 @@
 const Event = require("../src/Event");
 
-function assertEqual(actual, expected, message) {
-  if (actual !== expected) {
-    throw new Error(`Assertion failed: ${message}. Expected ${expected}, but got ${actual}`);
-  }
-}
+const { test, describe, expect } = require('@jest/globals');
 
-function assertTrue(condition, message) {
-  if (!condition) {
-    throw new Error(`Assertion failed: ${message}`);
-  }
-}
 
-function assertFalse(condition, message) {
-  if (condition) {
-    throw new Error(`Assertion failed: ${message}`);
-  }
-}
+describe('Event Tests', () => {
+  let groupNames;
+  beforeEach(() => {
+    groupNames = ['A', 'B', 'C', 'D', 'O1', 'O2', 'O3'];
+  });
+  describe('makeEventName', () => {
+    test('managedEventName - Tue B (1/1 10:00 AM) [3] fargle', () => {
+      expect(Event.managedEventName("Tue B (1/1 10:00 AM) [3] fargle", groupNames)).toBe(true);
+    });
 
-function runTests() {
-  console.log("Running tests...");
+    test('managedEventName - CANCELLED: Tue B (1/1 10:00 AM) [3] fargle', () => {
+      expect(Event.managedEventName("CANCELLED: Tue B (1/1 10:00 AM) [3] fargle", groupNames)).toBe(true);
+    });
 
-  const managedEventCases = [
-    { name: "Tue 'B' Ride (1/1 10:00 AM) [3] fargle", expected: true },
-    { name: "CANCELLED Tue 'B' Ride (1/1 10:00 AM) [3] fargle", expected: true },
-    { name: "Tue 'B' Ride (11/15 10:00 AM)", expected: true },
-    { name: "CANCELLED Tue 'B' Ride (11/15 10:00 AM)", expected: true },
-    { name: "Sat A (12/31 10:00)", expected: true },
-    { name: "CANCELLED Sat A (12/31 10:00)", expected: true },
-    { name: "O1 Ride (12/31 10:00)", expected: true },
-    { name: "CANCELLED O1 Ride (12/31 10:00)", expected: true },
-    { name: "O2 Ride (12/31 10:00)", expected: true },
-    { name: "CANCELLED O2 Ride (12/31 10:00)", expected: true },
-    { name: "O3 Ride (12/31 10:00)", expected: true },
-    { name: "CANCELLED O3 Ride (12/31 10:00)", expected: true },
-    { name: "FARGLE Sat A (12/31 10:00)", expected: false },
-    { name: "My Non Managed Ride", expected: false },
-    { name: "", expected: true },
-    { name: undefined, expected: true },
-    { name: "foobar [12]", expected: false }
-  ];
+    test('managedEventName - Tue B (11/15 10:00 AM) [3]', () => {
+      expect(Event.managedEventName("Tue B (11/15 10:00 AM) [3]", groupNames)).toBe(true);
+    });
 
-  managedEventCases.forEach(testCase => {
-    assertEqual(Event.managedEventName(testCase.name, ['A', 'B', 'C', 'D']), testCase.expected, `managedEventName failed for '${testCase.name}'`);
+    test('managedEventName - CANCELLED: Tue B (11/15 10:00 AM) [3]', () => {
+      expect(Event.managedEventName("CANCELLED: Tue B (11/15 10:00 AM) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - Sat A (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("Sat A (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - CANCELLED: Sat A (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("CANCELLED: Sat A (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - Sat O1 (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("Sat O1 (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - CANCELLED: Sat O1 (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("CANCELLED: Sat O1 (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - Sat O2 (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("Sat O2 (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - CANCELLED: Sat O2 (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("CANCELLED: Sat O2 (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - Sat O3 (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("Sat O3 (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - CANCELLED: Sat O3 (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("CANCELLED: Sat O3 (12/31 10:00) [3]", groupNames)).toBe(true);
+    });
+
+    test('managedEventName - FARGLE Sat A (12/31 10:00) [3]', () => {
+      expect(Event.managedEventName("FARGLE Sat A (12/31 10:00) [3]", groupNames)).toBe(false);
+    });
+
+    test('managedEventName - My Non Managed Ride [3]', () => {
+      expect(Event.managedEventName("My Non Managed Ride [3]", groupNames)).toBe(false);
+    });
+
+    test('managedEventName - empty string', () => {
+      expect(Event.managedEventName("", groupNames)).toBeFalsy();
+    });
+
+    test('managedEventName - undefined', () => {
+      expect(Event.managedEventName(undefined, groupNames)).toBeFalsy();
+    });
+
+    test('managedEventName - foobar [12]', () => {
+      expect(Event.managedEventName("foobar [12]", groupNames)).toBeFalsy;
+    });
+
+    test('makeUnmanagedRideName', () => {
+      expect(Event.makeUnmanagedRideName("Name", 10)).toBe("Name [10]");
+      expect(Event.makeUnmanagedRideName("Name [1]", 12)).toBe("Name [12]");
+    });
   });
 
-  // Test makeUnmanagedRideName
-  assertEqual(Event.makeUnmanagedRideName("Name", 10), "Name [10]", "makeUnmanagedRideName failed for 'Name'");
-  assertEqual(Event.makeUnmanagedRideName("Name [1]", 12), "Name [12]", "makeUnmanagedRideName failed for 'Name [1]'");
+  describe('updateCountInName', () => {
+    test('updateCountInName - foobar [12] to foobar [9]', () => {
+      expect(Event.updateCountInName("foobar [12]", 9, groupNames)).toBe("foobar [9]");
+    });
 
-  // Test updateCountInName
-  assertEqual(Event.updateCountInName("foobar [12]", 9, ['A', 'B', 'C', 'D']), "foobar [9]", "updateCountInName failed for 'foobar [12]'");
-  assertEqual(Event.updateCountInName("Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", 12, ['A', 'B', 'C', 'D']), "Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos", "updateCountInName failed for 'Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos'");
+    test('updateCountInName - Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos to Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos', () => {
+      expect(Event.updateCountInName("Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", 12, groupNames)).toBe("Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos");
+    });
+  
+    test('updateRiderCount - foobar [12] to foobar [9]', () => {
+      const event = new Event();
+      event.name = "foobar [12]";
+      const changed = event.updateRiderCount(9, groupNames);
+      expect(event.name).toBe("foobar [9]");
+      expect(changed).toBe(true);
+    });
+  
+    test('updateRiderCount - CANCELLED: foobar [12] to CANCELLED: foobar [9]', () => {
+      const event = new Event();
+      event.name = "CANCELLED: foobar [12]";
+      const changed = event.updateRiderCount(9, groupNames);
+      expect(event.name).toBe("CANCELLED: foobar [9]");
+      expect(changed).toBe(true);
+    });
+  
+    test('updateRiderCount - foobar [12] to foobar [12]', () => {
+      const event = new Event();
+      event.name = "foobar [12]";
+      const changed = event.updateRiderCount(12, groupNames);
+      expect(event.name).toBe("foobar [12]");
+      expect(changed).toBe(false);
+    });
+  
+    test('updateRiderCount - Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos to Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos', () => {
+      const event = new Event();
+      event.name = "Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos";
+      const changed = event.updateRiderCount(12, groupNames);
+      expect(event.name).toBe("Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos");
+      expect(changed).toBe(true);
+    });
+  
+    test('updateRiderCount - CANCELLED: Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos to CANCELLED: Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos', () => {
+      const event = new Event();
+      event.name = "CANCELLED: Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos";
+      const changed = event.updateRiderCount(12, groupNames);
+      expect(event.name).toBe("CANCELLED: Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos");
+      expect(changed).toBe(true);
+    });
+  
+    test('updateRiderCount - Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos to Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos', () => {
+      const event = new Event();
+      event.name = "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos";
+      const changed = event.updateRiderCount(11, groupNames);
+      expect(changed).toBe(false);
+      expect(event.name).toBe("Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos");
+    });
 
-  // Test updateRiderCount
-  const updateRiderCountCases = [
-    { name: "foobar [12]", newCount: 9, expectedName: "foobar [9]", expectedChanged: true },
-    { name: "CANCELLED foobar [12]", newCount: 9, expectedName: "CANCELLED foobar [9]", expectedChanged: true },
-    { name: "foobar [12]", newCount: 12, expectedName: "foobar [12]", expectedChanged: false },
-    { name: "Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", newCount: 12, expectedName: "Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos", expectedChanged: true },
-    { name: "CANCELLED Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", newCount: 12, expectedName: "CANCELLED Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos", expectedChanged: true },
-    { name: "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos", newCount: 11, expectedName: "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos", expectedChanged: false }
-  ];
+  });
+  describe('cancel', () => {
+    test('cancel - Some Name', () => {
+      const event = new Event();
+      event.name = "Some Name";
+      event.cancel();
+      expect(event.name).toBe("CANCELLED: Some Name");
+    });
 
-  updateRiderCountCases.forEach(testCase => {
-    const event = new Event();
-    event.name = testCase.name;
-    const changed = event.updateRiderCount(testCase.newCount);
-    assertEqual(event.name, testCase.expectedName, `updateRiderCount failed to update name for '${testCase.name}'`);
-    assertEqual(changed, testCase.expectedChanged, `updateRiderCount failed for '${testCase.name}'`);
+    test('cancel - CANCELLED: Some Name', () => {
+      const event = new Event();
+      event.name = "CANCELLED: Some Name";
+      event.cancel();
+      expect(event.name).toBe("CANCELLED: Some Name");
+    });
   });
 
-  // Test cancel
-  const cancelCases = [
-    { name: "Some Name", expectedName: "CANCELLED: Some Name" },
-    { name: "CANCELLED: Some Name", expectedName: "CANCELLED: Some Name" }
-  ];
-
-  cancelCases.forEach(testCase => {
-    const event = new Event();
-    event.name = testCase.name;
-    event.cancel();
-    assertEqual(event.name, testCase.expectedName, `cancel failed for '${testCase.name}'`);
+  describe('reinstate', () => {
+    test('reinstate - CANCELLED: Some Name', () => {
+      const event = new Event();
+      event.name = "CANCELLED: Some Name";
+      event.reinstate();
+      expect(event.name).toBe("Some Name");
+    });
   });
-
-  // Test reinstate
-  const reinstateCases = [
-    { name: "CANCELLED: Some Name", expectedName: "Some Name" }
-  ];
-
-  reinstateCases.forEach(testCase => {
-    const event = new Event();
-    event.name = testCase.name;
-    event.reinstate();
-    assertEqual(event.name, testCase.expectedName, `reinstate failed for '${testCase.name}'`);
-  });
-
-  console.log("All tests passed!");
-}
-
-runTests();
+});

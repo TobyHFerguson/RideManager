@@ -8,7 +8,7 @@
   "version": "1.0.0",
   "main": "Events.js",
   "scripts": {
-    "test": "mocha -R min --watch test/",
+    "test": "jest",
     "dev:push": "npx clasp-env --folder . --scriptId 1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya && clasp push -w",
     "dev:pull": "npx clasp-env --folder . --scriptId 1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya && clasp pull",
     "prod:push": "npx clasp-env --folder . --scriptId 1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc && clasp push",
@@ -21,7 +21,8 @@
   "description": "",
   "devDependencies": {
     "chai": "^4.3.7",
-    "mocha": "^10.1.0",
-    "sinon": "^14.0.2"
+    "jest": "^27.5.1",
+    "sinon": "^14.0.2",
+    "@babel/preset-env": "^7.15.0"
   }
 }

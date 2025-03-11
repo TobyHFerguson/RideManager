@@ -1,0 +1,9 @@
+{
+  "jest.autoRun": {
+    "watch": true,
+    "onSave": "test-file"
+  },
+  "jest.pathToJest": "npm test",
+  "jest.runAllTestsFirst": true,
+  "jest.showCoverageOnLoad": true
+}
