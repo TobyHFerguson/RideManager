@@ -1,14 +1,18 @@
+function getGroupNames() {
+  return Object.keys(getGroupSpecs());  // ["A", "B", "C", ...]
+}
+
 function getGroupSpecs() {
   const cache = CacheService.getScriptCache();
   let cachedGroups = cache.get('groups');
   if (cachedGroups) {
     return JSON.parse(cachedGroups);
   } else {
-    return initializeGroupCache();
+    return initializeGroupCache_();
   }
 }
 
-function initializeGroupCache() {
+function initializeGroupCache_() {
   const cache = CacheService.getScriptCache();
   let groups = getGroupsFromSheet_();
   cache.put('groups', JSON.stringify(groups), 21600); // Cache for 6 hours
@@ -20,15 +24,19 @@ function getGroupsFromSheet_() {
     sheetName: 'Groups',
     createIfMissing: false
   });
-  let groups = flatten(fiddler.getData());
+  let groups = flatten_(fiddler.getData());
   return groups;
 }
 
-function flatten(groups) {
+function flatten_(groups) {
   // groups = [ {"Group": "A", "Template": ..., "MIN_LENGTH": ...}]
   groups = groups.reduce((acc, { Group, ...rest }) => {
     acc[Group] = rest;
     return acc;
   }, {});
   return groups;
+}
+
+if(typeof module !== 'undefined') {
+  module.exports = { getGroupNames, getGroupSpecs }
 }

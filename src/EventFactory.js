@@ -1,3 +1,9 @@
+if(typeof require !== 'undefined') {
+    var Event = require('./Event');
+    var dates = require('../submodules/Dates/src/dates');
+    var Globals = require('./Globals');
+    var {_, getGroupNames} = require('./Groups');
+}
 
 const EventFactory = function () {
     /**
@@ -11,17 +17,19 @@ const EventFactory = function () {
     function createDescription(leaders, address, meet_time, start_time, event_id) {
 
 
-        return `Ride Leader${leaders.length > 1 ? 's' : ''}: ${leaders.join(', ')}
+        const result =
+`Ride Leader${leaders.length > 1 ? 's' : ''}: ${leaders.join(', ')}
 
-    ${address}
-          
+${address}
+
 Arrive ${dates.T12(meet_time)} for a ${dates.T12(start_time)} rollout.
 
 Participant List: ${Globals.RSVP_BASE_URL}?event=${event_id}
-  
+
 All participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709
-  
+
 Note: In a browser use the "Go to route" link below to open up the route.`;
+        return result;
     }
 
 

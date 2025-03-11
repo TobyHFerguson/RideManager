@@ -1,9 +1,19 @@
-const managedEvent = require('./fixtures/MyPayload.js')
+// Mock the entire Groups module
+jest.mock('../src/Groups', () => ({
+  getGroupNames: jest.fn(() => ['A', 'B', 'C', 'D']),
+  getGroupSpecs: jest.fn(() => ({
+    A: { Template: 'Template A', MIN_LENGTH: 10 },
+    B: { Template: 'Template B', MIN_LENGTH: 15 }
+  })) // Mock other functions if needed
+}));
+
+const managedEvent = require('./fixtures/MyPayload.js');
 const EventFactory = require('../src/EventFactory.js');
 const Globals = require('../src/Globals.js');
 const managedRwgpsEvent = require('./fixtures/event.json').event;
 const organizers = [{ id: 302732, text: "Toby Ferguson" }];
-const { test, describe, expect } = require('@jest/globals');
+
+
 
 describe("Event Factory Tests", () => {
     const managedRow = {
