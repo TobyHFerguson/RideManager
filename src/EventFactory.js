@@ -56,12 +56,6 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             const event = new Event();
             event.location = row.Location && !(row.Location.startsWith("#")) ? row.Location : "";
             event.route_ids = [row.RouteURL.split('/')[4]];
-            const start = dates.convert(row.StartDate);
-            const time = dates.convert(row.StartTime);
-            start.setUTCHours(time.getUTCHours())
-            start.setUTCMinutes(time.getUTCMinutes())
-            start.setUTCSeconds(time.getUTCSeconds())
-            start.setUTCMilliseconds(0);
             event.start_time = row.StartTime;
             event.start_date = row.StartDate;
             event.name = makeRideName(row, organizers.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID).length);
@@ -80,8 +74,8 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             event.organizer_tokens = rwgpsEvent.organizer_ids;
             event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map(r => r.id + "") : [];
             const sd = (rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date());
-            event.start_date = sd;
-            event.start_time = sd;
+            event.start_date = sd.toISOString();
+            event.start_time = sd.toISOString();
             event.visibility = rwgpsEvent.visibility;
             return event;
         }

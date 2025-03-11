@@ -7,18 +7,19 @@ jest.mock('../src/Groups', () => ({
   })) // Mock other functions if needed
 }));
 
-const managedEvent = require('./fixtures/MyPayload.js');
+const managedEvent = require('./fixtures/managedEvent.js');
 const EventFactory = require('../src/EventFactory.js');
 const Globals = require('../src/Globals.js');
-const managedRwgpsEvent = require('./fixtures/event.json').event;
+const managedRwgpsEvent = require('./fixtures/managedRwgpsEvent.json').event;
 const organizers = [{ id: 302732, text: "Toby Ferguson" }];
+const dates = require('../submodules/Dates/src/dates');
 
 
 
 describe("Event Factory Tests", () => {
     const managedRow = {
-        StartDate: "2023-01-01T08:00:00.00Z",
-        StartTime: "1899-12-30T18:00:00.000Z",
+        StartDate: "2023-01-01T18:00:00.000Z",
+        StartTime: "2023-01-01T18:00:00.000Z",
         Group: 'A',
         RouteName: 'SCP - Seascape/Corralitos',
         RouteURL: 'http://ridewithgps.com/routes/17166902',
@@ -48,12 +49,17 @@ describe("Event Factory Tests", () => {
                 expect(actual).toEqual(expected);
             })
             test("should create a new ride name for managed events", () => {
+                const start = new Date("2023-06-01T18:00:00.000Z");
+                const hour = dates.T24(start)
                 const expected = { ...managedEvent, 
-                    name: "Thu A (6/1 10:00) [1] SCP - Seascape/Corralitos",
-                    "start_date": "2023-06-01T08:00:00.00Z",
-                    "start_time": "1899-12-30T18:00:00.000Z"
-                  }
-                const mr = { ...managedRow, StartDate: "2023-06-01T08:00:00.00Z",}
+                    name: `Thu A (6/1 ${hour}) [1] SCP - Seascape/Corralitos`,
+                    "start_date": start.toISOString(),
+                    "start_time": start.toISOString(),
+                }
+                if (hour === "11:00") { 
+                    expected.desc = expected.desc.replace("Arrive 9:45 AM for a 10:00 AM rollout.", "Arrive 10:45 AM for a 11:00 AM rollout.");
+                }
+                const mr = { ...managedRow, StartDate: "2023-06-01T18:00:00.000Z", StartTime: "2023-06-01T18:00:00.000Z"}
                 const actual = EventFactory.newEvent(mr, organizers, 1234);
                 expect(actual).toEqual(expected);
             })
