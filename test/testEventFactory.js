@@ -22,7 +22,7 @@ describe("Event Factory Tests", () => {
     describe("Basic Construction", () => {
         describe("fromRow()", () => {
             test("should build from a row", () => {
-                const actual = EventFactory.newEvent(managedRow, organizers);
+                const actual = EventFactory.newEvent(managedRow, organizers, 1234);
                 const expected = managedEvent;
                 expect(actual).toEqual(expected);
             })
@@ -34,7 +34,7 @@ describe("Event Factory Tests", () => {
             })
             test("should use the given ride name for unmanaged events", () => {
                 const expected = { ...managedEvent, name: 'Tobys Ride [1]' }
-                const actual = EventFactory.newEvent(unmanagedRow, organizers);
+                const actual = EventFactory.newEvent(unmanagedRow, organizers, 1234);
                 expect(actual).toEqual(expected);
             })
             test("should create a new ride name for managed events", () => {
@@ -44,7 +44,7 @@ describe("Event Factory Tests", () => {
                     "start_time": "2023-06-01T18:00:00.000Z"
                   }
                 const mr = { ...managedRow, StartDate: "2023-06-01T08:00:00.00Z",}
-                const actual = EventFactory.newEvent(mr, organizers);
+                const actual = EventFactory.newEvent(mr, organizers, 1234);
                 expect(actual).toEqual(expected);
             })
             test("should throw an error if row is missing", () => {
@@ -56,7 +56,7 @@ describe("Event Factory Tests", () => {
                 expected.name = expected.name.replace("[1]", "[0]");
                 expected.organizer_tokens = [Globals["RIDE_LEADER_TBD_ID"] + ""];
 
-                const actual = EventFactory.newEvent(managedRow, [])
+                const actual = EventFactory.newEvent(managedRow, [], 1234)
                 expect(actual).toEqual(expected);
             })
         })
