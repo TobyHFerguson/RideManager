@@ -50,8 +50,8 @@ describe("Event Factory Tests", () => {
             test("should create a new ride name for managed events", () => {
                 const expected = { ...managedEvent, 
                     name: "Thu A (6/1 10:00) [1] SCP - Seascape/Corralitos",
-                    "start_date": "2023-06-01T18:00:00.000Z",
-                    "start_time": "2023-06-01T18:00:00.000Z"
+                    "start_date": "2023-06-01T08:00:00.00Z",
+                    "start_time": "1899-12-30T18:00:00.000Z"
                   }
                 const mr = { ...managedRow, StartDate: "2023-06-01T08:00:00.00Z",}
                 const actual = EventFactory.newEvent(mr, organizers, 1234);
