@@ -19,7 +19,6 @@ function onOpen() {
   // because the onEdit trigger will overwrite them if they are stored in the spreadsheet itself
   // and onEdit only has access to old values, not formulas.
   Schedule.storeFormulas();
-  initializeGroupCache()
 }
 
 function myEdit(event) {

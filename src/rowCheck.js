@@ -1,7 +1,7 @@
 
 const rowCheck = {
     unmanagedRide: function (row) {
-        if (!Event.managedEventName(row.RideName)) {
+        if (!Event.managedEventName(row.RideName, getGroupNames())) {
             return "Ride is unmanaged";
         }
     },

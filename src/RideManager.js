@@ -1,4 +1,6 @@
-
+if (typeof require !== 'undefined') {
+    const { getGroupNames } = require("./Groups");
+}
 
 const RideManager = (function () {
     function _log(name, msg) {
@@ -96,7 +98,7 @@ const RideManager = (function () {
             const rwgpsEvents = rwgps.get_events(scheduledRowURLs);
             const scheduledEvents = rwgpsEvents.map(e => e ? EventFactory.fromRwgpsEvent(e) : e);
             const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
-            const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i]) : false);
+            const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i], getGroupNames()) : false);
             const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
 
             rwgps.edit_events(edits.map(({ row, event }) => {
@@ -115,14 +117,14 @@ const RideManager = (function () {
         updateRows: function (rows, rwgps) {
             function updateRow(row) {
                 let event
-                if (!Event.managedEventName(row.RideName)) {
+                if (!Event.managedEventName(row.RideName, getGroupNames())) {
                     event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
                 } else {
                     const event_id = _extractEventID(row.RideURL);
                     event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
                     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
                 }
-                event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]));
+                event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), getGroupNames());
                 row.setRideLink(event.name, row.RideURL);
                 rwgps.edit_event(row.RideURL, event);
             }

@@ -58,7 +58,7 @@ class Event {
    */
   static managedEventName(eventName, groupNames) {
     const RE = makeManagedRE(groupNames);
-    return eventName && RE.test(eventName);
+    return !eventName || RE.test(eventName);
   }
 
   static updateCountInName(name, count, groupNames) {

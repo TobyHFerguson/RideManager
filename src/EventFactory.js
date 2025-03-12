@@ -1,8 +1,8 @@
 if(typeof require !== 'undefined') {
-    var Event = require('./Event');
-    var dates = require('../submodules/Dates/src/dates');
-    var Globals = require('./Globals');
-    var {_, getGroupNames} = require('./Groups');
+    const Event = require('./Event');
+    const dates = require('../submodules/Dates/src/dates');
+    const Globals = require('./Globals');
+    const {_, getGroupNames} = require('./Groups');
 }
 
 const EventFactory = function () {

@@ -13,6 +13,10 @@ describe('Event Tests', () => {
       expect(Event.managedEventName("Tue B (1/1 10:00 AM) [3] fargle", groupNames)).toBe(true);
     });
 
+    test('managedEventName - Sat B (3/15 10:00) [0] CCC - San Jose/Soquel, Rodeo, Branciforte, Happy Valley, Man View, Laurel Glen', () => {
+      expect(Event.managedEventName("Sat B (3/15 10:00) [0] CCC - San Jose/Soquel, Rodeo, Branciforte, Happy Valley, Man View, Laurel Glen", groupNames)).toBe(true);
+    });
+
     test('managedEventName - CANCELLED: Tue B (1/1 10:00 AM) [3] fargle', () => {
       expect(Event.managedEventName("CANCELLED: Tue B (1/1 10:00 AM) [3] fargle", groupNames)).toBe(true);
     });
@@ -66,11 +70,11 @@ describe('Event Tests', () => {
     });
 
     test('managedEventName - empty string', () => {
-      expect(Event.managedEventName("", groupNames)).toBeFalsy();
+      expect(Event.managedEventName("", groupNames)).toBeTruthy();
     });
 
     test('managedEventName - undefined', () => {
-      expect(Event.managedEventName(undefined, groupNames)).toBeFalsy();
+      expect(Event.managedEventName(undefined, groupNames)).toBeTruthy();
     });
 
     test('managedEventName - foobar [12]', () => {
