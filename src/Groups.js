@@ -38,5 +38,5 @@ function flatten_(groups) {
 }
 
 if(typeof module !== 'undefined') {
-  module.exports = { getGroupNames, getGroupSpecs }
+  module.exports = { getGroupNames, getGroupSpecs };
 }

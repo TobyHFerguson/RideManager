@@ -22,7 +22,7 @@ const rowCheck = {
     },
     noGroup: function (row) {
         if (!row.Group) return "Group column is empty";
-        const groups = Object.keys(Globals.groupSpecs)
+        const groups = getGroupNames();
         if (!groups.includes(row.Group)) {
             return `Unknown group: '${row.Group}'. Expected one of ${groups.join(', ')}`;
         }
@@ -38,7 +38,7 @@ const rowCheck = {
             switch (response.getResponseCode()) {
                 case 200:
                     let route = JSON.parse(response.getContentText());
-                    if (route.user_id === Globals.SCCCC_USER_ID) {
+                    if (route.user_id === getGlobals["SCCCC_USER_ID"]) {
                         return 'Route is owned by SCCCC';
                     }
                     break;
@@ -62,7 +62,7 @@ const rowCheck = {
     // Warnings
     noRideLeader: function (row, rwgps) {
         if (!row.RideLeaders || row.RideLeaders.length === 0) {
-            return `No ride leader given. Defaulting to '${Globals.RIDE_LEADER_TBD_NAME}'`;
+            return `No ride leader given. Defaulting to '${getGlobals["RIDE_LEADER_TBD_NAME"]}'`;
         } else {
             const rls = row.RideLeaders.reduce((p, rl) => {
                 if (rwgps.knownRideLeader(rl)) {
@@ -77,7 +77,7 @@ const rowCheck = {
             if (rls.unknown.length) {
                 row.highlightRideLeader(true);
                 const prefix = `${rls.known.length ? "Some" : "All"} Ride Leaders (${rls.unknown.join(', ')}) unknown.`
-                const suffix = rls.known.length ? "" : ` Defaulting to ${Globals.RIDE_LEADER_TBD_NAME}`;
+                const suffix = rls.known.length ? "" : ` Defaulting to ${getGlobals["RIDE_LEADER_TBD_NAME"]}`;
                 return prefix + suffix;
             } else {
                 row.highlightRideLeader(false);
@@ -108,25 +108,25 @@ const rowCheck = {
         const nrg = this.noGroup(row);
         if (nrg) return nrg;
         function __inappropriateGroup(groupName, elevation, distance) {
-            if (Globals.groupSpecs[groupName].MIN_ELEVATION_GAIN && elevation < Globals.groupSpecs[groupName].MIN_ELEVATION_GAIN) {
-                return `Elevation gain (${elevation}') too low for ${groupName} group (must be at least ${Globals.groupSpecs[groupName].MIN_ELEVATION_GAIN}')`
+            if (getGroupSpecs()[groupName].MIN_ELEVATION_GAIN && elevation < getGroupSpecs()[groupName].MIN_ELEVATION_GAIN) {
+                return `Elevation gain (${elevation}') too low for ${groupName} group (must be at least ${getGroupSpecs()[groupName].MIN_ELEVATION_GAIN}')`
             }
-            if (Globals.groupSpecs[groupName].MAX_ELEVATION_GAIN && elevation > Globals.groupSpecs[groupName].MAX_ELEVATION_GAIN) {
-                return `Elevation gain (${elevation}') too great for ${groupName} group (must be no more than ${Globals.groupSpecs[groupName].MAX_ELEVATION_GAIN}')`
+            if (getGroupSpecs()[groupName].MAX_ELEVATION_GAIN && elevation > getGroupSpecs()[groupName].MAX_ELEVATION_GAIN) {
+                return `Elevation gain (${elevation}') too great for ${groupName} group (must be no more than ${getGroupSpecs()[groupName].MAX_ELEVATION_GAIN}')`
             }
-            if (Globals.groupSpecs[groupName].MIN_LENGTH && distance < Globals.groupSpecs[groupName].MIN_LENGTH) {
-                return `Distance (${distance} miles) too short for ${groupName} group (must be at least ${Globals.groupSpecs[groupName].MIN_LENGTH} miles)`
+            if (getGroupSpecs()[groupName].MIN_LENGTH && distance < getGroupSpecs()[groupName].MIN_LENGTH) {
+                return `Distance (${distance} miles) too short for ${groupName} group (must be at least ${getGroupSpecs()[groupName].MIN_LENGTH} miles)`
             }
-            if (Globals.groupSpecs[groupName].MAX_LENGTH && distance > Globals.groupSpecs[groupName].MAX_LENGTH) {
-                return `Distance (${distance} miles) too long for ${groupName} group (must be no more than ${Globals.groupSpecs[groupName].MAX_LENGTH} miles)`
+            if (getGroupSpecs()[groupName].MAX_LENGTH && distance > getGroupSpecs()[groupName].MAX_LENGTH) {
+                return `Distance (${distance} miles) too long for ${groupName} group (must be no more than ${getGroupSpecs()[groupName].MAX_LENGTH} miles)`
             }
         }
 
         if (!row.RouteURL) return;
         const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
         const route = JSON.parse(response.getContentText());
-        const d = Math.round(route.distance * Globals.METERS_TO_MILES);
-        const e = Math.round(route.elevation_gain * Globals.METERS_TO_FEET);
+        const d = Math.round(route.distance * getGlobals["METERS_TO_MILES"]);
+        const e = Math.round(route.elevation_gain * getGlobals["METERS_TO_FEET"]);
         return __inappropriateGroup(row.Group, e, d);
     },
     scheduled: function (row) {
@@ -137,7 +137,7 @@ const rowCheck = {
     foreignRoute: function (row) {
         try {
             const route = getRoute(row.RouteURL)
-            if (route.user_id !== Globals.SCCCC_USER_ID) {
+            if (route.user_id !== getGlobals["SCCCC_USER_ID"]) {
                 return 'Route is not owned by SCCCC';
             }
         } catch (e) {

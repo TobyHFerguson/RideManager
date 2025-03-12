@@ -1,7 +1,6 @@
-if(typeof require !== 'undefined') {
+if (typeof require !== 'undefined') {
     const Event = require('./Event');
     const dates = require('../submodules/Dates/src/dates');
-    const Globals = require('./Globals');
     const {_, getGroupNames} = require('./Groups');
 }
 
@@ -24,8 +23,8 @@ ${address}
 
 Arrive ${dates.T12(meet_time)} for a ${dates.T12(start_time)} rollout.
 
-Participant List: ${Globals.RSVP_BASE_URL}?event=${event_id}
-
+Participant List: ${getGlobals["RSVP_BASE_URL"]}?event=${event_id}
+  
 All participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709
 
 Note: In a browser use the "Go to route" link below to open up the route.`;
@@ -50,7 +49,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
          */
         newEvent: function (row, organizers, event_id) {
             if (!organizers || !organizers.length) {
-                organizers = [{ id: Globals.RIDE_LEADER_TBD_ID, text: Globals.RIDE_LEADER_TBD_NAME }]
+                organizers = [{ id: getGlobals["RIDE_LEADER_TBD_ID"], text: getGlobals["RIDE_LEADER_TBD_NAME"] }]
             }
             if (!row) throw new Error("no row object given");
             const event = new Event();
@@ -58,7 +57,7 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             event.route_ids = [row.RouteURL.split('/')[4]];
             event.start_time = row.StartTime;
             event.start_date = row.StartDate;
-            event.name = makeRideName(row, organizers.filter(o => o.id !== Globals.RIDE_LEADER_TBD_ID).length);
+            event.name = makeRideName(row, organizers.filter(o => o.id !== getGlobals["RIDE_LEADER_TBD_ID"]).length);
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
             let meet_time = dates.addMinutes(row.StartTime, -15);

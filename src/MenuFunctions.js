@@ -33,10 +33,10 @@ function unScheduleSelectedRides() {
 const MenuFunctions = (() => {
   function executeCommand(command, force = false) {
     const g2 = getGroupSpecs();
-    Globals.groupSpecs = g2;
-    Globals.A_TEMPLATE = g2.A.TEMPLATE // Needed because RWGPSLib expects Globals.A_TEMPLATE
+    const globals = getGlobals();
+    globals["A_TEMPLATE"] = g2.A.TEMPLATE // Needed because RWGPSLib expects globals["A_TEMPLATE"]
 
-    const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, Globals);
+    const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, globals);
     const rwgps = RWGPSLib.newRWGPS(rwgpsService);
     let rows = Schedule.getSelectedRows();
     console.info('User %s', Session.getActiveUser());

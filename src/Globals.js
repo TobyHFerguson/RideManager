@@ -1,45 +1,30 @@
-/**
- * This file contains definitions of constants that impact the end users of the system.
- */
-let Globals = {
-    STARTDATETIMECOLUMNNAME: "Date Time",
-    GROUPCOLUMNNAME: "Group",
-    STARTLOCATIONCOLUMNNAME: "Start Location",
-    ROUTECOLUMNNAME: "Route",
-    RIDELEADERCOLUMNNAME: "Ride Leader",
-    RIDECOLUMNNAME: "Ride",
-    ADDRESSCOLUMNNAME: "Address",
-    LOCATIONCOLUMNNAME: "Location",
-    PREFIXCOLUMNNAME: "Prefix",
+// This file is used to store global variables that are used across the project
 
-    RIDE_LEADER_TBD_NAME: 'To Be Determined',
+function initializeGlobals_() {
+    const globalData = bmPreFiddler.PreFiddler().getFiddler({
+        sheetName: 'Globals',
+        createIfMissing: false
+    }).getData();
+    const globals = globalData.reduce((acc, global) => {
+        const key = global.Key;
+        const value = global.Value;
+        acc[key] = value;
+        return acc;
+    }, {});
 
-    FOREIGN_PREFIX: '(FOREIGN) ',
-
-    // A_TEMPLATE: `https://ridewithgps.com/events/186557-a-template`,
-    // B_TEMPLATE: `https://ridewithgps.com/events/186234-b-template`,
-    // C_TEMPLATE: `https://ridewithgps.com/events/186235-c-template`,
-    // D_TEMPLATE: `https://ridewithgps.com/events/298649-d-template`,
-    SIGN_IN_URI: `https://ridewithgps.com/organizations/47/sign_in`,
-    RSVP_BASE_URL: 'https://tinyurl.com/2xcrmekv', // Version 14 of RSVPers,
-    RSVP_BASE_URL: 'https://tinyurl.com/2p63yvwy', // Version 15 of RSVPers,
-    RSVP_BASE_URL: 'https://tinyurl.com/yw98jf34', // Version 16 of RSVPers
-    RSVP_BASE_URL: 'https://tinyurl.com/2upxk94n', // Version 20 of RSVPers
-    RSVP_BASE_URL: 'https://tinyurl.com/2zzkw562', // Dev version of RSVPers
-    RSVP_BASE_URL: 'https://tinyurl.com/3k29mpdr', // Version 21 of RSVPers
-
-    SCCCC_USER_ID: 621846,
-    RIDE_LEADER_TBD_ID: 4733240,
-
-    METERS_TO_FEET: 3.28084,
-    METERS_TO_MILES: 6.213712e-4,
-
-    CONSOLIDATED_RIDE_SHEET: 'Consolidated Rides',
-
-    // Number of days after an event or an import that a route will expire
-    EXPIRY_DELAY: 30,
+    const globalsString = JSON.stringify(globals);
+    const cache = CacheService.getScriptCache();
+    cache.put('Globals', globalsString, 21600); // 21600 seconds = 6 hours
+    return globals;
 }
 
-if (typeof module !== 'undefined') {
-    module.exports = Globals;
+function getGlobals() {
+    const cache = CacheService.getScriptCache();
+    const globals = cache.get('Globals');
+    if (globals) {
+        return JSON.parse(globals);
+    } else {
+        return initializeGlobals_();
+    }
 }
+

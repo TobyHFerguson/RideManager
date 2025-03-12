@@ -25,7 +25,7 @@ const RideManager = (function () {
                 let route = {
                     url: row.RouteURL ? row.RouteURL : row.RouteName,
                     //TODO use dates as native objects, not strings
-                    expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), Globals.EXPIRY_DELAY)),
+                    expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), getGlobals["EXPIRY_DELAY"])),
                     tags: [row.Group]
                 }
                 let rn = row.RouteName;
@@ -33,7 +33,7 @@ const RideManager = (function () {
                 if (rn !== ru) route.name = row.RouteName;
 
                 // Delete any foreign prefix in the name
-                if (route.name.startsWith(Globals.FOREIGN_PREFIX)) route.name = route.name.substring(Globals.FOREIGN_PREFIX.length);
+                if (route.name.startsWith(getGlobals["FOREIGN_PREFIX"])) route.name = route.name.substring(getGlobals["FOREIGN_PREFIX"].length);
                 const url = rwgps.importRoute(route);
                 row.setRouteLink(route.name || url, url);
                 //TODO remove dependency on Schedule
@@ -56,9 +56,9 @@ const RideManager = (function () {
             function schedule_row(row, rwgps) {
                 function get_template_(groupName) {
                     try {
-                        return Globals.groupSpecs[groupName].TEMPLATE
+                        return getGroupSpecs()[groupName].TEMPLATE
                     } catch {
-                        throw new Error(`Unknown group: ${groupName}. Expected one of ${Object.keys(Globals.groupSpecs).join(', ')}`);
+                        throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupnames().join(', ')}`);
                     }
                 }
 
@@ -66,7 +66,7 @@ const RideManager = (function () {
                 const event_id = _extractEventID(new_event_url);
                 const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
                 rwgps.edit_event(new_event_url, event);
-                rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
+                rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals["EXPIRY_DELAY"]), true);
                 row.setRideLink(event.name, new_event_url);
                 rwgps.unTagEvents([new_event_url], ["template"]);
             }
@@ -122,7 +122,7 @@ const RideManager = (function () {
                 } else {
                     const event_id = _extractEventID(row.RideURL);
                     event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
-                    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, Globals.EXPIRY_DELAY), true);
+                    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals["EXPIRY_DELAY"]), true);
                 }
                 event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), getGroupNames());
                 row.setRideLink(event.name, row.RideURL);
