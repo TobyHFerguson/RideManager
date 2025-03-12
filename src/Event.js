@@ -51,7 +51,7 @@ class Event {
     return newName;
   }
   /**
-   * Return true iff this is a Managed Ride
+   * Return true iff this is a Managed Ride - which means that either there is no eventName, or the eventName matches a REGEXP
    * @param {string} eventName the event name
    * @param{string[]} groups a list of all possible groups
    * @returns {boolean} true iff this is a managed ride
