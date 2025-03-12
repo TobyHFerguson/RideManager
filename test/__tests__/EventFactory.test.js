@@ -10,6 +10,7 @@ jest.mock('../../src/Groups', () => ({
 jest.mock('../../src/Globals', () => ({
   getGlobals: jest.fn(() => ({
     RIDE_LEADER_TBD_ID: 9999,
+    RIDE_LEADER_TBD_NAME: 'To Be Determined',
     RSVP_BASE_URL: 'https://tinyurl.com/3k29mpdr'
 }))
 }));
@@ -21,6 +22,7 @@ const EventFactory = require('../../src/EventFactory.js');
 const managedRwgpsEvent = require('../fixtures/managedRwgpsEvent.json').event;
 const organizers = [{ id: 302732, text: "Toby Ferguson" }];
 const dates = require('../../submodules/Dates/src/dates');
+const { getGlobals } = require('../../src/Globals');
 
 
 
@@ -78,7 +80,7 @@ describe("Event Factory Tests", () => {
                 const expected = { ...managedEvent };
                 expected.desc = expected.desc.replace("Toby Ferguson", "To Be Determined")
                 expected.name = expected.name.replace("[1]", "[0]");
-                expected.organizer_tokens = [Globals["RIDE_LEADER_TBD_ID"] + ""];
+                expected.organizer_tokens = [getGlobals().RIDE_LEADER_TBD_ID + ""];
 
                 const actual = EventFactory.newEvent(managedRow, [], 1234)
                 expect(actual).toEqual(expected);
