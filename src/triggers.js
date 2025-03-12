@@ -62,21 +62,21 @@ function myEdit_(event, pm) {
     const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText();
     const route = getRoute(url);
     let name;
-    if (route.user_id !== getGlobals["SCCCC_USER_ID"]) {
+    if (route.user_id !== getGlobals().SCCCC_USER_ID) {
       const ui = SpreadsheetApp.getUi();
       const response = ui.prompt('Foreign Route Detected', 'Please enter a name for the foreign route:', ui.ButtonSet.OK_CANCEL);
       if (response.getSelectedButton() == ui.Button.OK) {
         name = response.getResponseText();
-        name = name || getGlobals["FOREIGN_PREFIX"] + route.name;
+        name = name || getGlobals().FOREIGN_PREFIX + route.name;
       } else {
-        name = getGlobals["FOREIGN_PREFIX"] + route.name;
+        name = getGlobals().FOREIGN_PREFIX + route.name;
       }
     } else {
       name = route.name;
     }
     event.range.setValue(`=hyperlink("${url}", "${name}")`);
     Schedule.storeRouteFormulas();
-    if (route.user_id !== getGlobals["SCCCC_USER_ID"]) {
+    if (route.user_id !== getGlobals().SCCCC_USER_ID) {
       pm.addProgress('Importing foreign route');
       MenuFunctions.importSelectedRoutes(true);
       pm.addProgress('Foreign route imported');
@@ -86,8 +86,8 @@ function myEdit_(event, pm) {
 
 
   const editedRange = event.range;
-  const rideColumnIndex = Schedule.getColumnIndex(getGlobals["RIDECOLUMNNAME"]) + 1;
-  const routeColumnIndex = Schedule.getColumnIndex(getGlobals["ROUTECOLUMNNAME"]) + 1;
+  const rideColumnIndex = Schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME) + 1;
+  const routeColumnIndex = Schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME) + 1;
 
   // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
   if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {

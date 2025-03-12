@@ -19,12 +19,24 @@ function initializeGlobals_() {
 }
 
 function getGlobals() {
+  console.log('Entering getGlobals function');
+  try {
     const cache = CacheService.getScriptCache();
     const globals = cache.get('Globals');
     if (globals) {
+        console.log('Globals object from cache:', globals);
         return JSON.parse(globals);
     } else {
+        console.log('Globals not found in cache, initializing globals');
         return initializeGlobals_();
     }
+  } catch (error) {
+    console.error('Error in getGlobals function:', error);
+    return undefined;
+  }
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { getGlobals, Globals };
 }
 

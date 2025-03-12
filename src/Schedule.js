@@ -21,11 +21,11 @@ const Schedule = function () {
         }
 
         _getRideColumnRange(rowNum = 2, numCols = 0) {
-            return this._getColumnRange(getGlobals["RIDECOLUMNNAME"], rowNum, numCols);
+            return this._getColumnRange(getGlobals().RIDECOLUMNNAME, rowNum, numCols);
         }
 
         _getRouteColumnRange(rowNum = 2, numCols = 0) {
-            return this._getColumnRange(getGlobals["ROUTECOLUMNNAME"], rowNum, numCols);
+            return this._getColumnRange(getGlobals().ROUTECOLUMNNAME, rowNum, numCols);
         }
         storeFormulas() {
             this.storeRideFormulas();
@@ -80,7 +80,7 @@ const Schedule = function () {
             var values = dataRange.getValues();
 
             // Identify the date column index (assuming the date is in the first column)
-            var dateColumnIndex = this.getColumnIndex(getGlobals["STARTDATETIMECOLUMNNAME"]);
+            var dateColumnIndex = this.getColumnIndex(getGlobals().STARTDATETIMECOLUMNNAME);
 
             // Sort the data based on the date column
             values.sort(function (row1, row2) {
@@ -109,12 +109,12 @@ const Schedule = function () {
             throw new Error(`Column name: ${name} is not known`);
         }
 
-        getStartDate(values) { return values[this.getColumnIndex(getGlobals["STARTDATETIMECOLUMNNAME"])]; }
-        getStartTime(values) { return values[this.getColumnIndex(getGlobals["STARTDATETIMECOLUMNNAME"])]; }
-        getGroup(values) { return values[this.getColumnIndex(getGlobals["GROUPCOLUMNNAME"])]; }
-        getRideLeader(values) { return values[this.getColumnIndex(getGlobals["RIDELEADERCOLUMNNAME"])]; }
-        getLocation(values) { return values[this.getColumnIndex(getGlobals["LOCATIONCOLUMNNAME"])]; }
-        getAddress(values) { return values[this.getColumnIndex(getGlobals["ADDRESSCOLUMNNAME"])]; }
+        getStartDate(values) { return values[this.getColumnIndex(getGlobals().STARTDATETIMECOLUMNNAME)]; }
+        getStartTime(values) { return values[this.getColumnIndex(getGlobals().STARTDATETIMECOLUMNNAME)]; }
+        getGroup(values) { return values[this.getColumnIndex(getGlobals().GROUPCOLUMNNAME)]; }
+        getRideLeader(values) { return values[this.getColumnIndex(getGlobals().RIDELEADERCOLUMNNAME)]; }
+        getLocation(values) { return values[this.getColumnIndex(getGlobals().LOCATIONCOLUMNNAME)]; }
+        getAddress(values) { return values[this.getColumnIndex(getGlobals().ADDRESSCOLUMNNAME)]; }
 
         highlightCell(rowNum, colName, onoff) {
             let cell = this.crSheet.getRange(rowNum, this.getColumnIndex(colName) + 1);
@@ -156,7 +156,7 @@ const Schedule = function () {
         }
 
         deleteRideLink(rowNum) {
-            this.crSheet.getRange(rowNum, this.getColumnIndex(getGlobals["RIDECOLUMNNAME"]) + 1).clear({ contentsOnly: true });
+            this.crSheet.getRange(rowNum, this.getColumnIndex(getGlobals().RIDECOLUMNNAME) + 1).clear({ contentsOnly: true });
         }
 
         convertRangeToRows(range) {
@@ -237,8 +237,8 @@ const Schedule = function () {
             this.formulas = formulas;
             this.myRowValues = values[offset];
             this.myRowFormulas = formulas[offset];
-            this.myRowValues[this.schedule.getColumnIndex(getGlobals["ROUTECOLUMNNAME"])] = this.myRowFormulas[this.schedule.getColumnIndex(getGlobals["ROUTECOLUMNNAME"])];
-            this.myRowValues[this.schedule.getColumnIndex(getGlobals["RIDECOLUMNNAME"])] = this.myRowFormulas[this.schedule.getColumnIndex(getGlobals["RIDECOLUMNNAME"])];
+            this.myRowValues[this.schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME)] = this.myRowFormulas[this.schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME)];
+            this.myRowValues[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)] = this.myRowFormulas[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)];
         }
 
         get StartDate() { return this.schedule.getStartDate(this.myRowValues) }
@@ -246,13 +246,13 @@ const Schedule = function () {
         get Group() { return this.schedule.getGroup(this.myRowValues); }
 
         get RouteName() {
-            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals["ROUTECOLUMNNAME"])];
+            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME)];
             const { name } = parseHyperlinkFormula(cellValue);
             return name;
         }
 
         get RouteURL() {
-            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals["ROUTECOLUMNNAME"])];
+            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME)];
             const { url } = parseHyperlinkFormula(cellValue);
             return url;
         }
@@ -263,13 +263,13 @@ const Schedule = function () {
         }
 
         get RideName() {
-            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals["RIDECOLUMNNAME"])];
+            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)];
             const { name } = parseHyperlinkFormula(cellValue);
             return name;
         }
 
         get RideURL() {
-            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals["RIDECOLUMNNAME"])];
+            const cellValue = this.myRowValues[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)];
             const { url } = parseHyperlinkFormula(cellValue);
             return url;
         }
@@ -278,14 +278,14 @@ const Schedule = function () {
         get Address() { return this.schedule.getAddress(this.myRowValues); }
 
         highlightRideLeader(onoff) {
-            this.schedule.highlightCell(this.rowNum, getGlobals["RIDELEADERCOLUMNNAME"], onoff);
+            this.schedule.highlightCell(this.rowNum, getGlobals().RIDELEADERCOLUMNNAME, onoff);
             return this;
         }
 
         setRideLink(name, url) {
             let formula = createHyperlinkFormula(name, url);
-            this.myRowFormulas[this.schedule.getColumnIndex(getGlobals["RIDECOLUMNNAME"])] = formula;
-            this.myRowValues[this.schedule.getColumnIndex(getGlobals["RIDECOLUMNNAME"])] = formula;
+            this.myRowFormulas[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)] = formula;
+            this.myRowValues[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)] = formula;
             this.schedule.saveRow(this);
         }
 
@@ -295,8 +295,8 @@ const Schedule = function () {
 
         setRouteLink(name, url) {
             let formula = createHyperlinkFormula(name, url);
-            this.myRowFormulas[this.schedule.getColumnIndex(getGlobals["ROUTECOLUMNNAME"])] = formula;
-            this.myRowValues[this.schedule.getColumnIndex(getGlobals["ROUTECOLUMNNAME"])] = formula;
+            this.myRowFormulas[this.schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME)] = formula;
+            this.myRowValues[this.schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME)] = formula;
             // Logger.log(`Row ${this.rowNum}: Setting route link to ${name} at ${url} with formula ${formula}`);
             this.schedule.saveRow(this);
         }
@@ -346,7 +346,7 @@ const Schedule = function () {
             if (url === text) {
                 try {
                     let route = getRouteJson();
-                    let name = `${(route.user_id !== getGlobals["SCCCC_USER_ID"]) ? getGlobals["FOREIGN_PREFIX"] + ' ': ''}` + route.name;
+                    let name = `${(route.user_id !== getGlobals().SCCCC_USER_ID) ? getGlobals().FOREIGN_PREFIX + ' ': ''}` + route.name;
                     // Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
                     this.setRouteLink(name, url);
                 } catch (e) {
