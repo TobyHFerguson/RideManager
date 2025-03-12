@@ -7,9 +7,17 @@ jest.mock('../../src/Groups', () => ({
   })) // Mock other functions if needed
 }));
 
+jest.mock('../../src/Globals', () => ({
+  getGlobals: jest.fn(() => ({
+    RIDE_LEADER_TBD_ID: 9999,
+    RSVP_BASE_URL: 'https://tinyurl.com/3k29mpdr'
+}))
+}));
+
+
+
 const managedEvent = require('../fixtures/managedEvent.js');
 const EventFactory = require('../../src/EventFactory.js');
-const Globals = require('../../src/Globals.js');
 const managedRwgpsEvent = require('../fixtures/managedRwgpsEvent.json').event;
 const organizers = [{ id: 302732, text: "Toby Ferguson" }];
 const dates = require('../../submodules/Dates/src/dates');

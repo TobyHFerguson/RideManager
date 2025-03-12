@@ -37,6 +37,6 @@ function getGlobals() {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { getGlobals, Globals };
+  module.exports = { getGlobals };
 }
 
