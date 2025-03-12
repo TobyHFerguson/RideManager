@@ -1,5 +1,5 @@
 if (typeof require !== 'undefined') {
-    var Event = require('./Event');
+     (Event = require('./Event'));
      var dates = require('../submodules/Dates/src/dates');
      var { _, getGroupNames } = require('./Groups');
     var { getGlobals } = require('./Globals');

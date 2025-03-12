@@ -3,7 +3,7 @@ function getGroupNames() {
 }
 
 function getGroupSpecs() {
-  const cache = CacheService.getScriptCache();
+  const cache = CacheService.getDocumentCache();
   let cachedGroups = cache.get('groups');
   if (cachedGroups) {
     return JSON.parse(cachedGroups);
@@ -13,7 +13,7 @@ function getGroupSpecs() {
 }
 
 function initializeGroupCache_() {
-  const cache = CacheService.getScriptCache();
+  const cache = CacheService.getDocumentCache();
   let groups = getGroupsFromSheet_();
   cache.put('groups', JSON.stringify(groups), 21600); // Cache for 6 hours
   return groups;

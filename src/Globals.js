@@ -13,7 +13,7 @@ function initializeGlobals_() {
     }, {});
 
     const globalsString = JSON.stringify(globals);
-    const cache = CacheService.getScriptCache();
+    const cache = CacheService.getDocumentCache();
     cache.put('Globals', globalsString, 21600); // 21600 seconds = 6 hours
     return globals;
 }
@@ -21,7 +21,7 @@ function initializeGlobals_() {
 function getGlobals() {
   console.log('Entering getGlobals function');
   try {
-    const cache = CacheService.getScriptCache();
+    const cache = CacheService.getDocumentCache();
     const globals = cache.get('Globals');
     if (globals) {
         console.log('Globals object from cache:', globals);

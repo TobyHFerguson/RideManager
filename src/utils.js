@@ -51,7 +51,7 @@ function printCallerError(...args) {
 }
 
 function getRoute(url) {
-  const cache = CacheService.getScriptCache(); // See https://developers.google.com/apps-script/reference/cache
+  const cache = CacheService.getDocumentCache(); // See https://developers.google.com/apps-script/reference/cache
   let cachedRoute = cache.get(url);
   if (cachedRoute) {
     return JSON.parse(cachedRoute);
