@@ -1,4 +1,4 @@
-const Event = require("../src/Event");
+const Event = require("../../src/Event");
 
 const { test, describe, expect } = require('@jest/globals');
 

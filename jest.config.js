@@ -3,5 +3,6 @@ module.exports = {
   verbose: true,
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  testMatch: ['**/test/**/*.js']
+  roots: ['<rootDir>/test'],
+  testMatch: ['**/__tests__/**/*.test.js'],
 };

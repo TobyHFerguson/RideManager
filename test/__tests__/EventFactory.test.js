@@ -1,5 +1,5 @@
 // Mock the entire Groups module
-jest.mock('../src/Groups', () => ({
+jest.mock('../../src/Groups', () => ({
   getGroupNames: jest.fn(() => ['A', 'B', 'C', 'D']),
   getGroupSpecs: jest.fn(() => ({
     A: { Template: 'Template A', MIN_LENGTH: 10 },
@@ -7,12 +7,12 @@ jest.mock('../src/Groups', () => ({
   })) // Mock other functions if needed
 }));
 
-const managedEvent = require('./fixtures/managedEvent.js');
-const EventFactory = require('../src/EventFactory.js');
-const Globals = require('../src/Globals.js');
-const managedRwgpsEvent = require('./fixtures/managedRwgpsEvent.json').event;
+const managedEvent = require('../fixtures/managedEvent.js');
+const EventFactory = require('../../src/EventFactory.js');
+const Globals = require('../../src/Globals.js');
+const managedRwgpsEvent = require('../fixtures/managedRwgpsEvent.json').event;
 const organizers = [{ id: 302732, text: "Toby Ferguson" }];
-const dates = require('../submodules/Dates/src/dates');
+const dates = require('../../submodules/Dates/src/dates');
 
 
 
