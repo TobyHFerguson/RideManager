@@ -11,7 +11,7 @@ const RideManager = (function () {
     }
     function getCalendarId(groupName) {
         try {
-            return getGroupSpecs()[groupName].CALENDAR_ID;
+            return getGroupSpecs()[groupName].GoogleCalendarId;
         } catch {
             throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupnames().join(', ')}`);
         }
@@ -76,7 +76,7 @@ const RideManager = (function () {
                 rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
                 row.setRideLink(event.name, new_event_url);
                 rwgps.unTagEvents([new_event_url], ["template"]);
-                const endTime = dates.addMinutes(row.StartTime, 480);
+                const endTime = dates.addMinutes(row.StartTime, getGlobals().DEFAULTRIDEDURATION*60);
                 const eventLink = `<a href="${new_event_url}">${event.name}</a>`;
                 GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, endTime, eventLink);
             }
