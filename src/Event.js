@@ -2,7 +2,9 @@
 if (typeof require !== 'undefined') {
   var dates = require('../submodules/Dates/src/dates');
 }
-// Managed names can be of the form:
+
+class Event {
+  // Managed names can be of the form:
 // Mon A 1/1 10:00 AM Ride route name
 // Mon A 1/1 10:00 route name
 // Mon A 1/1 10:00 AM Ride [12] route name
@@ -16,13 +18,12 @@ if (typeof require !== 'undefined') {
 
 // In addition, there can be an optional 'CANCELLED: ' prefix.
 
-function makeManagedRE(groupNames = []) {
+static makeManagedRE(groupNames = []) {
   const grps = groupNames.join('|');
   const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)\\[(?<count>\\d{1,2})\\](?<suffix>.*$)`;
   const MANAGED_RE = new RegExp(MANAGED_RE_STR);
   return MANAGED_RE;
 }
-class Event {
   /**
    * Create the name of a Managed Event. A Managed Event is one where this code is
    * responsible for all parts of the name and the Event body.
@@ -57,12 +58,12 @@ class Event {
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEventName(eventName, groupNames) {
-    const RE = makeManagedRE(groupNames);
+    const RE = Event.makeManagedRE(groupNames);
     return !eventName || RE.test(eventName);
   }
 
   static updateCountInName(name, count, groupNames) {
-    let match = makeManagedRE(groupNames).exec(name);
+    let match = Event.makeManagedRE(groupNames).exec(name);
     if (match) {
       return `${match.groups.cancelled}${match.groups.meta}[${count}]${match.groups.suffix}`.trim();
     }
@@ -106,7 +107,7 @@ class Event {
     return result;
   }
   static getGroupName(name, groupNames) {
-    const match = makeManagedRE(groupNames).exec(name);
+    const match = Event.makeManagedRE(groupNames).exec(name);
     if (match) {
       return match.groups.meta.split(' ')[1];
     }
