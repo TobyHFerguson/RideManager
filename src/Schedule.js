@@ -147,7 +147,7 @@ const Schedule = function () {
                 const range = row.range;
                 const values = row.values;
                 const formulas = row.formulas;
-                const merged = values[0].map((v, i) => formulas[0][i] ? formulas[0][i] : v); 
+                const merged = values[0].map((v, i) => formulas[0][i] ? formulas[0][i] : v);
                 range.setValues([merged])
             });
             this.storeFormulas(); // Ensure formulas are persisted after saving the row
@@ -223,7 +223,7 @@ const Schedule = function () {
             return this.convertRangeToRows(range)[0];
         }
 
-        
+
 
     }
 
@@ -243,6 +243,11 @@ const Schedule = function () {
 
         get StartDate() { return this.schedule.getStartDate(this.myRowValues) }
         get StartTime() { return this.schedule.getStartTime(this.myRowValues); }
+        get EndTime() {
+            const duration = this.myRowValues[this.schedule.getColumnIndex(getGlobals().DURATIONCOLUMNNAME)] || getGlobals().DEFAULTRIDEDURATION;
+            const end = new Date(this.StartTime.getTime() + duration * 60 * 60 * 1000);
+            return end;
+        }
         get Group() { return this.schedule.getGroup(this.myRowValues); }
 
         get RouteName() {
@@ -274,7 +279,7 @@ const Schedule = function () {
             return url;
         }
         get GoogleEventId() { return this.myRowValues[this.schedule.getColumnIndex(getGlobals().GOOGLEEVENTIDCOLUMNNAME)]; }
-        set GoogleEventId(id) { this.myRowValues[this.schedule.getColumnIndex(getGlobals().GOOGLEEVENTIDCOLUMNNAME)] = id; this.schedule.saveRow(this);}
+        set GoogleEventId(id) { this.myRowValues[this.schedule.getColumnIndex(getGlobals().GOOGLEEVENTIDCOLUMNNAME)] = id; this.schedule.saveRow(this); }
         get Location() { return this.schedule.getLocation(this.myRowValues); }
         get Address() { return this.schedule.getAddress(this.myRowValues); }
 
@@ -349,7 +354,7 @@ const Schedule = function () {
             if (url === text) {
                 try {
                     let route = getRouteJson();
-                    let name = `${(route.user_id !== getGlobals().SCCCC_USER_ID) ? getGlobals().FOREIGN_PREFIX + ' ': ''}` + route.name;
+                    let name = `${(route.user_id !== getGlobals().SCCCC_USER_ID) ? getGlobals().FOREIGN_PREFIX + ' ' : ''}` + route.name;
                     // Logger.log(`Row ${this.rowNum}: Linking ${name} to ${url}`);
                     this.setRouteLink(name, url);
                 } catch (e) {
