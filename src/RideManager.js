@@ -76,22 +76,29 @@ const RideManager = (function () {
                 rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
                 row.setRideLink(event.name, new_event_url);
                 rwgps.unTagEvents([new_event_url], ["template"]);
-                const endTime = dates.addMinutes(row.StartTime, getGlobals().DEFAULTRIDEDURATION*60);
+                const endTime = dates.addMinutes(row.StartTime, getGlobals().DEFAULTRIDEDURATION * 60);
                 const eventLink = `<a href="${new_event_url}">${event.name}</a>`;
-                GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, endTime, eventLink);
+                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, endTime, eventLink);
+                row.GoogleEventId = eventId;
             }
 
             rows.map(row => schedule_row(row, rwgps));
         },
         unscheduleRows: function (rows, rwgps) {
             try {
-                rwgps.batch_delete_events(rows.map(row => { let url = row.RideURL; row.deleteRideLink(); return url; }));
+                const rideUrlsToBeDeleted = rows.map(row => row.RideURL);
+                rwgps.batch_delete_events(rideUrlsToBeDeleted);
             } catch (err) {
                 // Ignore the case where the event has already been deleted in rwgps land since we want it to be deleted anyway!
                 if (err.message.indexOf('Request failed for https://ridewithgps.com returned code 404. Truncated server response: {"success":0,"message":"Record not found"} (use muteHttpExceptions option to examine full response)') === -1) {
                     throw err;
                 }
             }
+            rows.forEach(row => {
+                GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId); 
+                row.GoogleEventId = '';
+                row.deleteRideLink(); 
+            });
         },
         /**
          * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector

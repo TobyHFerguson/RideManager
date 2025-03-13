@@ -10,7 +10,16 @@ class GoogleCalendarManager {
             description: description
         });
 
-        console.log("GoogleCalendarEvent created:", event);
-       
+        console.log("GoogleCalendarEvent created:", event.getId());
+        return event.getId();
     }
+    static deleteEvent(calendarId, eventId) {   
+        const calendar = CalendarApp.getCalendarById(calendarId);
+        if (!calendar) {
+            console.error('Calendar not found.');
+            return;
+        }
+        const event = calendar.getEventById(eventId);
+        if (event) event.deleteEvent();
+    }       
 }
