@@ -170,6 +170,9 @@ describe('Event Tests', () => {
     });
   });
   describe('getGroupName', () => {
+    test ('getGroupName - Mon C (1/12 10:00) [0] AV - Palm Beach SP via Watsonville', () => {
+      expect(Event.getGroupName("Mon C (1/12 10:00) [0] AV - Palm Beach SP via Watsonville", groupNames)).toBe("C");
+    });
     test('getGroupName - Tue B (1/1 10:00 AM) [3] fargle', () => {
       expect(Event.getGroupName("Tue B (1/1 10:00 AM) [3] fargle", groupNames)).toBe("B");
     });

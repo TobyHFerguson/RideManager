@@ -13,15 +13,22 @@ class GoogleCalendarManager {
         console.log("GoogleCalendarEvent created:", event.getId());
         return event.getId();
     }
-    static deleteEvent(calendarId, eventId) {   
+    static deleteEvent(calendarId, eventId) {
         const calendar = CalendarApp.getCalendarById(calendarId);
         if (!calendar) {
             console.error('Calendar not found.');
             return;
         }
         const event = calendar.getEventById(eventId);
-        if (event) event.deleteEvent();
-    } 
+        try {
+            if (event) event.deleteEvent();
+
+        } catch (error) {
+            if (!error.message.contains('The calendar event does not exist, or it has already been deleted.')) {
+                throw error
+            }
+        }
+    }
     static updateEvent(calendarId, eventId, title, startTime, endTime, description) {
         const calendar = CalendarApp.getCalendarById(calendarId);
         if (!calendar) {
@@ -34,5 +41,5 @@ class GoogleCalendarManager {
             event.setTime(startTime, endTime);
             event.setDescription(description);
         }
-    }     
+    }
 }

@@ -65,7 +65,7 @@ const RideManager = (function () {
                     try {
                         return getGroupSpecs()[groupName].TEMPLATE
                     } catch {
-                        throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupnames().join(', ')}`);
+                        throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupNames().join(', ')}`);
                     }
                 }
 
@@ -132,17 +132,18 @@ const RideManager = (function () {
             console.timeEnd('updateRiderCounts');
         },
         updateRows: function (rows, rwgps) {
+            const names = getGroupNames();
             function updateRow(row) {
                 let event
-                const originalGroup = Event.getGroupName(row.RideName);
-                if (!Event.managedEventName(row.RideName, getGroupNames())) {
+                const originalGroup = Event.getGroupName(row.RideName, names);
+                if (!Event.managedEventName(row.RideName, names)) {
                     event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
                 } else {
                     const event_id = _extractEventID(row.RideURL);
                     event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
                     rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
                 }
-                event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), getGroupNames());
+                event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), names);
                 row.setRideLink(event.name, row.RideURL);
                 rwgps.edit_event(row.RideURL, event);
                 if (originalGroup === row.Group) {
