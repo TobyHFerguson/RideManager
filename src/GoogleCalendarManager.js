@@ -10,8 +10,7 @@ class GoogleCalendarManager {
             description: description
         });
 
-        console.log("Test event created:", event.getId());
-        const eventUrl = `https://www.google.com/calendar/event?eid=${event.getId()}`;
-        console.log("Event URL:", eventUrl);
+        console.log("GoogleCalendarEvent created:", event);
+       
     }
 }

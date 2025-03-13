@@ -19,15 +19,15 @@ function initializeGlobals_() {
 }
 
 function getGlobals() {
-  console.log('Entering getGlobals function');
+  // console.log('Entering getGlobals function');
   try {
     const cache = CacheService.getDocumentCache();
     const globals = cache.get('Globals');
     if (globals) {
-        console.log('Globals object from cache:', globals);
+        // console.log('Globals object from cache:', globals);
         return JSON.parse(globals);
     } else {
-        console.log('Globals not found in cache, initializing globals');
+        // console.log('Globals not found in cache, initializing globals');
         return initializeGlobals_();
     }
   } catch (error) {

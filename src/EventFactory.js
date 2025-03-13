@@ -7,7 +7,6 @@ if (typeof require !== 'undefined') {
 
 const EventFactory = function () {
     const globals = getGlobals();
-    console.log('Globals in EventFactory:', globals);
 
     /**
      * Get a string that describes the ride

@@ -93,7 +93,6 @@ function exampleProcess(manager, errorSteps) {
 // Sidebar UI-related functions
 function getProgress() {
   let progress = JSON.parse(PropertiesService.getScriptProperties().getProperty('messages') || '[]');
-  console.log('getProgress returned: ', progress)
   return progress;
 }
 
