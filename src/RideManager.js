@@ -77,8 +77,8 @@ const RideManager = (function () {
                 row.setRideLink(event.name, new_event_url);
                 rwgps.unTagEvents([new_event_url], ["template"]);
                 const endTime = dates.addMinutes(row.StartTime, getGlobals().DEFAULTRIDEDURATION * 60);
-                const eventLink = `<a href="${new_event_url}">${event.name}</a>`;
-                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, endTime, eventLink);
+                const description = `<a href="${new_event_url}">${event.name}</a>`;
+                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, endTime, description);
                 row.GoogleEventId = eventId;
             }
 
@@ -95,9 +95,9 @@ const RideManager = (function () {
                 }
             }
             rows.forEach(row => {
-                GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId); 
+                GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId);
                 row.GoogleEventId = '';
-                row.deleteRideLink(); 
+                row.deleteRideLink();
             });
         },
         /**
@@ -134,6 +134,7 @@ const RideManager = (function () {
         updateRows: function (rows, rwgps) {
             function updateRow(row) {
                 let event
+                const originalGroup = Event.getGroupName(row.RideName);
                 if (!Event.managedEventName(row.RideName, getGroupNames())) {
                     event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
                 } else {
@@ -144,6 +145,17 @@ const RideManager = (function () {
                 event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), getGroupNames());
                 row.setRideLink(event.name, row.RideURL);
                 rwgps.edit_event(row.RideURL, event);
+                if (originalGroup === row.Group) {
+                    const endTime = dates.addMinutes(row.StartTime, getGlobals().DEFAULTRIDEDURATION * 60);
+                    const description = `<a href="${row.RideURL}">${event.name}</a>`;
+                    GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, event.start_time, endTime, description);
+                } else {
+                    GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
+                    const endTime = dates.addMinutes(row.StartTime, getGlobals().DEFAULTRIDEDURATION * 60);
+                    const description = `<a href="${row.RideURL}">${event.name}</a>`;
+                    const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, endTime, description);
+                    row.GoogleEventId = eventId;
+                }
             }
 
             rows.forEach(row => updateRow(row));

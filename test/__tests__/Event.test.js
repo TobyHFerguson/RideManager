@@ -95,7 +95,7 @@ describe('Event Tests', () => {
     test('updateCountInName - Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos to Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos', () => {
       expect(Event.updateCountInName("Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos", 12, groupNames)).toBe("Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos");
     });
-  
+
     test('updateRiderCount - foobar [12] to foobar [9]', () => {
       const event = new Event();
       event.name = "foobar [12]";
@@ -103,7 +103,7 @@ describe('Event Tests', () => {
       expect(event.name).toBe("foobar [9]");
       expect(changed).toBe(true);
     });
-  
+
     test('updateRiderCount - CANCELLED: foobar [12] to CANCELLED: foobar [9]', () => {
       const event = new Event();
       event.name = "CANCELLED: foobar [12]";
@@ -111,7 +111,7 @@ describe('Event Tests', () => {
       expect(event.name).toBe("CANCELLED: foobar [9]");
       expect(changed).toBe(true);
     });
-  
+
     test('updateRiderCount - foobar [12] to foobar [12]', () => {
       const event = new Event();
       event.name = "foobar [12]";
@@ -119,7 +119,7 @@ describe('Event Tests', () => {
       expect(event.name).toBe("foobar [12]");
       expect(changed).toBe(false);
     });
-  
+
     test('updateRiderCount - Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos to Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos', () => {
       const event = new Event();
       event.name = "Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos";
@@ -127,7 +127,7 @@ describe('Event Tests', () => {
       expect(event.name).toBe("Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos");
       expect(changed).toBe(true);
     });
-  
+
     test('updateRiderCount - CANCELLED: Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos to CANCELLED: Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos', () => {
       const event = new Event();
       event.name = "CANCELLED: Sun A (1/1 10:00) [0] SCP - Seascape/Corralitos";
@@ -135,7 +135,7 @@ describe('Event Tests', () => {
       expect(event.name).toBe("CANCELLED: Sun A (1/1 10:00) [12] SCP - Seascape/Corralitos");
       expect(changed).toBe(true);
     });
-  
+
     test('updateRiderCount - Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos to Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos', () => {
       const event = new Event();
       event.name = "Sun A (1/1 10:00) [11] SCP - Seascape/Corralitos";
@@ -167,6 +167,79 @@ describe('Event Tests', () => {
       event.name = "CANCELLED: Some Name";
       event.reinstate();
       expect(event.name).toBe("Some Name");
+    });
+  });
+  describe('getGroupName', () => {
+    test('getGroupName - Tue B (1/1 10:00 AM) [3] fargle', () => {
+      expect(Event.getGroupName("Tue B (1/1 10:00 AM) [3] fargle", groupNames)).toBe("B");
+    });
+
+    test('getGroupName - Sat B (3/15 10:00) [0] CCC - San Jose/Soquel, Rodeo, Branciforte, Happy Valley, Man View, Laurel Glen', () => {
+      expect(Event.getGroupName("Sat B (3/15 10:00) [0] CCC - San Jose/Soquel, Rodeo, Branciforte, Happy Valley, Man View, Laurel Glen", groupNames)).toBe("B");
+    });
+
+    test('getGroupName - CANCELLED: Tue B (1/1 10:00 AM) [3] fargle', () => {
+      expect(Event.getGroupName("CANCELLED: Tue B (1/1 10:00 AM) [3] fargle", groupNames)).toBe("B");
+    });
+
+    test('getGroupName - Tue B (11/15 10:00 AM) [3]', () => {
+      expect(Event.getGroupName("Tue B (11/15 10:00 AM) [3]", groupNames)).toBe("B");
+    });
+
+    test('getGroupName - CANCELLED: Tue B (11/15 10:00 AM) [3]', () => {
+      expect(Event.getGroupName("CANCELLED: Tue B (11/15 10:00 AM) [3]", groupNames)).toBe("B");
+    });
+
+    test('getGroupName - Sat A (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("Sat A (12/31 10:00) [3]", groupNames)).toBe("A");
+    });
+
+    test('getGroupName - CANCELLED: Sat A (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("CANCELLED: Sat A (12/31 10:00) [3]", groupNames)).toBe("A");
+    });
+
+    test('getGroupName - Sat O1 (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("Sat O1 (12/31 10:00) [3]", groupNames)).toBe("O1");
+    });
+
+    test('getGroupName - CANCELLED: Sat O1 (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("CANCELLED: Sat O1 (12/31 10:00) [3]", groupNames)).toBe("O1");
+    });
+
+    test('getGroupName - Sat O2 (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("Sat O2 (12/31 10:00) [3]", groupNames)).toBe("O2");
+    });
+
+    test('getGroupName - CANCELLED: Sat O2 (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("CANCELLED: Sat O2 (12/31 10:00) [3]", groupNames)).toBe("O2");
+    });
+
+    test('getGroupName - Sat O3 (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("Sat O3 (12/31 10:00) [3]", groupNames)).toBe("O3");
+    });
+
+    test('getGroupName - CANCELLED: Sat O3 (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("CANCELLED: Sat O3 (12/31 10:00) [3]", groupNames)).toBe("O3");
+    });
+
+    test('getGroupName - FARGLE Sat A (12/31 10:00) [3]', () => {
+      expect(Event.getGroupName("FARGLE Sat A (12/31 10:00) [3]")).toBe("");
+    });
+
+    test('getGroupName - My Non Managed Ride [3]', () => {
+      expect(Event.getGroupName("My Non Managed Ride [3]")).toBe("");
+    });
+
+    test('getGroupName - empty string', () => {
+      expect(Event.getGroupName("")).toBe("");
+    });
+
+    test('getGroupName - undefined', () => {
+      expect(Event.getGroupName(undefined)).toBe("");
+    });
+
+    test('getGroupName - foobar [12]', () => {
+      expect(Event.getGroupName("foobar [12]")).toBe("");
     });
   });
 });

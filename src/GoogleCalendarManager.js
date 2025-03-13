@@ -21,5 +21,18 @@ class GoogleCalendarManager {
         }
         const event = calendar.getEventById(eventId);
         if (event) event.deleteEvent();
-    }       
+    } 
+    static updateEvent(calendarId, eventId, title, startTime, endTime, description) {
+        const calendar = CalendarApp.getCalendarById(calendarId);
+        if (!calendar) {
+            console.error('Calendar not found.');
+            return;
+        }
+        const event = calendar.getEventById(eventId);
+        if (event) {
+            event.setTitle(title);
+            event.setTime(startTime, endTime);
+            event.setDescription(description);
+        }
+    }     
 }

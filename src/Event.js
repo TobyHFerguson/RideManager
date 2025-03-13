@@ -1,5 +1,5 @@
 
-if(typeof require !== 'undefined') {
+if (typeof require !== 'undefined') {
   var dates = require('../submodules/Dates/src/dates');
 }
 // Managed names can be of the form:
@@ -17,7 +17,7 @@ if(typeof require !== 'undefined') {
 // In addition, there can be an optional 'CANCELLED: ' prefix.
 
 function makeManagedRE(groupNames = []) {
- const grps = groupNames.join('|');
+  const grps = groupNames.join('|');
   const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)\\[(?<count>\\d{1,2})\\](?<suffix>.*$)`;
   const MANAGED_RE = new RegExp(MANAGED_RE_STR);
   return MANAGED_RE;
@@ -101,9 +101,16 @@ class Event {
     return currentName !== this.name
   }
 
-  managedEvent(groupNames) { 
-     const result = Event.managedEventName(this.name, groupNames); 
+  managedEvent(groupNames) {
+    const result = Event.managedEventName(this.name, groupNames);
     return result;
+  }
+  static getGroupName(name, groupNames) {
+    const match = makeManagedRE(groupNames).exec(name);
+    if (match) {
+      return match.groups.meta.split(' ')[1];
+    }
+    return '';
   }
 }
 
