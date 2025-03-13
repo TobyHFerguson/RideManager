@@ -156,7 +156,7 @@ const Schedule = function () {
         }
 
         deleteRideLink(rowNum) {
-            this.crSheet.getRange(rowNum, this.getColumnIndex(getGlobals().RIDECOLUMNNAME) + 1).clear({ contentsOnly: false });
+            this.crSheet.getRange(rowNum, this.getColumnIndex(getGlobals().RIDECOLUMNNAME) + 1).clear();
         }
 
         convertRangeToRows(range) {
@@ -291,7 +291,9 @@ const Schedule = function () {
         }
 
         deleteRideLink() {
-            this.schedule.deleteRideLink(this.rowNum);
+            this.myRowFormulas[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)] = '';
+            this.myRowValues[this.schedule.getColumnIndex(getGlobals().RIDECOLUMNNAME)] = '';
+            this.schedule.saveRow(this);
         }
 
         setRouteLink(name, url) {
