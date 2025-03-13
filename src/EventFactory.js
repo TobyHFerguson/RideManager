@@ -46,7 +46,6 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
          * @returns 
          */
         newEvent: function (row, organizers, event_id) {
-            console.log('Creating new event with row:', row, 'organizers:', organizers, 'event_id:', event_id);
             if (!organizers || !organizers.length) {
                 organizers = [{ id: globals.RIDE_LEADER_TBD_ID, text: globals.RIDE_LEADER_TBD_NAME }];
             }
@@ -61,11 +60,9 @@ Note: In a browser use the "Go to route" link below to open up the route.`;
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
             let meet_time = dates.addMinutes(row.StartTime, -15);
             event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime, event_id);
-            console.log('Created event:', event);
             return event;
         },
         fromRwgpsEvent: function (rwgpsEvent) {
-            console.log('Creating event from RWGPS event:', rwgpsEvent);
             const event = new Event();
             event.all_day = rwgpsEvent.all_day ? "1" : "0";
             event.desc = rwgpsEvent.desc ? rwgpsEvent.desc.replaceAll('\r', '') : '';
