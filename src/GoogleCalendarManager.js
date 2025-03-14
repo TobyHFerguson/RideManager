@@ -25,7 +25,7 @@ class GoogleCalendarManager {
             if (event) event.deleteEvent();
 
         } catch (error) {
-            if (!error.message.contains('The calendar event does not exist, or it has already been deleted.')) {
+            if (!error.message.includes('The calendar event does not exist, or it has already been deleted.')) {
                 throw error
             }
         }
