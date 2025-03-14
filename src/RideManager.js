@@ -152,7 +152,12 @@ const RideManager = (function () {
                 rwgps.edit_event(row.RideURL, event);
                 if (originalGroup === row.Group) {
                     const description = `<a href="${row.RideURL}">${event.name}</a>`;
-                    GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, event.start_time, row.EndTime, getLocation(row), description);
+                    if (row.GoogleCalendarId) {
+                        GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, event.start_time, row.EndTime, getLocation(row), description);
+                    } else {
+                        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+                        row.GoogleEventId = eventId;
+                    }
                 } else {
                     GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
                     const description = `<a href="${row.RideURL}">${event.name}</a>`;
