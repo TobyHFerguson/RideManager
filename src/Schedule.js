@@ -14,10 +14,10 @@ const Schedule = function () {
             this.rows = new Set();
         }
 
-        _getColumnRange(columnName, rowNum = 2, numCols = 0) {
-            numCols = numCols || this.crSheet.getLastColumn() - 1;
+        _getColumnRange(columnName, rowNum = 2, numRows = 0) {
+            numRows = numRows || this.crSheet.getLastRow() - 1;
             const columnIndex = this.getColumnIndex(columnName) + 1;
-            return this.crSheet.getRange(rowNum, columnIndex, numCols);
+            return this.crSheet.getRange(rowNum, columnIndex, numRows);
         }
 
         _getRideColumnRange(rowNum = 2, numCols = 0) {
@@ -50,7 +50,7 @@ const Schedule = function () {
             const indexNum = rowNum - 2; // -2 because the first row is the header row & the first row of data is row 2
             const routeFormula = JSON.parse(PropertiesService.getDocumentProperties().getProperty('routeColumnFormulas'))[indexNum];
             // Logger.log(`route Formula being restored to row ${rowNum}: ${JSON.stringify(routeFormula)}`);
-            this._getRouteColumnRange(rowNum, 1).setFormula(routeFormula);
+                this._getRouteColumnRange(rowNum, 1).setFormula(routeFormula);
         }
 
         restoreRideFormula(rowNum) {
