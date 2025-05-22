@@ -11,24 +11,7 @@ if (typeof require !== 'undefined') {
  * @param {Function} command command to execute
  */
 
-function importSelectedRoutes() {
-  MenuFunctions.importSelectedRoutes();
-}
-function updateRiderCount() {
-  MenuFunctions.updateRiderCount();
-}
-function updateSelectedRides() {
-  MenuFunctions.updateSelectedRides();
-}
-function updateRiderCounts() {
-  MenuFunctions.updateRiderCount();
-}
-function scheduleSelectedRides() {
-  MenuFunctions.scheduleSelectedRides();
-}
-function unScheduleSelectedRides() {
-  MenuFunctions.unscheduleSelectedRides();
-}
+
 
 const MenuFunctions = (() => {
   function executeCommand(command, force = false) {
@@ -39,18 +22,27 @@ const MenuFunctions = (() => {
     const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, globals);
     const rwgps = RWGPSLib.newRWGPS(rwgpsService);
     let rows = Schedule.getSelectedRows();
-    console.info('User %s', Session.getActiveUser());
+    const rowNumbers = rows.map(row => row.rowNum).join(", ");
+    console.info(`'User ${Session.getActiveUser()} executing ${command.name} on row numbers: ${rowNumbers}`);
     try {
       command(rows, rwgps, force);
     } catch (e) {
-      console.error(e);
+      if (e instanceof AggregateError) {
+        for (const error of e.errors) {
+          console.error(error.stack);
+        }
+      } else if (e instanceof Error) {
+        console.error(e.stack);
+      } else {
+        console.error("Unknown error: ", e);
+      }
       throw (e);
     }
     finally {
       Schedule.save();
     }
 
-    
+
   }
   return Object.freeze({
     cancelSelectedRides(force = false) {

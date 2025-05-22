@@ -21,72 +21,116 @@ const RideManager = (function () {
         return route ? `${route.first_lat},${route.first_lng}` : '';
     }
 
-    return {
-        cancelRows: function (rows, rwgps) {
-            function cancel(row, rwgps) {
-                const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
-                event.cancel();
-                row.setRideLink(event.name, row.RideURL);
-                rwgps.edit_event(row.RideURL, event)
+    function cancelRow_(row, rwgps) {
+        const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+        event.cancel();
+        row.setRideLink(event.name, row.RideURL);
+        rwgps.edit_event(row.RideURL, event)
+    }
+    function importRow_(row, rwgps) {
+        let route = {
+            url: row.RouteURL ? row.RouteURL : row.RouteName,
+            //TODO use dates as native objects, not strings
+            expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), getGlobals().EXPIRY_DELAY)),
+            tags: [row.Group]
+        }
+        let rn = row.RouteName;
+        let ru = row.RouteURL;
+        if (rn !== ru) route.name = row.RouteName;
+
+        // Delete any foreign prefix in the name
+        if (route.name.startsWith(getGlobals().FOREIGN_PREFIX)) route.name = route.name.substring(getGlobals().FOREIGN_PREFIX.length);
+        const url = rwgps.importRoute(route);
+        row.setRouteLink(route.name || url, url);
+        //TODO remove dependency on Schedule
+        row.linkRouteURL();
+    }
+
+
+    function reinstateRow_(row, rwgps) {
+        const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+        event.reinstate();
+        row.setRideLink(event.name, row.RideURL);
+        rwgps.edit_event(row.RideURL, event)
+    }
+
+    function schedule_row_(row, rwgps) {
+        function get_template_(groupName) {
+            try {
+                return getGroupSpecs()[groupName].TEMPLATE
+            } catch {
+                throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupNames().join(', ')}`);
             }
+        }
 
-            rows.forEach(row => cancel(row, rwgps));
-        },
-        importRows: function (rows, rwgps) {
-            function importRow(row, rwgps) {
-                let route = {
-                    url: row.RouteURL ? row.RouteURL : row.RouteName,
-                    //TODO use dates as native objects, not strings
-                    expiry: dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), getGlobals().EXPIRY_DELAY)),
-                    tags: [row.Group]
-                }
-                let rn = row.RouteName;
-                let ru = row.RouteURL;
-                if (rn !== ru) route.name = row.RouteName;
+        const new_event_url = rwgps.copy_template_(get_template_(row.Group));
+        const event_id = _extractEventID(new_event_url);
+        const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
+        rwgps.edit_event(new_event_url, event);
+        rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
+        row.setRideLink(event.name, new_event_url);
+        rwgps.unTagEvents([new_event_url], ["template"]);
+        const description = `<a href="${new_event_url}">${event.name}</a>`;
+        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+        row.GoogleEventId = eventId;
+    }
+    function updateRow_(row, rwgps) {
+        const names = getGroupNames();
 
-                // Delete any foreign prefix in the name
-                if (route.name.startsWith(getGlobals().FOREIGN_PREFIX)) route.name = route.name.substring(getGlobals().FOREIGN_PREFIX.length);
-                const url = rwgps.importRoute(route);
-                row.setRouteLink(route.name || url, url);
-                //TODO remove dependency on Schedule
-                row.linkRouteURL();
-            }
-
-            rows.forEach(row => importRow(row, rwgps));
-        },
-        reinstateRows: function (rows, rwgps) {
-            function reinstate(row, rwgps) {
-                const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
-                event.reinstate();
-                row.setRideLink(event.name, row.RideURL);
-                rwgps.edit_event(row.RideURL, event)
-            }
-
-            rows.forEach(row => reinstate(row, rwgps));
-        },
-        scheduleRows: function (rows, rwgps) {
-            function schedule_row(row, rwgps) {
-                function get_template_(groupName) {
-                    try {
-                        return getGroupSpecs()[groupName].TEMPLATE
-                    } catch {
-                        throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupNames().join(', ')}`);
-                    }
-                }
-
-                const new_event_url = rwgps.copy_template_(get_template_(row.Group));
-                const event_id = _extractEventID(new_event_url);
-                const event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
-                rwgps.edit_event(new_event_url, event);
-                rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
-                row.setRideLink(event.name, new_event_url);
-                rwgps.unTagEvents([new_event_url], ["template"]);
-                const description = `<a href="${new_event_url}">${event.name}</a>`;
+        let event
+        const originalGroup = Event.getGroupName(row.RideName, names);
+        if (!Event.managedEventName(row.RideName, names)) {
+            event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+        } else {
+            const event_id = _extractEventID(row.RideURL);
+            event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
+            rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
+        }
+        event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), names);
+        row.setRideLink(event.name, row.RideURL);
+        rwgps.edit_event(row.RideURL, event);
+        if (originalGroup === row.Group) {
+            const description = `<a href="${row.RideURL}">${event.name}</a>`;
+            if (row.GoogleEventId) {
+                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, event.start_time, row.EndTime, getLocation(row), description);
+            } else {
                 const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
                 row.GoogleEventId = eventId;
             }
+        } else {
+            GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
+            const description = `<a href="${row.RideURL}">${event.name}</a>`;
+            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+            row.GoogleEventId = eventId;
+        }
+    }
 
-            rows.map(row => schedule_row(row, rwgps));
+    function processRows_(rows, rwgps, fn) {
+        const errors = [];
+        rows.forEach(row => {
+            try {
+                fn(row, rwgps);
+            } catch (e) {
+                e.message = `Error processing row ${row.rowNum}: ${e.message}`;
+                errors.push(e);
+            }
+        });
+        if (errors.length) {
+            throw new AggregateError(errors, `Errors processing rows: ${errors.map(e => e.message).join(', ')}`);
+        }
+    }
+    return {
+        cancelRows: function (rows, rwgps) {
+            processRows_(rows, rwgps, cancelRow_)
+        },
+        importRows: function (rows, rwgps) {
+            processRows_(rows, rwgps, importRow_);
+        },
+        reinstateRows: function (rows, rwgps) {
+            processRows_(rows, rwgps, reinstateRow_);
+        },
+        scheduleRows: function (rows, rwgps) {
+            processRows_(rows, rwgps, schedule_row_);
         },
         unscheduleRows: function (rows, rwgps) {
             try {
@@ -136,37 +180,7 @@ const RideManager = (function () {
             console.timeEnd('updateRiderCounts');
         },
         updateRows: function (rows, rwgps) {
-            const names = getGroupNames();
-            function updateRow(row) {
-                let event
-                const originalGroup = Event.getGroupName(row.RideName, names);
-                if (!Event.managedEventName(row.RideName, names)) {
-                    event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
-                } else {
-                    const event_id = _extractEventID(row.RideURL);
-                    event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
-                    rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
-                }
-                event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), names);
-                row.setRideLink(event.name, row.RideURL);
-                rwgps.edit_event(row.RideURL, event);
-                if (originalGroup === row.Group) {
-                    const description = `<a href="${row.RideURL}">${event.name}</a>`;
-                    if (row.GoogleEventId) {
-                        GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, event.start_time, row.EndTime, getLocation(row), description);
-                    } else {
-                        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
-                        row.GoogleEventId = eventId;
-                    }
-                } else {
-                    GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
-                    const description = `<a href="${row.RideURL}">${event.name}</a>`;
-                    const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
-                    row.GoogleEventId = eventId;
-                }
-            }
-
-            rows.forEach(row => updateRow(row));
+            processRows_(rows, rwgps, updateRow_);
         }
     }
 })()

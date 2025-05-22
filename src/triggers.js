@@ -2,15 +2,15 @@
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ride Schedulers')
-    .addItem('Schedule Selected Rides', "MenuFunctions.scheduleSelectedRides")
-    .addItem('Update Selected Rides', "MenuFunctions.updateSelectedRides")
-    .addItem('Cancel Selected Rides', "MenuFunctions.cancelSelectedRides")
-    .addItem('Reinstate Selected Rides', "MenuFunctions.reinstateSelectedRides")
-    .addItem('Unschedule Selected Rides', "MenuFunctions.unscheduleSelectedRides")
+    .addItem('Schedule Selected Rides', "scheduleSelectedRides")
+    .addItem('Update Selected Rides', "updateSelectedRides")
+    .addItem('Cancel Selected Rides', "cancelSelectedRides")
+    .addItem('Reinstate Selected Rides', "reinstateSelectedRides")
+    .addItem('Unschedule Selected Rides', "unscheduleSelectedRides")
     .addSeparator()
-    .addItem('Import Selected Routes', "MenuFunctions.importSelectedRoutes")
-    .addItem('Link Selected Route URLs', "MenuFunctions.linkSelectedRouteUrls")
-    .addItem('Update Rider Count', "MenuFunctions.updateRiderCount")
+    .addItem('Import Selected Routes', "importSelectedRoutes")
+    .addItem('Link Selected Route URLs', "linkSelectedRouteUrls")
+    .addItem('Update Rider Count', "updateRiderCount")
     .addToUi();
 
 
@@ -20,6 +20,33 @@ function onOpen() {
   // and onEdit only has access to old values, not formulas.
   Schedule.storeFormulas();
 }
+
+function cancelSelectedRides() {
+  MenuFunctions.cancelSelectedRides();
+}
+function importSelectedRoutes() {
+  MenuFunctions.importSelectedRoutes();
+}
+function linkSelectedRouteUrls() {
+  MenuFunctions.linkSelectedRouteUrls();
+}
+function reinstateSelectedRides() {
+  MenuFunctions.reinstateSelectedRides();
+}
+function scheduleSelectedRides() {
+  MenuFunctions.scheduleSelectedRides();
+}
+function unscheduleSelectedRides() {
+  MenuFunctions.unscheduleSelectedRides();
+}
+function updateRiderCount() {
+  MenuFunctions.updateRiderCount();
+}
+function updateSelectedRides() {
+  MenuFunctions.updateSelectedRides();
+}
+
+
 
 function myEdit(event) {
   try {
