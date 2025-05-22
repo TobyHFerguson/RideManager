@@ -11,24 +11,7 @@ if (typeof require !== 'undefined') {
  * @param {Function} command command to execute
  */
 
-function importSelectedRoutes() {
-  MenuFunctions.importSelectedRoutes();
-}
-function updateRiderCount() {
-  MenuFunctions.updateRiderCount();
-}
-function updateSelectedRides() {
-  MenuFunctions.updateSelectedRides();
-}
-function updateRiderCounts() {
-  MenuFunctions.updateRiderCount();
-}
-function scheduleSelectedRides() {
-  MenuFunctions.scheduleSelectedRides();
-}
-function unScheduleSelectedRides() {
-  MenuFunctions.unscheduleSelectedRides();
-}
+
 
 const MenuFunctions = (() => {
   function executeCommand(command, force = false) {
