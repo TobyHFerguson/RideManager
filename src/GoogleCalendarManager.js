@@ -17,7 +17,7 @@ class GoogleCalendarManager {
     static deleteEvent(calendarId, eventId) {
         const calendar = CalendarApp.getCalendarById(calendarId);
         if (!calendar) {
-            console.error('Calendar not found.');
+            console.error(`GoogleCalendarManager.deleteEvent(${calendarId}, ${eventId}): No Calendar for the given ID found for user ${Session.getActiveUser()}.`);
             return;
         }
         const event = calendar.getEventById(eventId);
