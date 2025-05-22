@@ -36,7 +36,7 @@ function reinstateSelectedRides() {
 function scheduleSelectedRides() {
   MenuFunctions.scheduleSelectedRides();
 }
-function unScheduleSelectedRides() {
+function unscheduleSelectedRides() {
   MenuFunctions.unscheduleSelectedRides();
 }
 function updateRiderCount() {
