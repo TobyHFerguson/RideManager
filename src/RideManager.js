@@ -21,6 +21,7 @@ const RideManager = (function () {
         return route ? `${route.first_lat},${route.first_lng}` : '';
     }
 
+
     return {
         cancelRows: function (rows, rwgps) {
             function cancel(row, rwgps) {
@@ -136,8 +137,9 @@ const RideManager = (function () {
             console.timeEnd('updateRiderCounts');
         },
         updateRows: function (rows, rwgps) {
-            const names = getGroupNames();
             function updateRow(row) {
+                const names = getGroupNames();
+
                 let event
                 const originalGroup = Event.getGroupName(row.RideName, names);
                 if (!Event.managedEventName(row.RideName, names)) {
@@ -166,7 +168,20 @@ const RideManager = (function () {
                 }
             }
 
-            rows.forEach(row => updateRow(row));
+
+            let errors = []
+            rows.forEach(row => {
+                try {
+                    updateRow(row)
+                }
+                catch (e) {
+                    e.message = `Error updating row ${row.rowNum}: ${e.message}`;
+                    errors.push(e);
+                }
+            });
+            if (errors.length) {
+                throw new AggregateError(errors, `Errors processing rows: ${errors.map(e => e.message).join(', ')}`);
+            }
         }
     }
 })()
