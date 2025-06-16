@@ -26,9 +26,9 @@ Arrive ${dates.T12(meet_time)} for a ${dates.T12(start_time)} rollout.
 
 Participant List: ${globals.RSVP_BASE_URL}?event=${event_id}
 
-All participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709
+All participants are assumed to have read and agreed to the clubs ride policy: ${globals.CLUB_RIDE_POLICY_URL}
 
-Note: In a browser use the "Go to route" link below to open up the route.`;
+Note: When using a browser use the "Go to route" link below to open up the route.`;
         return result;
     }
 
