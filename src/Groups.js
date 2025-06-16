@@ -8,11 +8,11 @@ function getGroupSpecs() {
   if (cachedGroups) {
     return JSON.parse(cachedGroups);
   } else {
-    return initializeGroupCache_();
+    return initializeGroupCache();
   }
 }
 
-function initializeGroupCache_() {
+function initializeGroupCache() {
   const cache = CacheService.getDocumentCache();
   let groups = getGroupsFromSheet_();
   cache.put('groups', JSON.stringify(groups), 21600); // Cache for 6 hours
