@@ -30,6 +30,7 @@ function getGroupsFromSheet_() {
 
 function flatten_(groups) {
   // groups = [ {"Group": "A", "Template": ..., "MIN_LENGTH": ...}]
+  // result = { "A": { "Template": ...}, "B": { "Template": ...}}
   groups = groups.reduce((acc, { Group, ...rest }) => {
     acc[Group] = rest;
     return acc;

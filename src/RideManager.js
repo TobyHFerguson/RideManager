@@ -10,11 +10,12 @@ const RideManager = (function () {
         return event_url.substring(event_url.lastIndexOf('/') + 1).split('-')[0]
     }
     function getCalendarId(groupName) {
-        try {
-            return getGroupSpecs()[groupName].GoogleCalendarId;
-        } catch {
-            throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupnames().join(', ')}`);
+        const groupSpecs = getGroupSpecs();
+        const id = groupSpecs[groupName.toUpperCase()].GoogleCalendarId;
+        if (!id) {
+            console.error(`getCalendarId(${groupName}) resulted in no id from these specs:`, groupSpecs)
         }
+        return id;
     }
     function getLocation(row) {
         const route = getRoute(row.RouteURL);
@@ -143,9 +144,14 @@ const RideManager = (function () {
                 }
             }
             rows.forEach(row => {
-                GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId);
-                row.GoogleEventId = '';
                 row.deleteRideLink();
+                const id = getCalendarId(row.Group);
+                if (!id) {
+                    console.error(`RideManager.unscheduleRows(): No Calendar ID found for ${row.Group} - skipping GoogleCalendarManager.deleteEvent()`)
+                } else {
+                    GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId);
+                }
+                row.GoogleEventId = '';
             });
         },
         /**
