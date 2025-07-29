@@ -7,12 +7,21 @@
   "name": "working",
   "version": "1.0.0",
   "main": "Events.js",
+  "config": {
+    "CLASP_DEV_SCRIPT_ID": "1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya",
+    "CLASP_PROD_SCRIPT_ID": "1azMwGgFrxDDBZjtRwAuJ1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc"
+  },
   "scripts": {
+    "set-dev-env": "npx clasp-env --scriptId \"${npm_package_config_CLASP_DEV_SCRIPT_ID}\" --folder .",
+    "set-prod-env": "npx clasp-env --scriptId \"${npm_package_config_CLASP_PROD_SCRIPT_ID}\" --folder .",
+    "git:enforce-clean": "git diff-index --quiet HEAD -- || (echo \"\\nERROR: Git working directory is not clean. Commit or stash your changes before proceeding.\\n\" && git status --short && exit 1)",
+    "prepare-debug-version": "node -e 'const { execSync } = require(\"child_process\"); const fs = require(\"fs\"); const commitHash = execSync(\"git rev-parse --short HEAD\").toString().trim(); const versionContent = `// This file is auto-generated for debugging purposes.\\n// It contains the Git commit hash of the last local state when \"npm run prepare-debug-version\" was run.\\nfunction getAppVersion() {\\n  return \"DEBUG_VERSION: ${commitHash}\";\\n}\\n`; fs.writeFileSync(\"src/Version.js\", versionContent); console.log(\"src/Version.js updated with debug version info.\");'",
+    "prepare-prod-version": "node -e 'const { execSync } = require(\"child_process\"); const fs = require(\"fs\"); const commitHash = execSync(\"git rev-parse --short HEAD\").toString().trim(); const versionContent = `// This file is auto-generated for production deployment.\\n// It contains the Git commit hash of the committed version.\\nfunction getAppVersion() {\\n  return \"PRODUCTION_VERSION: ${commitHash}\";\\n}\\n`; fs.writeFileSync(\"src/Version.js\", versionContent); console.log(\"src/Version.js updated with production version info.\");'",
     "test": "jest",
-    "dev:push": "npx clasp-env --folder . --scriptId 1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya && clasp push -w",
-    "dev:pull": "npx clasp-env --folder . --scriptId 1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya && clasp pull",
-    "prod:push": "npx clasp-env --folder . --scriptId 1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc && clasp push",
-    "prod:pull": "npx clasp-env --folder . --scriptId 1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc & clasp pull",
+    "dev:push": "npm run set-dev-env && npm run prepare-debug-version && npx @google/clasp push -w",
+    "dev:pull": "npm run set-dev-env && npm run prepare-debug-version && npx @google/clasp pull",
+    "prod:push": "npm run set-prod-env && npm run git:enforce-clean && npm run prepare-prod-version && npx @google/clasp push",
+    "prod:pull": "npm run set-prod-env && npm run git:enforce-clean && npx @google/clasp pull",
     "testEvent": "node test/testEvent.js"
   },
   "keywords": [],
