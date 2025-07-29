@@ -13,6 +13,11 @@ function onOpen() {
     .addItem('Update Rider Count', "updateRiderCount")
     .addToUi();
 
+    ui.createMenu('App Actions')
+      // Add a menu item 'Get App Version' that calls the 'showAppVersion' function.
+      .addItem('Get App Version', 'showAppVersion')
+      // Add the menu to the UI.
+      .addToUi();
 
   // We store the original formulas here so that we can restore them if the user
   // accidentally overwrites them. They need to be stored outside of the spreadsheet 
@@ -21,6 +26,21 @@ function onOpen() {
   Schedule.storeFormulas();
   initializeGlobals();
   initializeGroupCache();
+}
+
+/**
+ * Shows the application version in an alert box.
+ * This function is called when the 'Get App Version' menu item is clicked.
+ */
+function showAppVersion() {
+  // Get the active spreadsheet UI.
+  var ui = SpreadsheetApp.getUi();
+
+  // Get the app version using the getAppVersion function.
+  var appVersion = getAppVersion();
+
+  // Display the app version in an alert box.
+  ui.alert('App Version', 'Current App Version: ' + appVersion, ui.ButtonSet.OK);
 }
 
 function cancelSelectedRides() {
