@@ -82,12 +82,25 @@ const RideManager = (function () {
         const originalGroup = Event.getGroupName(row.RideName, names);
         if (!Event.managedEventName(row.RideName, names)) {
             event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+            // DEBUG ISSUE 22
+            if (event.name.trim().endsWith(']')) {
+                throw new Error(`updateRow_: row ${row.rowNum}: Event name from RWGPS ends with a square bracket: ${event.name}. Original name: ${row.RideName}`);
+            }
         } else {
             const event_id = _extractEventID(row.RideURL);
             event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
+            // DEBUG ISSUE 22
+            if (event.name.trim().endsWith(']')) {
+                 throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${event.name}. Original name: ${row.RideName}`);
+            }
             rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
         }
         event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), names);
+        // DEBUG ISSUE 22
+        if (event.name.trim().endsWith(']')) {
+             throw new Error(`updateRow_: row ${row.rowNum}: Event name from updateRiderCount ends with a square bracket: ${event.name}. Original name: ${row.RideName}`);
+        }
+
         row.setRideLink(event.name, row.RideURL);
         rwgps.edit_event(row.RideURL, event);
         if (originalGroup === row.Group) {
