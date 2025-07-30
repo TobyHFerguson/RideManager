@@ -50,38 +50,49 @@ function printCallerError(...args) {
   console.error(callerName, ...args);
 }
 
-function getRoute(url) {
-  const cache = CacheService.getDocumentCache(); // See https://developers.google.com/apps-script/reference/cache
-  let cachedRoute = cache.get(url);
-  if (cachedRoute) {
-    return JSON.parse(cachedRoute);
+function getRoute(route) {
+  const hyperLink = parseHyperlinkFormula(route);
+  if (hyperLink.url) {
+    return getRouteFromUrl_(hyperLink.url);
+  } else {
+    return getRouteFromUrl_(route)
   }
+}
 
-  const re = /(https:\/\/ridewithgps.com\/routes\/\d+)/;
-  if (!re.test(url)) {
-    throw new Error(`Invalid URL: '${url}'. It doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS'`);
-  }
-  const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
-  switch (response.getResponseCode()) {
-    case 200:
-      break;
-    case 403:
-      throw new Error('Route URL does not have public access');
-    case 404:
-      throw new Error(`This route cannot be found on the server`);
-    default:
-      throw new Error("Unknown issue with Route URL");
-  }
-  const route = JSON.parse(response.getContentText());
-  // Routes are too big for the cache, but we don't need all the data!
-  delete route.course_points;
-  delete route.points_of_interest;
-  delete route.track_points;
-  route.has_course_points = false;
-  const val = JSON.stringify(route);
-  const byteSize = Utilities.newBlob(val).getBytes().length;
-  cache.put(url, JSON.stringify(route), 21600); // Cache for 6 hours
-  return route;
+
+function getRouteFromUrl_(url) {
+const re = /(https:\/\/ridewithgps.com\/routes\/\d+)/;
+if (!re.test(url)) {
+  throw new Error(`Invalid URL: '${url}'. It doesn't match the pattern 'https://ridewithgps.com/routes/DIGITS'`);
+}
+
+const cache = CacheService.getDocumentCache(); // See https://developers.google.com/apps-script/reference/cache
+let cachedRoute = cache.get(url);
+if (cachedRoute) {
+  return JSON.parse(cachedRoute);
+}
+
+const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
+switch (response.getResponseCode()) {
+  case 200:
+    break;
+  case 403:
+    throw new Error('Route URL does not have public access');
+  case 404:
+    throw new Error(`This route cannot be found on the server`);
+  default:
+    throw new Error("Unknown issue with Route URL");
+}
+const route = JSON.parse(response.getContentText());
+// Routes are too big for the cache, but we don't need all the data!
+delete route.course_points;
+delete route.points_of_interest;
+delete route.track_points;
+route.has_course_points = false;
+const val = JSON.stringify(route);
+const byteSize = Utilities.newBlob(val).getBytes().length;
+cache.put(url, JSON.stringify(route), 21600); // Cache for 6 hours
+return route;
 }
 
 function testGetRoute1() {
@@ -97,9 +108,9 @@ function testGetRoute3() {
 
 function testGetRoute4() {
   try {
-      getRoute('https://ridewithgps.com/routes/2126')
+    getRoute('https://ridewithgps.com/routes/2126')
   }
   catch (e) {
-      console.log(e)
+    console.log(e)
   }
 }
