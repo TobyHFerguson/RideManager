@@ -9,7 +9,7 @@
   "main": "Events.js",
   "config": {
     "CLASP_DEV_SCRIPT_ID": "1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya",
-    "CLASP_PROD_SCRIPT_ID": "1azMwGgFrxDDBZjtRwAuJ1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc"
+    "CLASP_PROD_SCRIPT_ID": "1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc"
   },
   "scripts": {
     "set-dev-env": "npx clasp-env --scriptId \"${npm_package_config_CLASP_DEV_SCRIPT_ID}\" --folder .",
