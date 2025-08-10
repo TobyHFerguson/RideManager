@@ -182,7 +182,7 @@ const RideManager = (function () {
             const scheduledRowLeaders = scheduledRows.map(row => row.RideLeaders);
             const rwgpsEvents = rwgps.get_events(scheduledRowURLs);
             const scheduledEvents = rwgpsEvents.map(e => e ? EventFactory.fromRwgpsEvent(e) : e);
-            scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated(scheduledRows[i].RouteName, event.name) })
+            scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
             const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
             const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i], getGroupNames()) : false);
             const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
