@@ -3,3 +3,5 @@
 /tests/
 /src/Credentials.js
 /coverage
+# Ignore auto-generated version file
+/src/Version.js
