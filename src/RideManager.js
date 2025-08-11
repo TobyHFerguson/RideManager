@@ -185,10 +185,11 @@ const RideManager = (function () {
             scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
             const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
             const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i], getGroupNames()) : false);
+            scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
             const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
 
             rwgps.edit_events(edits.map(({ row, event }) => {
-                _log('updateRiderCounts', `Row ${row.rowNum} Updating count for: ${event.name}`);
+                console.log('RideManager.updateRiderCounts', `Row ${row.rowNum} Updating count for: ${event.name}`);
                 return { url: row.RideURL, event };
             }));
 
@@ -207,16 +208,16 @@ const RideManager = (function () {
 })()
 
 function reportIfNameIsTruncated_(routeName, rideName) {
-  if (!rideName.trim().endsWith(routeName.trim())) {
-    throw new Error(`Ride Name '${rideName}' doesnt end in route name '${routeName}'`)
-  }
+    if (!rideName.trim().endsWith(routeName.trim())) {
+        throw new Error(`Ride Name '${rideName}' doesnt end in route name '${routeName}'`)
+    }
 }
 
 function testReportIfNameIsTruncated() {
-  const  routeName = "AV - Freedom Via Pioneers, Green Vly, Freedom"
-  const rideName = "Tue C (8/5 09:30) [7] "
-  try {reportIfNameIsTruncated_(routeName, rideName)}
-  catch (e) {
-    console.error(e.message)
-  }
+    const routeName = "AV - Freedom Via Pioneers, Green Vly, Freedom"
+    const rideName = "Tue C (8/5 09:30) [7] "
+    try { reportIfNameIsTruncated_(routeName, rideName) }
+    catch (e) {
+        console.error(e.message)
+    }
 }
