@@ -74,7 +74,9 @@ Note: When using a browser use the "Go to route" link below to open up the route
             event.start_date = sd.toISOString();
             event.start_time = sd.toISOString();
             event.visibility = rwgpsEvent.visibility;
-            console.log('Created event from RWGPS event:', event);
+            if (event.name.trim().endsWith(']')) {
+                throw new Error(`Event name '${event.name}' should not end with ']' - this is likely a bug in the RWGPS event import code`);
+            }
             return event;
         }
     }
