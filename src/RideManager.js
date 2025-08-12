@@ -184,6 +184,12 @@ const RideManager = (function () {
             const scheduledEvents = rwgpsEvents.map(e => e ? EventFactory.fromRwgpsEvent(e) : e);
             scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
             const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
+            // updatedEvents is an array of booleans indicating whether the event was updated
+            // or not. If it was updated, the event's name will be changed to reflect the new rider count.
+            // If it wasn't updated, it will be false.
+            // This is used to determine which rows need to be updated in the spreadsheet.
+            // Note that this is a side-effect of the updateRiderCount() method in the Event class.
+            // This is done to avoid updating the spreadsheet unnecessarily, which can be slow.
             const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i], getGroupNames()) : false);
             scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
             const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
@@ -209,7 +215,7 @@ const RideManager = (function () {
 
 function reportIfNameIsTruncated_(routeName, rideName) {
     if (!rideName.trim().endsWith(routeName.trim())) {
-        throw new Error(`Ride Name '${rideName}' doesnt end in route name '${routeName}'`)
+        console.error(`Ride Name '${rideName}' doesnt end in route name '${routeName}'`)
     }
 }
 
