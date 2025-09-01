@@ -1,4 +1,5 @@
 if (typeof require !== 'undefined') {
+    // @ts-ignore
     const { getGroupNames } = require("./Groups");
 }
 
@@ -72,7 +73,7 @@ const RideManager = (function () {
         row.setRideLink(event.name, new_event_url);
         rwgps.unTagEvents([new_event_url], ["template"]);
         const description = `<a href="${new_event_url}">${event.name}</a>`;
-        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
         row.GoogleEventId = eventId;
     }
     function updateRow_(row, rwgps) {
@@ -106,15 +107,15 @@ const RideManager = (function () {
         if (originalGroup === row.Group) {
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
             if (row.GoogleEventId) {
-                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, event.start_time, row.EndTime, getLocation(row), description);
+                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
             } else {
-                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
                 row.GoogleEventId = eventId;
             }
         } else {
             GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
-            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
             row.GoogleEventId = eventId;
         }
     }
@@ -169,7 +170,7 @@ const RideManager = (function () {
         },
         /**
          * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector
-         * @param {Rows![]} rows to be updated
+         * @param {Row![]} rows to be updated
          * @param {RWGPS} rwgps connector
          */
         updateRiderCounts: function (rows, rwgps) {

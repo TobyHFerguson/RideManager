@@ -4,7 +4,7 @@
  * Initializes global variables from the 'Globals' sheet and caches them.
  * @returns {Object.<string, any>} An object containing global key-value pairs.
  */
-function initializeGlobals_() {
+function initializeGlobals() {
     const globalData = bmPreFiddler.PreFiddler().getFiddler({
         sheetName: 'Globals',
         createIfMissing: false
@@ -36,7 +36,7 @@ function getGlobals() {
         return JSON.parse(globals);
     } else {
         // console.log('Globals not found in cache, initializing globals');
-        return initializeGlobals_();
+        return initializeGlobals();
     }
   } catch (error) {
     console.error('Error in getGlobals function:', error);

@@ -20,6 +20,7 @@ function initializeGroupCache() {
 }
 
 function getGroupsFromSheet_() {
+  // @ts-ignore
   const fiddler = bmPreFiddler.PreFiddler().getFiddler({
     sheetName: 'Groups',
     createIfMissing: false
