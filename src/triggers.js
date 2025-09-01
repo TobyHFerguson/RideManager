@@ -91,7 +91,7 @@ function myEdit(event) {
         }
         return;
       }
-      if (event.value === event.oldValue) {
+      if ((event.value === event.oldValue) && !event.range.getFormula()) {
         console.log('No change to value, accepting edit');
         return;
       }
@@ -142,7 +142,10 @@ function myEdit_(event, pm) {
    */
   function _editRouteColumn(event) {
     pm.addProgress('Editing route column');
-    const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText();
+    let url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText() || event.range.getFormula();
+    if (url.toLowerCase().startsWith("=hyperlink")) {
+      ({ url } = parseHyperlinkFormula(url))
+    }
     const route = getRoute(url);
     let name;
     if (route.user_id !== getGlobals().SCCCC_USER_ID) {
