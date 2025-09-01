@@ -90,8 +90,8 @@ function rangeContainsColumn_(range, columnIndex) {
  * @return {boolean} True if the cell is being deleted, false otherwise.
  */
 function isDelete_(event) {
-  const newValue = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getFormula();
-  // event.value is undefined/null when a cell is cleared
+  const newValue = event.value || event.range.getValue() ||
+    (event.range.getRichTextValue() && event.range.getRichTextValue().getLinkUrl()) || event.range.getFormula();
   return !newValue
 }
 
@@ -101,9 +101,12 @@ function editEventReport_(event) {
   console.log(`event.value: ${event.value}`);
   console.log(`event.range.getValue(): ${event.range.getValue()}`);
   console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
-  console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
-  console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+  if (event.range.getRichTextValue()) {
+    console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
+    console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+  }
   const row = Schedule.getSelectedRows()[0];
+  console.log(`Row data: ${JSON.stringify(row)}`);
   console.log(`ride URL: ${row.RideURL}`);
   console.log(`route URL: ${row.RouteURL}`);
 }
@@ -114,7 +117,7 @@ function editEventReport_(event) {
  */
 function myEdit(event) {
   // event.value is only defined if the edited cell is a single cell
-  editEventReport_(event);
+  // editEventReport_(event);
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
       if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
@@ -125,18 +128,14 @@ function myEdit(event) {
         return;
       }
       const row = Schedule.getSelectedRows()[0];
-      if (!(row.isPlanned() || row.isScheduled())) {
-        console.log('Ride is neither planned nor scheduled - accepting edits and returning');
-        // Nothing further to do
-        return;
-      }
       if (row.isScheduled() && isDelete_(event)) {
         alert_('Ride is scheduled - no deletions allowed.');
         event.range.setValue(event.oldValue);
         Schedule.restoreFormula(event.range.getRow());
         return;
       }
-      if ((event.value === event.oldValue) && !event.range.getFormula()) {
+      // When copying a date it appears that this value is in event.range.getValue(), not in event.value!
+      if ((event.value === event.oldValue) && !(event.range.getValue() || event.range.getFormula())) {
         console.log('No change to value, accepting edit');
         return;
       }
@@ -170,6 +169,11 @@ function myEdit_(event, pm) {
     let url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText() || event.range.getFormula();
     if (url.toLowerCase().startsWith("=hyperlink")) {
       ({ url } = parseHyperlinkFormula(url))
+    }
+    if (!url) {
+      event.range.setValue(url);
+      Schedule.storeRouteFormulas();
+      return;
     }
     const route = getRoute(url);
     let name;
@@ -219,14 +223,17 @@ function myEdit_(event, pm) {
     }
   }
   const force = true;
-  if (Schedule.getSelectedRows()[0].RideURL) {
+  const row = Schedule.getSelectedRows()[0];
+  if (row.isScheduled()) {
     pm.addProgress('Updating ride');
     MenuFunctions.updateSelectedRides(force);
     pm.addProgress('Ride updated');
   } else {
-    pm.addProgress('Scheduling ride');
-    MenuFunctions.scheduleSelectedRides(force);
-    pm.addProgress('Ride scheduled');
+    if (row.isPlanned()) {
+      pm.addProgress('Scheduling ride');
+      MenuFunctions.scheduleSelectedRides(force);
+      pm.addProgress('Ride scheduled');
+    }
   }
   pm.endProcessing();
 }
