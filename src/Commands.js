@@ -29,7 +29,7 @@ const Commands = (() => {
             rows = Schedule.getYoungerRows(refDate);
             console.log(`${rows.length} rows found younger than ${refDate}`)
             console.timeEnd(logName)
-            RideManager.updateRiderCounts(rows, rwgps, force);
+            RideManager.updateRiderCounts(rows, rwgps);
             Schedule.save();
         },
         updateSelectedRidesWithCredentials(rows, rwgps, force = false) {
