@@ -1,9 +1,11 @@
 // HyperlinkUtils.js
 
 /**
- * Parse a HYPERLINK formula string.
- * @param {string} formula - The HYPERLINK formula string.
- * @returns {Object} An object containing the URL and name.
+ * Parses a Google Sheets HYPERLINK formula and extracts the URL and display name.
+ *
+ * @param {string} formula - The HYPERLINK formula string to parse, e.g. '=HYPERLINK("https://example.com", "Example")'.
+ * @returns {{url: string, name: string}} An object containing the extracted URL and display name.
+ *          If the formula does not match, both properties will be empty strings.
  */
 function parseHyperlinkFormula(formula) {
     const regex = /=HYPERLINK\("([^"]+)",\s*"([^"]+)"\)/i;
