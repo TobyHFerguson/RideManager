@@ -90,8 +90,9 @@ function rangeContainsColumn_(range, columnIndex) {
  * @return {boolean} True if the cell is being deleted, false otherwise.
  */
 function isDelete_(event) {
+  const newValue = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getFormula();
   // event.value is undefined/null when a cell is cleared
-  return (event.value === undefined || event.value === null || event.value === '') && (event.range.getFormula() === '');
+  return !newValue
 }
 
 function editEventReport_(event) {
@@ -123,10 +124,6 @@ function myEdit(event) {
         }
         return;
       }
-      if ((event.value === event.oldValue) && !event.range.getFormula()) {
-        console.log('No change to value, accepting edit');
-        return;
-      }
       const row = Schedule.getSelectedRows()[0];
       if (!(row.isPlanned() || row.isScheduled())) {
         console.log('Ride is neither planned nor scheduled - accepting edits and returning');
@@ -137,6 +134,10 @@ function myEdit(event) {
         alert_('Ride is scheduled - no deletions allowed.');
         event.range.setValue(event.oldValue);
         Schedule.restoreFormula(event.range.getRow());
+        return;
+      }
+      if ((event.value === event.oldValue) && !event.range.getFormula()) {
+        console.log('No change to value, accepting edit');
         return;
       }
       // Don't allow group changes once scheduled
