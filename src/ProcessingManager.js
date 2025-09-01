@@ -2,6 +2,7 @@ class ProcessingManager {
   constructor(processFunction) {
     this.props = PropertiesService.getScriptProperties();
     this.processFunction = processFunction;
+    this.started = false;
     this.clearErrors();
     this.clearProgress();
     this.addProgress('Starting processing...');
@@ -18,6 +19,7 @@ class ProcessingManager {
 
 
   addProgress(message) {
+    console.log('addProgress called: ', message);
     let messages = this.getProgress();
     messages.push(message);
     this.props.setProperty('messages', JSON.stringify(messages));
@@ -50,6 +52,12 @@ class ProcessingManager {
   }
 
   startProcessing() {
+    // For some reason startProcessing can get called twice.
+    // I havent' understood it, but this catches that issue!
+    if (this.started) {
+      return;
+    }
+    this.started = true;
     try {
       this.processFunction(this); // Call the provided function
     } catch (error) {

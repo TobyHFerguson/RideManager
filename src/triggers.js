@@ -98,6 +98,8 @@ function isDelete_(event) {
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
  */
 function myEdit(event) {
+  // event.value is only defined if the edited cell is a single cell
+  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
       if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
@@ -130,7 +132,7 @@ function myEdit(event) {
         return;
       }
       const processingManager = new ProcessingManager((pm) => myEdit_(event, pm));
-      processingManager.startProcessing
+      processingManager.startProcessing();
     }
   } catch (e) {
     SpreadsheetApp.getUi().alert(e.message)
@@ -138,26 +140,13 @@ function myEdit(event) {
   }
 }
 function myEdit_(event, pm) {
-  // console.log('onEdit triggered');
-  // console.log(`Event: ${JSON.stringify(event)}`);
+  // console.log(`myEdit_ called with event: ${JSON.stringify(event)}`);
 
 
 
 
 
 
-  /**
-  * Checks if a given range contains a specific column index.
-  * @param {Range} range The range to check.
-  * @param {number} columnIndex The column index (1-based) to check for.
-  * @return {boolean} True if the range contains the column, false otherwise.
-  */
-  function rangeContainsColumn(range, columnIndex) {
-    const startColumn = range.getColumn();
-    const endColumn = range.getLastColumn();
-
-    return columnIndex >= startColumn && columnIndex <= endColumn;
-  }
 
   /**
    * Edits the route column in the schedule.
