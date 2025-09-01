@@ -90,22 +90,31 @@ function rangeContainsColumn_(range, columnIndex) {
  * @return {boolean} True if the cell is being deleted, false otherwise.
  */
 function isDelete_(event) {
+  const newValue = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getFormula();
   // event.value is undefined/null when a cell is cleared
-  return (event.value === undefined || event.value === null || event.value === '') && (event.range.getFormula() === '');
+  return !newValue
 }
+
+function editEventReport_(event) {
+  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
+  console.log(`event.oldValue: ${event.oldValue}`);
+  console.log(`event.value: ${event.value}`);
+  console.log(`event.range.getValue(): ${event.range.getValue()}`);
+  console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
+  console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
+  console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+  const row = Schedule.getSelectedRows()[0];
+  console.log(`ride URL: ${row.RideURL}`);
+  console.log(`route URL: ${row.RouteURL}`);
+}
+
 /**
  * 
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
  */
 function myEdit(event) {
   // event.value is only defined if the edited cell is a single cell
-  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
-  console.log(`event.value: ${event.value}`);
-  console.log(`event.range.getValue(): ${event.range.getValue()}`);
-  console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
-  console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
-  console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
-
+  editEventReport_(event);
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
       if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
@@ -113,10 +122,6 @@ function myEdit(event) {
         for (let i = 0; i < event.range.getNumRows(); i++) {
           Schedule.restoreFormula(event.range.getRow() + i);
         }
-        return;
-      }
-      if ((event.value === event.oldValue) && !event.range.getFormula()) {
-        console.log('No change to value, accepting edit');
         return;
       }
       const row = Schedule.getSelectedRows()[0];
@@ -129,6 +134,10 @@ function myEdit(event) {
         alert_('Ride is scheduled - no deletions allowed.');
         event.range.setValue(event.oldValue);
         Schedule.restoreFormula(event.range.getRow());
+        return;
+      }
+      if ((event.value === event.oldValue) && !event.range.getFormula()) {
+        console.log('No change to value, accepting edit');
         return;
       }
       // Don't allow group changes once scheduled
