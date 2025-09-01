@@ -69,7 +69,18 @@ function updateSelectedRides() {
 }
 
 
+/**
+* Checks if a given range contains a specific column index.
+* @param {GoogleAppsScript.Spreadsheet.Range} range The range to check.
+* @param {number} columnIndex The column index (1-based) to check for.
+* @return {boolean} True if the range contains the column, false otherwise.
+*/
+function rangeContainsColumn_(range, columnIndex) {
+  const startColumn = range.getColumn();
+  const endColumn = range.getLastColumn();
 
+  return columnIndex >= startColumn && columnIndex <= endColumn;
+}
 function myEdit(event) {
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
@@ -139,20 +150,14 @@ function myEdit_(event, pm) {
   const routeColumnIndex = Schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME) + 1;
 
   // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
-  if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
-    if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
-      SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
-      for (let i = 0; i < editedRange.getNumRows(); i++) {
-        Schedule.restoreFormula(editedRange.getRow() + i);
-      }
-      return;
-    }
-    if (rangeContainsColumn(editedRange, rideColumnIndex)) {
+  if (rangeContainsColumn_(editedRange, rideColumnIndex) || rangeContainsColumn_(editedRange, routeColumnIndex)) {
+
+    if (rangeContainsColumn_(editedRange, rideColumnIndex)) {
       SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
       Schedule.restoreRideFormula(editedRange.getRow());
       return;
     }
-    if (rangeContainsColumn(editedRange, routeColumnIndex)) {
+    if (rangeContainsColumn_(editedRange, routeColumnIndex)) {
       try {
         _editRouteColumn(event);
       } catch (e) {
