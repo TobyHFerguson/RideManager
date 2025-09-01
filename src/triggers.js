@@ -91,7 +91,7 @@ function rangeContainsColumn_(range, columnIndex) {
  */
 function isDelete_(event) {
   // event.value is undefined/null when a cell is cleared
-  return event.value === undefined || event.value === null || event.value === '';
+  return (event.value === undefined || event.value === null || event.value === '') && (event.range.getFormula() === '');
 }
 /**
  * 
