@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "noImplicitAny": false,
+    "lib": [
+      "esnext"
+    ],
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": [
+    "**/*.js",
+    "**/*.gs",
+    "**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
