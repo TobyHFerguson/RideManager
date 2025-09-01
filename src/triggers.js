@@ -93,19 +93,27 @@ function isDelete_(event) {
   // event.value is undefined/null when a cell is cleared
   return (event.value === undefined || event.value === null || event.value === '') && (event.range.getFormula() === '');
 }
+
+function editEventReport_(event) {
+  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
+  console.log(`event.oldValue: ${event.oldValue}`);
+  console.log(`event.value: ${event.value}`);
+  console.log(`event.range.getValue(): ${event.range.getValue()}`);
+  console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
+  console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
+  console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+  const row = Schedule.getSelectedRows()[0];
+  console.log(`ride URL: ${row.RideURL}`);
+  console.log(`route URL: ${row.RouteURL}`);
+}
+
 /**
  * 
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
  */
 function myEdit(event) {
   // event.value is only defined if the edited cell is a single cell
-  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
-  console.log(`event.value: ${event.value}`);
-  console.log(`event.range.getValue(): ${event.range.getValue()}`);
-  console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
-  console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
-  console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
-
+  editEventReport_(event);
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
       if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
