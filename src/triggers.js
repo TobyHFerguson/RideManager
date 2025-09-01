@@ -95,12 +95,18 @@ function myEdit(event) {
         console.log('No change to value, accepting edit');
         return;
       }
-     const row = Schedule.getSelectedRows()[0];
-     if (!(row.isPlanned() || row.isScheduled())) {
-       console.log('Ride is neither planned nor scheduled - accepting edits and returning');
-       // Nothing further to do
-       return;
-     }
+      const row = Schedule.getSelectedRows()[0];
+      if (!(row.isPlanned() || row.isScheduled())) {
+        console.log('Ride is neither planned nor scheduled - accepting edits and returning');
+        // Nothing further to do
+        return;
+      }
+      // Don't allow group changes once scheduled
+      if (row.isScheduled() && event.range.getColumn() === Schedule.getColumnIndex(getGlobals().GROUPCOLUMNNAME) + 1) {
+        SpreadsheetApp.getUi().alert('Group changes are not allowed once the ride is scheduled.');
+        event.range.setValue(event.oldValue);
+        return;
+      }
       const processingManager = new ProcessingManager((pm) => myEdit_(event, pm));
       processingManager.startProcessing
     }
