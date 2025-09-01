@@ -1,4 +1,6 @@
 /** @OnlyCurrentDoc */
+
+// @ts-check
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ride Schedulers')
@@ -13,11 +15,11 @@ function onOpen() {
     .addItem('Update Rider Count', "updateRiderCount")
     .addToUi();
 
-    ui.createMenu('App Actions')
-      // Add a menu item 'Get App Version' that calls the 'showAppVersion' function.
-      .addItem('Get App Version', 'showAppVersion')
-      // Add the menu to the UI.
-      .addToUi();
+  ui.createMenu('App Actions')
+    // Add a menu item 'Get App Version' that calls the 'showAppVersion' function.
+    .addItem('Get App Version', 'showAppVersion')
+    // Add the menu to the UI.
+    .addToUi();
 
   // We store the original formulas here so that we can restore them if the user
   // accidentally overwrites them. They need to be stored outside of the spreadsheet 
@@ -81,6 +83,11 @@ function rangeContainsColumn_(range, columnIndex) {
 
   return columnIndex >= startColumn && columnIndex <= endColumn;
 }
+
+/**
+ * 
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
+ */
 function myEdit(event) {
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
@@ -139,6 +146,7 @@ function myEdit_(event, pm) {
 
   /**
    * Edits the route column in the schedule.
+   * @param {GoogleAppsScript.Events.SheetsOnEdit} event The event object containing information about the edit.
    */
   function _editRouteColumn(event) {
     pm.addProgress('Editing route column');
