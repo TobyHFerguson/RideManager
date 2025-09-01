@@ -100,10 +100,16 @@ function isDelete_(event) {
 function myEdit(event) {
   // event.value is only defined if the edited cell is a single cell
   console.log(`myEdit called with event: ${JSON.stringify(event)}`);
+  console.log(`event.value: ${event.value}`);
+  console.log(`event.range.getValue(): ${event.range.getValue()}`);
+  console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
+  console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
+  console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
       if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
-        SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
+        alert_('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
         for (let i = 0; i < event.range.getNumRows(); i++) {
           Schedule.restoreFormula(event.range.getRow() + i);
         }
@@ -120,14 +126,14 @@ function myEdit(event) {
         return;
       }
       if (row.isScheduled() && isDelete_(event)) {
-        SpreadsheetApp.getUi().alert('Ride is scheduled - no deletions allowed.');
+        alert_('Ride is scheduled - no deletions allowed.');
         event.range.setValue(event.oldValue);
         Schedule.restoreFormula(event.range.getRow());
         return;
       }
       // Don't allow group changes once scheduled
       if (row.isScheduled() && event.range.getColumn() === Schedule.getColumnIndex(getGlobals().GROUPCOLUMNNAME) + 1) {
-        SpreadsheetApp.getUi().alert('Group changes are not allowed once the ride is scheduled.');
+        alert_('Group changes are not allowed once the ride is scheduled.');
         event.range.setValue(event.oldValue);
         return;
       }
@@ -135,23 +141,21 @@ function myEdit(event) {
       processingManager.startProcessing();
     }
   } catch (e) {
-    SpreadsheetApp.getUi().alert(e.message)
+    alert_(e.message)
     throw e
   }
 }
+
+function alert_(message) {
+  SpreadsheetApp.getUi().alert(message);
+}
+
 function myEdit_(event, pm) {
   // console.log(`myEdit_ called with event: ${JSON.stringify(event)}`);
-
-
-
-
-
-
-
   /**
-   * Edits the route column in the schedule.
-   * @param {GoogleAppsScript.Events.SheetsOnEdit} event The event object containing information about the edit.
-   */
+     * Edits the route column in the schedule.
+     * @param {GoogleAppsScript.Events.SheetsOnEdit} event The event object containing information about the edit.
+     */
   function _editRouteColumn(event) {
     pm.addProgress('Editing route column');
     let url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText() || event.range.getFormula();
@@ -191,7 +195,7 @@ function myEdit_(event, pm) {
   if (rangeContainsColumn_(editedRange, rideColumnIndex) || rangeContainsColumn_(editedRange, routeColumnIndex)) {
 
     if (rangeContainsColumn_(editedRange, rideColumnIndex)) {
-      SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
+      alert_('The Ride cell must not be modified. It will be reverted to its previous value.');
       Schedule.restoreRideFormula(editedRange.getRow());
       return;
     }
@@ -199,7 +203,7 @@ function myEdit_(event, pm) {
       try {
         _editRouteColumn(event);
       } catch (e) {
-        SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
+        alert_(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
         Schedule.restoreRouteFormula(editedRange.getRow());
         return;
       }
