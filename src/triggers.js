@@ -85,6 +85,15 @@ function rangeContainsColumn_(range, columnIndex) {
 }
 
 /**
+ * Determines if the edit event represents a cell deletion.
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event.
+ * @return {boolean} True if the cell is being deleted, false otherwise.
+ */
+function isDelete_(event) {
+  // event.value is undefined/null when a cell is cleared
+  return event.value === undefined || event.value === null || event.value === '';
+}
+/**
  * 
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
  */
@@ -106,6 +115,12 @@ function myEdit(event) {
       if (!(row.isPlanned() || row.isScheduled())) {
         console.log('Ride is neither planned nor scheduled - accepting edits and returning');
         // Nothing further to do
+        return;
+      }
+      if (row.isScheduled() && isDelete_(event)) {
+        SpreadsheetApp.getUi().alert('Ride is scheduled - no deletions allowed.');
+        event.range.setValue(event.oldValue);
+        Schedule.restoreFormula(event.range.getRow());
         return;
       }
       // Don't allow group changes once scheduled
