@@ -84,6 +84,17 @@ function rangeContainsColumn_(range, columnIndex) {
 function myEdit(event) {
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
+      if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
+        SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
+        for (let i = 0; i < event.range.getNumRows(); i++) {
+          Schedule.restoreFormula(event.range.getRow() + i);
+        }
+        return;
+      }
+      if (event.value === event.oldValue) {
+        console.log('No change to value, accepting edit');
+        return;
+      }
       const processingManager = new ProcessingManager((pm) => myEdit_(event, pm));
       processingManager.startProcessing
     }
