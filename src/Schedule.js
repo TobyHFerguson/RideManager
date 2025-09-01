@@ -310,6 +310,24 @@ const Schedule = function () {
         }
 
         /**
+         * Determines if the schedule row is planned by checking if StartDate, Group, and RouteURL are set.
+         * @returns {boolean} True if all required properties are present; otherwise, false.
+         */
+        isPlanned() {
+            // console.log('row.isPlanned()', 'start date: ', this.StartDate, 'group: ', this.Group, 'route: ', this.RouteURL);
+            // @ts-ignore
+            return this.StartDate && this.Group && this.RouteURL;
+        }
+
+        /**
+         * Determines if the ride is scheduled.
+         * @returns {boolean} Returns true if the ride has a name, otherwise false.
+         */
+        isScheduled() {
+            return this.RideName !== '';
+        }
+
+        /**
          * Resolve and link the name and the url in the Route column
          * @param {Row} row - row whose route url is to be resolved and linked
          * @returns {Row} the row
