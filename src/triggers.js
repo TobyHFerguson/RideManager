@@ -13,13 +13,10 @@ function onOpen() {
     .addItem('Import Selected Routes', "importSelectedRoutes")
     .addItem('Link Selected Route URLs', "linkSelectedRouteUrls")
     .addItem('Update Rider Count', "updateRiderCount")
-    .addToUi();
-
-  ui.createMenu('App Actions')
-    // Add a menu item 'Get App Version' that calls the 'showAppVersion' function.
+    .addSeparator()
     .addItem('Get App Version', 'showAppVersion')
-    // Add the menu to the UI.
     .addToUi();
+  
 
   // We store the original formulas here so that we can restore them if the user
   // accidentally overwrites them. They need to be stored outside of the spreadsheet 
