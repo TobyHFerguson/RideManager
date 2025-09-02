@@ -30,8 +30,8 @@ static makeManagedRE(groupNames = []) {
    * 
    * Note that due to the vagaries of Google Spreadsheets the start date and start time are independent, although both are a date and a time!
    * @param {number} numRiders number of riders for this event
-   * @param {date} start_date event start date
-   * @param {date} start_time event start time
+   * @param {Date} start_date event start date
+   * @param {Date} start_time event start time
    * @param {string} groupName name of group
    * @param {string} route_name name of route
    * @returns {string} name of event
@@ -54,7 +54,7 @@ static makeManagedRE(groupNames = []) {
   /**
    * Return true iff this is a Managed Ride - which means that either there is no eventName, or the eventName matches a REGEXP
    * @param {string} eventName the event name
-   * @param{string[]} groups a list of all possible groups
+   * @param{string[]} groupNames a list of all possible groups
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEventName(eventName, groupNames) {

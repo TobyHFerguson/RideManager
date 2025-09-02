@@ -1,4 +1,5 @@
 if (typeof require !== 'undefined') {
+    // @ts-ignore
     const { getGroupNames } = require("./Groups");
 }
 
@@ -72,7 +73,7 @@ const RideManager = (function () {
         row.setRideLink(event.name, new_event_url);
         rwgps.unTagEvents([new_event_url], ["template"]);
         const description = `<a href="${new_event_url}">${event.name}</a>`;
-        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
         row.GoogleEventId = eventId;
     }
     function updateRow_(row, rwgps) {
@@ -91,14 +92,14 @@ const RideManager = (function () {
             event = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
             // DEBUG ISSUE 22
             if (event.name.trim().endsWith(']')) {
-                 throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${event.name}. Original name: ${row.RideName}`);
+                throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${event.name}. Original name: ${row.RideName}`);
             }
             rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
         }
         event.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), names);
         // DEBUG ISSUE 22
         if (event.name.trim().endsWith(']')) {
-             throw new Error(`updateRow_: row ${row.rowNum}: Event name from updateRiderCount ends with a square bracket: ${event.name}. Original name: ${row.RideName}`);
+            throw new Error(`updateRow_: row ${row.rowNum}: Event name from updateRiderCount ends with a square bracket: ${event.name}. Original name: ${row.RideName}`);
         }
 
         row.setRideLink(event.name, row.RideURL);
@@ -106,15 +107,15 @@ const RideManager = (function () {
         if (originalGroup === row.Group) {
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
             if (row.GoogleEventId) {
-                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, event.start_time, row.EndTime, getLocation(row), description);
+                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
             } else {
-                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
                 row.GoogleEventId = eventId;
             }
         } else {
             GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
-            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, event.start_time, row.EndTime, getLocation(row), description);
+            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
             row.GoogleEventId = eventId;
         }
     }
@@ -169,7 +170,7 @@ const RideManager = (function () {
         },
         /**
          * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector
-         * @param {Rows![]} rows to be updated
+         * @param {Row![]} rows to be updated
          * @param {RWGPS} rwgps connector
          */
         updateRiderCounts: function (rows, rwgps) {
@@ -177,16 +178,25 @@ const RideManager = (function () {
             // but helps keep the execution time down.
             console.time('updateRiderCounts');
             const scheduledRows = rows.filter(row => rowCheck.scheduled(row));
+            scheduledRows.forEach((row) => reportIfNameIsTruncated_(row.RouteName, row.RideName))
             const scheduledRowURLs = scheduledRows.map(row => row.RideURL);
             const scheduledRowLeaders = scheduledRows.map(row => row.RideLeaders);
             const rwgpsEvents = rwgps.get_events(scheduledRowURLs);
             const scheduledEvents = rwgpsEvents.map(e => e ? EventFactory.fromRwgpsEvent(e) : e);
+            scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
             const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
+            // updatedEvents is an array of booleans indicating whether the event was updated
+            // or not. If it was updated, the event's name will be changed to reflect the new rider count.
+            // If it wasn't updated, it will be false.
+            // This is used to determine which rows need to be updated in the spreadsheet.
+            // Note that this is a side-effect of the updateRiderCount() method in the Event class.
+            // This is done to avoid updating the spreadsheet unnecessarily, which can be slow.
             const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i], getGroupNames()) : false);
+            scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
             const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
 
             rwgps.edit_events(edits.map(({ row, event }) => {
-                _log('updateRiderCounts', `Row ${row.rowNum} Updating count for: ${event.name}`);
+                console.log('RideManager.updateRiderCounts', `Row ${row.rowNum} Updating count for: ${event.name}`);
                 return { url: row.RideURL, event };
             }));
 
@@ -203,3 +213,18 @@ const RideManager = (function () {
         }
     }
 })()
+
+function reportIfNameIsTruncated_(routeName, rideName) {
+    if (!rideName.trim().endsWith(routeName.trim())) {
+        console.error(`Ride Name '${rideName}' doesnt end in route name '${routeName}'`)
+    }
+}
+
+function testReportIfNameIsTruncated() {
+    const routeName = "AV - Freedom Via Pioneers, Green Vly, Freedom"
+    const rideName = "Tue C (8/5 09:30) [7] "
+    try { reportIfNameIsTruncated_(routeName, rideName) }
+    catch (e) {
+        console.error(e.message)
+    }
+}

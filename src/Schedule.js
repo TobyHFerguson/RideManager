@@ -2,11 +2,52 @@ if (typeof require !== 'undefined') {
     HyperlinkUtils = require('./HyperlinkUtils.js'); // Import the utility module
 }
 
+// @ts-check
+
 const Schedule = function () {
     function log(nm, msg) {
         // console.log(`Schedule.${nm}: ${msg}`)
     }
 
+    /**
+     * The Schedule class provides methods to interact with and manipulate ride scheduling data
+     * stored in the "Consolidated Rides" sheet of a Google Spreadsheet. It supports operations
+     * such as storing/restoring formulas, highlighting cells, saving and retrieving rows, and
+     * handling ride and route information.
+     *
+     * @class
+     *
+     * @property {GoogleAppsScript.Spreadsheet.Sheet} crSheet - Reference to the "Consolidated Rides" sheet.
+     * @property {string[]} columnNames - Array of column names from the sheet header.
+     * @property {Set<Row>} rows - Set of Row objects to be saved.
+     *
+     * @method _getColumnRange Gets a range object for a specified column and rows.
+     * @method _getRideColumnRange Gets a range object for the ride column.
+     * @method _getRouteColumnRange Gets a range object for the route column.
+     * @method storeFormulas Stores ride and route formulas in document properties.
+     * @method storeRouteFormulas Stores route column formulas.
+     * @method storeRideFormulas Stores ride column formulas.
+     * @method restoreFormula Restores ride and route formulas for a given row.
+     * @method restoreRouteFormula Restores route formula for a given row.
+     * @method restoreRideFormula Restores ride formula for a given row.
+     * @method getYoungerRows Returns all rows scheduled after a given date.
+     * @method findLastRowBeforeYesterday Finds the last row before yesterday's date.
+     * @method getColumnIndex Returns the index of a column by name.
+     * @method getStartDate Gets the start date from a row's values.
+     * @method getStartTime Gets the start time from a row's values.
+     * @method getGroup Gets the group from a row's values.
+     * @method getRideLeader Gets the ride leader from a row's values.
+     * @method getLocation Gets the location from a row's values.
+     * @method getAddress Gets the address from a row's values.
+     * @method highlightCell Highlights or unhighlights a cell in the sheet.
+     * @method saveRow Adds a row to the set of rows to be saved.
+     * @method getRowSet Reduces a set of rows to those with disjoint ranges.
+     * @method save Saves all rows in the set to the sheet and persists formulas.
+     * @method deleteRideLink Clears the ride link cell for a given row.
+     * @method convertRangeToRows Converts a sheet range to an array of Row objects.
+     * @method getSelectedRows Gets the selected rows from the sheet.
+     * @method getLastRow Gets the last row in the sheet as a Row object.
+     */
     class Schedule {
         constructor() {
             this.crSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
@@ -14,6 +55,14 @@ const Schedule = function () {
             this.rows = new Set();
         }
 
+        /**
+         * Returns a range object for the specified column and rows in the sheet.
+         *
+         * @param {string} columnName - The name of the column to get the range for.
+         * @param {number} [rowNum=2] - The starting row number (default is 2).
+         * @param {number} [numRows=0] - The number of rows to include in the range. If 0, uses all rows from rowNum to the last row.
+         * @returns {GoogleAppsScript.Spreadsheet.Range} The range object for the specified column and rows.
+         */
         _getColumnRange(columnName, rowNum = 2, numRows = 0) {
             numRows = numRows || this.crSheet.getLastRow() - 1;
             const columnIndex = this.getColumnIndex(columnName) + 1;
@@ -307,6 +356,24 @@ const Schedule = function () {
             this.values[this.offset][this.schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME)] = formula;
             // Logger.log(`Row ${this.rowNum}: Setting route link to ${name} at ${url} with formula ${formula}`);
             this.schedule.saveRow(this);
+        }
+
+        /**
+         * Determines if the schedule row is planned by checking if StartDate, Group, and RouteURL are set.
+         * @returns {boolean} True if all required properties are present; otherwise, false.
+         */
+        isPlanned() {
+            // console.log('row.isPlanned()', 'start date: ', this.StartDate, 'group: ', this.Group, 'route: ', this.RouteURL);
+            // @ts-ignore
+            return this.StartDate && this.Group && this.RouteURL;
+        }
+
+        /**
+         * Determines if the ride is scheduled.
+         * @returns {boolean} Returns true if the ride has a name, otherwise false.
+         */
+        isScheduled() {
+            return this.RideName !== '';
         }
 
         /**

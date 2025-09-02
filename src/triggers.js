@@ -1,4 +1,6 @@
 /** @OnlyCurrentDoc */
+
+// @ts-check
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Ride Schedulers')
@@ -13,11 +15,11 @@ function onOpen() {
     .addItem('Update Rider Count', "updateRiderCount")
     .addToUi();
 
-    ui.createMenu('App Actions')
-      // Add a menu item 'Get App Version' that calls the 'showAppVersion' function.
-      .addItem('Get App Version', 'showAppVersion')
-      // Add the menu to the UI.
-      .addToUi();
+  ui.createMenu('App Actions')
+    // Add a menu item 'Get App Version' that calls the 'showAppVersion' function.
+    .addItem('Get App Version', 'showAppVersion')
+    // Add the menu to the UI.
+    .addToUi();
 
   // We store the original formulas here so that we can restore them if the user
   // accidentally overwrites them. They need to be stored outside of the spreadsheet 
@@ -69,46 +71,110 @@ function updateSelectedRides() {
 }
 
 
+/**
+* Checks if a given range contains a specific column index.
+* @param {GoogleAppsScript.Spreadsheet.Range} range The range to check.
+* @param {number} columnIndex The column index (1-based) to check for.
+* @return {boolean} True if the range contains the column, false otherwise.
+*/
+function rangeContainsColumn_(range, columnIndex) {
+  const startColumn = range.getColumn();
+  const endColumn = range.getLastColumn();
 
+  return columnIndex >= startColumn && columnIndex <= endColumn;
+}
+
+/**
+ * Determines if the edit event represents a cell deletion.
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event.
+ * @return {boolean} True if the cell is being deleted, false otherwise.
+ */
+function isDelete_(event) {
+  const newValue = event.value || event.range.getValue() ||
+    (event.range.getRichTextValue() && event.range.getRichTextValue().getLinkUrl()) || event.range.getFormula();
+  return !newValue
+}
+
+function editEventReport_(event) {
+  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
+  console.log(`event.oldValue: ${event.oldValue}`);
+  console.log(`event.value: ${event.value}`);
+  console.log(`event.range.getValue(): ${event.range.getValue()}`);
+  console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
+  if (event.range.getRichTextValue()) {
+    console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
+    console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+  }
+  const row = Schedule.getSelectedRows()[0];
+  console.log(`Row data: ${JSON.stringify(row)}`);
+  console.log(`ride URL: ${row.RideURL}`);
+  console.log(`route URL: ${row.RouteURL}`);
+}
+
+/**
+ * 
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
+ */
 function myEdit(event) {
+  // event.value is only defined if the edited cell is a single cell
+  // editEventReport_(event);
   try {
     if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
+      if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
+        alert_('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
+        for (let i = 0; i < event.range.getNumRows(); i++) {
+          Schedule.restoreFormula(event.range.getRow() + i);
+        }
+        return;
+      }
+      const row = Schedule.getSelectedRows()[0];
+      if (row.isScheduled() && isDelete_(event)) {
+        alert_('Ride is scheduled - no deletions allowed.');
+        event.range.setValue(event.oldValue);
+        Schedule.restoreFormula(event.range.getRow());
+        return;
+      }
+      // When copying a date it appears that this value is in event.range.getValue(), not in event.value!
+      if ((event.value === event.oldValue) && !(event.range.getValue() || event.range.getFormula())) {
+        console.log('No change to value, accepting edit');
+        return;
+      }
+      // Don't allow group changes once scheduled
+      if (row.isScheduled() && event.range.getColumn() === Schedule.getColumnIndex(getGlobals().GROUPCOLUMNNAME) + 1) {
+        alert_('Group changes are not allowed once the ride is scheduled.');
+        event.range.setValue(event.oldValue);
+        return;
+      }
       const processingManager = new ProcessingManager((pm) => myEdit_(event, pm));
-      processingManager.startProcessing
+      processingManager.startProcessing();
     }
   } catch (e) {
-    SpreadsheetApp.getUi().alert(e.message)
+    alert_(e.message)
     throw e
   }
 }
+
+function alert_(message) {
+  SpreadsheetApp.getUi().alert(message);
+}
+
 function myEdit_(event, pm) {
-  // console.log('onEdit triggered');
-  // console.log(`Event: ${JSON.stringify(event)}`);
-
-
-
-
-
-
+  // console.log(`myEdit_ called with event: ${JSON.stringify(event)}`);
   /**
-  * Checks if a given range contains a specific column index.
-  * @param {Range} range The range to check.
-  * @param {number} columnIndex The column index (1-based) to check for.
-  * @return {boolean} True if the range contains the column, false otherwise.
-  */
-  function rangeContainsColumn(range, columnIndex) {
-    const startColumn = range.getColumn();
-    const endColumn = range.getLastColumn();
-
-    return columnIndex >= startColumn && columnIndex <= endColumn;
-  }
-
-  /**
-   * Edits the route column in the schedule.
-   */
+     * Edits the route column in the schedule.
+     * @param {GoogleAppsScript.Events.SheetsOnEdit} event The event object containing information about the edit.
+     */
   function _editRouteColumn(event) {
     pm.addProgress('Editing route column');
-    const url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText();
+    let url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText() || event.range.getFormula();
+    if (url.toLowerCase().startsWith("=hyperlink")) {
+      ({ url } = parseHyperlinkFormula(url))
+    }
+    if (!url) {
+      event.range.setValue(url);
+      Schedule.storeRouteFormulas();
+      return;
+    }
     const route = getRoute(url);
     let name;
     if (route.user_id !== getGlobals().SCCCC_USER_ID) {
@@ -139,38 +205,35 @@ function myEdit_(event, pm) {
   const routeColumnIndex = Schedule.getColumnIndex(getGlobals().ROUTECOLUMNNAME) + 1;
 
   // Logger.log(`onEdit triggered: editedColumn=${editedColumn}, rideColumnIndex=${rideColumnIndex}, routeColumnIndex=${routeColumnIndex}`);
-  if (rangeContainsColumn(editedRange, rideColumnIndex) || rangeContainsColumn(editedRange, routeColumnIndex)) {
-    if (editedRange.getNumColumns() > 1 || editedRange.getNumRows() > 1) {
-      SpreadsheetApp.getUi().alert('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
-      for (let i = 0; i < editedRange.getNumRows(); i++) {
-        Schedule.restoreFormula(editedRange.getRow() + i);
-      }
-      return;
-    }
-    if (rangeContainsColumn(editedRange, rideColumnIndex)) {
-      SpreadsheetApp.getUi().alert('The Ride cell must not be modified. It will be reverted to its previous value.');
+  if (rangeContainsColumn_(editedRange, rideColumnIndex) || rangeContainsColumn_(editedRange, routeColumnIndex)) {
+
+    if (rangeContainsColumn_(editedRange, rideColumnIndex)) {
+      alert_('The Ride cell must not be modified. It will be reverted to its previous value.');
       Schedule.restoreRideFormula(editedRange.getRow());
       return;
     }
-    if (rangeContainsColumn(editedRange, routeColumnIndex)) {
+    if (rangeContainsColumn_(editedRange, routeColumnIndex)) {
       try {
         _editRouteColumn(event);
       } catch (e) {
-        SpreadsheetApp.getUi().alert(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
+        alert_(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
         Schedule.restoreRouteFormula(editedRange.getRow());
         return;
       }
     }
   }
   const force = true;
-  if (Schedule.getSelectedRows()[0].RideURL) {
+  const row = Schedule.getSelectedRows()[0];
+  if (row.isScheduled()) {
     pm.addProgress('Updating ride');
     MenuFunctions.updateSelectedRides(force);
     pm.addProgress('Ride updated');
   } else {
-    pm.addProgress('Scheduling ride');
-    MenuFunctions.scheduleSelectedRides(force);
-    pm.addProgress('Ride scheduled');
+    if (row.isPlanned()) {
+      pm.addProgress('Scheduling ride');
+      MenuFunctions.scheduleSelectedRides(force);
+      pm.addProgress('Ride scheduled');
+    }
   }
   pm.endProcessing();
 }
