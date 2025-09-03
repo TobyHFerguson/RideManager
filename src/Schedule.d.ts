@@ -114,9 +114,17 @@ interface ScheduleInstance {
     findLastRowBeforeYesterday(): number;
 
     /**
+     * Checks if a column name matches a given column number.
+     * @param name The column name.
+     * @param columnNum The column number (1-based, as per Spreadsheet column numbering).
+     * @returns True if the column name matches the column number, false otherwise.
+     */
+    isColumn(name: string, columnNum: number): boolean;
+
+    /**
      * Returns the index of a column by name.
      * @param name The column name.
-     * @returns The column index.
+     * @returns The column index (0-based - as per column array indexing).
      */
     getColumnIndex(name: string): number;
 
