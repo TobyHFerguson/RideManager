@@ -25,7 +25,7 @@ function createMenu_() {
     .addSeparator()
     .addItem('Import Selected Routes', importSelectedRoutes_.name)
     .addItem('Link Selected Route URLs', linkSelectedRouteUrls_.name)
-    .addItem('Update Rider Count', updateRiderCount_.name)
+    .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
     .addItem(getDTRTMenuText_(), toggleDTRT_.name)
     .addItem('Get App Version', showAppVersion_.name)
@@ -86,7 +86,7 @@ function scheduleSelectedRides_() {
 function unscheduleSelectedRides_() {
   MenuFunctions.unscheduleSelectedRides();
 }
-function updateRiderCount_() {
+function updateRiderCount() {
   MenuFunctions.updateRiderCount();
 }
 function updateSelectedRides_() {
