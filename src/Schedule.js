@@ -150,6 +150,10 @@ const Schedule = function () {
             return lastRowBeforeYesterday;
         }
 
+        isColumn(name, columnNum) {
+            return this.getColumnIndex(name) + 1 === columnNum;
+        }
+
         getColumnIndex(name) {
             let ix = this.columnNames.indexOf(name);
             if (ix !== -1) {
