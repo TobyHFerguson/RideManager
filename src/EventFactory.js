@@ -1,7 +1,9 @@
 if (typeof require !== 'undefined') {
-     (Event = require('./Event'));
-     var dates = require('../submodules/Dates/src/dates');
-     var { _, getGroupNames } = require('./Groups');
+    // @ts-ignore
+    (Event = require('./Event'));
+    var dates = require('../submodules/Dates/src/dates');
+    var { getGroupNames } = require('./Groups');
+    // @ts-ignore
     var { getGlobals } = require('./Globals');
 }
 
@@ -12,13 +14,13 @@ const EventFactory = function () {
      * Get a string that describes the ride
      * @param {String[]} leaders - array of ride leader organizers
      * @param {string} address - address
-     * @param {date} meet_time - meeting time
-     * @param {date} start_time - starting time
+     * @param {number | Date} meet_time - meeting time
+     * @param {number | Date} start_time - starting time
      * @returns string describing the ride
      */
     function createDescription(leaders, address, meet_time, start_time, event_id) {
         const result =
-`Ride Leader${leaders.length > 1 ? 's' : ''}: ${leaders.join(', ')}
+            `Ride Leader${leaders.length > 1 ? 's' : ''}: ${leaders.join(', ')}
 
 ${address}
 
@@ -42,7 +44,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
     return {
         /**
          * @param {Row} row row object to make event from
-         * @param {Organizers[]} organizers the organizers (i.e. ride leaders) for this event
+         * @param {Organizer[]} organizers the organizers (i.e. ride leaders) for this event
          * @returns 
          */
         newEvent: function (row, organizers, event_id) {

@@ -5,7 +5,8 @@ class GoogleCalendarManager {
             console.error('Calendar not found.');
             return;
         }
-
+        console.log('Calendar found: ', calendar.getName());
+        console.log(`Creating event: ${title}, ${startTime} - ${endTime}, location: ${location}`);
         const event = calendar.createEvent(title, startTime, endTime, {
             description: description,
             location: location

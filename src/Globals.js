@@ -1,5 +1,9 @@
 // This file is used to store global variables that are used across the project
 
+/**
+ * Initializes global variables from the 'Globals' sheet and caches them.
+ * @returns {Object.<string, any>} An object containing global key-value pairs.
+ */
 function initializeGlobals() {
     const globalData = bmPreFiddler.PreFiddler().getFiddler({
         sheetName: 'Globals',
@@ -18,6 +22,10 @@ function initializeGlobals() {
     return globals;
 }
 
+/**
+ * Retrieves global variables from cache, or initializes them if not present.
+ * @returns {Object.<string, any>|undefined} An object containing global key-value pairs, or undefined if an error occurs.
+ */
 function getGlobals() {
   // console.log('Entering getGlobals function');
   try {
