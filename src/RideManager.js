@@ -192,7 +192,7 @@ const RideManager = (function () {
             // Note that this is a side-effect of the updateRiderCount() method in the Event class.
             // This is done to avoid updating the spreadsheet unnecessarily, which can be slow.
             const updatedEvents = scheduledEvents.map((event, i) => event ? event.updateRiderCount(rsvpCounts[i], getGroupNames()) : false);
-            scheduledEvents.forEach((event, i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
+            scheduledEvents.forEach((event, i) => { if (event) fixTruncatedName(event, scheduledRows[i].RouteName) });
             const edits = updatedEvents.reduce((p, e, i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
 
             rwgps.edit_events(edits.map(({ row, event }) => {
@@ -220,6 +220,15 @@ function reportIfNameIsTruncated_(routeName, rideName) {
     }
 }
 
+function fixTruncatedName(event, routeName) {
+    if (!event.name.trim().endsWith(routeName.trim())) {
+        const oldName = event.name.trim();
+        const newName = event.name.trim() + ' ' + routeName.trim();
+        event.name = newName;
+        console.error('Fixed event name from: ', oldName, ' to: ', newName);
+    }
+    return event;
+}
 function testReportIfNameIsTruncated() {
     const routeName = "AV - Freedom Via Pioneers, Green Vly, Freedom"
     const rideName = "Tue C (8/5 09:30) [7] "
