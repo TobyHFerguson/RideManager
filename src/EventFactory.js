@@ -77,7 +77,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
             event.start_time = sd.toISOString();
             event.visibility = rwgpsEvent.visibility;
             if (event.name.trim().endsWith(']')) {
-                throw new Error(`Event name '${event.name}' should not end with ']' - this is likely a bug in the RWGPS event import code`);
+                console.error(`Event name '${event.name}' should not end with ']' - this is likely a bug in the RWGPS event import code`);
             }
             return event;
         }
