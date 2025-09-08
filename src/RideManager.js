@@ -18,7 +18,7 @@ const RideManager = (function () {
         }
         return id;
     }
-    function getLocation(row) {
+    function getLatLong(row) {
         const route = getRoute(row.RouteURL);
         return route ? `${route.first_lat},${route.first_lng}` : '';
     }
@@ -28,6 +28,8 @@ const RideManager = (function () {
         event.cancel();
         row.setRideLink(event.name, row.RideURL);
         rwgps.edit_event(row.RideURL, event)
+        const description = `<a href="${row.RideURL}">${event.name}</a>`;
+        GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
     }
     function importRow_(row, rwgps) {
         let route = {
@@ -54,6 +56,8 @@ const RideManager = (function () {
         event.reinstate();
         row.setRideLink(event.name, row.RideURL);
         rwgps.edit_event(row.RideURL, event)
+        const description = `<a href="${row.RideURL}">${event.name}</a>`;
+        GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
     }
 
     function schedule_row_(row, rwgps) {
@@ -73,7 +77,8 @@ const RideManager = (function () {
         row.setRideLink(event.name, new_event_url);
         rwgps.unTagEvents([new_event_url], ["template"]);
         const description = `<a href="${new_event_url}">${event.name}</a>`;
-        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
+        console.log('RideManager.schedule_row_', `Creating Google Calendar event with event:`, event);
+        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
         row.GoogleEventId = eventId;
     }
     function updateRow_(row, rwgps) {
@@ -107,15 +112,15 @@ const RideManager = (function () {
         if (originalGroup === row.Group) {
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
             if (row.GoogleEventId) {
-                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
+                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
             } else {
-                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
+                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
                 row.GoogleEventId = eventId;
             }
         } else {
             GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
-            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLocation(row), description);
+            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
             row.GoogleEventId = eventId;
         }
     }
@@ -202,6 +207,9 @@ const RideManager = (function () {
 
             edits.forEach(({ row, event }) => {
                 row.setRideLink(event.name, row.RideURL);
+                const description = `<a href="${row.RideURL}">${event.name}</a>`;
+                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
+
             });
 
             const updatedRows = edits.map(({ row, _ }) => row.rowNum);
