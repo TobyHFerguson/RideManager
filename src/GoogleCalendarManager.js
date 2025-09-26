@@ -2,7 +2,7 @@ class GoogleCalendarManager {
     static createEvent(calendarId, title, startTime, endTime, location, description) {
         const calendar = CalendarApp.getCalendarById(calendarId);
         if (!calendar) {
-            console.error('Calendar not found.');
+            console.error('GoogleCalendarManager.createEvent() - Calendar not found. ', calendarId);
             return;
         }
         console.log('Calendar found: ', calendar.getName());
@@ -34,7 +34,7 @@ class GoogleCalendarManager {
     static updateEvent(calendarId, eventId, title, startTime, endTime, location, description) {
         const calendar = CalendarApp.getCalendarById(calendarId);
         if (!calendar) {
-            console.error('Calendar not found.');
+            console.error('GoogleCalendarManager.updateEvent() - Calendar not found. ', calendarId);
             return;
         }
         const event = calendar.getEventById(eventId);
