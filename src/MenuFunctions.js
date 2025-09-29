@@ -1,6 +1,7 @@
 if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
+const head = (PropertiesService.getScriptProperties().getProperty('head') || 'head').toLowerCase() === 'true';
 
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
@@ -11,7 +12,26 @@ if (typeof require !== 'undefined') {
  * @param {Function} command command to execute
  */
 
+function getRWGPSLib_() {
+  return head ? RWGPSLib : RWGPSLib7;
+}
 
+function getGlobals_() {
+  const g2 = getGroupSpecs();
+  const globals = getGlobals();
+  globals["A_TEMPLATE"] = g2.A.TEMPLATE
+  return globals;
+}
+function getRWGPSService_() {
+  if (head) {
+    const credentialManager = getRWGPSLib_().newCredentialManager(PropertiesService.getScriptProperties())
+    return getRWGPSLib_().newRWGPSService(getGlobals_(), credentialManager);
+  } else {
+    const username = PropertiesService.getScriptProperties().getProperty('rwgps_username')
+    const password = PropertiesService.getScriptProperties().getProperty('rwgps_password')
+    return getRWGPSLib_().newRWGPSService(username, password, getGlobals_());
+  }
+}
 
 const MenuFunctions = (() => {
   function executeCommand(command, force = false) {
@@ -19,8 +39,8 @@ const MenuFunctions = (() => {
     const globals = getGlobals();
     globals["A_TEMPLATE"] = g2.A.TEMPLATE // Needed because RWGPSLib expects globals["A_TEMPLATE"]
 
-    const rwgpsService = RWGPSLib.newRWGPSService(Credentials.username, Credentials.password, globals);
-    const rwgps = RWGPSLib.newRWGPS(rwgpsService);
+    const rwgpsService = getRWGPSService_();
+    const rwgps = getRWGPSLib_().newRWGPS(rwgpsService);
     let rows = Schedule.getSelectedRows();
     const rowNumbers = rows.map(row => row.rowNum).join(", ");
     console.info(`'User ${Session.getActiveUser()} executing ${command.name} on row numbers: ${rowNumbers}`);
