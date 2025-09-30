@@ -13,7 +13,7 @@ const head = (PropertiesService.getScriptProperties().getProperty('head') || 'he
  */
 
 function getRWGPSLib_() {
-  return head ? RWGPSLib : RWGPSLib7;
+  return head ? RWGPSLib : RWGPSLib9;
 }
 
 function getGlobals_() {
