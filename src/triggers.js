@@ -109,6 +109,9 @@ function isDelete_(event) {
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event.
  */
 function editEventReport_(event) {
+  const activeUser = Session.getActiveUser();
+  const userEmail = activeUser ? activeUser.getEmail() : 'Unknown User';
+  console.log(`User ${userEmail} edited the spreadsheet. DTRT is ${dtrtIsEnabled_() ? 'enabled' : 'disabled'}`);
   console.log(`myEdit called with event: ${JSON.stringify(event)}`);
   console.log(`event.oldValue: ${event.oldValue}`);
   console.log(`event.value: ${event.value}`);
@@ -130,7 +133,7 @@ function editEventReport_(event) {
  */
 function myEdit(event) {
   // event.value is only defined if the edited cell is a single cell
-  // editEventReport_(event);
+  editEventReport_(event);
   if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
     return handleCRSheetEdit_(event);
   }

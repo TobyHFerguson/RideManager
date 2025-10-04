@@ -37,10 +37,17 @@ const MenuFunctions = (() => {
     const rwgps = getRWGPSLib_().newRWGPS(rwgpsService);
     let rows = Schedule.getSelectedRows();
     const rowNumbers = rows.map(row => row.rowNum).join(", ");
-    console.info(`'User ${Session.getActiveUser()} executing ${command.name} on row numbers: ${rowNumbers}`);
+    
     try {
+      // User logging executed after they've agreed to any warnings in UIManager
       command(rows, rwgps, force);
     } catch (e) {
+      // Log errors too
+      UserLogger.log(`${command.name}_ERROR`, e.message, { 
+        rowNumbers, 
+        error: e.stack 
+      });
+      
       if (e instanceof AggregateError) {
         for (const error of e.errors) {
           console.error(error.stack);
@@ -55,9 +62,8 @@ const MenuFunctions = (() => {
     finally {
       Schedule.save();
     }
-
-
   }
+  
   return Object.freeze({
     cancelSelectedRides(force = false) {
       let command = Exports.getCommands().cancelSelectedRidesWithCreds;
