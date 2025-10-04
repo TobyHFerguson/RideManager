@@ -13,7 +13,7 @@ const head = (PropertiesService.getScriptProperties().getProperty('head') || 'he
  */
 
 function getRWGPSLib_() {
-  return head ? RWGPSLib : RWGPSLib9;
+  return head ? RWGPSLib : RWGPSLib10;
 }
 
 function getGlobals_() {
@@ -23,14 +23,8 @@ function getGlobals_() {
   return globals;
 }
 function getRWGPSService_() {
-  if (head) {
-    const credentialManager = getRWGPSLib_().newCredentialManager(PropertiesService.getScriptProperties())
-    return getRWGPSLib_().newRWGPSService(getGlobals_(), credentialManager);
-  } else {
-    const username = PropertiesService.getScriptProperties().getProperty('rwgps_username')
-    const password = PropertiesService.getScriptProperties().getProperty('rwgps_password')
-    return getRWGPSLib_().newRWGPSService(username, password, getGlobals_());
-  }
+  const credentialManager = getRWGPSLib_().newCredentialManager(PropertiesService.getScriptProperties())
+  return getRWGPSLib_().newRWGPSService(getGlobals_(), credentialManager);
 }
 
 const MenuFunctions = (() => {
