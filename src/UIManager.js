@@ -7,6 +7,8 @@ const UIManager = {
             inform_of_errors(message);
         } else {
             if (confirm_schedule(message)) {
+                const rowNumbers = rows.map(row => row.rowNum).join(", ");
+                UserLogger.log(fun.name, `Rows: ${rowNumbers}`, message);
                 fun(processableRows, rwgps);
             }
         }
