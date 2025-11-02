@@ -246,10 +246,14 @@ function next_() {
     const force = true;
     const row = Schedule.getSelectedRows()[0];
     if (row.isScheduled()) {
-      return MenuFunctions.updateSelectedRides(force);
+      MenuFunctions.updateSelectedRides(force);
+      alert_('Ride updated.');
+      return;
     }
     if (row.isPlanned()) {
-      return MenuFunctions.scheduleSelectedRides(force);
+      MenuFunctions.scheduleSelectedRides(force);
+      alert_('Ride scheduled.');
+      return
     }
   }
 }
