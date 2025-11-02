@@ -95,16 +95,6 @@ function updateSelectedRides_() {
 
 
 /**
- * Determines if the edit event represents a cell deletion.
- * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event.
- * @return {boolean} True if the cell is being deleted, false otherwise.
- */
-function isDelete_(event) {
-  const newValue = event.value || event.range.getValue() ||
-    (event.range.getRichTextValue() && event.range.getRichTextValue().getLinkUrl()) || event.range.getFormula();
-  return !newValue
-}
-/**
  * Reports the details of an edit event.
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event.
  */
@@ -125,6 +115,7 @@ function editEventReport_(event) {
   console.log(`Row data: ${JSON.stringify(row)}`);
   console.log(`ride URL: ${row.RideURL}`);
   console.log(`route URL: ${row.RouteURL}`);
+  console.log(`isScheduled: ${row.isScheduled()}`);
 }
 
 /**
@@ -154,7 +145,7 @@ function myEdit(event) {
  *   the sheet state using Schedule.restoreFormula / Schedule.restoreRouteFormula as appropriate.
  *
  * This function relies on globals/helpers available in the script context:
- * Schedule, editRouteColumn_, isDelete_, alert_, getGlobals(), next(), etc.
+ * Schedule, editRouteColumn_,alert_, getGlobals(), next(), etc.
  *
  * @private
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
@@ -170,8 +161,9 @@ function handleCRSheetEdit_(event) {
       return;
     }
     const row = Schedule.getSelectedRows()[0];
-    if (row.isScheduled() && isDelete_(event)) {
-      alert_('Ride is scheduled - no deletions allowed.');
+    const colNum = event.range.getColumn();
+    if (Schedule.isColumn(getGlobals().RIDECOLUMNNAME, colNum)) {
+      alert_('No edits of Ride Column allowed.');
       event.range.setValue(event.oldValue);
       Schedule.restoreFormula(event.range.getRow());
       return;
@@ -181,7 +173,6 @@ function handleCRSheetEdit_(event) {
       console.log('No change to value, accepting edit');
       return;
     }
-    const colNum = event.range.getColumn();
     // Don't allow group changes once scheduled
     if (row.isScheduled() && Schedule.isColumn(getGlobals().GROUPCOLUMNNAME, colNum)) {
       alert_('Group changes are not allowed once the ride is scheduled.');
