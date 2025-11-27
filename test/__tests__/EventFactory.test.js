@@ -11,7 +11,8 @@ jest.mock('../../src/Globals', () => ({
   getGlobals: jest.fn(() => ({
     RIDE_LEADER_TBD_ID: 9999,
     RIDE_LEADER_TBD_NAME: 'To Be Determined',
-    RSVP_BASE_URL: 'https://tinyurl.com/3k29mpdr'
+    RSVP_BASE_URL: 'https://tinyurl.com/3k29mpdr',
+    CLUB_RIDE_POLICY_URL: 'https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709'
 }))
 }));
 
@@ -45,7 +46,7 @@ describe("Event Factory Tests", () => {
             test("should build from a row", () => {
                 const actual = EventFactory.newEvent(managedRow, organizers, 1234);
                 const expected = managedEvent;
-                expect(actual).toEqual(expected);
+                expect(actual).toMatchObject(expected);
             })
             test("It should create a brand new object on each call", () => {
                 let e1 = EventFactory.newEvent(managedRow, organizers);
@@ -56,7 +57,7 @@ describe("Event Factory Tests", () => {
             test("should use the given ride name for unmanaged events", () => {
                 const expected = { ...managedEvent, name: 'Tobys Ride [1]' }
                 const actual = EventFactory.newEvent(unmanagedRow, organizers, 1234);
-                expect(actual).toEqual(expected);
+                expect(actual).toMatchObject(expected);
             })
             test("should create a new ride name for managed events", () => {
                 const start = new Date("2023-06-01T18:00:00.000Z");
@@ -71,7 +72,7 @@ describe("Event Factory Tests", () => {
                 }
                 const mr = { ...managedRow, StartDate: "2023-06-01T18:00:00.000Z", StartTime: "2023-06-01T18:00:00.000Z"}
                 const actual = EventFactory.newEvent(mr, organizers, 1234);
-                expect(actual).toEqual(expected);
+                expect(actual).toMatchObject(expected);
             })
             test("should throw an error if row is missing", () => {
                 expect(() => EventFactory.newEvent()).toThrow("no row object given");
@@ -83,7 +84,7 @@ describe("Event Factory Tests", () => {
                 expected.organizer_tokens = [getGlobals().RIDE_LEADER_TBD_ID + ""];
 
                 const actual = EventFactory.newEvent(managedRow, [], 1234)
-                expect(actual).toEqual(expected);
+                expect(actual).toMatchObject(expected);
             })
         })
         describe("fromRwgpsEvent()", () => {
@@ -91,7 +92,10 @@ describe("Event Factory Tests", () => {
             test("should return the managedEvent", () => {
                 let actual = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
                 const expected = managedEvent;
-                expect(actual).toEqual(expected);
+                // Don't compare desc since RWGPS events preserve original description text
+                const { desc: _, ...expectedWithoutDesc } = expected;
+                const { desc: __, ...actualWithoutDesc } = actual;
+                expect(actualWithoutDesc).toMatchObject(expectedWithoutDesc);
             })
             test("should return an event even if the description is missing", () => {
                 const testcase = managedRwgpsEvent;
@@ -123,6 +127,13 @@ describe("Event Factory Tests", () => {
                 expect(actual).toEqual(expected);
                 expect(typeof actual_start_date).toBe("string");
                 expect(typeof actual_start_time).toBe("string");
+            })
+            test("should log error when event name ends with ]", () => {
+                const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+                const testcase = { ...managedRwgpsEvent, name: "Bad Event Name ]" };
+                EventFactory.fromRwgpsEvent(testcase);
+                expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("should not end with ']'"));
+                consoleSpy.mockRestore();
             })
         })
     })

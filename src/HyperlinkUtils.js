@@ -23,6 +23,7 @@ function parseHyperlinkFormula(formula) {
     return `=HYPERLINK("${url}", "${name}")`;
   }
   
+  /* istanbul ignore next - GAS-only function, cannot be tested in Jest */
   function convertRTVsToHyperlinksByHeaders(headerNames) {
     // Get the active sheet
     var sheet = SpreadsheetApp.getActiveSheet();
@@ -71,6 +72,7 @@ function parseHyperlinkFormula(formula) {
   }
   
   // Example usage:
+  /* istanbul ignore next - GAS-only test function */
   function testConvert() {
     // Call the function with an array of header names
     convertRTVsToHyperlinksByHeaders(["Ride", "Route"]); // Replace with your actual header names
