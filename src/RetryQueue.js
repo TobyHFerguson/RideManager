@@ -119,11 +119,33 @@ var RetryQueue = (function() {
         }
 
         /**
+         * Check if test mode is enabled (for testing)
+         * @private
+         */
+        _isTestMode() {
+            return this.props.getProperty('RETRY_QUEUE_TEST_MODE') === 'true';
+        }
+
+        /**
+         * Check if failures should be forced (for testing)
+         * @private
+         */
+        _shouldForceFailure() {
+            return this.props.getProperty('RETRY_QUEUE_FORCE_FAILURE') === 'true';
+        }
+
+        /**
          * Execute a queued operation (GAS-specific)
          * @private
          * @returns {Object} { success: boolean, error?: string, eventId?: string }
          */
         _executeOperation(item) {
+            // Test mode: Force failures if requested
+            if (this._isTestMode() && this._shouldForceFailure()) {
+                console.log('RetryQueue [TEST MODE]: Forcing failure');
+                return { success: false, error: 'Calendar Not Found - Forced Test Failure' };
+            }
+
             try {
                 switch (item.type) {
                     case 'create':
