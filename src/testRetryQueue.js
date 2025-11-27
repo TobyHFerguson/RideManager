@@ -1,14 +1,151 @@
 /**
- * Test RetryQueue system with artificial failures
+ * ============================================================================
+ * RetryQueue Testing Functions
+ * ============================================================================
  * 
- * This file provides comprehensive testing functions for the RetryQueue system.
- * Run these functions from the GAS editor to experience the full retry workflow.
+ * AVAILABLE TEST FUNCTIONS (visible in GAS Run dropdown):
+ * 
+ * 1. testRetryQueueFullScenario() 
+ *    - RECOMMENDED: Runs complete end-to-end test with artificial failures
+ *    - Tests: enqueue, retry timing, failure tracking, notifications
+ *    - Contains 3 private helper functions (not visible in Run dropdown)
+ * 
+ * 2. cleanupRetryQueueTest()
+ *    - Clears all test data and resets the queue
+ *    - Run this before/after tests or if things get stuck
+ * 
+ * 3. manualProcessQueue()
+ *    - Manually trigger retry processing on existing queue items
+ *    - Useful for testing retry logic without waiting for triggers
+ * 
+ * 4. testSuccessfulRetry()
+ *    - Disable test mode and attempt real calendar operations
+ *    - Use AFTER testRetryQueueFullScenario() to test success path
+ * 
+ * 5. testCutoffBehavior()
+ *    - Test the 48-hour expiration logic
+ *    - Requires existing queue items
+ * 
+ * 6. testMultipleQueueItems()
+ *    - Test multiple operations in queue simultaneously
+ * 
+ * ============================================================================
  */
 
 /**
- * Main test orchestrator - runs through the complete retry scenario
+ * PUBLIC: Main test orchestrator - runs through the complete retry scenario
+ * START HERE for comprehensive testing
  */
 function testRetryQueueFullScenario() {
+  
+  // ============================================================================
+  // PRIVATE HELPER FUNCTIONS - Only accessible within this function
+  // ============================================================================
+  
+  /**
+   * Get test ride data from spreadsheet
+   * @returns {{rideUrl: string, rowNum: number, rideName: string}} Test ride data
+   */
+  function setupTestRide() {
+    const schedule = new ScheduleAdapter();
+    const testRow = schedule.loadLastRow();
+    
+    if (!testRow) {
+      throw new Error('No rows in spreadsheet - please add at least one ride entry');
+    }
+    
+    Logger.log(`Using row ${testRow.rowNum}: ${testRow.StartDate} - ${testRow.Group}`);
+    
+    if (!testRow.RideURL) {
+      throw new Error(`Test row has no RideURL - please ensure Ride column has a valid RWGPS URL. Row ${testRow.rowNum}: RideName='${testRow.RideName}', RouteURL='${testRow.RouteURL}'`);
+    }
+    
+    const result = {
+      rideUrl: testRow.RideURL,
+      rowNum: testRow.rowNum,
+      rideName: testRow.RideName || 'Test Ride'
+    };
+    
+    Logger.log('setupTestRide returning: ' + JSON.stringify(result));
+    return result;
+  }
+  
+  /**
+   * Test immediate retry with artificial failure
+   * @param {{rideUrl: string, rowNum: number, rideName: string}} testRide - The test ride data
+   */
+  function testImmediateRetryFailure(testRide) {
+    // Enable test mode to force failures
+    PropertiesService.getScriptProperties().setProperty('RETRY_QUEUE_TEST_MODE', 'true');
+    PropertiesService.getScriptProperties().setProperty('RETRY_QUEUE_FORCE_FAILURE', 'true');
+    
+    Logger.log('Test mode enabled WITH NEW CODE - calendar operations will fail artificially');
+    Logger.log('testRide parameter: ' + JSON.stringify(testRide));
+    
+    // Enqueue a fake calendar creation operation
+    const operation = {
+      type: 'create',
+      calendarId: 'test-calendar-id',
+      rideUrl: testRide.rideUrl,
+      rideTitle: testRide.rideName,
+      rowNum: testRide.rowNum,
+      params: {
+        title: testRide.rideName,
+        startTime: new Date(Date.now() + 86400000).getTime(), // Tomorrow
+        endTime: new Date(Date.now() + 90000000).getTime(),   // Tomorrow + 1 hour
+        location: 'Test Location',
+        description: 'This is a test event for RetryQueue validation'
+      },
+      userEmail: Session.getActiveUser().getEmail()
+    };
+    
+    const queue = new RetryQueue();
+    queue.enqueue(operation);
+    Logger.log('✓ Operation enqueued with artificial failure');
+  }
+  
+  /**
+   * Simulate multiple retry attempts by manipulating timestamps
+   * @param {{rideUrl: string, rowNum: number, rideName: string}} testRide - The test ride data
+   */
+  function simulateMultipleRetries(testRide) {
+    const retryQueue = new RetryQueue();
+    const queue = retryQueue._getQueue();
+    const item = queue.find(i => i.rideUrl === testRide.rideUrl);
+    
+    if (!item) {
+      Logger.log('⚠ No queue item found for this ride URL');
+      return;
+    }
+    
+    Logger.log(`Current attempt count: ${item.attemptCount}`);
+    Logger.log(`Next retry scheduled for: ${new Date(item.nextRetryAt)}`);
+    
+    // Simulate time passing - set nextRetryAt to past
+    item.nextRetryAt = Date.now() - 1000; // 1 second ago
+    retryQueue._saveQueue(queue);
+    
+    Logger.log('⏰ Fast-forwarded time - processing retry now...');
+    const retryQueue2 = new RetryQueue();
+    retryQueue2.processQueue();
+    
+    // Check updated state
+    const retryQueue3 = new RetryQueue();
+    const updatedQueue = retryQueue3._getQueue();
+    const updatedItem = updatedQueue.find(i => i.rideUrl === testRide.rideUrl);
+    
+    if (updatedItem) {
+      Logger.log(`Updated attempt count: ${updatedItem.attemptCount}`);
+      Logger.log(`Next retry scheduled for: ${new Date(updatedItem.nextRetryAt)}`);
+    } else {
+      Logger.log('Item removed from queue (max retries reached or success)');
+    }
+  }
+  
+  // ============================================================================
+  // MAIN TEST EXECUTION
+  // ============================================================================
+  
   Logger.log('=== Starting RetryQueue Full Scenario Test ===\n');
   
   // Clean slate
@@ -17,12 +154,20 @@ function testRetryQueueFullScenario() {
   try {
     // 1. Setup test data
     Logger.log('Step 1: Setting up test data...');
-    const testRideUrl = setupTestRide();
-    Logger.log(`✓ Test ride URL: ${testRideUrl}\n`);
+    let testRide;
+    try {
+      testRide = setupTestRide();
+      Logger.log('setupTestRide() completed successfully');
+    } catch (setupError) {
+      Logger.log('ERROR in setupTestRide(): ' + setupError.message);
+      Logger.log('Stack: ' + setupError.stack);
+      throw setupError;
+    }
+    Logger.log(`✓ Test ride URL: ${testRide.rideUrl}\n`);
     
     // 2. Test immediate retry (simulated failure)
     Logger.log('Step 2: Testing immediate retry with artificial failure...');
-    testImmediateRetryFailure(testRideUrl);
+    testImmediateRetryFailure(testRide);
     
     // 3. Check queue status
     Logger.log('\nStep 3: Checking queue status...');
@@ -43,7 +188,7 @@ function testRetryQueueFullScenario() {
     
     // 6. Simulate time passing and retry again
     Logger.log('\nStep 6: Simulating multiple retry attempts...');
-    simulateMultipleRetries(testRideUrl);
+    simulateMultipleRetries(testRide);
     
     // 7. Final queue status
     Logger.log('\nStep 7: Final queue status...');
@@ -61,98 +206,14 @@ function testRetryQueueFullScenario() {
   }
 }
 
-/**
- * Create a test ride entry in the spreadsheet
- * @returns {string} The RideURL for the test ride
- */
-function setupTestRide() {
-  const schedule = new ScheduleAdapter();
-  const testRow = schedule.loadLastRow();
-  
-  if (!testRow) {
-    throw new Error('No rows in spreadsheet - please add at least one ride entry');
-  }
-  
-  Logger.log(`Using row ${testRow.rowNum}: ${testRow.StartDate} - ${testRow.Group}`);
-  
-  if (!testRow.RideURL) {
-    throw new Error(`Test row has no RideURL - please ensure Ride column has a valid RWGPS URL. Row ${testRow.rowNum}: RideName='${testRow.RideName}', RouteURL='${testRow.RouteURL}'`);
-  }
-  
-  return testRow.RideURL;
-}
-
-/**
- * Test immediate retry with artificial failure
- * @param {string} rideUrl - The RideURL to test with
- */
-function testImmediateRetryFailure(rideUrl) {
-  // Enable test mode to force failures
-  PropertiesService.getScriptProperties().setProperty('RETRY_QUEUE_TEST_MODE', 'true');
-  PropertiesService.getScriptProperties().setProperty('RETRY_QUEUE_FORCE_FAILURE', 'true');
-  
-  Logger.log('Test mode enabled - calendar operations will fail artificially');
-  
-  // Enqueue a fake calendar creation operation
-  const operation = {
-    type: 'create',
-    calendarId: 'test-calendar-id',
-    rideUrl: rideUrl,
-    params: {
-      title: 'Test Ride - Retry Queue Test',
-      startTime: new Date(Date.now() + 86400000).getTime(), // Tomorrow
-      endTime: new Date(Date.now() + 90000000).getTime(),   // Tomorrow + 1 hour
-      location: 'Test Location',
-      description: 'This is a test event for RetryQueue validation'
-    },
-    userEmail: Session.getActiveUser().getEmail()
-  };
-  
-  const queue = new RetryQueue();
-  queue.enqueue(operation);
-  Logger.log('✓ Operation enqueued with artificial failure');
-}
-
-/**
- * Simulate multiple retry attempts by manipulating timestamps
- * @param {string} rideUrl - The RideURL being tested
- */
-function simulateMultipleRetries(rideUrl) {
-  const retryQueue = new RetryQueue();
-  const queue = retryQueue._getQueue();
-  const item = queue.find(i => i.rideUrl === rideUrl);
-  
-  if (!item) {
-    Logger.log('⚠ No queue item found for this ride URL');
-    return;
-  }
-  
-  Logger.log(`Current attempt count: ${item.attemptCount}`);
-  Logger.log(`Next retry scheduled for: ${new Date(item.nextRetryAt)}`);
-  
-  // Simulate time passing - set nextRetryAt to past
-  item.nextRetryAt = Date.now() - 1000; // 1 second ago
-  retryQueue._saveQueue(queue);
-  
-  Logger.log('⏰ Fast-forwarded time - processing retry now...');
-  const retryQueue2 = new RetryQueue();
-  retryQueue2.processQueue();
-  
-  // Check updated state
-  const retryQueue3 = new RetryQueue();
-  const updatedQueue = retryQueue3._getQueue();
-  const updatedItem = updatedQueue.find(i => i.rideUrl === rideUrl);
-  
-  if (updatedItem) {
-    Logger.log(`Updated attempt count: ${updatedItem.attemptCount}`);
-    Logger.log(`Next retry scheduled for: ${new Date(updatedItem.nextRetryAt)}`);
-  } else {
-    Logger.log('Item removed from queue (max retries reached or success)');
-  }
-}
+// ============================================================================
+// ============================================================================
+// PUBLIC TEST FUNCTIONS - All functions below are visible in GAS Run dropdown
+// ============================================================================
 
 /**
  * Test successful retry (disable failure mode)
+ * Run this AFTER testRetryQueueFullScenario() to test the success path
  */
 function testSuccessfulRetry() {
   Logger.log('=== Testing Successful Retry ===\n');
@@ -178,7 +239,8 @@ function testSuccessfulRetry() {
 }
 
 /**
- * Test the 48-hour cutoff
+ * Test the 48-hour cutoff behavior
+ * Requires existing queue items from testRetryQueueFullScenario()
  */
 function testCutoffBehavior() {
   Logger.log('=== Testing 48-Hour Cutoff ===\n');
@@ -214,7 +276,8 @@ function testCutoffBehavior() {
 }
 
 /**
- * Test queue with multiple items
+ * Test multiple items in queue simultaneously
+ * Creates 3 test operations and shows queue status
  */
 function testMultipleQueueItems() {
   Logger.log('=== Testing Multiple Queue Items ===\n');
@@ -232,6 +295,8 @@ function testMultipleQueueItems() {
       type: 'create',
       calendarId: 'test-cal-1',
       rideUrl: 'https://ridewithgps.com/events/12345',
+      rideTitle: 'Test Event 1 - Queue Test',
+      rowNum: 10,
       params: {
         title: 'Test Event 1',
         startTime: Date.now() + 86400000,
@@ -245,6 +310,8 @@ function testMultipleQueueItems() {
       type: 'create',
       calendarId: 'test-cal-2',
       rideUrl: 'https://ridewithgps.com/events/67890',
+      rideTitle: 'Test Event 2 - Queue Test',
+      rowNum: 11,
       params: {
         title: 'Test Event 2',
         startTime: Date.now() + 86400000,
@@ -258,6 +325,8 @@ function testMultipleQueueItems() {
       type: 'create',
       calendarId: 'test-cal-3',
       rideUrl: 'https://ridewithgps.com/events/11111',
+      rideTitle: 'Test Event 3 - Queue Test',
+      rowNum: 12,
       params: {
         title: 'Test Event 3',
         startTime: Date.now() + 86400000,
@@ -311,6 +380,7 @@ function inspectQueueDetails() {
 
 /**
  * Manually process queue (for testing trigger behavior)
+ * Triggers retry processing on existing queue items
  */
 function manualProcessQueue() {
   Logger.log('=== Manual Queue Processing ===\n');
@@ -329,6 +399,8 @@ function manualProcessQueue() {
 
 /**
  * Clean up test data
+ * Clears queue, disables test mode, and removes triggers
+ * Run this before/after tests or when things get stuck
  */
 function cleanupRetryQueueTest() {
   Logger.log('=== Cleaning Up Test Data ===\n');

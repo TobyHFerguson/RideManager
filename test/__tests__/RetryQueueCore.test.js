@@ -18,6 +18,8 @@ describe('RetryQueueCore', () => {
                 type: 'create',
                 calendarId: 'cal-123',
                 rideUrl: 'https://ridewithgps.com/events/123',
+                rideTitle: 'Test Ride',
+                rowNum: 42,
                 params: { title: 'Test Ride' },
                 userEmail: 'user@example.com'
             };
@@ -33,6 +35,8 @@ describe('RetryQueueCore', () => {
                 type: 'create',
                 calendarId: 'cal-123',
                 rideUrl: 'https://ridewithgps.com/events/123',
+                rideTitle: 'Test Ride',
+                rowNum: 42,
                 params: { title: 'Test Ride' },
                 userEmail: 'user@example.com',
                 enqueuedAt: baseTime,
@@ -348,6 +352,9 @@ describe('RetryQueueCore', () => {
                 {
                     id: 'uuid-1',
                     rideUrl: 'https://ridewithgps.com/events/123',
+                    rideTitle: 'Morning Ride',
+                    rowNum: 42,
+                    userEmail: 'user@example.com',
                     attemptCount: 3,
                     enqueuedAt: baseTime - (15 * 60 * 1000), // 15 minutes ago
                     nextRetryAt: baseTime + (5 * 60 * 1000)
@@ -360,6 +367,9 @@ describe('RetryQueueCore', () => {
             expect(formatted[0]).toEqual({
                 id: 'uuid-1',
                 rideUrl: 'https://ridewithgps.com/events/123',
+                rideTitle: 'Morning Ride',
+                rowNum: 42,
+                userEmail: 'user@example.com',
                 attemptCount: 3,
                 enqueuedAt: new Date(baseTime - (15 * 60 * 1000)).toISOString(),
                 nextRetryAt: new Date(baseTime + (5 * 60 * 1000)).toISOString(),
@@ -380,6 +390,25 @@ describe('RetryQueueCore', () => {
             const formatted = RetryQueueCore.formatItems(queue, baseTime);
 
             expect(formatted[0].ageMinutes).toBe(127);
+        });
+
+        it('should handle missing rideTitle and rowNum with defaults', () => {
+            const queue = [
+                {
+                    id: 'uuid-1',
+                    rideUrl: 'https://ridewithgps.com/events/123',
+                    userEmail: 'user@example.com',
+                    attemptCount: 0,
+                    enqueuedAt: baseTime,
+                    nextRetryAt: baseTime + (5 * 60 * 1000)
+                    // No rideTitle or rowNum
+                }
+            ];
+
+            const formatted = RetryQueueCore.formatItems(queue, baseTime);
+
+            expect(formatted[0].rideTitle).toBe('Unknown');
+            expect(formatted[0].rowNum).toBe('Unknown');
         });
     });
 });

@@ -123,9 +123,11 @@ const MenuFunctions = (() => {
           
           message += `Queue items:\n`;
           status.items.forEach(item => {
-            message += `\nRow ${item.rowNum} (${item.ageMinutes} min old)\n`;
+            message += `\n"${item.rideTitle}" - Row ${item.rowNum}\n`;
+            message += `  Age: ${item.ageMinutes} minutes\n`;
             message += `  Attempts: ${item.attemptCount}\n`;
             message += `  Next retry: ${item.nextRetryAt}\n`;
+            message += `  User email: ${item.userEmail}\n`;
           });
         } else {
           message += `Queue is empty.`;

@@ -78,7 +78,7 @@ const RideManager = (function () {
         rwgps.unTagEvents([new_event_url], ["template"]);
         const description = `<a href="${new_event_url}">${event.name}</a>`;
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with event:`, event);
-        const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row._rowNum);
+        const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, new_event_url, row._rowNum);
         if (result.success) {
             row.GoogleEventId = result.eventId;
         } else if (result.queued) {
@@ -121,7 +121,7 @@ const RideManager = (function () {
             if (row.GoogleEventId) {
                 GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
             } else {
-                const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row.RideURL);
+                const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row.RideURL, row._rowNum);
                 if (result.success) {
                     row.GoogleEventId = result.eventId;
                 } else if (result.queued) {
@@ -131,7 +131,7 @@ const RideManager = (function () {
         } else {
             GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
-            const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row.RideURL);
+            const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row.RideURL, row._rowNum);
             if (result.success) {
                 row.GoogleEventId = result.eventId;
             } else if (result.queued) {
