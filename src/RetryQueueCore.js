@@ -161,6 +161,9 @@ var RetryQueueCore = (function() {
             return queue.map(item => ({
                 id: item.id,
                 rideUrl: item.rideUrl,
+                rideTitle: item.rideTitle || 'Unknown',
+                rowNum: item.rowNum || 'Unknown',
+                userEmail: item.userEmail,
                 attemptCount: item.attemptCount,
                 enqueuedAt: new Date(item.enqueuedAt).toISOString(),
                 nextRetryAt: new Date(item.nextRetryAt).toISOString(),

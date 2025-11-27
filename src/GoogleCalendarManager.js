@@ -89,6 +89,8 @@ class GoogleCalendarManager {
                     type: 'create',
                     calendarId,
                     rideUrl,
+                    rideTitle: title,
+                    rowNum,
                     params: {
                         title,
                         startTime: startTime.getTime(),

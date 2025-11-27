@@ -281,8 +281,9 @@ var RetryQueue = (function() {
          * @private
          */
         _notifySuccess(item) {
-            const message = `Calendar event created successfully for ride ${item.rideUrl} after ${item.attemptCount + 1} attempt(s)`;
-            console.log(`RetryQueue SUCCESS: ${message}`);
+            const rideInfo = `"${item.rideTitle || 'Unknown'}" (Row ${item.rowNum || 'Unknown'})`;
+            const message = `Calendar event created successfully for ride ${rideInfo} after ${item.attemptCount + 1} attempt(s).\n\nRide URL: ${item.rideUrl}`;
+            console.log(`RetryQueue SUCCESS: ${message} - User: ${item.userEmail}`);
             
             // TODO: Could send email notification if needed
             // MailApp.sendEmail(item.userEmail, 'Calendar Event Created', message);
@@ -293,18 +294,20 @@ var RetryQueue = (function() {
          * @private
          */
         _notifyFailure(item) {
-            const message = `Failed to create calendar event for ride ${item.rideUrl} after ${item.attemptCount} attempts over 48 hours. Last error: ${item.lastError}`;
-            console.error(`RetryQueue FAILURE: ${message}`);
+            const rideInfo = `"${item.rideTitle || 'Unknown'}" (Row ${item.rowNum || 'Unknown'})`;
+            const message = `Failed to create calendar event for ride ${rideInfo} after ${item.attemptCount} attempts over 48 hours. Last error: ${item.lastError}`;
+            console.error(`RetryQueue FAILURE: ${message} - User: ${item.userEmail}`);
             
             // Send email notification
             try {
                 MailApp.sendEmail({
                     to: item.userEmail,
                     subject: 'Calendar Event Creation Failed',
-                    body: `${message}\n\nRide URL: ${item.rideUrl}\n\nPlease manually create the calendar event for this ride.`
+                    body: `${message}\n\nRide URL: ${item.rideUrl}\nUser email: ${item.userEmail}\n\nPlease manually create the calendar event for this ride.`
                 });
+                console.log(`RetryQueue: Failure notification email sent to ${item.userEmail}`);
             } catch (error) {
-                console.error('RetryQueue: Failed to send failure notification email:', error);
+                console.error(`RetryQueue: Failed to send failure notification email to ${item.userEmail}:`, error);
             }
         }
 
