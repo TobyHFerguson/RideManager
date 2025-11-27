@@ -49,6 +49,15 @@ var Exports = {
     get EventFactory() {
         return EventFactory;
     },
+    get RetryQueue() {
+        return RetryQueue;
+    },
+    get RetryQueueCore() {
+        return RetryQueueCore;
+    },
+    get GoogleCalendarManager() {
+        return GoogleCalendarManager;
+    },
     get Groups() {
         return Groups;
     },

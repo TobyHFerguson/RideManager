@@ -102,6 +102,60 @@ const MenuFunctions = (() => {
       let command = Exports.Commands.updateSelectedRidesWithCredentials;
       executeCommand(command, force);
     },
+    
+    /**
+     * View retry queue status
+     */
+    viewRetryQueueStatus() {
+      try {
+        const retryQueue = new RetryQueue();
+        const status = retryQueue.getStatus();
+        
+        let message = `Retry Queue Status\n\n`;
+        message += `Total items in queue: ${status.totalItems}\n`;
+        message += `Items due for retry now: ${status.dueNow}\n\n`;
+        
+        if (status.totalItems > 0) {
+          message += `Age distribution:\n`;
+          message += `  < 1 hour: ${status.byAge.lessThan1Hour}\n`;
+          message += `  < 24 hours: ${status.byAge.lessThan24Hours}\n`;
+          message += `  > 24 hours: ${status.byAge.moreThan24Hours}\n\n`;
+          
+          message += `Queue items:\n`;
+          status.items.forEach(item => {
+            message += `\nRow ${item.rowNum} (${item.ageMinutes} min old)\n`;
+            message += `  Attempts: ${item.attemptCount}\n`;
+            message += `  Next retry: ${item.nextRetryAt}\n`;
+          });
+        } else {
+          message += `Queue is empty.`;
+        }
+        
+        SpreadsheetApp.getUi().alert('Retry Queue Status', message, SpreadsheetApp.getUi().ButtonSet.OK);
+      } catch (error) {
+        SpreadsheetApp.getUi().alert('Error', `Failed to get retry queue status: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+      }
+    },
+    
+    /**
+     * Manually trigger retry queue processing
+     */
+    processRetryQueueNow() {
+      try {
+        const retryQueue = new RetryQueue();
+        const result = retryQueue.processQueue();
+        
+        let message = `Retry Queue Processing Complete\n\n`;
+        message += `Processed: ${result.processed}\n`;
+        message += `Succeeded: ${result.succeeded}\n`;
+        message += `Failed: ${result.failed}\n`;
+        message += `Remaining in queue: ${result.remaining}`;
+        
+        SpreadsheetApp.getUi().alert('Queue Processed', message, SpreadsheetApp.getUi().ButtonSet.OK);
+      } catch (error) {
+        SpreadsheetApp.getUi().alert('Error', `Failed to process retry queue: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+      }
+    },
   })
 
 
