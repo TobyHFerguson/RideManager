@@ -33,21 +33,104 @@ class GoogleCalendarManager {
         return null;
     }
 
-    static createEvent(calendarId, title, startTime, endTime, location, description) {
+    /**
+     * Create a calendar event with immediate retry and background fallback
+     * @param {string} calendarId - Calendar ID
+     * @param {string} title - Event title
+     * @param {Date} startTime - Start time
+     * @param {Date} endTime - End time
+     * @param {string} location - Event location
+     * @param {string} description - Event description
+     * @param {string} rideUrl - Ride URL (stable identifier for background retry)
+     * @returns {Object} { success: boolean, eventId?: string, queued?: boolean }
+     */
+    static createEvent(calendarId, title, startTime, endTime, location, description, rideUrl = null) {
         const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
         if (!calendar) {
             console.error('GoogleCalendarManager.createEvent() - Calendar not found after retries. ', calendarId);
-            return;
+            
+            // Queue for background retry if rowNum provided
+            if (rowNum !== null) {
+                return GoogleCalendarManager._queueForRetry({
+                    type: 'create',
+                    calendarId,
+                    rowNum,
+                    params: {
+                        title,
+                        startTime: startTime.getTime(),
+                        endTime: endTime.getTime(),
+                        location,
+                        description
+                    }
+                });
+            }
+            
+            return { success: false, error: 'Calendar not found' };
         }
+        
         console.log('Calendar found: ', calendar.getName());
         console.log(`Creating event: ${title}, ${startTime} - ${endTime}, location: ${location}`);
-        const event = calendar.createEvent(title, startTime, endTime, {
-            description: description,
-            location: location
-        });
+        
+        try {
+            const event = calendar.createEvent(title, startTime, endTime, {
+                description: description,
+                location: location
+            });
 
-        console.log("GoogleCalendarEvent created:", event.getId());
-        return event.getId();
+            const eventId = event.getId();
+            console.log("GoogleCalendarEvent created:", eventId);
+            return { success: true, eventId };
+        } catch (error) {
+            console.error('GoogleCalendarManager.createEvent() - Error creating event:', error);
+            
+            // Queue for background retry if rideUrl provided
+            if (rideUrl !== null) {
+                return GoogleCalendarManager._queueForRetry({
+                    type: 'create',
+                    calendarId,
+                    rideUrl,
+                    params: {
+                        title,
+                        startTime: startTime.getTime(),
+                        endTime: endTime.getTime(),
+                        location,
+                        description
+                    }
+                });
+            }
+            
+            return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Queue a failed operation for background retry
+     * @private
+     */
+    static _queueForRetry(operation) {
+        try {
+            const retryQueue = new RetryQueue();
+            const userEmail = Session.getActiveUser().getEmail();
+            const queueId = retryQueue.enqueue({
+                ...operation,
+                userEmail
+            });
+            
+            console.log(`GoogleCalendarManager: Operation queued for background retry (ID: ${queueId})`);
+            return { 
+                success: false, 
+                queued: true, 
+                queueId,
+                message: 'Operation queued for background retry'
+            };
+        } catch (error) {
+            console.error('GoogleCalendarManager: Failed to queue operation for retry:', error);
+            return { 
+                success: false, 
+                queued: false,
+                error: `Failed to queue for retry: ${error.message}` 
+            };
+        }
     }
     
     static deleteEvent(calendarId, eventId) {

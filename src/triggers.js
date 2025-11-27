@@ -28,6 +28,9 @@ function createMenu_() {
     .addItem('Link Selected Route URLs', linkSelectedRouteUrls_.name)
     .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
+    .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
+    .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
+    .addSeparator()
     .addItem(getDTRTMenuText_(), toggleDTRT_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addToUi();
@@ -308,6 +311,13 @@ function next_(adapter) {
   }
 }
 
+function viewRetryQueueStatus_() {
+  MenuFunctions.viewRetryQueueStatus();
+}
+
+function processRetryQueueNow_() {
+  MenuFunctions.processRetryQueueNow();
+}
 
 
 

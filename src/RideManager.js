@@ -78,8 +78,15 @@ const RideManager = (function () {
         rwgps.unTagEvents([new_event_url], ["template"]);
         const description = `<a href="${new_event_url}">${event.name}</a>`;
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with event:`, event);
-        const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
-        row.GoogleEventId = eventId;
+        const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row._rowNum);
+        if (result.success) {
+            row.GoogleEventId = result.eventId;
+        } else if (result.queued) {
+            console.log(`RideManager.schedule_row_: Calendar event queued for background retry (row ${row._rowNum})`);
+            // Event ID will be updated by background process
+        } else {
+            console.error(`RideManager.schedule_row_: Failed to create calendar event for row ${row._rowNum}: ${result.error}`);
+        }
     }
     function updateRow_(row, rwgps) {
         const names = getGroupNames();
@@ -114,14 +121,23 @@ const RideManager = (function () {
             if (row.GoogleEventId) {
                 GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
             } else {
-                const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
-                row.GoogleEventId = eventId;
+                const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row.RideURL);
+                if (result.success) {
+                    row.GoogleEventId = result.eventId;
+                } else if (result.queued) {
+                    console.log(`RideManager.updateRow_: Calendar event queued for background retry (row ${row._rowNum})`);
+                }
             }
         } else {
             GoogleCalendarManager.deleteEvent(getCalendarId(originalGroup), row.GoogleEventId);
             const description = `<a href="${row.RideURL}">${event.name}</a>`;
-            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
-            row.GoogleEventId = eventId;
+            const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, row.RideURL);
+            if (result.success) {
+                row.GoogleEventId = result.eventId;
+            } else if (result.queued) {
+                console.log(`RideManager.updateRow_: Calendar event queued for background retry (ride ${row.RideURL})`);
+                row.GoogleEventId = null; // Clear old event ID since we're creating in new calendar
+            }
         }
     }
 
