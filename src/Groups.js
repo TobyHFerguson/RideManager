@@ -39,6 +39,12 @@ function flatten_(groups) {
   return groups;
 }
 
+// Export for GAS (global)
+var Groups = {
+  getGroupNames: getGroupNames,
+  getGroupSpecs: getGroupSpecs
+};
+
 if(typeof module !== 'undefined') {
-  module.exports = { getGroupNames, getGroupSpecs };
+  module.exports = Groups;
 }

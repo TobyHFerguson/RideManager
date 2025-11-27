@@ -9,7 +9,8 @@ function onOpen() {
   // accidentally overwrites them. They need to be stored outside of the spreadsheet 
   // because the onEdit trigger will overwrite them if they are stored in the spreadsheet itself
   // and onEdit only has access to old values, not formulas.
-  Schedule.storeFormulas();
+  const adapter = new ScheduleAdapter();
+  adapter.storeFormulas();
   initializeGlobals();
   initializeGroupCache();
 }
@@ -111,7 +112,8 @@ function editEventReport_(event) {
     console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
     console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
   }
-  const row = Schedule.getSelectedRows()[0];
+  const adapter = new ScheduleAdapter();
+  const row = adapter.loadSelected()[0];
   console.log(`Row data: ${JSON.stringify(row)}`);
   console.log(`ride URL: ${row.RideURL}`);
   console.log(`route URL: ${row.RouteURL}`);
@@ -125,8 +127,9 @@ function editEventReport_(event) {
 function myEdit(event) {
   // event.value is only defined if the edited cell is a single cell
   editEventReport_(event);
-  if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
-    return handleCRSheetEdit_(event);
+  const adapter = new ScheduleAdapter();
+  if (event.range.getSheet().getName() === adapter.getSheetName()) {
+    return handleCRSheetEdit_(event, adapter);
   }
 }
 
@@ -149,23 +152,25 @@ function myEdit(event) {
  *
  * @private
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
+ * @param {ScheduleAdapter} adapter - Reusable adapter instance
  * @returns {*|undefined} Returns the value from next() when processing continues, or undefined if the edit was rejected/handled.
  */
-function handleCRSheetEdit_(event) {
+function handleCRSheetEdit_(event, adapter) {
   try {
     if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
-      alert_('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
+      alert_('Attempt to edit multiple route or ride cells. Only single cells can be edited.\n reverting back to previous values');
       for (let i = 0; i < event.range.getNumRows(); i++) {
-        Schedule.restoreFormula(event.range.getRow() + i);
+        adapter.restoreFormula(event.range.getRow() + i, 'Ride');
+        adapter.restoreFormula(event.range.getRow() + i, 'Route');
       }
       return;
     }
-    const row = Schedule.getSelectedRows()[0];
+    const row = adapter.loadSelected()[0];
     const colNum = event.range.getColumn();
-    if (Schedule.isColumn(getGlobals().RIDECOLUMNNAME, colNum)) {
+    if (adapter.isColumn(getGlobals().RIDECOLUMNNAME, colNum)) {
       alert_('No edits of Ride Column allowed.');
       event.range.setValue(event.oldValue);
-      Schedule.restoreFormula(event.range.getRow());
+      adapter.restoreFormula(event.range.getRow(), 'Ride');
       return;
     }
     // When copying a date it appears that this value is in event.range.getValue(), not in event.value!
@@ -174,60 +179,85 @@ function handleCRSheetEdit_(event) {
       return;
     }
     // Don't allow group changes once scheduled
-    if (row.isScheduled() && Schedule.isColumn(getGlobals().GROUPCOLUMNNAME, colNum)) {
+    if (row.isScheduled() && adapter.isColumn(getGlobals().GROUPCOLUMNNAME, colNum)) {
       alert_('Group changes are not allowed once the ride is scheduled.');
       event.range.setValue(event.oldValue);
       return;
     }
-    if (Schedule.isColumn(getGlobals().ROUTECOLUMNNAME, colNum)) {
+    if (adapter.isColumn(getGlobals().ROUTECOLUMNNAME, colNum)) {
       try {
-        editRouteColumn_(event);
+        editRouteColumn_(event, adapter);
       } catch (e) {
         alert_(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
-        Schedule.restoreRouteFormula(event.range.getRow());
+        adapter.restoreFormula(event.range.getRow(), 'Route');
         return;
       }
     }
-    return next_()
+    return next_(adapter)
   } catch (e) {
     alert_(e.message)
     throw e
   }
 }
 
-function editRouteColumn_(event) {
-  // pm.addProgress('Editing route column');
-  let url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText() || event.range.getFormula();
-  if (url.toLowerCase().startsWith("=hyperlink")) {
-    ({ url } = parseHyperlinkFormula(url))
-  }
+/**
+ * Edit the route column - handles GAS interactions and delegates logic to RouteColumnEditor
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} event
+ * @param {*} adapter - ScheduleAdapter instance
+ */
+function editRouteColumn_(event, adapter) {
+  // Get raw input from various possible sources
+  const inputValue = event.value || 
+                     event.range.getRichTextValue()?.getLinkUrl() || 
+                     event.range.getRichTextValue()?.getText() || 
+                     event.range.getFormula();
+
+  // Parse the input
+  const { url } = RouteColumnEditor.parseRouteInput(inputValue);
+  
+  // Handle empty/cleared route
   if (!url) {
-    event.range.setValue(url);
-    Schedule.storeRouteFormulas();
+    event.range.setValue('');
+    SpreadsheetApp.flush();
+    adapter.storeRouteFormulas();
     return;
   }
+
+  // Fetch route data from RWGPS (GAS operation)
   const route = getRoute(url);
-  let name;
+  
+  // Prompt for foreign route name if needed (GAS operation)
+  let userProvidedName;
   if (route.user_id !== getGlobals().SCCCC_USER_ID) {
     const ui = SpreadsheetApp.getUi();
-    const response = ui.prompt('Foreign Route Detected', 'Please enter a name for the foreign route:', ui.ButtonSet.OK_CANCEL);
+    const response = ui.prompt(
+      'Foreign Route Detected', 
+      'Please enter a name for the foreign route:', 
+      ui.ButtonSet.OK_CANCEL
+    );
     if (response.getSelectedButton() == ui.Button.OK) {
-      name = response.getResponseText();
-      name = name || getGlobals().FOREIGN_PREFIX + route.name;
-    } else {
-      name = getGlobals().FOREIGN_PREFIX + route.name;
+      userProvidedName = response.getResponseText() || undefined;
     }
-  } else {
-    name = route.name;
   }
-  event.range.setValue(`=hyperlink("${url}", "${name}")`);
-  Schedule.storeRouteFormulas();
-  if (route.user_id !== getGlobals().SCCCC_USER_ID) {
-    // pm.addProgress('Importing foreign route');
+
+  // Process the route edit (pure logic)
+  const { formula, isForeign } = RouteColumnEditor.processRouteEdit({
+    inputValue,
+    route,
+    clubUserId: getGlobals().SCCCC_USER_ID,
+    foreignPrefix: getGlobals().FOREIGN_PREFIX,
+    userProvidedName
+  });
+
+  // Write the formula (GAS operation)
+  event.range.setValue(formula);
+  SpreadsheetApp.flush();
+  adapter.storeRouteFormulas();
+
+  // Import foreign routes (GAS operation)
+  if (isForeign) {
     MenuFunctions.importSelectedRoutes(true);
-    // pm.addProgress('Foreign route imported');
   }
-  // pm.addProgress('Route column edited');
 }
 
 function alert_(message) {
@@ -237,24 +267,44 @@ function alert_(message) {
 /**
  * Take the next action based on the current state.
  * 
- * Only if the dtrt system is enabled. 
+ * Uses ActionSelector to determine action, then executes via MenuFunctions.
+ * Only active if DTRT system is enabled.
  * 
+ * @param {*} adapter - ScheduleAdapter instance
  * @returns undefined
  */
-function next_() {
-  if (dtrtIsEnabled_()) {
-    const force = true;
-    const row = Schedule.getSelectedRows()[0];
-    if (row.isScheduled()) {
+function next_(adapter) {
+  const dtrtEnabled = dtrtIsEnabled_();
+  
+  if (!dtrtEnabled) {
+    return;
+  }
+  
+  const row = adapter.loadSelected()[0];
+  
+  // Determine what action to take (pure logic)
+  const { action, message } = ActionSelector.determineNextAction({
+    isScheduled: row.isScheduled(),
+    isPlanned: row.isPlanned()
+  }, dtrtEnabled);
+  
+  // Execute the action (GAS operations)
+  const force = true;
+  switch (action) {
+    case 'update':
       MenuFunctions.updateSelectedRides(force);
-      alert_('Ride updated.');
-      return;
-    }
-    if (row.isPlanned()) {
+      if (message) alert_(message);
+      break;
+      
+    case 'schedule':
       MenuFunctions.scheduleSelectedRides(force);
-      alert_('Ride scheduled.');
-      return
-    }
+      if (message) alert_(message);
+      break;
+      
+    case 'none':
+    default:
+      // No action needed
+      break;
   }
 }
 

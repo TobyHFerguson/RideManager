@@ -44,7 +44,12 @@ function getGlobals() {
   }
 }
 
+// Export for GAS (global)
+var Globals = {
+  getGlobals: getGlobals
+};
+
 if (typeof module !== 'undefined') {
-  module.exports = { getGlobals };
+  module.exports = Globals;
 }
 

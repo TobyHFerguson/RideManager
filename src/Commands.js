@@ -23,14 +23,20 @@ const Commands = (() => {
             UIManager.processRows(rows, [rowCheck.unscheduled, rowCheck.unmanagedRide], [], rwgps, RideManager.unscheduleRows, force);
         },
         updateRiderCountWithCreds(rows, rwgps, force = false) {
-            const logName = "Schedule.getYoungerRows"
+            const logName = "ScheduleAdapter.loadYoungerRows"
             console.time(logName)
             const refDate = dates.add(new Date(), - 1)
-            rows = Schedule.getYoungerRows(refDate);
+            
+            // Create adapter and load younger rows
+            const adapter = new ScheduleAdapter();
+            rows = adapter.loadYoungerRows(refDate);
+            
             console.log(`${rows.length} rows found younger than ${refDate}`)
             console.timeEnd(logName)
             RideManager.updateRiderCounts(rows, rwgps);
-            Schedule.save();
+            
+            // Save dirty rows
+            adapter.save();
         },
         updateSelectedRidesWithCredentials(rows, rwgps, force = false) {
           const errorFuns = 
