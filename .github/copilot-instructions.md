@@ -42,13 +42,60 @@ Due to GAS limitations, the code uses a conditional module pattern:
 ```javascript
 // At top of file for Node.js/Jest compatibility
 if (typeof require !== 'undefined') {
-    const SomeModule = require('./SomeModule');
+    var SomeModule = require('./SomeModule');  // Use 'var', not 'const'!
 }
+
+// Module definition using IIFE or direct assignment
+var ModuleName = (function() {
+    class ModuleName {
+        // Implementation
+    }
+    return ModuleName;
+})();
 
 // At bottom of file for Node.js/Jest export
 if (typeof module !== 'undefined') {
-    module.exports = SomeObject;
+    module.exports = ModuleName;  // Export the module, NOT 'var ModuleName = ModuleName'
 }
+```
+
+**Critical Naming Convention**: The variable name MUST match the class/module name:
+- ✅ `var Event = (function() { class Event { ... } return Event; })()`
+- ✅ `var Row = (function() { class Row { ... } return Row; })()`
+- ❌ `const Event = ...` (causes redeclaration errors)
+- ❌ `var Event = Event;` (syntax error - already declared by the class)
+
+**Why use `var` instead of `const`**:
+- GAS concatenates all files into global scope in arbitrary order
+- `var` declarations are hoisted and can be redeclared without error
+- `const` and `let` cause "already declared" errors when files load out of order
+- Inside `if (typeof require !== 'undefined')` blocks, we still use `var` for consistency
+
+#### Centralized Exports Pattern
+`Exports.js` provides a single point of access to all modules using lazy property getters:
+
+```javascript
+var Exports = {
+    get ModuleName() {
+        return ModuleName;  // Returns the global variable
+    },
+    // ... other modules
+};
+```
+
+**Benefits**:
+- Lazy evaluation: module is resolved when accessed, not when defined
+- Handles GAS arbitrary file loading order automatically
+- Single import point for all modules
+- Access via `Exports.ModuleName` (property, not function call)
+
+**Usage in code**:
+```javascript
+// ✅ Correct - property access
+const command = Exports.Commands.someCommand;
+
+// ❌ Wrong - function call (old pattern)
+const commands = Exports.getCommands();
 ```
 
 ### Key Components
@@ -101,10 +148,46 @@ Fiddler also supports formulas, which are preserved when reading and writing dat
 - Uses bmPreFiddler/Fiddler for bulk data I/O
 - Converts spreadsheet rows to plain JavaScript objects with column names as keys
 - Enriches row objects with `_rowNum` (1-based spreadsheet row) and `_range` metadata
-- Handles formula preservation for Route and Ride columns via PropertiesService
 - Provides selection handling via SpreadsheetApp for user interactions
 - Supports filtering operations (younger rows, selected rows, last row)
 - **Target pattern**: Load → Work with plain objects → Save back (batch operation)
+
+#### Formula Preservation Strategy
+The Route and Ride columns contain HYPERLINK formulas that must be preserved across read/write cycles:
+
+**Storage Mechanism**:
+- Formulas are stored in PropertiesService as JSON arrays after each save
+- Properties: `rideColumnFormulas` and `routeColumnFormulas`
+- Each property contains a 2D array from `Range.getFormulas()` (e.g., `[[formula1], [formula2], ...]`)
+
+**Loading Process** (`_ensureDataLoaded()`):
+1. `fiddler.getData()` loads spreadsheet data → returns **displayed values** (not formulas)
+2. `_overlayFormulas()` loads stored formulas from PropertiesService
+3. Formulas are overlaid onto Route and Ride column values
+4. Result: data objects contain formula strings (e.g., `=HYPERLINK("url", "text")`) as values
+
+**Why this approach**:
+- Formulas are treated as string values beginning with '='
+- Allows single unified data structure (no separate formula tracking)
+- `HyperlinkUtils.parseHyperlinkFormula()` extracts URL/text from formula strings
+- When `Row.RouteURL` is accessed, it parses the formula string to get the actual URL
+
+**Saving Process - Cell-Level Precision**:
+1. Each Row tracks dirty fields in a `Set<string>` (_dirtyFields)
+2. When a field is modified, the column name is added to the dirty set
+3. On save(), **only dirty cells** are written to the spreadsheet
+4. Formula cells (values starting with '=') use `setFormula()`, others use `setValue()`
+5. `SpreadsheetApp.flush()` ensures writes are committed
+6. `_storeFormulas()` reads and stores current formulas in PropertiesService
+7. Cache cleared to force reload on next operation
+
+**Why Cell-Level Writes Are Critical**:
+- **Version History**: Writing entire rows makes change tracking meaningless
+- **Precision**: Only modified cells appear in revision history
+- **Collaboration**: Reduces conflicts when multiple users work on different columns
+- By writing only dirty cells, version history shows exactly what changed and when
+
+**Critical**: Always load formulas after reading data. Row objects expect formula strings in Route/Ride columns, not displayed values.
 
 ## RWGPS Library
 This repository uses the [RWGPSLib(https://github.com/TobyHFerguson/RWGPSLib) to manage RideWithGPS API access.

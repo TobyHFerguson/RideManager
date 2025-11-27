@@ -115,6 +115,8 @@ static makeManagedRE(groupNames = []) {
   }
 }
 
+// For GAS: Ensure Event is available globally regardless of file load order
+// The Exports pattern with getters handles lazy evaluation
 if (typeof module !== 'undefined') {
   module.exports = Event;
 }

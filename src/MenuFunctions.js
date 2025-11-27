@@ -35,7 +35,10 @@ const MenuFunctions = (() => {
 
     const rwgpsService = getRWGPSService_();
     const rwgps = getRWGPSLib_().newRWGPS(rwgpsService);
-    let rows = Schedule.getSelectedRows();
+    
+    // Create adapter and load selected rows
+    const adapter = new ScheduleAdapter();
+    let rows = adapter.loadSelected();
     const rowNumbers = rows.map(row => row.rowNum).join(", ");
     
     try {
@@ -60,42 +63,43 @@ const MenuFunctions = (() => {
       throw (e);
     }
     finally {
-      Schedule.save();
+      // Save all dirty rows
+      adapter.save();
     }
   }
   
   return Object.freeze({
     cancelSelectedRides(force = false) {
-      let command = Exports.getCommands().cancelSelectedRidesWithCreds;
+      let command = Exports.Commands.cancelSelectedRidesWithCreds;
       executeCommand(command, force);
     },
     importSelectedRoutes(autoconfirm = false, force = false) {
-      let command = Exports.getCommands().importSelectedRoutesWithCredentials;
+      let command = Exports.Commands.importSelectedRoutesWithCredentials;
       executeCommand(command, autoconfirm, force);
     },
     linkSelectedRouteUrls(force = false) {
-      let command = Exports.getCommands().linkSelectedRouteUrlsWithCredentials;
+      let command = Exports.Commands.linkSelectedRouteUrlsWithCredentials;
       executeCommand(command, force);
     },
     reinstateSelectedRides(force = false) {
-      let command = Exports.getCommands().reinstateSelectedRidesWithCreds;
+      let command = Exports.Commands.reinstateSelectedRidesWithCreds;
       executeCommand(command, force);
     },
     scheduleSelectedRides(force = false) {
-      let command = Exports.getCommands().scheduleSelectedRidesWithCredentials;
+      let command = Exports.Commands.scheduleSelectedRidesWithCredentials;
       executeCommand(command, force);
     },
     unscheduleSelectedRides(force = false) {
-      let command = Exports.getCommands().unscheduleSelectedRidesWithCreds;
+      let command = Exports.Commands.unscheduleSelectedRidesWithCreds;
       executeCommand(command, force);
     },
 
     updateRiderCount(force = false) {
-      let command = Exports.getCommands().updateRiderCountWithCreds;
+      let command = Exports.Commands.updateRiderCountWithCreds;
       executeCommand(command, force);
     },
     updateSelectedRides(force = false) {
-      let command = Exports.getCommands().updateSelectedRidesWithCredentials;
+      let command = Exports.Commands.updateSelectedRidesWithCredentials;
       executeCommand(command, force);
     },
   })

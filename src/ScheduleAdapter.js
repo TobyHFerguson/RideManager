@@ -14,8 +14,8 @@
  */
 
 if (typeof require !== 'undefined') {
-    const HyperlinkUtils = require('./HyperlinkUtils.js');
-    const Row = require('./Row.js');
+    var HyperlinkUtils = require('./HyperlinkUtils.js');
+    var Row = require('./Row.js');
 }
 
 const ScheduleAdapter = (function() {
@@ -44,19 +44,22 @@ const ScheduleAdapter = (function() {
             
             // Track rows that need saving
             this.dirtyRows = new Set();
+            
+            // Cache spreadsheet data to avoid multiple reads
+            this._cachedData = null;
         }
 
         /**
-         * Load all data from the spreadsheet
+         * Load all data from the spreadsheet (with caching)
          * @returns {Row[]} Array of Row instances
          */
         loadAll() {
-            const data = this.fiddler.getData();
-            return data.map((row, index) => this._createRow(row, index + 2)); // +2 for header and 1-based indexing
+            this._ensureDataLoaded();
+            return this._cachedData.map((row, index) => this._createRow(row, index + 2));
         }
 
         /**
-         * Load selected rows from the spreadsheet
+         * Load selected rows from the spreadsheet (with caching)
          * @returns {Row[]} Array of selected Row instances
          */
         loadSelected() {
@@ -70,8 +73,9 @@ const ScheduleAdapter = (function() {
                 return [];
             }
 
+            this._ensureDataLoaded();
             const ranges = this._convertCellRangesToRowRanges(rangeList);
-            const allData = this.fiddler.getData();
+            const allData = this._cachedData;
             
             const selectedRows = [];
             ranges.forEach(range => {
@@ -91,12 +95,13 @@ const ScheduleAdapter = (function() {
         }
 
         /**
-         * Load rows younger than (after) the specified date
+         * Load rows younger than (after) the specified date (with caching)
          * @param {Date} date - The cutoff date
          * @returns {Row[]} Array of Row instances after the date
          */
         loadYoungerRows(date) {
-            const allData = this.fiddler.getData();
+            this._ensureDataLoaded();
+            const allData = this._cachedData;
             const startDateColumn = getGlobals().STARTDATETIMECOLUMNNAME;
             
             return allData
@@ -109,11 +114,12 @@ const ScheduleAdapter = (function() {
         }
 
         /**
-         * Load the last row in the spreadsheet
+         * Load the last row in the spreadsheet (with caching)
          * @returns {Row|null} The last Row instance or null if no data
          */
         loadLastRow() {
-            const allData = this.fiddler.getData();
+            this._ensureDataLoaded();
+            const allData = this._cachedData;
             if (allData.length === 0) {
                 return null;
             }
@@ -123,39 +129,52 @@ const ScheduleAdapter = (function() {
 
         /**
          * Save dirty rows back to the spreadsheet
-         * Saves only rows that have been modified
+         * 
+         * Only writes the specific dirty cells to preserve meaningful version history.
+         * For each dirty row, only the modified fields are written to the spreadsheet.
+         * This ensures version tracking shows exactly what changed, not all rows.
+         * 
+         * CRITICAL: Formulas in Route/Ride columns are handled specially:
+         * - If a formula column is dirty, we write the formula (not the value)
+         * - After write, formulas are stored in PropertiesService for next load
          */
         save() {
             if (this.dirtyRows.size === 0) {
                 return;
             }
 
-            // Load all current data
-            const allData = this.fiddler.getData();
-            
-            // Update the rows that have changed
+            // Write each dirty row's dirty fields
             this.dirtyRows.forEach(row => {
-                const dataIndex = row.rowNum - 2; // Convert back to 0-based array index
-                if (dataIndex >= 0 && dataIndex < allData.length) {
-                    // Get the data without metadata
-                    const rowData = row._getData();
-                    delete rowData._rowNum;
-                    delete rowData._range;
-                    
-                    allData[dataIndex] = rowData;
-                    row._markClean();
+                const dirtyFields = row._getDirtyFields();
+                if (dirtyFields.size === 0) {
+                    return; // Nothing to write for this row
                 }
+                
+                // Write each dirty field
+                dirtyFields.forEach(columnName => {
+                    const columnIndex = this._getColumnIndex(columnName) + 1; // 1-based
+                    const cell = this.sheet.getRange(row.rowNum, columnIndex);
+                    const value = row._data[columnName];
+                    
+                    // If it's a formula (starts with '='), set as formula, else as value
+                    if (value && typeof value === 'string' && value.startsWith('=')) {
+                        cell.setFormula(value);
+                    } else {
+                        cell.setValue(value);
+                    }
+                });
+                
+                row._markClean();
             });
-
-            // Write back to spreadsheet
-            this.fiddler.setData(allData);
             
-            // Store formulas for Route and Ride columns
-            this._storeFormulas();
-            
+            // Flush to ensure all writes are committed
             SpreadsheetApp.flush();
             
-            // Clear dirty rows
+            // Store formulas for next load (needed for formula overlay)
+            this._storeFormulas();
+            
+            // Clear cache to force reload on next operation
+            this._cachedData = null;
             this.dirtyRows.clear();
         }
 
@@ -180,7 +199,94 @@ const ScheduleAdapter = (function() {
             this.sheet.getRange(rowNum, colIndex).clear();
         }
 
+        /**
+         * Store all formulas (Route and Ride columns)
+         * Called on spreadsheet open to preserve formulas
+         */
+        storeFormulas() {
+            this._storeFormulas();
+        }
+
+        /**
+         * Store Route column formulas only
+         */
+        storeRouteFormulas() {
+            this._storeRouteFormulas();
+        }
+
+        /**
+         * Check if a column number matches a column name
+         * @param {string} columnName - Column name to check
+         * @param {number} columnNum - Column number (1-based)
+         * @returns {boolean} True if the column matches
+         */
+        isColumn(columnName, columnNum) {
+            return this._getColumnIndex(columnName) + 1 === columnNum;
+        }
+
+        /**
+         * Get the sheet name
+         * @returns {string} Sheet name
+         */
+        getSheetName() {
+            return this.sheetName;
+        }
+
+        /**
+         * Get the underlying sheet object
+         * @returns {GoogleAppsScript.Spreadsheet.Sheet}
+         */
+        getSheet() {
+            return this.sheet;
+        }
+
         // ===== PRIVATE METHODS =====
+
+        /**
+         * Ensure data is loaded and cached
+         * Overlays stored formulas onto the data so Route and Ride columns
+         * contain formula strings (values starting with '=') instead of displayed values
+         * @private
+         */
+        _ensureDataLoaded() {
+            if (!this._cachedData) {
+                this._cachedData = this.fiddler.getData();
+                this._overlayFormulas();
+            }
+        }
+
+        /**
+         * Overlay stored formulas onto cached data
+         * Replaces Route and Ride column values with their formula strings
+         * @private
+         */
+        _overlayFormulas() {
+            const rideFormulas = this._loadFormulas('rideColumnFormulas');
+            const routeFormulas = this._loadFormulas('routeColumnFormulas');
+            
+            const rideColumnName = getGlobals().RIDECOLUMNNAME;
+            const routeColumnName = getGlobals().ROUTECOLUMNNAME;
+            
+            this._cachedData.forEach((row, index) => {
+                if (rideFormulas && rideFormulas[index] && rideFormulas[index][0]) {
+                    row[rideColumnName] = rideFormulas[index][0];
+                }
+                if (routeFormulas && routeFormulas[index] && routeFormulas[index][0]) {
+                    row[routeColumnName] = routeFormulas[index][0];
+                }
+            });
+        }
+
+        /**
+         * Load formulas from document properties
+         * @private
+         * @param {string} propertyName - Property name ('rideColumnFormulas' or 'routeColumnFormulas')
+         * @returns {Array<Array<string>>|null} 2D array of formulas or null if not found
+         */
+        _loadFormulas(propertyName) {
+            const formulasJson = PropertiesService.getDocumentProperties().getProperty(propertyName);
+            return formulasJson ? JSON.parse(formulasJson) : null;
+        }
 
         /**
          * Create a Row instance from Fiddler data

@@ -1,7 +1,7 @@
 // @ts-check
 
 if (typeof require !== 'undefined') {
-    HyperlinkUtils = require('./HyperlinkUtils.js');
+    var HyperlinkUtils = require('./HyperlinkUtils.js');
 }
 
 /**
@@ -14,7 +14,7 @@ if (typeof require !== 'undefined') {
  * The ScheduleAdapter is responsible for creating Row instances and persisting changes.
  */
 
-const Row = (function() {
+var Row = (function() {
     'use strict';
 
     class Row {
@@ -27,6 +27,7 @@ const Row = (function() {
             this._data = { ...data };
             this._adapter = adapter;
             this._dirty = false; // Track if row needs saving
+            this._dirtyFields = new Set(); // Track which specific fields are dirty
             
             // Store metadata
             this.rowNum = data._rowNum;
@@ -59,13 +60,13 @@ const Row = (function() {
 
         get RouteName() {
             const cellValue = this._data[getGlobals().ROUTECOLUMNNAME];
-            const { name } = parseHyperlinkFormula(cellValue);
+            const { name } = HyperlinkUtils.parseHyperlinkFormula(cellValue);
             return name;
         }
 
         get RouteURL() {
             const cellValue = this._data[getGlobals().ROUTECOLUMNNAME];
-            const { url } = parseHyperlinkFormula(cellValue);
+            const { url } = HyperlinkUtils.parseHyperlinkFormula(cellValue);
             return url;
         }
 
@@ -76,13 +77,13 @@ const Row = (function() {
 
         get RideName() {
             const cellValue = this._data[getGlobals().RIDECOLUMNNAME];
-            const { name } = parseHyperlinkFormula(cellValue);
+            const { name } = HyperlinkUtils.parseHyperlinkFormula(cellValue);
             return name;
         }
 
         get RideURL() {
             const cellValue = this._data[getGlobals().RIDECOLUMNNAME];
-            const { url } = parseHyperlinkFormula(cellValue);
+            const { url } = HyperlinkUtils.parseHyperlinkFormula(cellValue);
             return url;
         }
 
@@ -101,8 +102,9 @@ const Row = (function() {
         // ===== SETTERS =====
 
         set GoogleEventId(id) {
-            this._data[getGlobals().GOOGLEEVENTIDCOLUMNNAME] = id;
-            this._markDirty();
+            const columnName = getGlobals().GOOGLEEVENTIDCOLUMNNAME;
+            this._data[columnName] = id;
+            this._markDirty(columnName);
         }
 
         // ===== METHODS =====
@@ -125,17 +127,19 @@ const Row = (function() {
          * @param {string} url - URL
          */
         setRideLink(name, url) {
-            const formula = createHyperlinkFormula(name, url);
-            this._data[getGlobals().RIDECOLUMNNAME] = formula;
-            this._markDirty();
+            const columnName = getGlobals().RIDECOLUMNNAME;
+            const formula = HyperlinkUtils.createHyperlinkFormula(name, url);
+            this._data[columnName] = formula;
+            this._markDirty(columnName);
         }
 
         /**
          * Delete the ride link
          */
         deleteRideLink() {
-            this._data[getGlobals().RIDECOLUMNNAME] = '';
-            this._markDirty();
+            const columnName = getGlobals().RIDECOLUMNNAME;
+            this._data[columnName] = '';
+            this._markDirty(columnName);
         }
 
         /**
@@ -144,9 +148,10 @@ const Row = (function() {
          * @param {string} url - URL
          */
         setRouteLink(name, url) {
-            const formula = createHyperlinkFormula(name, url);
-            this._data[getGlobals().ROUTECOLUMNNAME] = formula;
-            this._markDirty();
+            const columnName = getGlobals().ROUTECOLUMNNAME;
+            const formula = HyperlinkUtils.createHyperlinkFormula(name, url);
+            this._data[columnName] = formula;
+            this._markDirty(columnName);
         }
 
         /**
@@ -230,9 +235,13 @@ const Row = (function() {
         /**
          * Mark this row as dirty (needs saving)
          * @private
+         * @param {string} fieldName - The column name that was modified
          */
-        _markDirty() {
+        _markDirty(fieldName) {
             this._dirty = true;
+            if (fieldName) {
+                this._dirtyFields.add(fieldName);
+            }
             if (this._adapter) {
                 this._adapter._markRowDirty(this);
             }
@@ -263,6 +272,15 @@ const Row = (function() {
          */
         _markClean() {
             this._dirty = false;
+            this._dirtyFields.clear();
+        }
+
+        /**
+         * Get the set of dirty field names
+         * @returns {Set<string>} Set of column names that have been modified
+         */
+        _getDirtyFields() {
+            return this._dirtyFields;
         }
     }
 
