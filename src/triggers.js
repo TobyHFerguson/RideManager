@@ -31,6 +31,9 @@ function createMenu_() {
     .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
     .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
     .addSeparator()
+    .addItem('View Scheduled Announcements', viewScheduledAnnouncements_.name)
+    .addItem('Clear Announcement Queue', clearAnnouncementQueue_.name)
+    .addSeparator()
     .addItem(getDTRTMenuText_(), toggleDTRT_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addToUi();
@@ -318,6 +321,60 @@ function viewRetryQueueStatus_() {
 function processRetryQueueNow_() {
   MenuFunctions.processRetryQueueNow();
 }
+
+/**
+ * Process announcement queue (called by hourly trigger)
+ * This function is registered by AnnouncementManager when items are queued
+ */
+function processAnnouncementQueue() {
+  try {
+    const manager = new AnnouncementManager();
+    const result = manager.processQueue();
+    console.log(`processAnnouncementQueue: Sent ${result.sent}, reminded ${result.reminded}, failed ${result.failed}, remaining ${result.remaining}`);
+  } catch (error) {
+    console.error('processAnnouncementQueue error:', error);
+  }
+}
+
+/**
+ * View scheduled announcements (menu item)
+ */
+function viewScheduledAnnouncements_() {
+  try {
+    const manager = new AnnouncementManager();
+    const text = manager.viewScheduled();
+    const ui = SpreadsheetApp.getUi();
+    ui.alert('Scheduled Announcements', text, ui.ButtonSet.OK);
+  } catch (error) {
+    console.error('viewScheduledAnnouncements_ error:', error);
+    alert_(`Error viewing announcements: ${error.message}`);
+  }
+}
+
+/**
+ * Clear announcement queue (menu item for testing/debugging)
+ */
+function clearAnnouncementQueue_() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const response = ui.alert(
+      'Clear Announcement Queue',
+      'This will DELETE all scheduled announcements. Are you sure?',
+      ui.ButtonSet.YES_NO
+    );
+    
+    if (response === ui.Button.YES) {
+      const props = PropertiesService.getScriptProperties();
+      props.deleteProperty('announcementQueue');
+      props.deleteProperty('announcementTriggerId');
+      ui.alert('Queue Cleared', 'All scheduled announcements have been removed.', ui.ButtonSet.OK);
+    }
+  } catch (error) {
+    console.error('clearAnnouncementQueue_ error:', error);
+    alert_(`Error clearing queue: ${error.message}`);
+  }
+}
+
 
 
 

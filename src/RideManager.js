@@ -81,11 +81,47 @@ const RideManager = (function () {
         const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, new_event_url, row._rowNum);
         if (result.success) {
             row.GoogleEventId = result.eventId;
+            
+            // Create ride announcement
+            try {
+                console.log(`RideManager.schedule_row_: Creating announcement for row ${row.rowNum}...`);
+                const manager = new (AnnouncementManager)();
+                // Build announcement data using Row getters to get proper field values
+                const rowData = {
+                    _rowNum: row.rowNum,
+                    RideName: row.RideName,
+                    Date: row.StartDate,
+                    RideLeaders: row.RideLeaders.join(', '),
+                    StartTime: row.StartTime,
+                    Location: row.Location,
+                    Address: row.Address,
+                    Group: row.Group,
+                    // Include raw data for any template fields we might have missed
+                    ...row._data
+                };
+                console.log(`RideManager.schedule_row_: Announcement data - RideName: ${rowData.RideName}, Date: ${rowData.Date}, Row: ${rowData._rowNum}`);
+                const announcementId = manager.createAnnouncement(rowData, new_event_url);
+                console.log(`RideManager.schedule_row_: Announcement ${announcementId} queued for row ${row.rowNum}`);
+            } catch (announcementError) {
+                const errorMsg = `Failed to create announcement: ${announcementError.message}`;
+                console.error(`RideManager.schedule_row_: ${errorMsg} (row ${row.rowNum})`);
+                console.error(`RideManager.schedule_row_: Error stack:`, announcementError.stack);
+                // Show user a notification about the failure
+                try {
+                    SpreadsheetApp.getUi().alert(
+                        'Announcement Creation Failed',
+                        `Ride scheduled successfully, but announcement creation failed:\n\n${errorMsg}\n\nStack: ${announcementError.stack}\n\nCheck logs for details.`,
+                        SpreadsheetApp.getUi().ButtonSet.OK
+                    );
+                } catch (e) {
+                    console.error(`RideManager.schedule_row_: Failed to show UI alert:`, e);
+                }
+            }
         } else if (result.queued) {
-            console.log(`RideManager.schedule_row_: Calendar event queued for background retry (row ${row._rowNum})`);
+            console.log(`RideManager.schedule_row_: Calendar event queued for background retry (row ${row.rowNum})`);
             // Event ID will be updated by background process
         } else {
-            console.error(`RideManager.schedule_row_: Failed to create calendar event for row ${row._rowNum}: ${result.error}`);
+            console.error(`RideManager.schedule_row_: Failed to create calendar event for row ${row.rowNum}: ${result.error}`);
         }
     }
     function updateRow_(row, rwgps) {
