@@ -82,6 +82,9 @@ var AnnouncementManager = (function() {
                 const sendTime = AnnouncementCore.calculateSendTime(rowData.Date, timezone);
                 console.log(`AnnouncementManager: Calculated send time: ${sendTime}`);
                 
+                // Append instructions for the operator
+                this._appendInstructions(documentId, sendTime, rowData);
+                
                 // Create queue item using core logic
                 const queueItem = AnnouncementCore.createQueueItem(
                     rideUrl,
@@ -124,6 +127,10 @@ var AnnouncementManager = (function() {
                 
                 // Open the document and get template content
                 const doc = DocumentApp.openById(item.documentId);
+                
+                // Remove operator instructions before sending
+                this._removeInstructions(doc);
+                
                 const templateText = doc.getBody().getText();
                 
                 // Expand template using core logic
@@ -321,12 +328,109 @@ var AnnouncementManager = (function() {
         }
 
         /**
+         * Remove announcement(s) for a ride by RideURL
+         * Called when a ride is unscheduled or cancelled
+         * @param {string} rideUrl - The RideURL to remove announcements for
+         * @returns {number} Number of announcements removed
+         */
+        removeByRideUrl(rideUrl) {
+            try {
+                const queue = this._getQueue();
+                const itemsToRemove = queue.filter(item => item.rideURL === rideUrl);
+                
+                if (itemsToRemove.length === 0) {
+                    console.log(`AnnouncementManager: No announcements found for ride ${rideUrl}`);
+                    return 0;
+                }
+                
+                // Delete the announcement documents
+                itemsToRemove.forEach(item => {
+                    try {
+                        const file = DriveApp.getFileById(item.documentId);
+                        file.setTrashed(true);
+                        console.log(`AnnouncementManager: Trashed document ${item.documentId} for ride ${rideUrl}`);
+                    } catch (error) {
+                        console.warn(`AnnouncementManager: Could not trash document ${item.documentId}: ${error.message}`);
+                        // Continue anyway - remove from queue even if doc delete fails
+                    }
+                });
+                
+                // Remove from queue
+                const newQueue = queue.filter(item => item.rideURL !== rideUrl);
+                this._saveQueue(newQueue);
+                
+                console.log(`AnnouncementManager: Removed ${itemsToRemove.length} announcement(s) for ride ${rideUrl}`);
+                return itemsToRemove.length;
+            } catch (error) {
+                console.error(`AnnouncementManager: Error removing announcements for ${rideUrl}:`, error);
+                throw error;
+            }
+        }
+
+        /**
          * Get queue statistics for monitoring
          * @returns {Object} Statistics object
          */
         getStatistics() {
             const queue = this._getQueue();
             return AnnouncementCore.getStatistics(queue);
+        }
+
+        /**
+         * Clear all announcements from queue and trash all documents
+         * @returns {number} Number of announcements cleared
+         */
+        clearAll() {
+            try {
+                const queue = this._getQueue();
+                const count = queue.length;
+                
+                if (count === 0) {
+                    console.log('AnnouncementManager: Queue already empty');
+                    return 0;
+                }
+                
+                // Trash all announcement documents
+                let trashedCount = 0;
+                let failedCount = 0;
+                queue.forEach(item => {
+                    try {
+                        const file = DriveApp.getFileById(item.documentId);
+                        file.setTrashed(true);
+                        trashedCount++;
+                        console.log(`AnnouncementManager: Trashed document ${item.documentId} for ride ${item.rideName}`);
+                    } catch (error) {
+                        failedCount++;
+                        console.warn(`AnnouncementManager: Could not trash document ${item.documentId}: ${error.message}`);
+                    }
+                });
+                
+                // Clear the queue
+                this._saveQueue([]);
+                
+                // Delete the trigger if it exists
+                const props = PropertiesService.getScriptProperties();
+                const triggerId = props.getProperty('announcementTriggerId');
+                if (triggerId) {
+                    try {
+                        const triggers = ScriptApp.getProjectTriggers();
+                        const trigger = triggers.find(t => t.getUniqueId() === triggerId);
+                        if (trigger) {
+                            ScriptApp.deleteTrigger(trigger);
+                            console.log(`AnnouncementManager: Deleted trigger ${triggerId}`);
+                        }
+                        props.deleteProperty('announcementTriggerId');
+                    } catch (error) {
+                        console.warn(`AnnouncementManager: Could not delete trigger: ${error.message}`);
+                    }
+                }
+                
+                console.log(`AnnouncementManager: Cleared ${count} announcements (${trashedCount} docs trashed, ${failedCount} failed)`);
+                return count;
+            } catch (error) {
+                console.error('AnnouncementManager.clearAll error:', error);
+                throw error;
+            }
         }
 
         // ========== PRIVATE HELPER METHODS ==========
@@ -357,6 +461,146 @@ var AnnouncementManager = (function() {
             // Extract from URL: https://docs.google.com/document/d/{ID}/edit
             const match = urlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
             return match ? match[1] : null;
+        }
+
+        /**
+         * Append operator instructions to announcement document
+         * These instructions will be automatically removed when the email is sent
+         * @private
+         */
+        _appendInstructions(documentId, sendTime, rowData) {
+            try {
+                const doc = DocumentApp.openById(documentId);
+                const body = doc.getBody();
+                
+                // Add special marker paragraph that we can search for later
+                body.appendParagraph('')
+                    .appendHorizontalRule();
+                body.appendParagraph('━━━ OPERATOR INSTRUCTIONS (will be removed when email is sent) ━━━')
+                    .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+                    .setForegroundColor('#990000');
+                
+                body.appendParagraph('⚠️ This section will be automatically removed when the announcement is sent.')
+                    .setBold(true);
+                
+                // Send time information
+                const sendTimeFormatted = new Date(sendTime).toLocaleString('en-US', {
+                    timeZone: Session.getScriptTimeZone(),
+                    dateStyle: 'full',
+                    timeStyle: 'short'
+                });
+                body.appendParagraph(`Scheduled Send Time: ${sendTimeFormatted}`)
+                    .setBold(true);
+                
+                // Template field explanation
+                body.appendParagraph('Template Fields')
+                    .setHeading(DocumentApp.ParagraphHeading.HEADING3);
+                
+                body.appendParagraph('Fields in curly braces (e.g., {RideName}) will be replaced with current ride data when the email is sent. You can edit the text around these fields, but keep the {FieldName} syntax intact.');
+                
+                // Available fields
+                body.appendParagraph('Available Fields:')
+                    .setBold(true);
+                
+                const fields = [
+                    '{RideName} - Full ride name with date and route',
+                    '{RideURL} - Link to RWGPS event page',
+                    '{RouteURL} - Link to route on RWGPS',
+                    '{RouteName} - Name of the route',
+                    '{StartDate} - Ride start date',
+                    '{StartTime} - Ride start time',
+                    '{Location} - Ride meeting location',
+                    '{Address} - Full address of meeting location',
+                    '{RideLeaders} - Names of ride leaders',
+                    '{Group} - Ride group (e.g., Sat A, Sun B)',
+                    '{Distance} - Route distance',
+                    '{Elevation} - Route elevation gain',
+                    '{Difficulty} - Ride difficulty level',
+                    '{Pace} - Ride pace'
+                ];
+                
+                fields.forEach(field => {
+                    body.appendListItem(field);
+                });
+                
+                // Data update information
+                body.appendParagraph('Data Updates')
+                    .setHeading(DocumentApp.ParagraphHeading.HEADING3);
+                
+                body.appendParagraph('Template fields are populated with CURRENT ride data at send time. If you update ride details in the spreadsheet (time, location, leaders, etc.), those changes will automatically appear in the email. You do not need to update this document.');
+                
+                // Missing fields information
+                body.appendParagraph('Missing Fields')
+                    .setHeading(DocumentApp.ParagraphHeading.HEADING3);
+                
+                body.appendParagraph('If a field has no data, it will appear as {FieldName} in the final email and be highlighted in yellow. The email will still be sent. You can either:');
+                body.appendListItem('Fill in the missing data in the spreadsheet before send time');
+                body.appendListItem('Replace the field with custom text in this document');
+                body.appendListItem('Leave it as-is if the field is optional');
+                
+                // Editing information
+                body.appendParagraph('Editing This Document')
+                    .setHeading(DocumentApp.ParagraphHeading.HEADING3);
+                
+                body.appendParagraph('You can edit any part of this document above the horizontal rule. Add personal messages, format text, include images, etc. Everything above the horizontal rule will be included in the email.');
+                
+                body.appendParagraph('The Subject: line at the top of the document determines the email subject. You can customize it.');
+                
+                console.log(`AnnouncementManager: Appended instructions to document ${documentId}`);
+            } catch (error) {
+                console.error(`AnnouncementManager: Failed to append instructions to ${documentId}:`, error);
+                // Don't throw - instructions are helpful but not critical
+            }
+        }
+
+        /**
+         * Remove operator instructions from document before sending
+         * Deletes everything from the instruction marker onwards
+         * @private
+         */
+        _removeInstructions(doc) {
+            try {
+                const body = doc.getBody();
+                const text = body.getText();
+                
+                // Look for the instruction marker
+                const marker = '━━━ OPERATOR INSTRUCTIONS';
+                const markerIndex = text.indexOf(marker);
+                
+                if (markerIndex < 0) {
+                    console.log('AnnouncementManager: No instruction marker found, instructions may have been manually removed');
+                    return;
+                }
+                
+                // Find which paragraph contains the marker
+                const numChildren = body.getNumChildren();
+                let deleteFromIndex = -1;
+                
+                for (let i = 0; i < numChildren; i++) {
+                    const child = body.getChild(i);
+                    if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
+                        const paraText = child.asParagraph().getText();
+                        if (paraText.includes(marker)) {
+                            // Start deletion from the paragraph BEFORE the marker (the HR)
+                            deleteFromIndex = Math.max(0, i - 1);
+                            break;
+                        }
+                    }
+                }
+                
+                // Remove elements from the marker onwards
+                if (deleteFromIndex >= 0) {
+                    for (let i = numChildren - 1; i >= deleteFromIndex; i--) {
+                        body.removeChild(body.getChild(i));
+                    }
+                    console.log(`AnnouncementManager: Removed instructions from document (${numChildren - deleteFromIndex} elements)`);
+                } else {
+                    console.log('AnnouncementManager: Could not locate instruction marker paragraph');
+                }
+            } catch (error) {
+                console.error('AnnouncementManager: Failed to remove instructions:', error);
+                // Don't throw - we can still send the email even if instructions weren't removed
+            }
         }
 
         /**

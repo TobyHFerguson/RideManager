@@ -215,6 +215,9 @@ const RideManager = (function () {
                 }
             }
             rows.forEach(row => {
+                // Get RideURL BEFORE deleting the link (deleteRideLink clears the column)
+                const rideUrl = row.RideURL;
+                
                 row.deleteRideLink();
                 const id = getCalendarId(row.Group);
                 if (!id) {
@@ -223,6 +226,19 @@ const RideManager = (function () {
                     GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId);
                 }
                 row.GoogleEventId = '';
+                
+                // Remove any scheduled announcements for this ride
+                try {
+                    if (rideUrl) {
+                        const count = new (AnnouncementManager)().removeByRideUrl(rideUrl);
+                        if (count > 0) {
+                            console.log(`RideManager.unscheduleRows(): Removed ${count} announcement(s) for ride ${rideUrl}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`RideManager.unscheduleRows(): Error removing announcements for row ${row.rowNum}:`, error);
+                    // Don't throw - announcement cleanup is not critical to unscheduling
+                }
             });
         },
         /**
