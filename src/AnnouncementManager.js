@@ -127,10 +127,6 @@ var AnnouncementManager = (function() {
                 
                 // Open the document and get template content
                 const doc = DocumentApp.openById(item.documentId);
-                
-                // Remove operator instructions before sending
-                this._removeInstructions(doc);
-                
                 const templateText = doc.getBody().getText();
                 
                 // Expand template using core logic
@@ -142,8 +138,11 @@ var AnnouncementManager = (function() {
                     console.log(`AnnouncementManager: Highlighted ${expandResult.missingFields.length} missing fields in ${item.documentId}`);
                 }
                 
+                // Remove instructions from the expanded text (string operation)
+                const cleanedText = this._removeInstructionsFromText(expandResult.expandedText);
+                
                 // Extract subject using core logic
-                const emailContent = AnnouncementCore.extractSubject(expandResult.expandedText);
+                const emailContent = AnnouncementCore.extractSubject(cleanedText);
                 const subject = emailContent.subject || `Ride Announcement: ${item.rowData.RideName || 'Unknown Ride'}`;
                 const body = emailContent.body;
                 
@@ -234,9 +233,38 @@ var AnnouncementManager = (function() {
             let reminded = 0;
             let failed = 0;
             
+            // Load current spreadsheet data once for all announcements
+            const adapter = new ScheduleAdapter();
+            const allRows = adapter.loadAll();
+            
             // Process announcements due to send
             dueItems.dueToSend.forEach(item => {
                 try {
+                    // Load current row data from spreadsheet
+                    const row = allRows.find(r => r.RideURL === item.rideURL);
+                    if (!row) {
+                        throw new Error(`Could not find ride with URL: ${item.rideURL}`);
+                    }
+                    
+                    // Build current row data object (same as in RideManager and testSendAnnouncement)
+                    const rowData = {
+                        _rowNum: row.rowNum,
+                        RideName: row.RideName,
+                        Date: row.StartDate,
+                        RideLeaders: row.RideLeaders.join(', '),
+                        StartTime: row.StartTime,
+                        Location: row.Location,
+                        Address: row.Address,
+                        Group: row.Group,
+                        RideURL: row.RideURL,
+                        RouteURL: row.RouteURL,
+                        RouteName: row.RouteName,
+                        ...row._data
+                    };
+                    
+                    // Add current row data to item
+                    const itemWithData = { ...item, rowData };
+                    
                     // Check if document still exists
                     const docExists = this._checkDocumentExists(item.documentId);
                     if (!docExists) {
@@ -244,9 +272,10 @@ var AnnouncementManager = (function() {
                         // Recreate the document
                         const newDocId = this._recreateDocument(item);
                         item.documentId = newDocId;
+                        itemWithData.documentId = newDocId;
                     }
                     
-                    const result = this.sendAnnouncement(item);
+                    const result = this.sendAnnouncement(itemWithData);
                     
                     if (result.success) {
                         // Mark as sent using core logic
@@ -544,7 +573,7 @@ var AnnouncementManager = (function() {
                 
                 body.appendParagraph('You can edit any part of this document above the horizontal rule. Add personal messages, format text, include images, etc. Everything above the horizontal rule will be included in the email.');
                 
-                body.appendParagraph('The Subject: line at the top of the document determines the email subject. You can customize it.');
+                body.appendParagraph('The line starting with "Subject:" at the top of the document determines the email subject. You can customize it.');
                 
                 console.log(`AnnouncementManager: Appended instructions to document ${documentId}`);
             } catch (error) {
@@ -554,52 +583,46 @@ var AnnouncementManager = (function() {
         }
 
         /**
-         * Remove operator instructions from document before sending
-         * Deletes everything from the instruction marker onwards
+         * Remove operator instructions from expanded text (string operation)
+         * Removes both the "Subject:" line and everything from the instruction marker onwards
          * @private
          */
-        _removeInstructions(doc) {
+        _removeInstructionsFromText(text) {
             try {
-                const body = doc.getBody();
-                const text = body.getText();
-                
-                // Look for the instruction marker
                 const marker = '━━━ OPERATOR INSTRUCTIONS';
-                const markerIndex = text.indexOf(marker);
+                const lines = text.split('\n');
+                const result = [];
+                let foundMarker = false;
                 
-                if (markerIndex < 0) {
-                    console.log('AnnouncementManager: No instruction marker found, instructions may have been manually removed');
-                    return;
-                }
-                
-                // Find which paragraph contains the marker
-                const numChildren = body.getNumChildren();
-                let deleteFromIndex = -1;
-                
-                for (let i = 0; i < numChildren; i++) {
-                    const child = body.getChild(i);
-                    if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
-                        const paraText = child.asParagraph().getText();
-                        if (paraText.includes(marker)) {
-                            // Start deletion from the paragraph BEFORE the marker (the HR)
-                            deleteFromIndex = Math.max(0, i - 1);
-                            break;
-                        }
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    // Skip the "Subject:" line
+                    if (line.trim().startsWith('Subject:')) {
+                        console.log('AnnouncementManager: Skipping Subject: line');
+                        continue;
+                    }
+                    
+                    // Check if this line contains the marker
+                    if (line.includes(marker)) {
+                        console.log('AnnouncementManager: Found instruction marker, stopping here');
+                        foundMarker = true;
+                        break;
+                    }
+                    
+                    // Add line if we haven't hit the marker yet
+                    if (!foundMarker) {
+                        result.push(line);
                     }
                 }
                 
-                // Remove elements from the marker onwards
-                if (deleteFromIndex >= 0) {
-                    for (let i = numChildren - 1; i >= deleteFromIndex; i--) {
-                        body.removeChild(body.getChild(i));
-                    }
-                    console.log(`AnnouncementManager: Removed instructions from document (${numChildren - deleteFromIndex} elements)`);
-                } else {
-                    console.log('AnnouncementManager: Could not locate instruction marker paragraph');
-                }
+                const cleanedText = result.join('\n').trim();
+                console.log(`AnnouncementManager: Cleaned text from ${text.length} to ${cleanedText.length} characters`);
+                return cleanedText;
             } catch (error) {
-                console.error('AnnouncementManager: Failed to remove instructions:', error);
-                // Don't throw - we can still send the email even if instructions weren't removed
+                console.error('AnnouncementManager: Failed to remove instructions from text:', error);
+                // Return original text if cleanup fails
+                return text;
             }
         }
 
@@ -637,7 +660,7 @@ var AnnouncementManager = (function() {
         }
 
         /**
-         * Recreate a deleted document
+         * Recreate a document that was deleted
          * @private
          */
         _recreateDocument(item) {
@@ -648,23 +671,16 @@ var AnnouncementManager = (function() {
             const templateFile = DriveApp.getFileById(templateId);
             const folderId = this._extractFolderId(folderUrl);
             const folder = DriveApp.getFolderById(folderId);
-            const rideName = item.rowData.RideName || 'Unknown Ride';
-            const docName = `RA-${rideName}`;
+            
+            const docName = `RA-${item.rideName}`;
             const newDoc = templateFile.makeCopy(docName, folder);
             
-            // Set permissions
-            const rsGroupEmail = globals.RIDE_SCHEDULER_GROUP_EMAIL;
-            if (rsGroupEmail) {
-                newDoc.addEditor(rsGroupEmail);
-                newDoc.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-            }
-            
-            console.log(`AnnouncementManager: Recreated document ${newDoc.getId()} (original was ${item.documentId})`);
+            console.log(`AnnouncementManager: Recreated document ${newDoc.getId()} for ride ${item.rideURL}`);
             return newDoc.getId();
         }
 
         /**
-         * Notify RS group of permanent announcement failure
+         * Notify about a failed announcement
          * @private
          */
         _notifyFailure(item) {
@@ -674,35 +690,34 @@ var AnnouncementManager = (function() {
                 
                 if (!rsGroupEmail) return;
                 
-                const rideName = item.rowData.RideName || 'Unknown Ride';
-                const subject = `Failed: Ride announcement for "${rideName}"`;
-                const body = `The scheduled ride announcement failed after ${item.attemptCount} attempts.\n\n` +
-                    `Ride: ${rideName}\n` +
-                    `Scheduled send time: ${new Date(item.sendTime).toLocaleString()}\n` +
-                    `Document ID: ${item.documentId}\n` +
+                const subject = `Failed: Ride announcement for "${item.rideName}" could not be sent`;
+                const body = `The scheduled announcement for ride "${item.rideName}" (Row ${item.rowNum}) failed after ${item.attemptCount} attempts.\n\n` +
                     `Last error: ${item.lastError}\n\n` +
-                    `Please send this announcement manually.`;
+                    `Please review and manually send if needed.\n` +
+                    `Document: ${DocumentApp.openById(item.documentId).getUrl()}`;
                 
                 GmailApp.sendEmail(rsGroupEmail, subject, body, {
                     name: 'Ride Scheduler',
                     replyTo: rsGroupEmail
                 });
+                
+                console.log(`AnnouncementManager: Sent failure notification for ${item.id}`);
             } catch (error) {
-                console.error('Failed to send failure notification:', error);
+                console.error(`AnnouncementManager: Failed to send failure notification:`, error);
             }
         }
 
         /**
-         * Get queue from PropertiesService
+         * Get queue from properties
          * @private
          */
         _getQueue() {
-            const queueJson = this.props.getProperty(this.QUEUE_KEY);
-            return queueJson ? JSON.parse(queueJson) : [];
+            const json = this.props.getProperty(this.QUEUE_KEY);
+            return json ? JSON.parse(json) : [];
         }
 
         /**
-         * Save queue to PropertiesService
+         * Save queue to properties
          * @private
          */
         _saveQueue(queue) {
@@ -730,11 +745,11 @@ var AnnouncementManager = (function() {
                 .create();
             
             this.props.setProperty(this.TRIGGER_KEY, trigger.getUniqueId());
-            console.log('AnnouncementManager: Created hourly trigger for queue processing');
+            console.log(`AnnouncementManager: Created trigger ${trigger.getUniqueId()}`);
         }
 
         /**
-         * Remove the trigger when queue is empty
+         * Remove the queue processing trigger
          * @private
          */
         _removeTrigger() {
@@ -742,12 +757,12 @@ var AnnouncementManager = (function() {
             if (!triggerId) return;
             
             const triggers = ScriptApp.getProjectTriggers();
-            triggers.forEach(trigger => {
-                if (trigger.getUniqueId() === triggerId) {
-                    ScriptApp.deleteTrigger(trigger);
-                    console.log('AnnouncementManager: Removed trigger');
-                }
-            });
+            const trigger = triggers.find(t => t.getUniqueId() === triggerId);
+            
+            if (trigger) {
+                ScriptApp.deleteTrigger(trigger);
+                console.log(`AnnouncementManager: Deleted trigger ${triggerId}`);
+            }
             
             this.props.deleteProperty(this.TRIGGER_KEY);
         }
@@ -756,7 +771,7 @@ var AnnouncementManager = (function() {
     return AnnouncementManager;
 })();
 
-// Node.js export
+// Node.js compatibility
 if (typeof module !== 'undefined') {
     module.exports = AnnouncementManager;
 }
