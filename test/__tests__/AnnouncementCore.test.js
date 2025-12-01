@@ -358,18 +358,94 @@ describe('AnnouncementCore', () => {
         });
     });
 
-    describe('expandTemplate', () => {
-        it('should expand all fields with data', () => {
-            const template = 'Ride: {RideName} at {Location} on {StartDate}';
+    describe('enrichRowData', () => {
+        it('should create DateTime, Date, Day, Time from Date field', () => {
             const rowData = {
-                RideName: 'Saturday Ride',
+                Date: new Date('2024-12-07T18:00:00Z'), // Saturday 10:00 AM Pacific (18:00 UTC)
+                RideURL: 'https://ridewithgps.com/events/123',
+                RideName: 'Great Ride',
+                RideLeader: 'John Doe'
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData);
+
+            expect(enriched.DateTime).toBe('Saturday, December 7, 2024 at 10:00 AM');
+            expect(enriched.Date).toBe('December 7, 2024');
+            expect(enriched.Day).toBe('Saturday');
+            expect(enriched.Time).toBe('10:00 AM');
+            expect(enriched.RideLink).toBe('Great Ride (https://ridewithgps.com/events/123)');
+            expect(enriched.RideLeader).toBe('John Doe');
+        });
+
+        it('should handle missing RideURL', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'),
+                RideName: 'Great Ride',
+                RideLeader: 'Jane Smith'
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData);
+
+            expect(enriched.RideLink).toBe('Great Ride');
+            expect(enriched.RideLeader).toBe('Jane Smith');
+        });
+
+        it('should handle missing RideName', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'),
+                RideURL: 'https://ridewithgps.com/events/123'
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData);
+
+            expect(enriched.RideLink).toBe('https://ridewithgps.com/events/123');
+        });
+
+        it('should preserve original rowData fields', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'),
                 Location: 'Seascape Park',
-                StartDate: '12/7/2025'
+                Address: '123 Main St',
+                Group: 'Sat A',
+                RouteName: 'Coastal Loop',
+                RideLeaders: 'John Doe, Jane Smith'
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData);
+
+            expect(enriched.Location).toBe('Seascape Park');
+            expect(enriched.Address).toBe('123 Main St');
+            expect(enriched.Group).toBe('Sat A');
+            expect(enriched.RouteName).toBe('Coastal Loop');
+            expect(enriched.RideLeader).toBe('John Doe, Jane Smith');
+        });
+    });
+
+    describe('expandTemplate', () => {
+        it('should expand all fields including enriched fields', () => {
+            const template = 'Ride: {RideLink} on {DateTime} at {Location}';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'), // Saturday 10:00 AM Pacific
+                RideURL: 'https://ridewithgps.com/events/123',
+                RideName: 'Saturday Ride',
+                Location: 'Seascape Park'
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Ride: Saturday Ride at Seascape Park on 12/7/2025');
+            expect(result.expandedText).toBe('Ride: Saturday Ride (https://ridewithgps.com/events/123) on Saturday, December 7, 2024 at 10:00 AM at Seascape Park');
+            expect(result.missingFields).toHaveLength(0);
+        });
+
+        it('should expand date/time fields separately', () => {
+            const template = '{Day}, {Date} at {Time}';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+
+            const result = AnnouncementCore.expandTemplate(template, rowData);
+            
+            expect(result.expandedText).toBe('Saturday, December 7, 2024 at 10:00 AM');
             expect(result.missingFields).toHaveLength(0);
         });
 

@@ -532,20 +532,16 @@ var AnnouncementManager = (function() {
                     .setBold(true);
                 
                 const fields = [
-                    '{RideName} - Full ride name with date and route',
-                    '{RideURL} - Link to RWGPS event page',
-                    '{RouteURL} - Link to route on RWGPS',
-                    '{RouteName} - Name of the route',
-                    '{StartDate} - Ride start date',
-                    '{StartTime} - Ride start time',
-                    '{Location} - Ride meeting location',
+                    '{DateTime} - Full date and time (e.g., "Saturday, December 7, 2024 at 10:00 AM")',
+                    '{Date} - Date only (e.g., "December 7, 2024")',
+                    '{Day} - Day of week (e.g., "Saturday")',
+                    '{Time} - Time only (e.g., "10:00 AM")',
+                    '{RideLink} - Full hyperlink: RideName + RideURL',
+                    '{RideLeader} - Name(s) of the ride leader(s)',
+                    '{Location} - Ride meeting location name',
                     '{Address} - Full address of meeting location',
-                    '{RideLeaders} - Names of ride leaders',
                     '{Group} - Ride group (e.g., Sat A, Sun B)',
-                    '{Distance} - Route distance',
-                    '{Elevation} - Route elevation gain',
-                    '{Difficulty} - Ride difficulty level',
-                    '{Pace} - Ride pace'
+                    '{RouteName} - Name of the route'
                 ];
                 
                 fields.forEach(field => {

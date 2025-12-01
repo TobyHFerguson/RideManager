@@ -277,11 +277,83 @@ var AnnouncementCore = (function() {
      * @param {Object} rowData - Object with field names as keys
      * @returns {Object} Object with expandedText and missingFields array
      */
+    /**
+     * Enrich row data with calculated template fields
+     * Adds DateTime, Date, Day, Time, RideLink fields
+     * 
+     * @param {Object} rowData - Original row data
+     * @returns {Object} Enriched row data with calculated fields
+     */
+    function enrichRowData(rowData) {
+        const enriched = { ...rowData };
+        
+        // Parse the start date/time
+        const startDate = rowData.Date ? new Date(rowData.Date) : null;
+        
+        if (startDate && !isNaN(startDate)) {
+            // Format date and time fields
+            const options = { timeZone: 'America/Los_Angeles' };
+            
+            // DateTime: Full date and time (e.g., "Saturday, December 7, 2024 at 10:00 AM")
+            enriched.DateTime = startDate.toLocaleString('en-US', {
+                ...options,
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            
+            // Date: Just the date (e.g., "December 7, 2024")
+            enriched.Date = startDate.toLocaleDateString('en-US', {
+                ...options,
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Day: Day of week (e.g., "Saturday")
+            enriched.Day = startDate.toLocaleDateString('en-US', {
+                ...options,
+                weekday: 'long'
+            });
+            
+            // Time: Just the time (e.g., "10:00 AM")
+            enriched.Time = startDate.toLocaleTimeString('en-US', {
+                ...options,
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        
+        // RideLink: Hyperlink connecting RideURL to RideName
+        if (rowData.RideURL && rowData.RideName) {
+            enriched.RideLink = `${rowData.RideName} (${rowData.RideURL})`;
+        } else if (rowData.RideName) {
+            enriched.RideLink = rowData.RideName;
+        } else if (rowData.RideURL) {
+            enriched.RideLink = rowData.RideURL;
+        }
+        
+        // RideLeader: Use RideLeaders field (already should be a string from rowData)
+        if (rowData.RideLeaders) {
+            enriched.RideLeader = rowData.RideLeaders;
+        }
+        
+        return enriched;
+    }
+
     function expandTemplate(template, rowData) {
         const missingFields = [];
         
+        // Enrich row data with calculated fields before expansion
+        const enrichedData = enrichRowData(rowData);
+        
         const expandedText = template.replace(/{([^}]+)}/g, (match, fieldName) => {
-            const value = rowData[fieldName];
+            const value = enrichedData[fieldName];
             
             if (value === null || value === undefined || value === '') {
                 missingFields.push(fieldName);
@@ -329,6 +401,7 @@ var AnnouncementCore = (function() {
         updateItem,
         getStatistics,
         formatItems,
+        enrichRowData,
         expandTemplate,
         extractSubject
     };
