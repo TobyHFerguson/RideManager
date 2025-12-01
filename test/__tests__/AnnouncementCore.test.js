@@ -373,7 +373,7 @@ describe('AnnouncementCore', () => {
             expect(enriched.Date).toBe('December 7, 2024');
             expect(enriched.Day).toBe('Saturday');
             expect(enriched.Time).toBe('10:00 AM');
-            expect(enriched.RideLink).toBe('Great Ride (https://ridewithgps.com/events/123)');
+            expect(enriched.RideLink).toBe('<a href="https://ridewithgps.com/events/123">Great Ride</a>');
             expect(enriched.RideLeader).toBe('John Doe');
         });
 
@@ -433,7 +433,7 @@ describe('AnnouncementCore', () => {
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Ride: Saturday Ride (https://ridewithgps.com/events/123) on Saturday, December 7, 2024 at 10:00 AM at Seascape Park');
+            expect(result.expandedText).toBe('Ride: <a href="https://ridewithgps.com/events/123">Saturday Ride</a> on Saturday, December 7, 2024 at 10:00 AM at Seascape Park');
             expect(result.missingFields).toHaveLength(0);
         });
 

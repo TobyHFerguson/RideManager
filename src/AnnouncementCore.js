@@ -331,7 +331,7 @@ var AnnouncementCore = (function() {
         
         // RideLink: Hyperlink connecting RideURL to RideName
         if (rowData.RideURL && rowData.RideName) {
-            enriched.RideLink = `${rowData.RideName} (${rowData.RideURL})`;
+            enriched.RideLink = `<a href="${rowData.RideURL}">${rowData.RideName}</a>`;
         } else if (rowData.RideName) {
             enriched.RideLink = rowData.RideName;
         } else if (rowData.RideURL) {

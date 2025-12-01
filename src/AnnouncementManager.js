@@ -125,33 +125,27 @@ var AnnouncementManager = (function() {
                     throw new Error('RIDE_ANNOUNCEMENT_EMAIL not configured in Globals');
                 }
                 
-                // Open the document and get template content
+                // Open the document
                 const doc = DocumentApp.openById(item.documentId);
-                const templateText = doc.getBody().getText();
                 
-                // Expand template using core logic
-                const expandResult = AnnouncementCore.expandTemplate(templateText, item.rowData);
+                // Convert document to HTML first (with template fields intact)
+                let html = this._convertDocToHtml(doc);
                 
-                // Highlight missing fields in the document if any
-                if (expandResult.missingFields.length > 0) {
-                    this._highlightMissingFields(doc, expandResult.missingFields);
-                    console.log(`AnnouncementManager: Highlighted ${expandResult.missingFields.length} missing fields in ${item.documentId}`);
-                }
+                // Remove operator instructions section from HTML
+                html = this._removeInstructionsFromHtml(html);
                 
-                // Remove instructions from the expanded text (string operation)
-                const cleanedText = this._removeInstructionsFromText(expandResult.expandedText);
+                // Expand template fields in the HTML
+                const expandResult = AnnouncementCore.expandTemplate(html, item.rowData);
+                html = expandResult.expandedText;
                 
-                // Extract subject using core logic
-                const emailContent = AnnouncementCore.extractSubject(cleanedText);
+                // Extract subject from HTML (look for Subject: line at start)
+                const emailContent = this._extractSubjectFromHtml(html);
                 const subject = emailContent.subject || `Ride Announcement: ${item.rowData.RideName || 'Unknown Ride'}`;
-                const body = emailContent.body;
+                const htmlBody = emailContent.body;
                 
-                // Get document URL for footer
-                const docUrl = doc.getUrl();
-                const footer = `\n\n---\nView/edit this announcement: ${docUrl}`;
-                
-                // Send email
-                GmailApp.sendEmail(recipientEmail, subject, body + footer, {
+                // Send HTML email
+                MailApp.sendEmail(recipientEmail, subject, '', {
+                    htmlBody: htmlBody,
                     name: 'Ride Scheduler',
                     replyTo: globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail()
                 });
@@ -159,6 +153,7 @@ var AnnouncementManager = (function() {
                 console.log(`AnnouncementManager: Sent announcement ${item.id} to ${recipientEmail}`);
                 
                 // Show popup notification
+                const docUrl = doc.getUrl();
                 const ui = SpreadsheetApp.getUi();
                 ui.alert(
                     'Announcement Sent',
@@ -579,67 +574,249 @@ var AnnouncementManager = (function() {
         }
 
         /**
-         * Remove operator instructions from expanded text (string operation)
-         * Removes both the "Subject:" line and everything from the instruction marker onwards
+         * Convert Google Doc to HTML
+         * Based on DocsService pattern from SCCCCMembershipManagement
          * @private
          */
-        _removeInstructionsFromText(text) {
-            try {
-                const marker = '━━━ OPERATOR INSTRUCTIONS';
-                const lines = text.split('\n');
-                const result = [];
-                let foundMarker = false;
-                
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    
-                    // Skip the "Subject:" line
-                    if (line.trim().startsWith('Subject:')) {
-                        console.log('AnnouncementManager: Skipping Subject: line');
-                        continue;
-                    }
-                    
-                    // Check if this line contains the marker
-                    if (line.includes(marker)) {
-                        console.log('AnnouncementManager: Found instruction marker, stopping here');
-                        foundMarker = true;
-                        break;
-                    }
-                    
-                    // Add line if we haven't hit the marker yet
-                    if (!foundMarker) {
-                        result.push(line);
-                    }
-                }
-                
-                const cleanedText = result.join('\n').trim();
-                console.log(`AnnouncementManager: Cleaned text from ${text.length} to ${cleanedText.length} characters`);
-                return cleanedText;
-            } catch (error) {
-                console.error('AnnouncementManager: Failed to remove instructions from text:', error);
-                // Return original text if cleanup fails
-                return text;
-            }
+        _convertDocToHtml(doc) {
+            const body = doc.getBody();
+            let html = '<html><body>';
+            html += this._processElement(body);
+            html += '</body></html>';
+            return html;
         }
 
         /**
-         * Highlight missing fields in the document body
+         * Process a document element recursively to HTML
          * @private
          */
-        _highlightMissingFields(doc, missingFields) {
-            const body = doc.getBody();
-            missingFields.forEach(field => {
-                const placeholder = `{${field}}`;
-                // Search for the placeholder text and highlight it yellow
-                const searchResult = body.findText(placeholder);
-                if (searchResult) {
-                    const element = searchResult.getElement();
-                    const startOffset = searchResult.getStartOffset();
-                    const endOffset = searchResult.getEndOffsetInclusive();
-                    element.asText().setBackgroundColor(startOffset, endOffset, '#FFFF00'); // Yellow
+        _processElement(element) {
+            let html = '';
+            
+            switch (element.getType()) {
+                case DocumentApp.ElementType.PARAGRAPH:
+                    html += '<p>';
+                    const numChildren = element.getNumChildren();
+                    for (let i = 0; i < numChildren; i++) {
+                        html += this._processElement(element.getChild(i));
+                    }
+                    html += '</p>';
+                    break;
+                    
+                case DocumentApp.ElementType.TEXT:
+                    html += this._processText(element);
+                    break;
+                    
+                case DocumentApp.ElementType.LIST_ITEM:
+                    html += '<li>';
+                    const listChildren = element.getNumChildren();
+                    for (let i = 0; i < listChildren; i++) {
+                        html += this._processElement(element.getChild(i));
+                    }
+                    html += '</li>';
+                    break;
+                    
+                case DocumentApp.ElementType.TABLE:
+                    html += '<table border="1" style="border-collapse:collapse;">';
+                    const numRows = element.getNumRows();
+                    for (let i = 0; i < numRows; i++) {
+                        html += this._processElement(element.getRow(i));
+                    }
+                    html += '</table>';
+                    break;
+                    
+                case DocumentApp.ElementType.TABLE_ROW:
+                    html += '<tr>';
+                    const numCells = element.getNumCells();
+                    for (let i = 0; i < numCells; i++) {
+                        html += this._processElement(element.getCell(i));
+                    }
+                    html += '</tr>';
+                    break;
+                    
+                case DocumentApp.ElementType.TABLE_CELL:
+                    html += '<td>';
+                    const cellChildren = element.getNumChildren();
+                    for (let i = 0; i < cellChildren; i++) {
+                        html += this._processElement(element.getChild(i));
+                    }
+                    html += '</td>';
+                    break;
+                    
+                case DocumentApp.ElementType.BODY_SECTION:
+                case DocumentApp.ElementType.BODY:
+                    const bodyChildren = element.getNumChildren();
+                    for (let i = 0; i < bodyChildren; i++) {
+                        html += this._processElement(element.getChild(i));
+                    }
+                    break;
+                    
+                case DocumentApp.ElementType.HORIZONTAL_RULE:
+                    html += '<hr/>';
+                    break;
+                    
+                default:
+                    // For other element types, try to process children if available
+                    try {
+                        if (typeof element.getNumChildren === 'function') {
+                            const defaultChildren = element.getNumChildren();
+                            for (let i = 0; i < defaultChildren; i++) {
+                                html += this._processElement(element.getChild(i));
+                            }
+                        }
+                    } catch (e) {
+                        // If can't process children, just skip
+                        console.warn('Could not process element type:', element.getType());
+                    }
+            }
+            
+            return html;
+        }
+
+        /**
+         * Process text element with formatting
+         * @private
+         */
+        _processText(element) {
+            let html = '';
+            const text = element.getText();
+            if (!text) return '';
+            
+            const attributeIndices = element.getTextAttributeIndices();
+            
+            if (attributeIndices.length === 0) {
+                return this._encodeHtmlEntities(text);
+            }
+            
+            let lastIndex = 0;
+            for (let i = 0; i < attributeIndices.length; i++) {
+                const index = attributeIndices[i];
+                const segmentText = this._encodeHtmlEntities(text.substring(lastIndex, index));
+                
+                if (segmentText) {
+                    const linkUrl = element.getLinkUrl(lastIndex);
+                    const attributes = element.getAttributes(lastIndex);
+                    let styledSegment = this._applyTextAttributes(segmentText, attributes);
+                    
+                    if (linkUrl) {
+                        html += '<a href="' + linkUrl + '">' + styledSegment + '</a>';
+                    } else {
+                        html += styledSegment;
+                    }
+                }
+                
+                lastIndex = index;
+            }
+            
+            // Handle the last segment
+            const lastSegmentText = text.substring(lastIndex);
+            if (lastSegmentText) {
+                const lastLinkUrl = element.getLinkUrl(lastIndex);
+                const lastAttributes = element.getAttributes(lastIndex);
+                let lastStyledSegment = this._applyTextAttributes(lastSegmentText, lastAttributes);
+                
+                if (lastLinkUrl) {
+                    html += '<a href="' + lastLinkUrl + '">' + lastStyledSegment + '</a>';
+                } else {
+                    html += lastStyledSegment;
+                }
+            }
+            
+            return html;
+        }
+
+        /**
+         * Apply text formatting attributes
+         * @private
+         */
+        _applyTextAttributes(text, attributes) {
+            let html = text;
+            
+            if (attributes[DocumentApp.Attribute.BOLD]) {
+                html = '<b>' + html + '</b>';
+            }
+            if (attributes[DocumentApp.Attribute.ITALIC]) {
+                html = '<i>' + html + '</i>';
+            }
+            if (attributes[DocumentApp.Attribute.UNDERLINE]) {
+                html = '<u>' + html + '</u>';
+            }
+            if (attributes[DocumentApp.Attribute.FONT_SIZE]) {
+                html = '<span style="font-size:' + attributes[DocumentApp.Attribute.FONT_SIZE] + 'px;">' + html + '</span>';
+            }
+            if (attributes[DocumentApp.Attribute.FOREGROUND_COLOR]) {
+                html = '<span style="color:' + attributes[DocumentApp.Attribute.FOREGROUND_COLOR] + ';">' + html + '</span>';
+            }
+            if (attributes[DocumentApp.Attribute.BACKGROUND_COLOR]) {
+                html = '<span style="background-color:' + attributes[DocumentApp.Attribute.BACKGROUND_COLOR] + ';">' + html + '</span>';
+            }
+            
+            return html;
+        }
+
+        /**
+         * Encode HTML entities
+         * @private
+         */
+        _encodeHtmlEntities(text) {
+            return text.replace(/[&<>'"]/g, function(c) {
+                switch (c) {
+                    case '&': return '&amp;';
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case "'": return '&#39;';
+                    case '"': return '&quot;';
+                    default: return c;
                 }
             });
-            doc.saveAndClose();
+        }
+
+        /**
+         * Remove operator instructions section from HTML
+         * Removes everything from the horizontal rule with instruction marker onwards
+         * @private
+         */
+        _removeInstructionsFromHtml(html) {
+            // Find the HR followed by the instruction marker
+            const marker = '━━━ OPERATOR INSTRUCTIONS';
+            const markerIndex = html.indexOf(marker);
+            
+            if (markerIndex === -1) {
+                console.log('AnnouncementManager: No instruction marker found in HTML');
+                return html;
+            }
+            
+            // Find the <hr/> or <hr> tag before the marker
+            const beforeMarker = html.substring(0, markerIndex);
+            const hrMatch = beforeMarker.lastIndexOf('<hr');
+            
+            if (hrMatch === -1) {
+                // No HR found, just remove from marker onwards
+                return html.substring(0, markerIndex);
+            }
+            
+            // Remove from the HR tag onwards
+            const cleaned = html.substring(0, hrMatch);
+            console.log(`AnnouncementManager: Removed instructions from HTML (${html.length} -> ${cleaned.length} chars)`);
+            return cleaned;
+        }
+
+        /**
+         * Extract subject line from HTML content
+         * Looks for "Subject: ..." at the beginning and removes it from body
+         * @private
+         */
+        _extractSubjectFromHtml(html) {
+            // Look for Subject: in the first paragraph, allowing for any HTML tags within
+            const subjectMatch = html.match(/<p[^>]*>\s*Subject:\s*(.+?)<\/p>/is);
+            
+            if (subjectMatch) {
+                const subject = subjectMatch[1].replace(/<[^>]+>/g, '').trim(); // Strip any HTML tags
+                const body = html.replace(subjectMatch[0], ''); // Remove entire subject paragraph from body
+                return { subject, body };
+            }
+            
+            return { subject: null, body: html };
         }
 
         /**
