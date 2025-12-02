@@ -203,12 +203,13 @@ var AnnouncementCore = (function() {
 
     /**
      * Enrich row data with calculated template fields
-     * Adds DateTime, Date, Day, Time, RideLink fields
+     * Adds DateTime, Date, Day, Time, RideLink, Gain, Length, FPM, StartPin, Lat, Long fields
      * 
      * @param {Object} rowData - Original row data
+     * @param {Object} [route=null] - Optional route object from RWGPS with distance, elevation_gain, first_lat, first_lng
      * @returns {Object} Enriched row data with calculated fields
      */
-    function enrichRowData(rowData) {
+    function enrichRowData(rowData, route = null) {
         const enriched = { ...rowData };
         
         // Parse the start date/time
@@ -267,14 +268,50 @@ var AnnouncementCore = (function() {
             enriched.RideLeader = rowData.RideLeaders;
         }
         
+        // Route-based fields (if route object provided)
+        if (route) {
+            const METERS_TO_MILES = 0.000621371;
+            const METERS_TO_FEET = 3.28084;
+            
+            // length: Route distance in miles
+            if (route.distance !== undefined && route.distance !== null) {
+                enriched.Length = Math.round(route.distance * METERS_TO_MILES);
+            }
+            
+            // gain: Elevation gain in feet
+            if (route.elevation_gain !== undefined && route.elevation_gain !== null) {
+                enriched.Gain = Math.round(route.elevation_gain * METERS_TO_FEET);
+            }
+            
+            // fpm: Feet per mile (gain/length)
+            if (enriched.Gain !== undefined && enriched.Length !== undefined && enriched.Length > 0) {
+                enriched.FPM = Math.round(enriched.Gain / enriched.Length);
+            }
+            
+            // lat/long: Start location coordinates
+            if (route.first_lat !== undefined && route.first_lat !== null) {
+                enriched.Lat = route.first_lat;
+            }
+            if (route.first_lng !== undefined && route.first_lng !== null) {
+                enriched.Long = route.first_lng;
+            }
+            
+            // startPin: Hyperlinked pins to Apple and Google maps
+            if (enriched.Lat !== undefined && enriched.Long !== undefined) {
+                const appleUrl = `https://maps.apple.com/?ll=${enriched.Lat},${enriched.Long}&q=Ride%20Start`;
+                const googleUrl = `https://www.google.com/maps/search/?api=1&query=${enriched.Lat},${enriched.Long}`;
+                enriched.StartPin = `<a href="${appleUrl}">Apple Maps</a> / <a href="${googleUrl}">Google Maps</a>`;
+            }
+        }
+        
         return enriched;
     }
 
-    function expandTemplate(template, rowData) {
+    function expandTemplate(template, rowData, route = null) {
         const missingFields = [];
         
         // Enrich row data with calculated fields before expansion
-        const enrichedData = enrichRowData(rowData);
+        const enrichedData = enrichRowData(rowData, route);
         
         const expandedText = template.replace(/{([^}]+)}/g, (match, fieldName) => {
             const value = enrichedData[fieldName];

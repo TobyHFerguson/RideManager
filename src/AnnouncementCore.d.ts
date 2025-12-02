@@ -182,9 +182,10 @@ declare class AnnouncementCore {
      * 
      * @param template - Template text with {FieldName} placeholders
      * @param rowData - Object with field values (keys are column names)
+     * @param route - Optional RWGPS route object with distance, elevation_gain, first_lat, first_lng
      * @returns Expanded text and array of missing field names
      */
-    static expandTemplate(template: string, rowData: Record<string, any>): TemplateExpansionResult;
+    static expandTemplate(template: string, rowData: Record<string, any>, route?: any | null): TemplateExpansionResult;
 
     /**
      * Extract subject line from template

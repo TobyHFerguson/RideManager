@@ -328,6 +328,162 @@ describe('AnnouncementCore', () => {
             expect(enriched.RouteName).toBe('Coastal Loop');
             expect(enriched.RideLeader).toBe('John Doe, Jane Smith');
         });
+
+        it('should add route metrics when route provided', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 72420.5,        // meters (45 miles)
+                elevation_gain: 762.0,    // meters (2500 feet)
+                first_lat: 37.7749,
+                first_lng: -122.4194
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData, route);
+
+            expect(enriched.Length).toBe(45);         // 72420.5 * 0.000621371 = 45.0
+            expect(enriched.Gain).toBe(2500);         // 762.0 * 3.28084 = 2500.0
+            expect(enriched.FPM).toBe(56);            // 2500 / 45 = 55.56, rounded to 56
+            expect(enriched.Lat).toBe(37.7749);
+            expect(enriched.Long).toBe(-122.4194);
+        });
+
+        it('should generate startPin with Apple and Google Maps links', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 72420.5,
+                elevation_gain: 762.0,
+                first_lat: 37.7749,
+                first_lng: -122.4194
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData, route);
+
+            expect(enriched.StartPin).toContain('<a href="https://maps.apple.com/?ll=37.7749,-122.4194&q=Ride%20Start">Apple</a>');
+            expect(enriched.StartPin).toContain('<a href="https://www.google.com/maps/search/?api=1&query=37.7749,-122.4194">Google</a>');
+            expect(enriched.StartPin).toContain('> / <');
+        });
+
+        it('should round route metrics correctly', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 80467.2,        // 50 miles
+                elevation_gain: 1524.0,   // 5000 feet
+                first_lat: 36.1234,
+                first_lng: -121.5678
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData, route);
+
+            expect(enriched.Length).toBe(50);
+            expect(enriched.Gain).toBe(5000);
+            expect(enriched.FPM).toBe(100);          // 5000 / 50 = 100
+        });
+
+        it('should handle route with zero distance', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 0,
+                elevation_gain: 100,
+                first_lat: 37.0,
+                first_lng: -122.0
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData, route);
+
+            expect(enriched.Length).toBe(0);
+            expect(enriched.FPM).toBeUndefined();      // Won't calculate when length = 0
+        });
+
+        it('should handle route with missing fields', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 50000,
+                // elevation_gain missing
+                first_lat: 37.0
+                // first_lng missing
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData, route);
+
+            expect(enriched.Length).toBe(31);         // 50000 * 0.000621371
+            expect(enriched.Gain).toBeUndefined();    // elevation_gain undefined
+            expect(enriched.FPM).toBeUndefined();     // gain undefined, so fpm undefined
+            expect(enriched.Lat).toBe(37.0);
+            expect(enriched.Long).toBeUndefined();    // first_lng undefined
+            expect(enriched.StartPin).toBeUndefined(); // Can't create without both lat/long
+        });
+
+        it('should handle null route parameter', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'),
+                RideName: 'Test Ride'
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData, null);
+
+            expect(enriched.RideName).toBe('Test Ride');
+            expect(enriched.length).toBeUndefined();
+            expect(enriched.gain).toBeUndefined();
+            expect(enriched.fpm).toBeUndefined();
+            expect(enriched.lat).toBeUndefined();
+            expect(enriched.long).toBeUndefined();
+            expect(enriched.startPin).toBeUndefined();
+        });
+
+        it('should handle omitted route parameter', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'),
+                Location: 'Test Location'
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData);
+
+            expect(enriched.Location).toBe('Test Location');
+            expect(enriched.length).toBeUndefined();
+            expect(enriched.gain).toBeUndefined();
+            expect(enriched.fpm).toBeUndefined();
+            expect(enriched.lat).toBeUndefined();
+            expect(enriched.long).toBeUndefined();
+            expect(enriched.startPin).toBeUndefined();
+        });
+
+        it('should preserve route fields when both rowData and route provided', () => {
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'),
+                RideName: 'Test Ride',
+                Location: 'Test Location'
+            };
+            const route = {
+                distance: 80467.2,
+                elevation_gain: 1524.0,
+                first_lat: 36.5,
+                first_lng: -121.5
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData, route);
+
+            // Original fields preserved
+            expect(enriched.RideName).toBe('Test Ride');
+            expect(enriched.Location).toBe('Test Location');
+            
+            // Route fields added
+            expect(enriched.Length).toBe(50);
+            expect(enriched.Gain).toBe(5000);
+            expect(enriched.FPM).toBe(100);
+            expect(enriched.Lat).toBe(36.5);
+            expect(enriched.Long).toBe(-121.5);
+            expect(enriched.StartPin).toBeDefined();
+        });
     });
 
     describe('expandTemplate', () => {
@@ -405,6 +561,106 @@ describe('AnnouncementCore', () => {
             
             expect(result.expandedText).toBe('No placeholders here');
             expect(result.missingFields).toHaveLength(0);
+        });
+
+        it('should expand route-based fields when route provided', () => {
+            const template = 'Distance: {length} miles, Elevation: {gain} feet, Difficulty: {fpm} fpm';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 72420.5,        // 45 miles
+                elevation_gain: 762.0,    // 2500 feet
+                first_lat: 37.7749,
+                first_lng: -122.4194
+            };
+
+            const result = AnnouncementCore.expandTemplate(template, rowData, route);
+            
+            expect(result.expandedText).toBe('Distance: 45 miles, Elevation: 2500 feet, Difficulty: 56 fpm');
+            expect(result.missingFields).toHaveLength(0);
+        });
+
+        it('should expand lat/long fields when route provided', () => {
+            const template = 'Start: {lat}, {long}';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 50000,
+                elevation_gain: 500,
+                first_lat: 36.1234,
+                first_lng: -121.5678
+            };
+
+            const result = AnnouncementCore.expandTemplate(template, rowData, route);
+            
+            expect(result.expandedText).toBe('Start: 36.1234, -121.5678');
+            expect(result.missingFields).toHaveLength(0);
+        });
+
+        it('should expand startPin field with map links', () => {
+            const template = 'Map: {startPin}';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+            const route = {
+                distance: 50000,
+                elevation_gain: 500,
+                first_lat: 37.5,
+                first_lng: -122.5
+            };
+
+            const result = AnnouncementCore.expandTemplate(template, rowData, route);
+            
+            expect(result.expandedText).toContain('Map: <a href="https://maps.apple.com/?ll=37.5,-122.5');
+            expect(result.expandedText).toContain('>Apple</a>');
+            expect(result.expandedText).toContain('<a href="https://www.google.com/maps/search/?api=1&query=37.5,-122.5');
+            expect(result.expandedText).toContain('>Google</a>');
+            expect(result.missingFields).toHaveLength(0);
+        });
+
+        it('should mark route fields as missing when route not provided', () => {
+            const template = 'Distance: {length}, Elevation: {gain}';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+
+            const result = AnnouncementCore.expandTemplate(template, rowData);
+            
+            expect(result.expandedText).toBe('Distance: {length}, Elevation: {gain}');
+            expect(result.missingFields).toEqual(['length', 'gain']);
+        });
+
+        it('should expand mix of standard and route fields', () => {
+            const template = '{RideName} - {length} miles with {gain} feet on {Day}';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z'),
+                RideName: 'Saturday Ride'
+            };
+            const route = {
+                distance: 80467.2,        // 50 miles
+                elevation_gain: 1524.0,   // 5000 feet
+                first_lat: 36.0,
+                first_lng: -121.0
+            };
+
+            const result = AnnouncementCore.expandTemplate(template, rowData, route);
+            
+            expect(result.expandedText).toBe('Saturday Ride - 50 miles with 5000 feet on Saturday');
+            expect(result.missingFields).toHaveLength(0);
+        });
+
+        it('should handle route with null parameter', () => {
+            const template = '{length} miles';
+            const rowData = {
+                Date: new Date('2024-12-07T18:00:00Z')
+            };
+
+            const result = AnnouncementCore.expandTemplate(template, rowData, null);
+            
+            expect(result.expandedText).toBe('{length} miles');
+            expect(result.missingFields).toEqual(['length']);
         });
     });
 

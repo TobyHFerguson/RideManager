@@ -149,14 +149,25 @@ var AnnouncementManager = (function() {
                     ...row._data
                 };
                 
+                // Fetch route data for template enrichment (gain, length, fpm, startPin, lat, long)
+                let route = null;
+                if (row.RouteURL) {
+                    try {
+                        route = getRoute(row.RouteURL);
+                    } catch (error) {
+                        console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${error.message}`);
+                        // Continue without route data - fields will be missing but announcement will still send
+                    }
+                }
+                
                 // Convert document to HTML first (with template fields intact)
                 let html = this._convertDocToHtml(doc);
                 
                 // Remove operator instructions section from HTML
                 html = this._removeInstructionsFromHtml(html);
                 
-                // Expand template fields in the HTML
-                const expandResult = AnnouncementCore.expandTemplate(html, rowData);
+                // Expand template fields in the HTML (with route data for enrichment)
+                const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
                 html = expandResult.expandedText;
                 
                 // Extract subject from HTML (look for Subject: line at start)
@@ -523,10 +534,14 @@ var AnnouncementManager = (function() {
                     '{Time} - Time only (e.g., "10:00 AM")',
                     '{RideLink} - Full hyperlink: RideName + RideURL',
                     '{RideLeader} - Name(s) of the ride leader(s)',
-                    '{Location} - Ride meeting location name',
-                    '{Address} - Full address of meeting location',
                     '{Group} - Ride group (e.g., Sat A, Sun B)',
-                    '{RouteName} - Name of the route'
+                    '{RouteName} - Name of the route',
+                    '{Length} - Route distance in miles (e.g., "45")',
+                    '{Gain} - Route elevation gain in feet (e.g., "2500")',
+                    '{FPM} - Feet per mile - climb difficulty (e.g., "56")',
+                    '{Lat} - Ride start latitude (e.g., "37.7749")',
+                    '{Long} - Ride start longitude (e.g., "-122.4194")',
+                    '{StartPin} - Map links to ride start: Apple Maps / Google Maps'
                 ];
                 
                 fields.forEach(field => {
