@@ -31,6 +31,7 @@ function createMenu_() {
     .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
     .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
     .addSeparator()
+    .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
     .addItem('Test Send Announcement', testSendAnnouncement_.name)
     .addSeparator()
     .addItem(getDTRTMenuText_(), toggleDTRT_.name)
@@ -319,6 +320,13 @@ function viewRetryQueueStatus_() {
 
 function processRetryQueueNow_() {
   MenuFunctions.processRetryQueueNow();
+}
+
+/**
+ * Send pending announcements for selected rows
+ */
+function sendPendingAnnouncements_() {
+  MenuFunctions.sendPendingAnnouncements();
 }
 
 /**
