@@ -194,6 +194,13 @@ declare class Row {
      */
     restoreRideLink(): void;
 
+    /**
+     * Clear all announcement-related fields
+     * This is the proper way to "remove" an announcement from a row.
+     * Clears: Announcement, SendAt, Status, Attempts, LastError, LastAttemptAt
+     */
+    clearAnnouncement(): void;
+
     // ===== INTERNAL METHODS =====
 
     /**

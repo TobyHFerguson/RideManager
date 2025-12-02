@@ -11,6 +11,33 @@
  * - Selection handling
  * - Spreadsheet-specific operations (highlighting, etc.)
  * - Tracking dirty rows for batch saves
+ * 
+ * ARCHITECTURE PATTERN: Load → Work → Save
+ * ========================================
+ * All operations MUST follow this pattern:
+ * 
+ * 1. LOAD: Create adapter and load rows
+ *    const adapter = new ScheduleAdapter();
+ *    const rows = adapter.loadAll();  // or loadSelected(), loadYoungerRows(), etc.
+ * 
+ * 2. WORK: Modify Row domain objects in memory
+ *    rows.forEach(row => {
+ *        row.GoogleEventId = eventId;  // Setters mark fields dirty
+ *        row.clearAnnouncement();       // Domain methods handle complex updates
+ *    });
+ * 
+ * 3. SAVE: Persist dirty rows in a single batch
+ *    adapter.save();  // Writes only dirty cells, preserving version history
+ * 
+ * NOTE: "Row removal" means clearing field values, NOT deleting spreadsheet rows.
+ * The spreadsheet structure is preserved; we only modify cell contents.
+ * Row domain objects provide methods like clearAnnouncement() for this purpose.
+ * 
+ * PERFORMANCE: This pattern minimizes spreadsheet I/O:
+ * - Single load per operation (cached)
+ * - All business logic works on in-memory objects
+ * - Single save writes only modified cells
+ * - For N row updates: 1 load + N modifications + 1 save (not N × [load + modify + save])
  */
 
 if (typeof require !== 'undefined') {

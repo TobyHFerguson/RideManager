@@ -319,13 +319,24 @@ var AnnouncementManager = (function() {
          * @returns {number} Number of announcements removed
          */
         removeByRideUrl(rideUrl) {
+            return this.removeByRideUrls([rideUrl]);
+        }
+
+        /**
+         * Remove announcements for multiple rides by RideURL (batch operation)
+         * More efficient than calling removeByRideUrl multiple times
+         * @param {string[]} rideUrls - Array of RideURLs to remove announcements for
+         * @returns {number} Number of announcements removed
+         */
+        removeByRideUrls(rideUrls) {
             try {
                 const adapter = new ScheduleAdapter();
                 const allRows = adapter.loadAll();
-                const rowsToRemove = allRows.filter(r => r.RideURL === rideUrl && r.Announcement);
+                const rideUrlSet = new Set(rideUrls);
+                const rowsToRemove = allRows.filter(r => r.Announcement && rideUrlSet.has(r.RideURL));
                 
                 if (rowsToRemove.length === 0) {
-                    console.log(`AnnouncementManager: No announcements found for ride ${rideUrl}`);
+                    console.log(`AnnouncementManager: No announcements found for ${rideUrls.length} ride(s)`);
                     return 0;
                 }
                 
@@ -336,28 +347,23 @@ var AnnouncementManager = (function() {
                         if (documentId) {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);
-                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${rideUrl}`);
+                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.RideURL}`);
                         }
                     } catch (error) {
                         console.warn(`AnnouncementManager: Could not trash document: ${error.message}`);
                     }
                     
-                    // Clear announcement columns
-                    row.Announcement = '';
-                    row.SendAt = undefined;
-                    row.Status = '';
-                    row.Attempts = 0;
-                    row.LastError = '';
-                    row.LastAttemptAt = undefined;
+                    // Clear announcement data using Row domain method
+                    row.clearAnnouncement();
                 });
                 
-                // Save changes
+                // Save changes once for all rows
                 adapter.save();
                 
-                console.log(`AnnouncementManager: Removed ${rowsToRemove.length} announcement(s) for ride ${rideUrl}`);
+                console.log(`AnnouncementManager: Removed ${rowsToRemove.length} announcement(s) for ${rideUrls.length} ride(s)`);
                 return rowsToRemove.length;
             } catch (error) {
-                console.error(`AnnouncementManager: Error removing announcements for ${rideUrl}:`, error);
+                console.error(`AnnouncementManager: Error removing announcements for ${rideUrls.length} rides:`, error);
                 throw error;
             }
         }

@@ -289,6 +289,21 @@ var Row = (function() {
         }
 
         /**
+         * Clear all announcement-related fields
+         * This is the proper way to "remove" an announcement from a row,
+         * following the ScheduleAdapter pattern of modifying domain objects
+         * and letting the adapter handle persistence.
+         */
+        clearAnnouncement() {
+            this.Announcement = '';
+            this.SendAt = undefined;
+            this.Status = '';
+            this.Attempts = 0;
+            this.LastError = '';
+            this.LastAttemptAt = undefined;
+        }
+
+        /**
          * Mark this row as dirty (needs saving)
          * @private
          * @param {string} fieldName - The column name that was modified
