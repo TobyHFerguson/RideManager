@@ -134,87 +134,47 @@ declare class AnnouncementCore {
     /**
      * Calculate next retry time using exponential backoff
      * Intervals: 5min, 15min, 30min, 1hr, 2hr, 4hr, 8hr
-     * Max retry window: 24 hours from creation
+     * Max retry window: 24 hours from scheduled send time
      * 
      * @param attemptCount - Number of failed attempts
-     * @param createdAt - Timestamp when item was created
-     * @param currentTime - Current timestamp
+     * @param sendTime - Scheduled send time timestamp
+     * @param lastAttemptTime - Last attempt time timestamp
      * @returns Next retry time in ms, or null if should stop retrying
      */
-    static calculateNextRetry(attemptCount: number, createdAt: number, currentTime: number): number | null;
+    static calculateNextRetry(attemptCount: number, sendTime: number, lastAttemptTime: number): number | null;
 
     /**
-     * Get items due for sending or reminder
+     * Get rows due for sending or reminder
      * 
-     * @param queue - Array of queue items
+     * @param rows - Array of Row objects from spreadsheet
      * @param currentTime - Current timestamp
-     * @returns Items due to send and items due for reminder
+     * @returns Rows due to send and rows due for reminder
      */
-    static getDueItems(queue: AnnouncementQueueItem[], currentTime: number): DueItems;
+    static getDueItems(rows: any[], currentTime: number): { dueToSend: any[], dueForReminder: any[] };
 
     /**
-     * Update queue item after send failure
+     * Calculate updated values after send failure
+     * Returns object with status, attempts, and lastError to update on the row
      * 
-     * @param item - Queue item that failed
+     * @param attempts - Current attempt count
+     * @param sendTime - Scheduled send time
      * @param error - Error message
      * @param currentTime - Current timestamp
-     * @returns Updated item with incremented attempt count and next retry time
+     * @returns Object with status, attempts, lastError fields
      */
-    static updateAfterFailure(item: AnnouncementQueueItem, error: string, currentTime: number): AnnouncementQueueItem;
+    static calculateFailureUpdate(attempts: number, sendTime: number, error: string, currentTime: number): {
+        status: string;
+        attempts: number;
+        lastError: string;
+    };
 
     /**
-     * Mark announcement as successfully sent
+     * Get announcement statistics from rows
      * 
-     * @param item - Queue item that was sent
-     * @param currentTime - Current timestamp
-     * @returns Updated item marked as sent
-     */
-    static markAsSent(item: AnnouncementQueueItem, currentTime: number): AnnouncementQueueItem;
-
-    /**
-     * Mark reminder as sent
-     * 
-     * @param item - Queue item for which reminder was sent
-     * @param currentTime - Current timestamp
-     * @returns Updated item with reminderSent flag
-     */
-    static markReminderSent(item: AnnouncementQueueItem, currentTime: number): AnnouncementQueueItem;
-
-    /**
-     * Remove item from queue (immutably)
-     * 
-     * @param queue - Current queue
-     * @param id - ID of item to remove
-     * @returns New queue without the specified item
-     */
-    static removeItem(queue: AnnouncementQueueItem[], id: string): AnnouncementQueueItem[];
-
-    /**
-     * Update item in queue (immutably)
-     * 
-     * @param queue - Current queue
-     * @param id - ID of item to update
-     * @param updates - Object with fields to update
-     * @returns New queue with updated item
-     */
-    static updateItem(queue: AnnouncementQueueItem[], id: string, updates: Partial<AnnouncementQueueItem>): AnnouncementQueueItem[];
-
-    /**
-     * Get queue statistics
-     * 
-     * @param queue - Array of queue items
+     * @param rows - Array of Row objects
      * @returns Statistics object
      */
-    static getStatistics(queue: AnnouncementQueueItem[]): AnnouncementStatistics;
-
-    /**
-     * Format queue items for UI display
-     * 
-     * @param queue - Array of queue items
-     * @param currentTime - Current timestamp
-     * @returns Array of formatted items
-     */
-    static formatItems(queue: AnnouncementQueueItem[], currentTime: number): FormattedAnnouncementItem[];
+    static getStatistics(rows: any[]): AnnouncementStatistics;
 
     /**
      * Expand template by replacing {FieldName} placeholders with rowData values

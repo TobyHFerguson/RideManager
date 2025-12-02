@@ -86,22 +86,8 @@ const RideManager = (function () {
             try {
                 console.log(`RideManager.schedule_row_: Creating announcement for row ${row.rowNum}...`);
                 const manager = new (AnnouncementManager)();
-                // Build announcement data using Row getters to get proper field values
-                const rowData = {
-                    _rowNum: row.rowNum,
-                    RideName: row.RideName,
-                    Date: row.StartDate,
-                    RideLeaders: row.RideLeaders.join(', '),
-                    StartTime: row.StartTime,
-                    Location: row.Location,
-                    Address: row.Address,
-                    Group: row.Group,
-                    // Include raw data for any template fields we might have missed
-                    ...row._data
-                };
-                console.log(`RideManager.schedule_row_: Announcement data - RideName: ${rowData.RideName}, Date: ${rowData.Date}, Row: ${rowData._rowNum}`);
-                const announcementId = manager.createAnnouncement(rowData, new_event_url);
-                console.log(`RideManager.schedule_row_: Announcement ${announcementId} queued for row ${row.rowNum}`);
+                const docUrl = manager.createAnnouncement(row);
+                console.log(`RideManager.schedule_row_: Announcement created at ${docUrl} for row ${row.rowNum}`);
             } catch (announcementError) {
                 const errorMsg = `Failed to create announcement: ${announcementError.message}`;
                 console.error(`RideManager.schedule_row_: ${errorMsg} (row ${row.rowNum})`);

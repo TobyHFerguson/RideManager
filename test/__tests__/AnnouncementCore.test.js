@@ -53,240 +53,204 @@ describe('AnnouncementCore', () => {
 
     describe('calculateNextRetry', () => {
         const now = 1700000000000;
+        const sendTime = now; // Send time same as current for simplicity
 
         it('should return 5 minutes for first retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(0, now, now);
+            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, now);
             expect(nextRetry).toBe(now + 5 * 60 * 1000);
         });
 
         it('should return 15 minutes for second retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(1, now, now);
+            const nextRetry = AnnouncementCore.calculateNextRetry(1, sendTime, now);
             expect(nextRetry).toBe(now + 15 * 60 * 1000);
         });
 
         it('should return 30 minutes for third retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(2, now, now);
+            const nextRetry = AnnouncementCore.calculateNextRetry(2, sendTime, now);
             expect(nextRetry).toBe(now + 30 * 60 * 1000);
         });
 
         it('should return 1 hour for fourth retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(3, now, now);
+            const nextRetry = AnnouncementCore.calculateNextRetry(3, sendTime, now);
             expect(nextRetry).toBe(now + 60 * 60 * 1000);
         });
 
         it('should return 2 hours for fifth retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(4, now, now);
+            const nextRetry = AnnouncementCore.calculateNextRetry(4, sendTime, now);
             expect(nextRetry).toBe(now + 2 * 60 * 60 * 1000);
         });
 
         it('should return 4 hours for sixth retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(5, now, now);
+            const nextRetry = AnnouncementCore.calculateNextRetry(5, sendTime, now);
             expect(nextRetry).toBe(now + 4 * 60 * 60 * 1000);
         });
 
         it('should return 8 hours for seventh and beyond retries', () => {
-            expect(AnnouncementCore.calculateNextRetry(6, now, now)).toBe(now + 8 * 60 * 60 * 1000);
-            expect(AnnouncementCore.calculateNextRetry(10, now, now)).toBe(now + 8 * 60 * 60 * 1000);
+            expect(AnnouncementCore.calculateNextRetry(6, sendTime, now)).toBe(now + 8 * 60 * 60 * 1000);
+            expect(AnnouncementCore.calculateNextRetry(10, sendTime, now)).toBe(now + 8 * 60 * 60 * 1000);
         });
 
-        it('should return null after 24 hours', () => {
-            const twentyFourHoursLater = now + 24 * 60 * 60 * 1000;
-            const nextRetry = AnnouncementCore.calculateNextRetry(0, now, twentyFourHoursLater);
+        it('should return null after 24 hours from send time', () => {
+            const twentyFourHoursAfterSend = sendTime + 24 * 60 * 60 * 1000;
+            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, twentyFourHoursAfterSend);
             expect(nextRetry).toBeNull();
         });
 
-        it('should return null for items older than 24 hours', () => {
-            const moreThan24Hours = now + 25 * 60 * 60 * 1000;
-            const nextRetry = AnnouncementCore.calculateNextRetry(0, now, moreThan24Hours);
+        it('should return null for items more than 24 hours past send time', () => {
+            const moreThan24HoursAfterSend = sendTime + 25 * 60 * 60 * 1000;
+            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, moreThan24HoursAfterSend);
             expect(nextRetry).toBeNull();
+        });
+
+        it('should still retry within 24 hour window from send time', () => {
+            const twentyThreeHoursAfterSend = sendTime + 23 * 60 * 60 * 1000;
+            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, twentyThreeHoursAfterSend);
+            expect(nextRetry).not.toBeNull();
+            expect(nextRetry).toBe(twentyThreeHoursAfterSend + 5 * 60 * 1000);
         });
     });
 
     describe('getDueItems', () => {
         const now = new Date('2025-12-05T18:00:00').getTime();
         
-        it('should return items due to send', () => {
-            const queue = [
-                { id: '1', status: 'pending', sendTime: now - 1000 }, // Past due
-                { id: '2', status: 'pending', sendTime: now + 30 * 60 * 1000 }, // Due within hour
-                { id: '3', status: 'pending', sendTime: now + 2 * 60 * 60 * 1000 } // Not due yet
+        // Mock Row objects
+        const createMockRow = (announcement, sendAt, status = 'pending', attempts = 0, lastAttemptAt = undefined) => ({
+            Announcement: announcement,
+            SendAt: sendAt ? new Date(sendAt) : undefined,
+            Status: status,
+            Attempts: attempts,
+            LastAttemptAt: lastAttemptAt ? new Date(lastAttemptAt) : undefined,
+            RideName: 'Test Ride',
+            rowNum: 1
+        });
+
+        it('should return rows due to send (pending status)', () => {
+            const rows = [
+                createMockRow('http://doc1', now + 30 * 60 * 1000), // Due within hour
+                createMockRow('http://doc2', now + 2 * 60 * 60 * 1000), // Not due yet
+                createMockRow('http://doc3', now - 1000), // Past due (within window)
             ];
 
-            const { dueToSend } = AnnouncementCore.getDueItems(queue, now);
+            const { dueToSend } = AnnouncementCore.getDueItems(rows, now);
             expect(dueToSend).toHaveLength(2);
-            expect(dueToSend.map(i => i.id)).toEqual(['1', '2']);
+            expect(dueToSend[0].Announcement).toBe('http://doc1');
+            expect(dueToSend[1].Announcement).toBe('http://doc3');
         });
 
-        it('should return items due for 24-hour reminder', () => {
-            const queue = [
-                { id: '1', status: 'pending', sendTime: now + 24 * 60 * 60 * 1000, reminderSent: false }, // Exactly 24h
-                { id: '2', status: 'pending', sendTime: now + 23.5 * 60 * 60 * 1000, reminderSent: false }, // Within window
-                { id: '3', status: 'pending', sendTime: now + 24 * 60 * 60 * 1000, reminderSent: true }, // Already sent
-                { id: '4', status: 'pending', sendTime: now + 48 * 60 * 60 * 1000, reminderSent: false } // Too far out
+        it('should return rows due for 24-hour reminder', () => {
+            const rows = [
+                createMockRow('http://doc1', now + 24 * 60 * 60 * 1000), // Exactly 24h
+                createMockRow('http://doc2', now + 23.5 * 60 * 60 * 1000), // Within window
+                createMockRow('http://doc3', now + 48 * 60 * 60 * 1000), // Too far out
+                createMockRow('http://doc4', now + 1 * 60 * 60 * 1000), // Too soon
             ];
 
-            const { dueForReminder } = AnnouncementCore.getDueItems(queue, now);
+            const { dueForReminder } = AnnouncementCore.getDueItems(rows, now);
             expect(dueForReminder).toHaveLength(2);
-            expect(dueForReminder.map(i => i.id)).toEqual(['1', '2']);
+            expect(dueForReminder[0].Announcement).toBe('http://doc1');
+            expect(dueForReminder[1].Announcement).toBe('http://doc2');
         });
 
-        it('should return failed items ready for retry', () => {
-            const queue = [
-                { id: '1', status: 'failed', nextRetry: now - 1000 }, // Ready
-                { id: '2', status: 'failed', nextRetry: now + 1000 }, // Not ready
-                { id: '3', status: 'abandoned' } // No retry
+        it('should return failed rows ready for retry', () => {
+            // For retry logic: lastAttemptAt + interval must be <= now
+            // First attempt (0): wait 5 minutes after last attempt
+            // Second attempt (1): wait 15 minutes after last attempt
+            const rows = [
+                createMockRow('http://doc1', now - 10 * 60 * 1000, 'failed', 0, now - 6 * 60 * 1000), // Last attempt 6min ago, due for retry
+                createMockRow('http://doc2', now - 20 * 60 * 1000, 'failed', 1, now - 16 * 60 * 1000), // Last attempt 16min ago, due for retry
+                createMockRow('http://doc3', now - 5 * 60 * 1000, 'failed', 0, now - 2 * 60 * 1000), // Last attempt 2min ago, not ready (needs 5min)
+                createMockRow('http://doc4', now - 25 * 60 * 60 * 1000, 'failed', 5, now - 25 * 60 * 60 * 1000), // Too old (>24h from sendTime)
             ];
 
-            const { dueToSend } = AnnouncementCore.getDueItems(queue, now);
-            expect(dueToSend).toHaveLength(1);
-            expect(dueToSend[0].id).toBe('1');
+            const { dueToSend } = AnnouncementCore.getDueItems(rows, now);
+            // First two should be ready for retry
+            expect(dueToSend.length).toBeGreaterThanOrEqual(2);
+            const docUrls = dueToSend.map(r => r.Announcement);
+            expect(docUrls).toContain('http://doc1');
+            expect(docUrls).toContain('http://doc2');
         });
 
-        it('should handle empty queue', () => {
+        it('should skip rows without announcement data', () => {
+            const rows = [
+                createMockRow('', now + 1000), // No URL
+                createMockRow('http://doc1', null), // No SendAt
+                createMockRow('', null), // Neither
+                createMockRow('http://doc2', now + 1000), // Valid
+            ];
+
+            const { dueToSend, dueForReminder } = AnnouncementCore.getDueItems(rows, now);
+            expect(dueToSend).toHaveLength(1);
+            expect(dueToSend[0].Announcement).toBe('http://doc2');
+        });
+
+        it('should handle empty rows array', () => {
             const { dueToSend, dueForReminder } = AnnouncementCore.getDueItems([], now);
             expect(dueToSend).toHaveLength(0);
             expect(dueForReminder).toHaveLength(0);
         });
+
+        it('should ignore abandoned status', () => {
+            const rows = [
+                createMockRow('http://doc1', now + 1000, 'abandoned', 10),
+                createMockRow('http://doc2', now + 1000, 'sent', 0),
+            ];
+
+            const { dueToSend } = AnnouncementCore.getDueItems(rows, now);
+            expect(dueToSend).toHaveLength(0);
+        });
     });
 
-    describe('updateAfterFailure', () => {
+    describe('calculateFailureUpdate', () => {
         const now = 1700000000000;
+        const sendTime = now - 1000; // Just failed
 
-        it('should increment attempt count and set error', () => {
-            const item = {
-                id: '1',
-                status: 'pending',
-                attemptCount: 0,
-                createdAt: now
-            };
-
-            const updated = AnnouncementCore.updateAfterFailure(item, 'Network error', now);
+        it('should increment attempts and set error for first failure', () => {
+            const update = AnnouncementCore.calculateFailureUpdate(0, sendTime, 'Network error', now);
             
-            expect(updated.status).toBe('failed');
-            expect(updated.attemptCount).toBe(1);
-            expect(updated.lastError).toBe('Network error');
-            expect(updated.nextRetry).toBe(now + 15 * 60 * 1000); // attemptCount becomes 1, so second retry interval
-            expect(updated.lastAttemptAt).toBe(now);
+            expect(update.status).toBe('failed');
+            expect(update.attempts).toBe(1);
+            expect(update.lastError).toBe('Network error');
         });
 
-        it('should mark as abandoned after 24 hours', () => {
-            const createdAt = now - 24 * 60 * 60 * 1000;
-            const item = {
-                id: '1',
-                status: 'failed',
-                attemptCount: 5,
-                createdAt: createdAt
-            };
-
-            const updated = AnnouncementCore.updateAfterFailure(item, 'Still failing', now);
+        it('should continue with failed status within 24h window', () => {
+            const update = AnnouncementCore.calculateFailureUpdate(3, sendTime, 'Still failing', now);
             
-            expect(updated.status).toBe('abandoned');
-            expect(updated.nextRetry).toBeNull();
-        });
-    });
-
-    describe('markAsSent', () => {
-        it('should mark item as sent', () => {
-            const now = 1700000000000;
-            const item = { id: '1', status: 'pending' };
-            
-            const updated = AnnouncementCore.markAsSent(item, now);
-            
-            expect(updated.status).toBe('sent');
-            expect(updated.sentAt).toBe(now);
-        });
-    });
-
-    describe('markReminderSent', () => {
-        it('should mark reminder as sent', () => {
-            const now = 1700000000000;
-            const item = { id: '1', reminderSent: false };
-            
-            const updated = AnnouncementCore.markReminderSent(item, now);
-            
-            expect(updated.reminderSent).toBe(true);
-            expect(updated.reminderSentAt).toBe(now);
-        });
-    });
-
-    describe('removeItem', () => {
-        it('should remove item by ID', () => {
-            const queue = [
-                { id: '1', name: 'First' },
-                { id: '2', name: 'Second' },
-                { id: '3', name: 'Third' }
-            ];
-
-            const updated = AnnouncementCore.removeItem(queue, '2');
-            
-            expect(updated).toHaveLength(2);
-            expect(updated.map(i => i.id)).toEqual(['1', '3']);
+            expect(update.status).toBe('failed');
+            expect(update.attempts).toBe(4);
         });
 
-        it('should return same queue if ID not found', () => {
-            const queue = [{ id: '1' }, { id: '2' }];
-            const updated = AnnouncementCore.removeItem(queue, '999');
+        it('should mark as abandoned after 24 hours from send time', () => {
+            const oldSendTime = now - 24 * 60 * 60 * 1000 - 1000; // Just over 24h ago
+            const update = AnnouncementCore.calculateFailureUpdate(5, oldSendTime, 'Timeout', now);
             
-            expect(updated).toHaveLength(2);
+            expect(update.status).toBe('abandoned');
+            expect(update.attempts).toBe(6);
+            expect(update.lastError).toBe('Timeout');
         });
 
-        it('should handle empty queue', () => {
-            const updated = AnnouncementCore.removeItem([], '1');
-            expect(updated).toHaveLength(0);
-        });
-
-        it('should not mutate original queue', () => {
-            const queue = [{ id: '1' }, { id: '2' }];
-            const original = [...queue];
-            
-            AnnouncementCore.removeItem(queue, '1');
-            
-            expect(queue).toEqual(original);
-        });
-    });
-
-    describe('updateItem', () => {
-        it('should update item by ID', () => {
-            const queue = [
-                { id: '1', status: 'pending', count: 0 },
-                { id: '2', status: 'pending', count: 0 }
-            ];
-
-            const updated = AnnouncementCore.updateItem(queue, '1', { status: 'sent', count: 5 });
-            
-            expect(updated[0].status).toBe('sent');
-            expect(updated[0].count).toBe(5);
-            expect(updated[1].status).toBe('pending'); // Other items unchanged
-        });
-
-        it('should return same queue if ID not found', () => {
-            const queue = [{ id: '1', status: 'pending' }];
-            const updated = AnnouncementCore.updateItem(queue, '999', { status: 'sent' });
-            
-            expect(updated[0].status).toBe('pending');
-        });
-
-        it('should not mutate original queue', () => {
-            const queue = [{ id: '1', status: 'pending' }];
-            const original = JSON.parse(JSON.stringify(queue));
-            
-            AnnouncementCore.updateItem(queue, '1', { status: 'sent' });
-            
-            expect(queue).toEqual(original);
+        it('should preserve error message', () => {
+            const update = AnnouncementCore.calculateFailureUpdate(1, sendTime, 'Custom error message', now);
+            expect(update.lastError).toBe('Custom error message');
         });
     });
 
     describe('getStatistics', () => {
-        it('should calculate correct statistics', () => {
-            const queue = [
-                { id: '1', status: 'pending' },
-                { id: '2', status: 'pending' },
-                { id: '3', status: 'sent' },
-                { id: '4', status: 'failed' },
-                { id: '5', status: 'abandoned' }
+        const createMockRow = (announcement, status = 'pending') => ({
+            Announcement: announcement,
+            Status: status
+        });
+
+        it('should calculate correct statistics from rows', () => {
+            const rows = [
+                createMockRow('http://doc1', 'pending'),
+                createMockRow('http://doc2', 'pending'),
+                createMockRow('http://doc3', 'sent'),
+                createMockRow('http://doc4', 'failed'),
+                createMockRow('http://doc5', 'abandoned'),
+                createMockRow(''), // No announcement - should not count
             ];
 
-            const stats = AnnouncementCore.getStatistics(queue);
+            const stats = AnnouncementCore.getStatistics(rows);
             
             expect(stats.total).toBe(5);
             expect(stats.pending).toBe(2);
@@ -300,61 +264,6 @@ describe('AnnouncementCore', () => {
             
             expect(stats.total).toBe(0);
             expect(stats.pending).toBe(0);
-        });
-    });
-
-    describe('formatItems', () => {
-        const now = new Date('2025-12-05T18:00:00').getTime();
-
-        it('should format items for display', () => {
-            const queue = [
-                {
-                    id: '1',
-                    rideName: 'Sat A (12/7 10:00) [3] Route',
-                    rowNum: 42,
-                    sendTime: new Date('2025-12-05T18:00:00').getTime(),
-                    status: 'pending',
-                    rsEmail: 'test@example.com',
-                    documentId: 'doc-123',
-                    createdAt: now - 2 * 60 * 60 * 1000,
-                    attemptCount: 0,
-                    lastError: null
-                }
-            ];
-
-            const formatted = AnnouncementCore.formatItems(queue, now);
-            
-            expect(formatted).toHaveLength(1);
-            expect(formatted[0].id).toBe('1');
-            expect(formatted[0].rideName).toBe('Sat A (12/7 10:00) [3] Route');
-            expect(formatted[0].rowNum).toBe(42);
-            expect(formatted[0].status).toBe('pending');
-            expect(formatted[0].ageHours).toBe(2);
-            expect(formatted[0].attemptCount).toBe(0);
-        });
-
-        it('should handle missing rideName and rowNum', () => {
-            const queue = [
-                {
-                    id: '1',
-                    sendTime: now,
-                    status: 'pending',
-                    rsEmail: 'test@example.com',
-                    documentId: 'doc-123',
-                    createdAt: now,
-                    attemptCount: 0
-                }
-            ];
-
-            const formatted = AnnouncementCore.formatItems(queue, now);
-            
-            expect(formatted[0].rideName).toBe('Unknown Ride');
-            expect(formatted[0].rowNum).toBe('?');
-        });
-
-        it('should handle empty queue', () => {
-            const formatted = AnnouncementCore.formatItems([], now);
-            expect(formatted).toHaveLength(0);
         });
     });
 

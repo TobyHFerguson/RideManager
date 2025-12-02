@@ -61,6 +61,49 @@ declare class Row {
     /** Ride URL extracted from Ride column hyperlink */
     get RideURL(): string;
 
+    /** Google Calendar Event ID */
+    get GoogleEventId(): string;
+
+    /** Meeting location name */
+    get Location(): string;
+
+    /** Full address of meeting location */
+    get Address(): string;
+
+    // Announcement queue fields
+
+    /** Announcement document URL (or empty string if not set) */
+    get Announcement(): string;
+
+    /** Scheduled send date/time for announcement */
+    get SendAt(): Date | undefined;
+
+    /** Announcement status: 'pending' | 'sent' | 'failed' | 'abandoned' */
+    get Status(): string;
+
+    /** Number of send attempts */
+    get Attempts(): number;
+
+    /** Last error message (empty string if no error) */
+    get LastError(): string;
+
+    /** Timestamp of last send attempt (undefined if never attempted) */
+    get LastAttemptAt(): Date | undefined;
+
+    // ===== SETTERS =====
+
+    /** Route URL extracted from Route column hyperlink */
+    get RouteURL(): string;
+
+    /** Array of ride leader names */
+    get RideLeaders(): string[];
+
+    /** Ride name extracted from Ride column hyperlink */
+    get RideName(): string;
+
+    /** Ride URL extracted from Ride column hyperlink */
+    get RideURL(): string;
+
     /** Google Calendar event ID */
     get GoogleEventId(): string;
 
@@ -72,8 +115,26 @@ declare class Row {
 
     // ===== SETTERS =====
 
-    /** Set Google Calendar event ID */
+    /** Set Google Calendar Event ID */
     set GoogleEventId(id: string);
+
+    /** Set announcement document URL */
+    set Announcement(docUrl: string);
+
+    /** Set scheduled send date/time */
+    set SendAt(datetime: Date);
+
+    /** Set announcement status */
+    set Status(status: string);
+
+    /** Set attempt count */
+    set Attempts(count: number);
+
+    /** Set last error message */
+    set LastError(error: string);
+
+    /** Set timestamp of last send attempt */
+    set LastAttemptAt(datetime: Date);
 
     // ===== METHODS =====
 
