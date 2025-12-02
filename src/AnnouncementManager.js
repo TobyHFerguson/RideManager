@@ -16,17 +16,15 @@ var AnnouncementManager = (function() {
     class AnnouncementManager {
         constructor() {
             this.props = PropertiesService.getScriptProperties();
-            this.QUEUE_KEY = 'announcementQueue';
             this.TRIGGER_KEY = 'announcementTriggerId';
         }
 
         /**
-         * Create a ride announcement document and queue it for sending
-         * @param {Object} rowData - Row data from Consolidated Rides sheet
-         * @param {string} rideUrl - Stable ride URL identifier
-         * @returns {string} Queue item ID
+         * Create a ride announcement document and add to row's announcement columns
+         * @param {Row} row - Row object from ScheduleAdapter
+         * @returns {string} Document URL
          */
-        createAnnouncement(rowData, rideUrl) {
+        createAnnouncement(row) {
             try {
                 const globals = getGlobals();
                 
@@ -42,69 +40,69 @@ var AnnouncementManager = (function() {
                 }
                 
                 // Make a copy of the template
-                console.log(`AnnouncementManager: Getting template file with ID: ${templateId}`);
+                const rideName = row.RideName || 'Unknown Ride';
+                console.log(`AnnouncementManager: Creating announcement for ${rideName} (row ${row.rowNum})`);
                 const templateFile = DriveApp.getFileById(templateId);
-                console.log(`AnnouncementManager: Got template file: ${templateFile.getName()}`);
                 
                 const folderId = this._extractFolderId(folderUrl);
-                console.log(`AnnouncementManager: Getting folder with ID: ${folderId}`);
                 const folder = DriveApp.getFolderById(folderId);
-                console.log(`AnnouncementManager: Got folder: ${folder.getName()}`);
                 
-                const rideName = rowData.RideName || 'Unknown Ride';
                 const docName = `RA-${rideName}`;
-                console.log(`AnnouncementManager: Making copy with name: ${docName}`);
                 const newDoc = templateFile.makeCopy(docName, folder);
                 const documentId = newDoc.getId();
-                console.log(`AnnouncementManager: Created document with ID: ${documentId}`);
+                const docUrl = newDoc.getUrl();
+                console.log(`AnnouncementManager: Created document ${documentId}`);
                 
                 // Set permissions: RS group can edit
                 const rsGroupEmail = globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail();
-                console.log(`AnnouncementManager: Setting permissions for: ${rsGroupEmail}`);
                 if (rsGroupEmail !== Session.getActiveUser().getEmail()) {
                     try {
                         newDoc.addEditor(rsGroupEmail);
-                        console.log(`AnnouncementManager: Added editor, now setting link sharing`);
-                        // Enable link sharing for anyone with the link
                         newDoc.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-                        console.log(`AnnouncementManager: Link sharing enabled`);
                     } catch (permError) {
-                        // If we can't set sharing (e.g., org-owned folder), log but continue
-                        console.warn(`AnnouncementManager: Could not set sharing permissions (this is OK if folder is org-owned): ${permError.message}`);
+                        console.warn(`AnnouncementManager: Could not set sharing permissions: ${permError.message}`);
                     }
                 }
                 
-                console.log(`AnnouncementManager: Created document ${documentId} for ride ${rideUrl}`);
-                
                 // Calculate send time using core logic
                 const timezone = Session.getScriptTimeZone();
-                console.log(`AnnouncementManager: Calculating send time for date: ${rowData.Date} (type: ${typeof rowData.Date})`);
-                const sendTime = AnnouncementCore.calculateSendTime(rowData.Date, timezone);
-                console.log(`AnnouncementManager: Calculated send time: ${sendTime}`);
+                const sendTime = AnnouncementCore.calculateSendTime(row.StartDate, timezone);
+                const sendDate = new Date(sendTime);
+                console.log(`AnnouncementManager: Calculated send time: ${sendDate}`);
+                
+                // Build rowData object for template expansion
+                const rowData = {
+                    _rowNum: row.rowNum,
+                    RideName: row.RideName,
+                    Date: row.StartDate,
+                    RideLeaders: row.RideLeaders.join(', '),
+                    StartTime: row.StartTime,
+                    Location: row.Location,
+                    Address: row.Address,
+                    Group: row.Group,
+                    RideURL: row.RideURL,
+                    RouteURL: row.RouteURL,
+                    RouteName: row.RouteName,
+                    ...row._data
+                };
                 
                 // Append instructions for the operator
                 this._appendInstructions(documentId, sendTime, rowData);
                 
-                // Create queue item using core logic
-                const queueItem = AnnouncementCore.createQueueItem(
-                    rideUrl,
-                    documentId,
-                    sendTime,
-                    rsGroupEmail,
-                    rowData._rowNum || null,
-                    rowData.RideName || 'Unknown Ride',
-                    () => Utilities.getUuid(),
-                    () => new Date().getTime()
-                );
+                // Write announcement data to row columns
+                row.Announcement = docUrl;
+                row.SendAt = sendDate;
+                row.Status = 'pending';
+                row.Attempts = 0;
+                row.LastError = '';
                 
-                // Add to queue
-                const queue = this._getQueue();
-                queue.push(queueItem);
-                this._saveQueue(queue);
+                // Save the row (will mark columns as dirty and persist on adapter.save())
+                row._adapter.save();
+                
                 this._ensureTriggerExists();
                 
-                console.log(`AnnouncementManager: Queued announcement ${queueItem.id} for sending at ${sendTime}`);
-                return queueItem.id;
+                console.log(`AnnouncementManager: Set announcement for row ${row.rowNum}, scheduled for ${sendDate}`);
+                return docUrl;
             } catch (error) {
                 console.error('AnnouncementManager.createAnnouncement error:', error);
                 throw error;
@@ -112,11 +110,11 @@ var AnnouncementManager = (function() {
         }
 
         /**
-         * Send an announcement email
-         * @param {Object} item - Queue item with announcement details
+         * Send an announcement email for a row
+         * @param {Row} row - Row object with announcement data
          * @returns {Object} {success: boolean, error?: string}
          */
-        sendAnnouncement(item) {
+        sendAnnouncement(row) {
             try {
                 const globals = getGlobals();
                 const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
@@ -125,8 +123,31 @@ var AnnouncementManager = (function() {
                     throw new Error('RIDE_ANNOUNCEMENT_EMAIL not configured in Globals');
                 }
                 
+                // Extract document ID from announcement URL
+                const docUrl = row.Announcement;
+                const documentId = this._extractDocId(docUrl);
+                if (!documentId) {
+                    throw new Error(`Invalid announcement URL: ${docUrl}`);
+                }
+                
                 // Open the document
-                const doc = DocumentApp.openById(item.documentId);
+                const doc = DocumentApp.openById(documentId);
+                
+                // Build rowData object for template expansion
+                const rowData = {
+                    _rowNum: row.rowNum,
+                    RideName: row.RideName,
+                    Date: row.StartDate,
+                    RideLeaders: row.RideLeaders.join(', '),
+                    StartTime: row.StartTime,
+                    Location: row.Location,
+                    Address: row.Address,
+                    Group: row.Group,
+                    RideURL: row.RideURL,
+                    RouteURL: row.RouteURL,
+                    RouteName: row.RouteName,
+                    ...row._data
+                };
                 
                 // Convert document to HTML first (with template fields intact)
                 let html = this._convertDocToHtml(doc);
@@ -135,12 +156,12 @@ var AnnouncementManager = (function() {
                 html = this._removeInstructionsFromHtml(html);
                 
                 // Expand template fields in the HTML
-                const expandResult = AnnouncementCore.expandTemplate(html, item.rowData);
+                const expandResult = AnnouncementCore.expandTemplate(html, rowData);
                 html = expandResult.expandedText;
                 
                 // Extract subject from HTML (look for Subject: line at start)
                 const emailContent = this._extractSubjectFromHtml(html);
-                const subject = emailContent.subject || `Ride Announcement: ${item.rowData.RideName || 'Unknown Ride'}`;
+                const subject = emailContent.subject || `Ride Announcement: ${row.RideName || 'Unknown Ride'}`;
                 const htmlBody = emailContent.body;
                 
                 // Send HTML email
@@ -150,30 +171,21 @@ var AnnouncementManager = (function() {
                     replyTo: globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail()
                 });
                 
-                console.log(`AnnouncementManager: Sent announcement ${item.id} to ${recipientEmail}`);
-                
-                // Show popup notification
-                const docUrl = doc.getUrl();
-                const ui = SpreadsheetApp.getUi();
-                ui.alert(
-                    'Announcement Sent',
-                    `Ride announcement for "${item.rowData.RideName}" has been sent to ${recipientEmail}.\n\nDocument: ${docUrl}`,
-                    ui.ButtonSet.OK
-                );
+                console.log(`AnnouncementManager: Sent announcement for row ${row.rowNum} to ${recipientEmail}`);
                 
                 return { success: true };
             } catch (error) {
-                console.error(`AnnouncementManager.sendAnnouncement error for item ${item.id}:`, error);
+                console.error(`AnnouncementManager.sendAnnouncement error for row ${row.rowNum}:`, error);
                 return { success: false, error: error.message };
             }
         }
 
         /**
          * Send a reminder notification about an upcoming announcement
-         * @param {Object} item - Queue item with announcement details
+         * @param {Row} row - Row object with announcement data
          * @returns {Object} {success: boolean, error?: string}
          */
-        sendReminder(item) {
+        sendReminder(row) {
             try {
                 const globals = getGlobals();
                 const rsGroupEmail = globals.RIDE_SCHEDULER_GROUP_EMAIL;
@@ -182,10 +194,9 @@ var AnnouncementManager = (function() {
                     throw new Error('RIDE_SCHEDULER_GROUP_EMAIL not configured in Globals');
                 }
                 
-                const doc = DocumentApp.openById(item.documentId);
-                const docUrl = doc.getUrl();
-                const rideName = item.rowData.RideName || 'Unknown Ride';
-                const sendDate = new Date(item.sendTime);
+                const docUrl = row.Announcement;
+                const rideName = row.RideName || 'Unknown Ride';
+                const sendDate = row.SendAt;
                 
                 const subject = `Reminder: Ride announcement for "${rideName}" scheduled for ${sendDate.toLocaleString()}`;
                 const body = `This is a reminder that a ride announcement is scheduled to be sent in approximately 24 hours.\n\n` +
@@ -199,10 +210,10 @@ var AnnouncementManager = (function() {
                     replyTo: rsGroupEmail
                 });
                 
-                console.log(`AnnouncementManager: Sent reminder for announcement ${item.id} to ${rsGroupEmail}`);
+                console.log(`AnnouncementManager: Sent reminder for row ${row.rowNum} to ${rsGroupEmail}`);
                 return { success: true };
             } catch (error) {
-                console.error(`AnnouncementManager.sendReminder error for item ${item.id}:`, error);
+                console.error(`AnnouncementManager.sendReminder error for row ${row.rowNum}:`, error);
                 return { success: false, error: error.message };
             }
         }
@@ -212,15 +223,18 @@ var AnnouncementManager = (function() {
          * Called by time-based trigger
          */
         processQueue() {
-            const queue = this._getQueue();
-            if (queue.length === 0) {
-                console.log('AnnouncementManager: Queue empty, removing trigger');
+            // Load all rows from spreadsheet
+            const adapter = new ScheduleAdapter();
+            const allRows = adapter.loadAll();
+            
+            if (allRows.length === 0) {
+                console.log('AnnouncementManager: No rows in spreadsheet');
                 this._removeTrigger();
                 return { sent: 0, reminded: 0, failed: 0, remaining: 0 };
             }
 
             const now = new Date().getTime();
-            const dueItems = AnnouncementCore.getDueItems(queue, now);
+            const dueItems = AnnouncementCore.getDueItems(allRows, now);
             
             console.log(`AnnouncementManager: Processing ${dueItems.dueToSend.length} announcements and ${dueItems.dueForReminder.length} reminders`);
             
@@ -228,98 +242,65 @@ var AnnouncementManager = (function() {
             let reminded = 0;
             let failed = 0;
             
-            // Load current spreadsheet data once for all announcements
-            const adapter = new ScheduleAdapter();
-            const allRows = adapter.loadAll();
-            
             // Process announcements due to send
-            dueItems.dueToSend.forEach(item => {
+            dueItems.dueToSend.forEach(row => {
                 try {
-                    // Load current row data from spreadsheet
-                    const row = allRows.find(r => r.RideURL === item.rideURL);
-                    if (!row) {
-                        throw new Error(`Could not find ride with URL: ${item.rideURL}`);
-                    }
-                    
-                    // Build current row data object (same as in RideManager and testSendAnnouncement)
-                    const rowData = {
-                        _rowNum: row.rowNum,
-                        RideName: row.RideName,
-                        Date: row.StartDate,
-                        RideLeaders: row.RideLeaders.join(', '),
-                        StartTime: row.StartTime,
-                        Location: row.Location,
-                        Address: row.Address,
-                        Group: row.Group,
-                        RideURL: row.RideURL,
-                        RouteURL: row.RouteURL,
-                        RouteName: row.RouteName,
-                        ...row._data
-                    };
-                    
-                    // Add current row data to item
-                    const itemWithData = { ...item, rowData };
-                    
-                    // Check if document still exists
-                    const docExists = this._checkDocumentExists(item.documentId);
-                    if (!docExists) {
-                        console.warn(`AnnouncementManager: Document ${item.documentId} no longer exists, recreating...`);
-                        // Recreate the document
-                        const newDocId = this._recreateDocument(item);
-                        item.documentId = newDocId;
-                        itemWithData.documentId = newDocId;
-                    }
-                    
-                    const result = this.sendAnnouncement(itemWithData);
+                    const result = this.sendAnnouncement(row);
                     
                     if (result.success) {
-                        // Mark as sent using core logic
-                        const updated = AnnouncementCore.markAsSent(item, now);
-                        const newQueue = AnnouncementCore.updateItem(this._getQueue(), item.id, updated);
-                        this._saveQueue(newQueue);
+                        // Mark as sent
+                        row.Status = 'sent';
+                        row.LastAttemptAt = new Date(now);
                         sent++;
                     } else {
-                        // Use core logic to handle failure
-                        const updated = AnnouncementCore.updateAfterFailure(item, result.error, now);
+                        // Handle failure
+                        const sendTime = row.SendAt.getTime();
+                        const attempts = row.Attempts + 1;
+                        const failureUpdate = AnnouncementCore.calculateFailureUpdate(attempts, sendTime, result.error, now);
                         
-                        if (updated.nextRetry) {
-                            // Still retrying
-                            const newQueue = AnnouncementCore.updateItem(this._getQueue(), item.id, updated);
-                            this._saveQueue(newQueue);
-                            console.log(`AnnouncementManager: Announcement ${item.id} failed, will retry at ${new Date(updated.nextRetry)}`);
-                        } else {
-                            // Abandoned after 24 hours
+                        row.Status = failureUpdate.status;
+                        row.Attempts = failureUpdate.attempts;
+                        row.LastError = failureUpdate.lastError;
+                        row.LastAttemptAt = new Date(now);
+                        
+                        if (failureUpdate.status === 'abandoned') {
                             failed++;
-                            console.error(`AnnouncementManager: Announcement ${item.id} abandoned after ${updated.attemptCount} attempts`);
-                            this._notifyFailure(updated);
+                            console.error(`AnnouncementManager: Announcement for row ${row.rowNum} abandoned after ${attempts} attempts`);
+                            this._notifyFailure(row);
+                        } else {
+                            console.log(`AnnouncementManager: Announcement for row ${row.rowNum} failed, will retry (attempt ${attempts})`);
                         }
                     }
                 } catch (error) {
-                    console.error(`AnnouncementManager: Unexpected error processing announcement ${item.id}:`, error);
+                    console.error(`AnnouncementManager: Unexpected error processing announcement for row ${row.rowNum}:`, error);
                 }
             });
             
             // Process reminders
-            dueItems.dueForReminder.forEach(item => {
+            dueItems.dueForReminder.forEach(row => {
                 try {
-                    const result = this.sendReminder(item);
+                    const result = this.sendReminder(row);
                     
                     if (result.success) {
-                        // Mark reminder as sent using core logic
-                        const updated = AnnouncementCore.markReminderSent(item, now);
-                        const newQueue = AnnouncementCore.updateItem(this._getQueue(), item.id, updated);
-                        this._saveQueue(newQueue);
+                        // Mark reminder sent - we could add a ReminderSent column if needed
+                        // For now, just log it
+                        console.log(`AnnouncementManager: Sent reminder for row ${row.rowNum}`);
                         reminded++;
                     } else {
-                        console.warn(`AnnouncementManager: Failed to send reminder for ${item.id}: ${result.error}`);
+                        console.warn(`AnnouncementManager: Failed to send reminder for row ${row.rowNum}: ${result.error}`);
                     }
                 } catch (error) {
-                    console.error(`AnnouncementManager: Unexpected error sending reminder for ${item.id}:`, error);
+                    console.error(`AnnouncementManager: Unexpected error sending reminder for row ${row.rowNum}:`, error);
                 }
             });
             
-            const remainingQueue = this._getQueue();
-            if (remainingQueue.length === 0) {
+            // Save all changes back to spreadsheet
+            adapter.save();
+            
+            // Check if there are any pending announcements remaining
+            const stats = AnnouncementCore.getStatistics(allRows);
+            if (stats.total === 0) {
+                console.log('AnnouncementManager: No pending announcements, removing trigger');
                 this._removeTrigger();
             }
             
@@ -327,28 +308,8 @@ var AnnouncementManager = (function() {
                 sent: sent,
                 reminded: reminded,
                 failed: failed,
-                remaining: remainingQueue.length
+                remaining: stats.total
             };
-        }
-
-        /**
-         * Get formatted view of scheduled announcements for UI display
-         * @returns {string} Formatted text for display
-         */
-        viewScheduled() {
-            const queue = this._getQueue();
-            if (queue.length === 0) {
-                return 'No announcements currently scheduled.';
-            }
-            
-            const now = new Date().getTime();
-            const formatted = AnnouncementCore.formatItems(queue, now);
-            
-            return formatted.map(item => {
-                const doc = DocumentApp.openById(item.documentId);
-                const docUrl = doc.getUrl();
-                return `Ride: ${item.rideName} (Row ${item.rowNum})\nSend Time: ${item.sendTime}\nStatus: ${item.status}\nAttempts: ${item.attemptCount}\nDocument: ${docUrl}`;
-            }).join('\n\n');
         }
 
         /**
@@ -358,35 +319,51 @@ var AnnouncementManager = (function() {
          * @returns {number} Number of announcements removed
          */
         removeByRideUrl(rideUrl) {
+            return this.removeByRideUrls([rideUrl]);
+        }
+
+        /**
+         * Remove announcements for multiple rides by RideURL (batch operation)
+         * More efficient than calling removeByRideUrl multiple times
+         * @param {string[]} rideUrls - Array of RideURLs to remove announcements for
+         * @returns {number} Number of announcements removed
+         */
+        removeByRideUrls(rideUrls) {
             try {
-                const queue = this._getQueue();
-                const itemsToRemove = queue.filter(item => item.rideURL === rideUrl);
+                const adapter = new ScheduleAdapter();
+                const allRows = adapter.loadAll();
+                const rideUrlSet = new Set(rideUrls);
+                const rowsToRemove = allRows.filter(r => r.Announcement && rideUrlSet.has(r.RideURL));
                 
-                if (itemsToRemove.length === 0) {
-                    console.log(`AnnouncementManager: No announcements found for ride ${rideUrl}`);
+                if (rowsToRemove.length === 0) {
+                    console.log(`AnnouncementManager: No announcements found for ${rideUrls.length} ride(s)`);
                     return 0;
                 }
                 
-                // Delete the announcement documents
-                itemsToRemove.forEach(item => {
+                // Delete the announcement documents and clear row data
+                rowsToRemove.forEach(row => {
                     try {
-                        const file = DriveApp.getFileById(item.documentId);
-                        file.setTrashed(true);
-                        console.log(`AnnouncementManager: Trashed document ${item.documentId} for ride ${rideUrl}`);
+                        const documentId = this._extractDocId(row.Announcement);
+                        if (documentId) {
+                            const file = DriveApp.getFileById(documentId);
+                            file.setTrashed(true);
+                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.RideURL}`);
+                        }
                     } catch (error) {
-                        console.warn(`AnnouncementManager: Could not trash document ${item.documentId}: ${error.message}`);
-                        // Continue anyway - remove from queue even if doc delete fails
+                        console.warn(`AnnouncementManager: Could not trash document: ${error.message}`);
                     }
+                    
+                    // Clear announcement data using Row domain method
+                    row.clearAnnouncement();
                 });
                 
-                // Remove from queue
-                const newQueue = queue.filter(item => item.rideURL !== rideUrl);
-                this._saveQueue(newQueue);
+                // Save changes once for all rows
+                adapter.save();
                 
-                console.log(`AnnouncementManager: Removed ${itemsToRemove.length} announcement(s) for ride ${rideUrl}`);
-                return itemsToRemove.length;
+                console.log(`AnnouncementManager: Removed ${rowsToRemove.length} announcement(s) for ${rideUrls.length} ride(s)`);
+                return rowsToRemove.length;
             } catch (error) {
-                console.error(`AnnouncementManager: Error removing announcements for ${rideUrl}:`, error);
+                console.error(`AnnouncementManager: Error removing announcements for ${rideUrls.length} rides:`, error);
                 throw error;
             }
         }
@@ -396,45 +373,58 @@ var AnnouncementManager = (function() {
          * @returns {Object} Statistics object
          */
         getStatistics() {
-            const queue = this._getQueue();
-            return AnnouncementCore.getStatistics(queue);
+            const adapter = new ScheduleAdapter();
+            const allRows = adapter.loadAll();
+            return AnnouncementCore.getStatistics(allRows);
         }
 
         /**
-         * Clear all announcements from queue and trash all documents
+         * Clear all announcements from spreadsheet and trash all documents
          * @returns {number} Number of announcements cleared
          */
         clearAll() {
             try {
-                const queue = this._getQueue();
-                const count = queue.length;
+                const adapter = new ScheduleAdapter();
+                const allRows = adapter.loadAll();
+                const rowsWithAnnouncements = allRows.filter(r => r.Announcement);
+                const count = rowsWithAnnouncements.length;
                 
                 if (count === 0) {
-                    console.log('AnnouncementManager: Queue already empty');
+                    console.log('AnnouncementManager: No announcements to clear');
                     return 0;
                 }
                 
                 // Trash all announcement documents
                 let trashedCount = 0;
                 let failedCount = 0;
-                queue.forEach(item => {
+                rowsWithAnnouncements.forEach(row => {
                     try {
-                        const file = DriveApp.getFileById(item.documentId);
-                        file.setTrashed(true);
-                        trashedCount++;
-                        console.log(`AnnouncementManager: Trashed document ${item.documentId} for ride ${item.rideName}`);
+                        const documentId = this._extractDocId(row.Announcement);
+                        if (documentId) {
+                            const file = DriveApp.getFileById(documentId);
+                            file.setTrashed(true);
+                            trashedCount++;
+                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.RideName}`);
+                        }
                     } catch (error) {
                         failedCount++;
-                        console.warn(`AnnouncementManager: Could not trash document ${item.documentId}: ${error.message}`);
+                        console.warn(`AnnouncementManager: Could not trash document: ${error.message}`);
                     }
+                    
+                    // Clear announcement columns
+                    row.Announcement = '';
+                    row.SendAt = undefined;
+                    row.Status = '';
+                    row.Attempts = 0;
+                    row.LastError = '';
+                    row.LastAttemptAt = undefined;
                 });
                 
-                // Clear the queue
-                this._saveQueue([]);
+                // Save all changes
+                adapter.save();
                 
                 // Delete the trigger if it exists
-                const props = PropertiesService.getScriptProperties();
-                const triggerId = props.getProperty('announcementTriggerId');
+                const triggerId = this.props.getProperty(this.TRIGGER_KEY);
                 if (triggerId) {
                     try {
                         const triggers = ScriptApp.getProjectTriggers();
@@ -443,7 +433,7 @@ var AnnouncementManager = (function() {
                             ScriptApp.deleteTrigger(trigger);
                             console.log(`AnnouncementManager: Deleted trigger ${triggerId}`);
                         }
-                        props.deleteProperty('announcementTriggerId');
+                        this.props.deleteProperty(this.TRIGGER_KEY);
                     } catch (error) {
                         console.warn(`AnnouncementManager: Could not delete trigger: ${error.message}`);
                     }
@@ -820,81 +810,31 @@ var AnnouncementManager = (function() {
         }
 
         /**
-         * Check if a document exists
-         * @private
-         */
-        _checkDocumentExists(documentId) {
-            try {
-                DriveApp.getFileById(documentId);
-                return true;
-            } catch (error) {
-                return false;
-            }
-        }
-
-        /**
-         * Recreate a document that was deleted
-         * @private
-         */
-        _recreateDocument(item) {
-            const globals = getGlobals();
-            const templateId = this._extractDocId(globals.RIDE_ANNOUNCEMENT_MASTER_TEMPLATE);
-            const folderUrl = globals.RIDE_ANNOUNCEMENT_FOLDER_URL;
-            
-            const templateFile = DriveApp.getFileById(templateId);
-            const folderId = this._extractFolderId(folderUrl);
-            const folder = DriveApp.getFolderById(folderId);
-            
-            const docName = `RA-${item.rideName}`;
-            const newDoc = templateFile.makeCopy(docName, folder);
-            
-            console.log(`AnnouncementManager: Recreated document ${newDoc.getId()} for ride ${item.rideURL}`);
-            return newDoc.getId();
-        }
-
-        /**
          * Notify about a failed announcement
          * @private
          */
-        _notifyFailure(item) {
+        _notifyFailure(row) {
             try {
                 const globals = getGlobals();
                 const rsGroupEmail = globals.RIDE_SCHEDULER_GROUP_EMAIL;
                 
                 if (!rsGroupEmail) return;
                 
-                const subject = `Failed: Ride announcement for "${item.rideName}" could not be sent`;
-                const body = `The scheduled announcement for ride "${item.rideName}" (Row ${item.rowNum}) failed after ${item.attemptCount} attempts.\n\n` +
-                    `Last error: ${item.lastError}\n\n` +
+                const subject = `Failed: Ride announcement for "${row.RideName}" could not be sent`;
+                const body = `The scheduled announcement for ride "${row.RideName}" (Row ${row.rowNum}) failed after ${row.Attempts} attempts.\n\n` +
+                    `Last error: ${row.LastError}\n\n` +
                     `Please review and manually send if needed.\n` +
-                    `Document: ${DocumentApp.openById(item.documentId).getUrl()}`;
+                    `Document: ${row.Announcement}`;
                 
                 GmailApp.sendEmail(rsGroupEmail, subject, body, {
                     name: 'Ride Scheduler',
                     replyTo: rsGroupEmail
                 });
                 
-                console.log(`AnnouncementManager: Sent failure notification for ${item.id}`);
+                console.log(`AnnouncementManager: Sent failure notification for row ${row.rowNum}`);
             } catch (error) {
                 console.error(`AnnouncementManager: Failed to send failure notification:`, error);
             }
-        }
-
-        /**
-         * Get queue from properties
-         * @private
-         */
-        _getQueue() {
-            const json = this.props.getProperty(this.QUEUE_KEY);
-            return json ? JSON.parse(json) : [];
-        }
-
-        /**
-         * Save queue to properties
-         * @private
-         */
-        _saveQueue(queue) {
-            this.props.setProperty(this.QUEUE_KEY, JSON.stringify(queue));
         }
 
         /**

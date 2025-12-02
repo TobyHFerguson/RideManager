@@ -31,7 +31,6 @@ function createMenu_() {
     .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
     .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
     .addSeparator()
-    .addItem('View Scheduled Announcements', viewScheduledAnnouncements_.name)
     .addItem('Test Send Announcement', testSendAnnouncement_.name)
     .addSeparator()
     .addItem(getDTRTMenuText_(), toggleDTRT_.name)
@@ -337,86 +336,32 @@ function processAnnouncementQueue() {
 }
 
 /**
- * View scheduled announcements (menu item)
- * Offers option to clear queue after viewing (if queue is not empty)
- */
-function viewScheduledAnnouncements_() {
-  try {
-    const manager = new AnnouncementManager();
-    const queue = manager._getQueue();
-    const text = manager.viewScheduled();
-    const ui = SpreadsheetApp.getUi();
-    
-    // If queue is empty, just show the message
-    if (queue.length === 0) {
-      ui.alert('Scheduled Announcements', text, ui.ButtonSet.OK);
-      return;
-    }
-    
-    // Show the queue with option to clear
-    const viewResponse = ui.alert(
-      'Scheduled Announcements',
-      text + '\n\nWould you like to clear the queue?',
-      ui.ButtonSet.YES_NO
-    );
-    
-    // If user wants to clear, confirm with a second dialog
-    if (viewResponse === ui.Button.YES) {
-      const confirmResponse = ui.alert(
-        'Confirm Clear Queue',
-        'This will DELETE all scheduled announcements and trash their documents. Are you sure?',
-        ui.ButtonSet.YES_NO
-      );
-      
-      if (confirmResponse === ui.Button.YES) {
-        const count = manager.clearAll();
-        ui.alert('Queue Cleared', `Removed ${count} scheduled announcement(s) and trashed their documents.`, ui.ButtonSet.OK);
-      }
-    }
-  } catch (error) {
-    console.error('viewScheduledAnnouncements_ error:', error);
-    alert_(`Error viewing announcements: ${error.message}`);
-  }
-}
-
-/**
  * Test announcement sending (for development/testing)
- * Prompts for test email address and sends the first pending announcement
+ * Prompts for test email address and sends announcement from selected row
  */
 function testSendAnnouncement_() {
   try {
     const ui = SpreadsheetApp.getUi();
     
-    // Get the queue
-    const props = PropertiesService.getScriptProperties();
-    const queueJson = props.getProperty('announcementQueue');
+    // Load all rows from spreadsheet
+    const adapter = new ScheduleAdapter();
+    const allRows = adapter.loadAll();
+    const rowsWithAnnouncements = allRows.filter(r => r.Announcement && r.Status !== 'sent');
     
-    if (!queueJson) {
-      ui.alert('No Announcements', 'No announcements in queue. Schedule a ride first.', ui.ButtonSet.OK);
+    if (rowsWithAnnouncements.length === 0) {
+      ui.alert('No Announcements', 'No announcements found in spreadsheet. Schedule a ride first.', ui.ButtonSet.OK);
       return;
     }
     
-    const queue = JSON.parse(queueJson);
-    if (queue.length === 0) {
-      ui.alert('No Announcements', 'Queue is empty. Schedule a ride first.', ui.ButtonSet.OK);
-      return;
-    }
-    
-    // Show pending announcements
-    const pending = queue.filter(item => item.status === 'pending');
-    if (pending.length === 0) {
-      ui.alert('No Pending Announcements', 'All announcements have been sent or failed.', ui.ButtonSet.OK);
-      return;
-    }
-    
-    const listText = pending.map((item, i) => 
-      `${i + 1}. ${item.rideName} (Row ${item.rowNum}) - Send: ${new Date(item.sendTime).toLocaleString()}`
+    // Show announcements
+    const listText = rowsWithAnnouncements.map((row, i) => 
+      `${i + 1}. ${row.RideName} (Row ${row.rowNum}) - Send: ${row.SendAt ? row.SendAt.toLocaleString() : 'Unknown'} - Status: ${row.Status || 'pending'}`
     ).join('\n');
     
     // Ask which one to send
     const indexResponse = ui.prompt(
       'Test Send Announcement',
-      `Select announcement to send (enter number 1-${pending.length}):\n\n${listText}`,
+      `Select announcement to send (enter number 1-${rowsWithAnnouncements.length}):\n\n${listText}`,
       ui.ButtonSet.OK_CANCEL
     );
     
@@ -425,17 +370,17 @@ function testSendAnnouncement_() {
     }
     
     const selectedIndex = parseInt(indexResponse.getResponseText()) - 1;
-    if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= pending.length) {
+    if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= rowsWithAnnouncements.length) {
       ui.alert('Invalid Selection', 'Please enter a valid number.', ui.ButtonSet.OK);
       return;
     }
     
-    const selectedItem = pending[selectedIndex];
+    const selectedRow = rowsWithAnnouncements[selectedIndex];
     
     // Ask for test email address
     const emailResponse = ui.prompt(
       'Test Email Address',
-      `Enter test email address to send announcement for:\n${selectedItem.rideName}`,
+      `Enter test email address to send announcement for:\n${selectedRow.RideName}`,
       ui.ButtonSet.OK_CANCEL
     );
     
@@ -452,7 +397,7 @@ function testSendAnnouncement_() {
     // Confirm
     const confirmResponse = ui.alert(
       'Confirm Test Send',
-      `Send announcement for "${selectedItem.rideName}" to:\n${testEmail}\n\nThis will NOT remove it from the queue.`,
+      `Send announcement for "${selectedRow.RideName}" to:\n${testEmail}\n\nThis will NOT update the Status column in the spreadsheet.`,
       ui.ButtonSet.YES_NO
     );
     
@@ -460,43 +405,9 @@ function testSendAnnouncement_() {
       return;
     }
     
-    // Temporarily override the recipient email
-    const globals = getGlobals();
-    const originalEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
-    
     try {
-      // Get current row data for template expansion
-      const adapter = new ScheduleAdapter();
-      const allRows = adapter.loadAll();
-      const row = allRows.find(r => r.RideURL === selectedItem.rideURL);
-      
-      if (!row) {
-        throw new Error(`Could not find ride with URL: ${selectedItem.rideURL}`);
-      }
-      
-      // Build row data object (same as in RideManager)
-      const rowData = {
-        _rowNum: row.rowNum,
-        RideName: row.RideName,
-        Date: row.StartDate,
-        RideLeaders: row.RideLeaders.join(', '),
-        StartTime: row.StartTime,
-        Location: row.Location,
-        Address: row.Address,
-        Group: row.Group,
-        RideURL: row.RideURL,
-        RouteURL: row.RouteURL,
-        RouteName: row.RouteName,
-        ...row._data
-      };
-      
-      // Create a test item with current data
-      const testItem = {
-        ...selectedItem,
-        rowData: rowData
-      };
-      
-      // Temporarily set test email in globals
+      // Temporarily override the recipient email in globals
+      const globals = getGlobals();
       const tempGlobals = { ...globals, RIDE_ANNOUNCEMENT_EMAIL: testEmail };
       
       // Mock getGlobals to return test email
@@ -505,7 +416,7 @@ function testSendAnnouncement_() {
       
       // Send the announcement
       const manager = new AnnouncementManager();
-      const result = manager.sendAnnouncement(testItem);
+      const result = manager.sendAnnouncement(selectedRow);
       
       // Restore original getGlobals
       this.getGlobals = originalGetGlobals;
@@ -513,7 +424,7 @@ function testSendAnnouncement_() {
       if (result.success) {
         ui.alert(
           'Test Send Successful',
-          `Announcement sent to ${testEmail}!\n\nCheck your inbox (and spam folder).\n\nNote: The announcement is still in the queue and will be sent again at the scheduled time to the production email address.`,
+          `Announcement sent to ${testEmail}!\n\nCheck your inbox (and spam folder).\n\nNote: The Status column was NOT updated - the announcement will still be sent at the scheduled time to the production email address.`,
           ui.ButtonSet.OK
         );
       } else {
@@ -530,7 +441,7 @@ function testSendAnnouncement_() {
         `Error during test send:\n\n${error.message}\n\nCheck logs for details.`,
         ui.ButtonSet.OK
       );
-      console.error('testSendAnnouncement_ error:', error);
+      console.error('testSendAnnouncement_ inner error:', error);
     }
     
   } catch (error) {

@@ -71,19 +71,19 @@ var AnnouncementCore = (function() {
     /**
      * Calculate next retry time using exponential backoff
      * Retry intervals: 5min, 15min, 30min, 1hr, 2hr, 4hr, 8hr
-     * Max retry window: 24 hours from creation
+     * Max retry window: 24 hours from scheduled send time
      * 
      * @param {number} attemptCount - Number of failed attempts
-     * @param {number} createdAt - Timestamp when item was created
-     * @param {number} currentTime - Current timestamp
+     * @param {number} sendTime - Scheduled send time timestamp
+     * @param {number} lastAttemptTime - Last attempt time timestamp
      * @returns {number|null} Next retry time in ms, or null if should stop retrying
      */
-    function calculateNextRetry(attemptCount, createdAt, currentTime) {
-        const ageMs = currentTime - createdAt;
-        const ageHours = ageMs / (60 * 60 * 1000);
+    function calculateNextRetry(attemptCount, sendTime, lastAttemptTime) {
+        const timeSinceSend = lastAttemptTime - sendTime;
+        const hoursSinceSend = timeSinceSend / (60 * 60 * 1000);
         
-        // Stop retrying after 24 hours
-        if (ageHours >= 24) {
+        // Stop retrying after 24 hours from scheduled send time
+        if (hoursSinceSend >= 24) {
             return null;
         }
         
@@ -101,39 +101,51 @@ var AnnouncementCore = (function() {
         const intervalIndex = Math.min(attemptCount, intervals.length - 1);
         const retryInterval = intervals[intervalIndex];
         
-        return currentTime + retryInterval;
+        return lastAttemptTime + retryInterval;
     }
 
     /**
-     * Get items from queue that are due for sending or reminder
+     * Get rows from spreadsheet that are due for sending or reminder
      * 
-     * @param {Array} queue - Array of queue items
+     * @param {Array} rows - Array of Row objects from spreadsheet
      * @param {number} currentTime - Current timestamp
      * @returns {Object} Object with dueToSend and dueForReminder arrays
      */
-    function getDueItems(queue, currentTime) {
+    function getDueItems(rows, currentTime) {
         const dueToSend = [];
         const dueForReminder = [];
         const reminderWindow = 24 * 60 * 60 * 1000; // 24 hours in ms
         
-        queue.forEach(item => {
-            if (item.status === 'pending') {
-                const timeDiff = item.sendTime - currentTime;
+        rows.forEach(row => {
+            // Skip rows without announcement data
+            if (!row.Announcement || !row.SendAt) {
+                return;
+            }
+            
+            const sendTime = new Date(row.SendAt).getTime();
+            const status = row.Status || 'pending';
+            const attempts = row.Attempts || 0;
+            
+            if (status === 'pending') {
+                const timeDiff = sendTime - currentTime;
                 
-                // Due to send (within 1 hour window to account for hourly trigger)
+                // Due to send (within 1 hour window OR past due)
                 if (timeDiff <= 60 * 60 * 1000) {
-                    dueToSend.push(item);
+                    dueToSend.push(row);
                 }
                 // Due for 24-hour reminder (within 1 hour of 24 hours before send)
-                else if (!item.reminderSent && 
-                         timeDiff >= reminderWindow - (60 * 60 * 1000) && 
+                else if (timeDiff >= reminderWindow - (60 * 60 * 1000) && 
                          timeDiff <= reminderWindow + (60 * 60 * 1000)) {
-                    dueForReminder.push(item);
+                    dueForReminder.push(row);
                 }
             }
             // Failed items that are ready for retry
-            else if (item.status === 'failed' && item.nextRetry && item.nextRetry <= currentTime) {
-                dueToSend.push(item);
+            else if (status === 'failed') {
+                const lastAttemptAt = row.LastAttemptAt ? row.LastAttemptAt.getTime() : sendTime;
+                const nextRetry = calculateNextRetry(attempts, sendTime, lastAttemptAt);
+                if (nextRetry && nextRetry <= currentTime) {
+                    dueToSend.push(row);
+                }
             }
         });
         
@@ -141,142 +153,54 @@ var AnnouncementCore = (function() {
     }
 
     /**
-     * Update queue item after a failure
+     * Calculate updated values after a failure
+     * Returns an object with status, attempts, and lastError to update on the row
      * 
-     * @param {Object} item - Queue item
+     * @param {number} attempts - Current attempt count
+     * @param {number} sendTime - Scheduled send time
      * @param {string} error - Error message
      * @param {number} currentTime - Current timestamp
-     * @returns {Object} Updated item
+     * @returns {Object} Object with status, attempts, lastError
      */
-    function updateAfterFailure(item, error, currentTime) {
-        const newAttemptCount = item.attemptCount + 1;
-        const nextRetry = calculateNextRetry(newAttemptCount, item.createdAt, currentTime);
+    function calculateFailureUpdate(attempts, sendTime, error, currentTime) {
+        const newAttemptCount = attempts + 1;
+        const nextRetry = calculateNextRetry(newAttemptCount, sendTime, currentTime);
         
         return {
-            ...item,
             status: nextRetry ? 'failed' : 'abandoned',
-            attemptCount: newAttemptCount,
-            lastError: error,
-            nextRetry: nextRetry,
-            lastAttemptAt: currentTime
+            attempts: newAttemptCount,
+            lastError: error
         };
     }
 
     /**
-     * Mark item as successfully sent
+     * Get statistics about announcements from rows
      * 
-     * @param {Object} item - Queue item
-     * @param {number} currentTime - Current timestamp
-     * @returns {Object} Updated item
-     */
-    function markAsSent(item, currentTime) {
-        return {
-            ...item,
-            status: 'sent',
-            sentAt: currentTime
-        };
-    }
-
-    /**
-     * Mark item as reminder sent
-     * 
-     * @param {Object} item - Queue item
-     * @param {number} currentTime - Current timestamp
-     * @returns {Object} Updated item
-     */
-    function markReminderSent(item, currentTime) {
-        return {
-            ...item,
-            reminderSent: true,
-            reminderSentAt: currentTime
-        };
-    }
-
-    /**
-     * Remove item from queue by ID
-     * 
-     * @param {Array} queue - Array of queue items
-     * @param {string} id - Item ID to remove
-     * @returns {Array} New queue without the item
-     */
-    function removeItem(queue, id) {
-        return queue.filter(item => item.id !== id);
-    }
-
-    /**
-     * Update an item in the queue
-     * 
-     * @param {Array} queue - Array of queue items
-     * @param {string} id - Item ID to update
-     * @param {Object} updates - Properties to update
-     * @returns {Array} New queue with updated item
-     */
-    function updateItem(queue, id, updates) {
-        return queue.map(item => 
-            item.id === id ? { ...item, ...updates } : item
-        );
-    }
-
-    /**
-     * Get statistics about the queue
-     * 
-     * @param {Array} queue - Array of queue items
+     * @param {Array} rows - Array of Row objects
      * @returns {Object} Statistics object
      */
-    function getStatistics(queue) {
+    function getStatistics(rows) {
         const stats = {
-            total: queue.length,
+            total: 0,
             pending: 0,
             failed: 0,
             sent: 0,
             abandoned: 0
         };
         
-        queue.forEach(item => {
-            if (stats.hasOwnProperty(item.status)) {
-                stats[item.status]++;
+        rows.forEach(row => {
+            if (row.Announcement) {
+                stats.total++;
+                const status = row.Status || 'pending';
+                if (stats.hasOwnProperty(status)) {
+                    stats[status]++;
+                }
             }
         });
         
         return stats;
     }
 
-    /**
-     * Format queue items for display
-     * 
-     * @param {Array} queue - Array of queue items
-     * @param {number} currentTime - Current timestamp for age calculation
-     * @returns {Array} Formatted items
-     */
-    function formatItems(queue, currentTime) {
-        return queue.map(item => {
-            const sendDate = new Date(item.sendTime);
-            const ageMs = currentTime - item.createdAt;
-            const ageHours = Math.floor(ageMs / (60 * 60 * 1000));
-            
-            return {
-                id: item.id,
-                rideName: item.rideName || 'Unknown Ride',
-                rowNum: item.rowNum || '?',
-                sendTime: sendDate.toLocaleString(),
-                status: item.status,
-                rsEmail: item.rsEmail,
-                documentId: item.documentId,
-                ageHours: ageHours,
-                attemptCount: item.attemptCount,
-                lastError: item.lastError
-            };
-        });
-    }
-
-    /**
-     * Expand template string with row data
-     * Missing/null fields are returned as {FieldName} for highlighting
-     * 
-     * @param {string} template - Template string with {FieldName} placeholders
-     * @param {Object} rowData - Object with field names as keys
-     * @returns {Object} Object with expandedText and missingFields array
-     */
     /**
      * Enrich row data with calculated template fields
      * Adds DateTime, Date, Day, Time, RideLink fields
@@ -394,13 +318,8 @@ var AnnouncementCore = (function() {
         createQueueItem,
         calculateNextRetry,
         getDueItems,
-        updateAfterFailure,
-        markAsSent,
-        markReminderSent,
-        removeItem,
-        updateItem,
+        calculateFailureUpdate,
         getStatistics,
-        formatItems,
         enrichRowData,
         expandTemplate,
         extractSubject

@@ -86,22 +86,8 @@ const RideManager = (function () {
             try {
                 console.log(`RideManager.schedule_row_: Creating announcement for row ${row.rowNum}...`);
                 const manager = new (AnnouncementManager)();
-                // Build announcement data using Row getters to get proper field values
-                const rowData = {
-                    _rowNum: row.rowNum,
-                    RideName: row.RideName,
-                    Date: row.StartDate,
-                    RideLeaders: row.RideLeaders.join(', '),
-                    StartTime: row.StartTime,
-                    Location: row.Location,
-                    Address: row.Address,
-                    Group: row.Group,
-                    // Include raw data for any template fields we might have missed
-                    ...row._data
-                };
-                console.log(`RideManager.schedule_row_: Announcement data - RideName: ${rowData.RideName}, Date: ${rowData.Date}, Row: ${rowData._rowNum}`);
-                const announcementId = manager.createAnnouncement(rowData, new_event_url);
-                console.log(`RideManager.schedule_row_: Announcement ${announcementId} queued for row ${row.rowNum}`);
+                const docUrl = manager.createAnnouncement(row);
+                console.log(`RideManager.schedule_row_: Announcement created at ${docUrl} for row ${row.rowNum}`);
             } catch (announcementError) {
                 const errorMsg = `Failed to create announcement: ${announcementError.message}`;
                 console.error(`RideManager.schedule_row_: ${errorMsg} (row ${row.rowNum})`);
@@ -214,9 +200,16 @@ const RideManager = (function () {
                     throw err;
                 }
             }
+            
+            // Collect RideURLs for batch announcement removal
+            const rideUrlsWithAnnouncements = [];
+            
             rows.forEach(row => {
                 // Get RideURL BEFORE deleting the link (deleteRideLink clears the column)
                 const rideUrl = row.RideURL;
+                if (rideUrl) {
+                    rideUrlsWithAnnouncements.push(rideUrl);
+                }
                 
                 row.deleteRideLink();
                 const id = getCalendarId(row.Group);
@@ -226,20 +219,20 @@ const RideManager = (function () {
                     GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId);
                 }
                 row.GoogleEventId = '';
-                
-                // Remove any scheduled announcements for this ride
+            });
+            
+            // Batch remove announcements for all rides at once
+            if (rideUrlsWithAnnouncements.length > 0) {
                 try {
-                    if (rideUrl) {
-                        const count = new (AnnouncementManager)().removeByRideUrl(rideUrl);
-                        if (count > 0) {
-                            console.log(`RideManager.unscheduleRows(): Removed ${count} announcement(s) for ride ${rideUrl}`);
-                        }
+                    const count = new (AnnouncementManager)().removeByRideUrls(rideUrlsWithAnnouncements);
+                    if (count > 0) {
+                        console.log(`RideManager.unscheduleRows(): Removed ${count} announcement(s) for ${rideUrlsWithAnnouncements.length} rides`);
                     }
                 } catch (error) {
-                    console.error(`RideManager.unscheduleRows(): Error removing announcements for row ${row.rowNum}:`, error);
+                    console.error(`RideManager.unscheduleRows(): Error removing announcements:`, error);
                     // Don't throw - announcement cleanup is not critical to unscheduling
                 }
-            });
+            }
         },
         /**
          * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector
