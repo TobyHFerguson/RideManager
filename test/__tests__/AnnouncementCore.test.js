@@ -362,8 +362,8 @@ describe('AnnouncementCore', () => {
 
             const enriched = AnnouncementCore.enrichRowData(rowData, route);
 
-            expect(enriched.StartPin).toContain('<a href="https://maps.apple.com/?ll=37.7749,-122.4194&q=Ride%20Start">Apple</a>');
-            expect(enriched.StartPin).toContain('<a href="https://www.google.com/maps/search/?api=1&query=37.7749,-122.4194">Google</a>');
+            expect(enriched.StartPin).toContain('<a href="https://maps.apple.com/?ll=37.7749,-122.4194&q=Ride%20Start">Apple Maps</a>');
+            expect(enriched.StartPin).toContain('<a href="https://www.google.com/maps/search/?api=1&query=37.7749,-122.4194">Google Maps</a>');
             expect(enriched.StartPin).toContain('> / <');
         });
 
@@ -432,12 +432,12 @@ describe('AnnouncementCore', () => {
             const enriched = AnnouncementCore.enrichRowData(rowData, null);
 
             expect(enriched.RideName).toBe('Test Ride');
-            expect(enriched.length).toBeUndefined();
-            expect(enriched.gain).toBeUndefined();
-            expect(enriched.fpm).toBeUndefined();
-            expect(enriched.lat).toBeUndefined();
-            expect(enriched.long).toBeUndefined();
-            expect(enriched.startPin).toBeUndefined();
+            expect(enriched.Length).toBeUndefined();
+            expect(enriched.Gain).toBeUndefined();
+            expect(enriched.FPM).toBeUndefined();
+            expect(enriched.Lat).toBeUndefined();
+            expect(enriched.Long).toBeUndefined();
+            expect(enriched.StartPin).toBeUndefined();
         });
 
         it('should handle omitted route parameter', () => {
@@ -449,12 +449,12 @@ describe('AnnouncementCore', () => {
             const enriched = AnnouncementCore.enrichRowData(rowData);
 
             expect(enriched.Location).toBe('Test Location');
-            expect(enriched.length).toBeUndefined();
-            expect(enriched.gain).toBeUndefined();
-            expect(enriched.fpm).toBeUndefined();
-            expect(enriched.lat).toBeUndefined();
-            expect(enriched.long).toBeUndefined();
-            expect(enriched.startPin).toBeUndefined();
+            expect(enriched.Length).toBeUndefined();
+            expect(enriched.Gain).toBeUndefined();
+            expect(enriched.FPM).toBeUndefined();
+            expect(enriched.Lat).toBeUndefined();
+            expect(enriched.Long).toBeUndefined();
+            expect(enriched.StartPin).toBeUndefined();
         });
 
         it('should preserve route fields when both rowData and route provided', () => {
@@ -564,7 +564,7 @@ describe('AnnouncementCore', () => {
         });
 
         it('should expand route-based fields when route provided', () => {
-            const template = 'Distance: {length} miles, Elevation: {gain} feet, Difficulty: {fpm} fpm';
+            const template = 'Distance: {Length} miles, Elevation: {Gain} feet, Difficulty: {FPM} fpm';
             const rowData = {
                 Date: new Date('2024-12-07T18:00:00Z')
             };
@@ -582,7 +582,7 @@ describe('AnnouncementCore', () => {
         });
 
         it('should expand lat/long fields when route provided', () => {
-            const template = 'Start: {lat}, {long}';
+            const template = 'Start: {Lat}, {Long}';
             const rowData = {
                 Date: new Date('2024-12-07T18:00:00Z')
             };
@@ -600,7 +600,7 @@ describe('AnnouncementCore', () => {
         });
 
         it('should expand startPin field with map links', () => {
-            const template = 'Map: {startPin}';
+            const template = 'Map: {StartPin}';
             const rowData = {
                 Date: new Date('2024-12-07T18:00:00Z')
             };
@@ -614,26 +614,26 @@ describe('AnnouncementCore', () => {
             const result = AnnouncementCore.expandTemplate(template, rowData, route);
             
             expect(result.expandedText).toContain('Map: <a href="https://maps.apple.com/?ll=37.5,-122.5');
-            expect(result.expandedText).toContain('>Apple</a>');
+            expect(result.expandedText).toContain('>Apple Maps</a>');
             expect(result.expandedText).toContain('<a href="https://www.google.com/maps/search/?api=1&query=37.5,-122.5');
-            expect(result.expandedText).toContain('>Google</a>');
+            expect(result.expandedText).toContain('>Google Maps</a>');
             expect(result.missingFields).toHaveLength(0);
         });
 
         it('should mark route fields as missing when route not provided', () => {
-            const template = 'Distance: {length}, Elevation: {gain}';
+            const template = 'Distance: {Length}, Elevation: {Gain}';
             const rowData = {
                 Date: new Date('2024-12-07T18:00:00Z')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Distance: {length}, Elevation: {gain}');
-            expect(result.missingFields).toEqual(['length', 'gain']);
+            expect(result.expandedText).toBe('Distance: {Length}, Elevation: {Gain}');
+            expect(result.missingFields).toEqual(['Length', 'Gain']);
         });
 
         it('should expand mix of standard and route fields', () => {
-            const template = '{RideName} - {length} miles with {gain} feet on {Day}';
+            const template = '{RideName} - {Length} miles with {Gain} feet on {Day}';
             const rowData = {
                 Date: new Date('2024-12-07T18:00:00Z'),
                 RideName: 'Saturday Ride'
@@ -652,15 +652,15 @@ describe('AnnouncementCore', () => {
         });
 
         it('should handle route with null parameter', () => {
-            const template = '{length} miles';
+            const template = '{Length} miles';
             const rowData = {
                 Date: new Date('2024-12-07T18:00:00Z')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData, null);
             
-            expect(result.expandedText).toBe('{length} miles');
-            expect(result.missingFields).toEqual(['length']);
+            expect(result.expandedText).toBe('{Length} miles');
+            expect(result.missingFields).toEqual(['Length']);
         });
     });
 

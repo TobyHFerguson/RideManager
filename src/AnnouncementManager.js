@@ -247,7 +247,7 @@ var AnnouncementManager = (function() {
             const now = new Date().getTime();
             const dueItems = AnnouncementCore.getDueItems(allRows, now);
             
-            console.log(`AnnouncementManager: Processing ${dueItems.dueToSend.length} announcements and ${dueItems.dueForReminder.length} reminders`);
+            // Debug console.log(`AnnouncementManager: Processing ${dueItems.dueToSend.length} announcements and ${dueItems.dueForReminder.length} reminders`);
             
             let sent = 0;
             let reminded = 0;
@@ -534,7 +534,7 @@ var AnnouncementManager = (function() {
                     '{Time} - Time only (e.g., "10:00 AM")',
                     '{RideLink} - Full hyperlink: RideName + RideURL',
                     '{RideLeader} - Name(s) of the ride leader(s)',
-                    '{Group} - Ride group (e.g., Sat A, Sun B)',
+                    '{Group} - Ride group (e.g., A, B, C etc)',
                     '{RouteName} - Name of the route',
                     '{Length} - Route distance in miles (e.g., "45")',
                     '{Gain} - Route elevation gain in feet (e.g., "2500")',
@@ -612,6 +612,10 @@ var AnnouncementManager = (function() {
                     html += this._processText(element);
                     break;
                     
+                case DocumentApp.ElementType.INLINE_IMAGE:
+                    html += this._processInlineImage(element);
+                    break;
+                    
                 case DocumentApp.ElementType.LIST_ITEM:
                     html += '<li>';
                     const listChildren = element.getNumChildren();
@@ -676,6 +680,84 @@ var AnnouncementManager = (function() {
             }
             
             return html;
+        }
+
+        /**
+         * Process inline image element to HTML with base64 encoding
+         * Converts image to data URL for email embedding
+         * 
+         * Note: Gmail and other email clients may have issues with:
+         * - Images larger than ~100KB when base64 encoded
+         * - Certain image formats (prefer PNG, JPG, GIF)
+         * - Total email size > 25MB
+         * 
+         * @private
+         */
+        _processInlineImage(imageElement) {
+            try {
+                // Get basic image info first
+                const width = imageElement.getWidth();
+                const height = imageElement.getHeight();
+                const altText = imageElement.getAltDescription() || imageElement.getAltTitle() || '';
+                
+                // Check if this is likely an emoji (small icon-sized image)
+                // Emoji images from Google Docs are typically 17x17 or similar small sizes
+                const isLikelyEmoji = width <= 20 && height <= 20;
+                
+                if (isLikelyEmoji && altText) {
+                    // For emoji-sized images with alt text, just use the Unicode character
+                    // This preserves emojis that were pasted into the doc
+                    // Debug - console.log(`AnnouncementManager: Skipping emoji-sized image (${width}x${height}), using alt text: "${altText}"`);
+                    return altText;
+                }
+                
+                // Get image blob for actual images
+                const blob = imageElement.getBlob();
+                const contentType = blob.getContentType();
+                const bytes = blob.getBytes();
+                
+                // Log image details for debugging
+                const sizeKB = bytes.length / 1024;
+                console.log(`AnnouncementManager: Processing image - Type: ${contentType}, Size: ${Math.round(sizeKB)}KB, Dimensions: ${width}x${height}, Alt: "${altText}"`);
+                
+                // Warn about large images (base64 encoding increases size by ~33%)
+                if (sizeKB > 100) {
+                    console.warn(`AnnouncementManager: Large image detected (${Math.round(sizeKB)}KB). Email clients may not display images >100KB. Consider resizing images in the document.`);
+                }
+                
+                // Encode to base64
+                const base64Data = Utilities.base64Encode(bytes);
+                
+                // Get link URL if image is clickable
+                const linkUrl = imageElement.getLinkUrl();
+                
+                // Build data URL for embedded image
+                const dataUrl = `data:${contentType};base64,${base64Data}`;
+                
+                // Use simple alt text or empty string
+                const cleanAltText = altText || '';
+                
+                // Build img tag with dimensions - use standard HTML syntax for email compatibility
+                let imgTag = `<img src="${dataUrl}" alt="${this._encodeHtmlEntities(cleanAltText)}"`;
+                if (width) {
+                    imgTag += ` width="${width}"`;
+                }
+                if (height) {
+                    imgTag += ` height="${height}"`;
+                }
+                imgTag += ` style="max-width:100%; height:auto; display:inline-block;"`;
+                imgTag += ` border="0"`; // Prevent border in some email client imgTag += `>`;  // Use > instead of /> for better email client compatibility
+                
+                // Wrap in link if clickable
+                if (linkUrl) {
+                    return `<a href="${linkUrl}">${imgTag}</a>`;
+                }
+                
+                return imgTag;
+            } catch (error) {
+                console.error('AnnouncementManager: Error processing inline image:', error);
+                return '[Image could not be loaded]';
+            }
         }
 
         /**
@@ -802,7 +884,7 @@ var AnnouncementManager = (function() {
             
             // Remove from the HR tag onwards
             const cleaned = html.substring(0, hrMatch);
-            console.log(`AnnouncementManager: Removed instructions from HTML (${html.length} -> ${cleaned.length} chars)`);
+            // Debug console.log(`AnnouncementManager: Removed instructions from HTML (${html.length} -> ${cleaned.length} chars)`);
             return cleaned;
         }
 

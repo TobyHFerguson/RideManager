@@ -273,22 +273,22 @@ var AnnouncementCore = (function() {
             const METERS_TO_MILES = 0.000621371;
             const METERS_TO_FEET = 3.28084;
             
-            // length: Route distance in miles
+            // Length: Route distance in miles
             if (route.distance !== undefined && route.distance !== null) {
                 enriched.Length = Math.round(route.distance * METERS_TO_MILES);
             }
             
-            // gain: Elevation gain in feet
+            // Gain: Elevation gain in feet
             if (route.elevation_gain !== undefined && route.elevation_gain !== null) {
                 enriched.Gain = Math.round(route.elevation_gain * METERS_TO_FEET);
             }
             
-            // fpm: Feet per mile (gain/length)
+            // FPM: Feet per mile (gain/length)
             if (enriched.Gain !== undefined && enriched.Length !== undefined && enriched.Length > 0) {
                 enriched.FPM = Math.round(enriched.Gain / enriched.Length);
             }
             
-            // lat/long: Start location coordinates
+            // Lat/Long: Start location coordinates
             if (route.first_lat !== undefined && route.first_lat !== null) {
                 enriched.Lat = route.first_lat;
             }
@@ -296,7 +296,7 @@ var AnnouncementCore = (function() {
                 enriched.Long = route.first_lng;
             }
             
-            // startPin: Hyperlinked pins to Apple and Google maps
+            // StartPin: Hyperlinked pins to Apple and Google maps
             if (enriched.Lat !== undefined && enriched.Long !== undefined) {
                 const appleUrl = `https://maps.apple.com/?ll=${enriched.Lat},${enriched.Long}&q=Ride%20Start`;
                 const googleUrl = `https://www.google.com/maps/search/?api=1&query=${enriched.Lat},${enriched.Long}`;

@@ -28,8 +28,8 @@ function createMenu_() {
     .addItem('Link Selected Route URLs', linkSelectedRouteUrls_.name)
     .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
+    .addItem('Test Selected Announcements', testSendAnnouncement_.name)
     .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
-    .addItem('Test Send Announcement', testSendAnnouncement_.name)
     .addSeparator()
     .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
     .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
@@ -337,7 +337,7 @@ function processAnnouncementQueue() {
   try {
     const manager = new AnnouncementManager();
     const result = manager.processQueue();
-    console.log(`processAnnouncementQueue: Sent ${result.sent}, reminded ${result.reminded}, failed ${result.failed}, remaining ${result.remaining}`);
+    //Debug console.log(`processAnnouncementQueue: Sent ${result.sent}, reminded ${result.reminded}, failed ${result.failed}, remaining ${result.remaining}`);
   } catch (error) {
     console.error('processAnnouncementQueue error:', error);
   }
