@@ -42,9 +42,10 @@ class GoogleCalendarManager {
      * @param {string} location - Event location
      * @param {string} description - Event description
      * @param {string} rideUrl - Ride URL (stable identifier for background retry)
+     * @param {number} rowNum - Row number for retry queue identification
      * @returns {Object} { success: boolean, eventId?: string, queued?: boolean }
      */
-    static createEvent(calendarId, title, startTime, endTime, location, description, rideUrl = null) {
+    static createEvent(calendarId, title, startTime, endTime, location, description, rideUrl = null, rowNum = null) {
         const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
         if (!calendar) {
             console.error('GoogleCalendarManager.createEvent() - Calendar not found after retries. ', calendarId);

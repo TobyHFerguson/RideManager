@@ -28,12 +28,12 @@ var AnnouncementManager = (function() {
             try {
                 const globals = getGlobals();
                 
-                // Get template and folder from globals
-                const templateId = this._extractDocId(globals.RIDE_ANNOUNCEMENT_MASTER_TEMPLATE);
+                // Get template: check personal templates first, then fall back to master
+                const templateId = this._getTemplateId();
                 const folderUrl = globals.RIDE_ANNOUNCEMENT_FOLDER_URL;
                 
                 if (!templateId) {
-                    throw new Error('RIDE_ANNOUNCEMENT_MASTER_TEMPLATE not configured in Globals');
+                    throw new Error('No announcement template configured (check Personal Templates or RIDE_ANNOUNCEMENT_MASTER_TEMPLATE in Globals)');
                 }
                 if (!folderUrl) {
                     throw new Error('RIDE_ANNOUNCEMENT_FOLDER_URL not configured in Globals');
@@ -839,6 +839,31 @@ var AnnouncementManager = (function() {
             }
             
             return html;
+        }
+
+        /**
+         * Get template ID for current user
+         * Checks Personal Templates sheet first, falls back to master template
+         * @private
+         * @returns {string} Template document ID
+         */
+        _getTemplateId() {
+            const globals = getGlobals();
+            const userEmail = Session.getActiveUser().getEmail().toLowerCase();
+            
+            // Try personal templates first
+            const personalTemplates = getPersonalTemplates();
+            console.log('Personal templates loaded:', personalTemplates);
+            if (personalTemplates[userEmail]) {
+                console.log(`AnnouncementManager: Using personal template for ${userEmail}`);
+                const templateId = this._extractDocId(personalTemplates[userEmail]);
+                if (templateId) return templateId;
+                console.warn(`AnnouncementManager: Invalid personal template URL for ${userEmail}, falling back to master`);
+            }
+            
+            // Fall back to master template
+            console.log(`AnnouncementManager: Using master template`);
+            return this._extractDocId(globals.RIDE_ANNOUNCEMENT_MASTER_TEMPLATE);
         }
 
         /**

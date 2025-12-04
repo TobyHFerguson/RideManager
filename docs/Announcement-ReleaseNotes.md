@@ -30,6 +30,28 @@ The following columns have been added to track announcement status:
 - DateTime columns should be formatted as `M/d/yyyy H:mm:ss` for proper sorting
 - Status values are lowercase strings
 
+### New "Personal Templates" Sheet (Optional)
+
+A new optional sheet allows ride schedulers to use their own announcement templates:
+
+| Column Name | Type | Description | Example Values |
+|-------------|------|-------------|----------------|
+| `Email` | Text | Ride scheduler's email address | `toby.h.ferguson@gmail.com` |
+| `TemplateURL` | URL | Link to personal template document | `https://docs.google.com/document/d/...` |
+| `Active` | Boolean | Whether to use this template | `TRUE`, `FALSE` |
+| `Notes` | Text | Optional notes about template | `Uses emoji-heavy format` |
+
+**Sheet Behavior:**
+- Sheet is optional - if not present, all users use master template
+- Ride schedulers can add their own entries (one row per scheduler)
+- `Active` column must be `TRUE` for template to be used
+- Email matching is case-insensitive
+- System checks personal templates first, falls back to master template if:
+  - Personal Templates sheet doesn't exist
+  - User has no entry in sheet
+  - User's entry has `Active = FALSE`
+  - Template URL is invalid
+
 ## Global Properties Added
 
 The following entries must be added to the **Globals** sheet:
@@ -124,10 +146,22 @@ OR manually create via Apps Script:
 
 ### For Existing Spreadsheets
 1. Add the 6 new columns to the "Consolidated Rides" sheet (after existing columns)
-2. Add the 5 Global properties to the "Globals" sheet
-3. Create an announcement template document with placeholder fields
-4. Update the Globals sheet with the template URL and folder URL
-5. No data migration needed - existing rides continue to work normally
+2. **Optionally** create "Personal Templates" sheet if ride schedulers want custom templates
+3. Add the 5 Global properties to the "Globals" sheet
+4. Create an announcement template document with placeholder fields
+5. Update the Globals sheet with the template URL and folder URL
+6. No data migration needed - existing rides continue to work normally
+
+### Personal Templates Sheet Setup (Optional)
+If you want to allow ride schedulers to use personal templates:
+1. Create new sheet named "Personal Templates" (exact name required)
+2. Add columns: `Email`, `TemplateURL`, `Active`, `Notes`
+3. Ride schedulers add their own rows:
+   - Email: Their full email address
+   - TemplateURL: Link to their template document  
+   - Active: `TRUE` to enable
+   - Notes: Optional description
+4. Sheet is read-only to the code - schedulers manage it themselves
 
 ### Backward Compatibility
 - Existing functionality is not affected
@@ -137,10 +171,12 @@ OR manually create via Apps Script:
 ## Testing Checklist
 
 Before deploying to production:
-- [ ] Verify all 6 columns added to spreadsheet
+- [ ] Verify all 6 columns added to "Consolidated Rides" sheet
 - [ ] Verify all 5 Global properties configured
 - [ ] Create test announcement template with sample fields
-- [ ] Test document creation from template
+- [ ] Test document creation from master template
+- [ ] **Optional**: Create "Personal Templates" sheet
+- [ ] **Optional**: Test document creation with personal template
 - [ ] Test template field expansion
 - [ ] Test email sending
 - [ ] Test 24-hour reminder functionality

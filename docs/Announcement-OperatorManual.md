@@ -472,6 +472,16 @@ If a send fails, the system automatically retries:
 5. Verify emails are valid
 ```
 
+**Monthly check of Personal Templates (if exists):**
+```
+1. Open Personal Templates sheet
+2. Verify format: Email | TemplateURL | Active | Notes columns
+3. Check for inactive entries that should be removed
+4. Verify template URLs are accessible
+5. Check for duplicate email entries
+6. Test: Create announcement as user with personal template
+```
+
 ### Routine Maintenance Tasks
 
 **Weekly:**
@@ -567,7 +577,7 @@ If a send fails, the system automatically retries:
 - Grant folder access to script account
 - Update document permissions: Anyone with link can view
 
-### Issue: Template Fields Not Expanding
+### Problem: Template Fields Not Expanding
 
 **Symptoms:**
 - Document created but shows `{FieldName}` instead of values
@@ -578,12 +588,21 @@ If a send fails, the system automatically retries:
 2. Verify row has required data (RideName, Leaders, etc.)
 3. Check template field syntax (case-insensitive but must match)
 4. Review execution logs for template expansion errors
+5. **Check which template was used** (personal vs master)
+
+**Check template source:**
+```javascript
+// In Apps Script console after creating announcement
+const personalTemplates = getPersonalTemplates();
+const userEmail = Session.getActiveUser().getEmail().toLowerCase();
+Logger.log(`Personal template for ${userEmail}: ${personalTemplates[userEmail] || 'None - using master'}`);
+```
 
 **Resolution:**
 - Manually edit document to fill in missing fields
-- Update master template with correct field names
-- Ensure RWGPS route is properly linked
-- For future: Fix row data before creating announcement
+- If using personal template: check template document has correct field names
+- If problem persists: deactivate personal template, use master
+- For future: Fix row data or template before creating announcement
 
 ---
 
@@ -593,7 +612,8 @@ If a send fails, the system automatically retries:
 
 | Resource | Location | Purpose |
 |----------|----------|---------|
-| Master Template | Globals: `RIDE_ANNOUNCEMENT_MASTER_TEMPLATE` | Source for new announcements |
+| Master Template | Globals: `RIDE_ANNOUNCEMENT_MASTER_TEMPLATE` | Default template for all users |
+| Personal Templates | Sheet: `Personal Templates` (optional) | User-specific template preferences |
 | Announcement Folder | Globals: `RIDE_ANNOUNCEMENT_FOLDER_URL` | Storage for created docs |
 | Recipient Email | Globals: `RIDE_ANNOUNCEMENT_RECIPIENTS_EMAIL` | Where emails are sent |
 | Trigger Function | Apps Script: `processAnnouncementQueue` | Runs every hour (auto-installed) |
