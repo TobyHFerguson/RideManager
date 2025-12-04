@@ -20,6 +20,60 @@
 
 ---
 
+## Using Your Own Template (Optional)
+
+### What is a Personal Template?
+
+By default, all announcements use the club's master template. But you can create your own template with your personal style, favorite emojis, or custom layout!
+
+### How to Set Up Your Personal Template
+
+1. **Create your template document:**
+   - Create a template in the [Ride Announcements](https://drive.google.com/drive/folders/1uwZzbl1SkkAOwA_6-uIj-ZR368_sxJNm?usp=sharing) folder by:
+     - Creating it from scratch
+     - Copying another Master Template
+     - Copying an announcement that is ready to be sent
+   - Make sure you share it with toby.h.ferguson@gmail.com (that's the account that currently runs the code) 
+   - Customize it with your preferred formatting, emojis, layout
+   - Keep the `{FieldName}` placeholders where you want ride data
+   - Save it in a location you can access
+
+2. **Add yourself to Personal Templates sheet:**
+   - Open the "Personal Templates" sheet in the CRS
+   - Add a new row with:
+     - **Email**: Your full email address (e.g., `yourname@gmail.com`)
+     - **TemplateURL**: Link to your template document
+     - **Active**: `TRUE`
+     - **Notes**: (Optional) Description like "Uses lots of emojis"
+
+3. **Test it:**
+   - Create a test announcement
+   - Verify it uses your template
+   - If not working, check email matches exactly and Active = TRUE
+
+### When Your Template is Used
+
+- ✅ When YOU create an announcement → Uses YOUR template
+- ✅ When other schedulers create → Uses THEIR template (or master if they have none)
+- ✅ You can switch back to master by setting Active = FALSE
+
+### Managing Your Template
+
+**To update your template:**
+- Just edit your template document
+- Future announcements will use the updated version
+- Already-created announcements are not affected
+
+**To stop using your template:**
+- Change `Active` to `FALSE` in Personal Templates sheet
+- You'll use the master template instead
+
+**To switch templates:**
+- Update the `TemplateURL` in your row
+- New announcements will use the new template
+
+---
+
 ## How Announcements Work
 
 ### Timeline
@@ -234,13 +288,24 @@ No problem!
 3. **If you need it sent urgently:**
    - Contact an operator - they can manually trigger a send
 
-### "Can I reuse an announcement for a recurring ride?"
+### "Can I use my own announcement template style?"
 
-Each ride needs its own announcement, but you can:
-1. Create the first announcement
-2. Copy content from that document
-3. Paste into future announcements for the same ride
-4. Update specific details (date, leaders, etc.)
+Yes! You can create a personal template:
+
+1. **Create your template document**
+   - Copy the master template or create from scratch
+   - Customize with your style, emojis, layout
+   - Keep `{FieldName}` placeholders for ride data
+
+2. **Register it in Personal Templates sheet**
+   - Add row: Your Email | Template URL | Active=TRUE | Notes
+   - System will use your template for your announcements
+
+3. **Others keep using their templates**
+   - Each scheduler can have their own template
+   - Or use the master template if they prefer
+
+See "Using Your Own Template" section above for details.
 
 ### "I want to include a special message about weather/cancellation"
 
