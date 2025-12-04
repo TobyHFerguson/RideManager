@@ -55,6 +55,12 @@ var Exports = {
     get RetryQueueCore() {
         return RetryQueueCore;
     },
+    get AnnouncementManager() {
+        return AnnouncementManager;
+    },
+    get AnnouncementCore() {
+        return AnnouncementCore;
+    },
     get GoogleCalendarManager() {
         return GoogleCalendarManager;
     },

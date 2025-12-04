@@ -99,12 +99,68 @@ var Row = (function() {
             return this._data[getGlobals().ADDRESSCOLUMNNAME];
         }
 
+        // Announcement queue fields (no Globals needed - column names have no spaces)
+        get Announcement() {
+            return this._data['Announcement'] || '';
+        }
+
+        get SendAt() {
+            return this._data['SendAt'];
+        }
+
+        get Status() {
+            return this._data['Status'] || '';
+        }
+
+        get Attempts() {
+            return this._data['Attempts'] || 0;
+        }
+
+        get LastError() {
+            return this._data['LastError'] || '';
+        }
+
+        get LastAttemptAt() {
+            const val = this._data['LastAttemptAt'];
+            return val ? new Date(val) : undefined;
+        }
+
         // ===== SETTERS =====
 
         set GoogleEventId(id) {
             const columnName = getGlobals().GOOGLEEVENTIDCOLUMNNAME;
             this._data[columnName] = id;
             this._markDirty(columnName);
+        }
+
+        set Announcement(docUrl) {
+            this._data['Announcement'] = docUrl;
+            this._markDirty('Announcement');
+        }
+
+        set SendAt(datetime) {
+            this._data['SendAt'] = datetime;
+            this._markDirty('SendAt');
+        }
+
+        set Status(status) {
+            this._data['Status'] = status;
+            this._markDirty('Status');
+        }
+
+        set Attempts(count) {
+            this._data['Attempts'] = count;
+            this._markDirty('Attempts');
+        }
+
+        set LastError(error) {
+            this._data['LastError'] = error || '';
+            this._markDirty('LastError');
+        }
+
+        set LastAttemptAt(datetime) {
+            this._data['LastAttemptAt'] = datetime;
+            this._markDirty('LastAttemptAt');
         }
 
         // ===== METHODS =====
@@ -230,6 +286,21 @@ var Row = (function() {
             const name = this.RideName;
             const url = this.RideURL;
             this.setRideLink(name, url);
+        }
+
+        /**
+         * Clear all announcement-related fields
+         * This is the proper way to "remove" an announcement from a row,
+         * following the ScheduleAdapter pattern of modifying domain objects
+         * and letting the adapter handle persistence.
+         */
+        clearAnnouncement() {
+            this.Announcement = '';
+            this.SendAt = undefined;
+            this.Status = '';
+            this.Attempts = 0;
+            this.LastError = '';
+            this.LastAttemptAt = undefined;
         }
 
         /**

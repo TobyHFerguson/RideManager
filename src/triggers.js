@@ -28,6 +28,9 @@ function createMenu_() {
     .addItem('Link Selected Route URLs', linkSelectedRouteUrls_.name)
     .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
+    .addItem('Test Selected Announcements', testSendAnnouncement_.name)
+    .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
+    .addSeparator()
     .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
     .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
     .addSeparator()
@@ -318,6 +321,146 @@ function viewRetryQueueStatus_() {
 function processRetryQueueNow_() {
   MenuFunctions.processRetryQueueNow();
 }
+
+/**
+ * Send pending announcements for selected rows
+ */
+function sendPendingAnnouncements_() {
+  MenuFunctions.sendPendingAnnouncements();
+}
+
+/**
+ * Process announcement queue (called by hourly trigger)
+ * This function is registered by AnnouncementManager when items are queued
+ */
+function processAnnouncementQueue() {
+  try {
+    const manager = new AnnouncementManager();
+    const result = manager.processQueue();
+    //Debug console.log(`processAnnouncementQueue: Sent ${result.sent}, reminded ${result.reminded}, failed ${result.failed}, remaining ${result.remaining}`);
+  } catch (error) {
+    console.error('processAnnouncementQueue error:', error);
+  }
+}
+
+/**
+ * Test announcement sending (for development/testing)
+ * Sends announcements from selected rows to a test email address
+ * Does NOT update the Status column, so announcements will still be sent at scheduled time
+ */
+function testSendAnnouncement_() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const adapter = new ScheduleAdapter();
+    const selectedRows = adapter.loadSelected();
+    
+    if (selectedRows.length === 0) {
+      ui.alert('No Selection', 'Please select one or more rows with announcements to test.', ui.ButtonSet.OK);
+      return;
+    }
+    
+    // Filter for rows with announcements
+    const rowsWithAnnouncements = selectedRows.filter(r => r.Announcement);
+    
+    if (rowsWithAnnouncements.length === 0) {
+      ui.alert('No Announcements', 
+        `None of the selected rows have announcements.\n\nSelected rows: ${selectedRows.length}`,
+        ui.ButtonSet.OK);
+      return;
+    }
+    
+    // Ask for test email address
+    const rowNumbers = rowsWithAnnouncements.map(r => r.rowNum).join(', ');
+    const emailResponse = ui.prompt(
+      'Test Email Address',
+      `Enter test email address to send ${rowsWithAnnouncements.length} announcement(s) for:\nRows: ${rowNumbers}`,
+      ui.ButtonSet.OK_CANCEL
+    );
+    
+    if (emailResponse.getSelectedButton() !== ui.Button.OK) {
+      return;
+    }
+    
+    const testEmail = emailResponse.getResponseText().trim();
+    if (!testEmail || !testEmail.includes('@')) {
+      ui.alert('Invalid Email', 'Please enter a valid email address.', ui.ButtonSet.OK);
+      return;
+    }
+    
+    // Confirm
+    const rideNames = rowsWithAnnouncements.map(r => r.RideName || 'Unknown').join('\n  • ');
+    const confirmResponse = ui.alert(
+      'Confirm Test Send',
+      `Send ${rowsWithAnnouncements.length} announcement(s) to:\n${testEmail}\n\nRides:\n  • ${rideNames}\n\nThis will NOT update the Status column in the spreadsheet.`,
+      ui.ButtonSet.YES_NO
+    );
+    
+    if (confirmResponse !== ui.Button.YES) {
+      return;
+    }
+    
+    // Send announcements
+    const manager = new AnnouncementManager();
+    let successCount = 0;
+    const failedRows = [];
+    
+    rowsWithAnnouncements.forEach(row => {
+      try {
+        // Temporarily override the recipient email in globals
+        const globals = getGlobals();
+        const tempGlobals = { ...globals, RIDE_ANNOUNCEMENT_EMAIL: testEmail };
+        
+        // Mock getGlobals to return test email
+        const originalGetGlobals = this.getGlobals;
+        this.getGlobals = function() { return tempGlobals; };
+        
+        // Send the announcement
+        const result = manager.sendAnnouncement(row);
+        
+        // Restore original getGlobals
+        this.getGlobals = originalGetGlobals;
+        
+        if (result.success) {
+          successCount++;
+        } else {
+          failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: result.error });
+        }
+        
+      } catch (error) {
+        failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: error.message });
+        console.error(`testSendAnnouncement_ error for row ${row.rowNum}:`, error);
+      }
+    });
+    
+    // Report results
+    let message = `Test Send Complete\n\n`;
+    message += `Successfully sent: ${successCount}\n`;
+    message += `Failed: ${failedRows.length}\n\n`;
+    
+    if (failedRows.length > 0) {
+      message += `Failed announcements:\n`;
+      failedRows.forEach(f => {
+        message += `  Row ${f.rowNum} (${f.rideName}): ${f.error}\n`;
+      });
+      message += `\n`;
+    }
+    
+    if (successCount > 0) {
+      message += `Check your inbox at ${testEmail} (and spam folder).\n\n`;
+    }
+    
+    message += `Note: The Status column was NOT updated - announcements will still be sent at the scheduled time to the production email address.`;
+    
+    const title = failedRows.length > 0 ? 'Test Send Completed with Errors' : 'Test Send Successful';
+    ui.alert(title, message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    console.error('testSendAnnouncement_ error:', error);
+    alert_(`Error in test send: ${error.message}`);
+  }
+}
+
+
 
 
 

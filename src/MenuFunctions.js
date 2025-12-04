@@ -158,6 +158,101 @@ const MenuFunctions = (() => {
         SpreadsheetApp.getUi().alert('Error', `Failed to process retry queue: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
       }
     },
+    
+    /**
+     * Send pending announcements for selected rows
+     * Immediately sends announcements that are pending (ignoring SendAt time)
+     */
+    sendPendingAnnouncements() {
+      try {
+        const ui = SpreadsheetApp.getUi();
+        const adapter = new ScheduleAdapter();
+        const selectedRows = adapter.loadSelected();
+        
+        if (selectedRows.length === 0) {
+          ui.alert('No Selection', 'Please select one or more rows with pending announcements.', ui.ButtonSet.OK);
+          return;
+        }
+        
+        // Filter for rows with pending announcements
+        const pendingRows = selectedRows.filter(row => 
+          row.Announcement && 
+          row.Status === 'pending'
+        );
+        
+        if (pendingRows.length === 0) {
+          ui.alert('No Pending Announcements', 
+            `None of the selected rows have pending announcements.\n\n` +
+            `Selected rows: ${selectedRows.length}`, 
+            ui.ButtonSet.OK);
+          return;
+        }
+        
+        // Confirm action
+        const rowNumbers = pendingRows.map(r => r.rowNum).join(', ');
+        const confirmMessage = `Send announcements for ${pendingRows.length} row(s)?\n\n` +
+          `Rows: ${rowNumbers}\n\n` +
+          `This will immediately send the announcements, regardless of the scheduled send time.`;
+        
+        const response = ui.alert('Confirm Send', confirmMessage, ui.ButtonSet.YES_NO);
+        if (response !== ui.Button.YES) {
+          return;
+        }
+        
+        // Send announcements
+        const manager = new AnnouncementManager();
+        const now = new Date().getTime();
+        let sent = 0;
+        const failedRows = [];
+        
+        pendingRows.forEach(row => {
+          try {
+            const result = manager.sendAnnouncement(row);
+            
+            if (result.success) {
+              row.Status = 'sent';
+              row.LastAttemptAt = new Date(now);
+              sent++;
+            } else {
+              failedRows.push({ rowNum: row.rowNum, error: result.error });
+              
+              // Update failure info
+              const sendTime = row.SendAt.getTime();
+              const attempts = row.Attempts + 1;
+              const failureUpdate = Exports.AnnouncementCore.calculateFailureUpdate(attempts, sendTime, result.error, now);
+              
+              row.Status = failureUpdate.status;
+              row.Attempts = failureUpdate.attempts;
+              row.LastError = failureUpdate.lastError;
+              row.LastAttemptAt = new Date(now);
+            }
+          } catch (error) {
+            failedRows.push({ rowNum: row.rowNum, error: error.message });
+          }
+        });
+        
+        // Save all changes
+        adapter.save();
+        
+        // Report results
+        let message = `Announcement Processing Complete\n\n`;
+        message += `Successfully sent: ${sent}\n`;
+        message += `Failed: ${failedRows.length}\n`;
+        
+        if (failedRows.length > 0) {
+          message += `\nFailed rows:\n`;
+          failedRows.forEach(f => {
+            message += `  Row ${f.rowNum}: ${f.error}\n`;
+          });
+        }
+        
+        const title = failedRows.length > 0 ? 'Completed with Errors' : 'Success';
+        ui.alert(title, message, ui.ButtonSet.OK);
+        
+      } catch (error) {
+        SpreadsheetApp.getUi().alert('Error', `Failed to send announcements: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+      }
+    },
   })
 
 

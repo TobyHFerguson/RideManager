@@ -79,13 +79,37 @@ const RideManager = (function () {
         const description = `<a href="${new_event_url}">${event.name}</a>`;
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with event:`, event);
         const result = GoogleCalendarManager.createEvent(getCalendarId(row.Group), event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description, new_event_url, row._rowNum);
+        
+        // Store event ID if calendar creation succeeded
         if (result.success) {
             row.GoogleEventId = result.eventId;
         } else if (result.queued) {
-            console.log(`RideManager.schedule_row_: Calendar event queued for background retry (row ${row._rowNum})`);
+            console.log(`RideManager.schedule_row_: Calendar event queued for background retry (row ${row.rowNum})`);
             // Event ID will be updated by background process
         } else {
-            console.error(`RideManager.schedule_row_: Failed to create calendar event for row ${row._rowNum}: ${result.error}`);
+            console.error(`RideManager.schedule_row_: Failed to create calendar event for row ${row.rowNum}: ${result.error}`);
+        }
+        
+        // Create ride announcement regardless of calendar success
+        try {
+            console.log(`RideManager.schedule_row_: Creating announcement for row ${row.rowNum}...`);
+            const manager = new (AnnouncementManager)();
+            const docUrl = manager.createAnnouncement(row);
+            console.log(`RideManager.schedule_row_: Announcement created at ${docUrl} for row ${row.rowNum}`);
+        } catch (announcementError) {
+            const errorMsg = `Failed to create announcement: ${announcementError.message}`;
+            console.error(`RideManager.schedule_row_: ${errorMsg} (row ${row.rowNum})`);
+            console.error(`RideManager.schedule_row_: Error stack:`, announcementError.stack);
+            // Show user a notification about the failure
+            try {
+                SpreadsheetApp.getUi().alert(
+                    'Announcement Creation Failed',
+                    `Ride scheduled successfully, but announcement creation failed:\n\n${errorMsg}\n\nStack: ${announcementError.stack}\n\nCheck logs for details.`,
+                    SpreadsheetApp.getUi().ButtonSet.OK
+                );
+            } catch (e) {
+                console.error(`RideManager.schedule_row_: Failed to show UI alert:`, e);
+            }
         }
     }
     function updateRow_(row, rwgps) {
@@ -178,7 +202,17 @@ const RideManager = (function () {
                     throw err;
                 }
             }
+            
+            // Collect RideURLs for batch announcement removal
+            const rideUrlsWithAnnouncements = [];
+            
             rows.forEach(row => {
+                // Get RideURL BEFORE deleting the link (deleteRideLink clears the column)
+                const rideUrl = row.RideURL;
+                if (rideUrl) {
+                    rideUrlsWithAnnouncements.push(rideUrl);
+                }
+                
                 row.deleteRideLink();
                 const id = getCalendarId(row.Group);
                 if (!id) {
@@ -188,6 +222,19 @@ const RideManager = (function () {
                 }
                 row.GoogleEventId = '';
             });
+            
+            // Batch remove announcements for all rides at once
+            if (rideUrlsWithAnnouncements.length > 0) {
+                try {
+                    const count = new (AnnouncementManager)().removeByRideUrls(rideUrlsWithAnnouncements);
+                    if (count > 0) {
+                        console.log(`RideManager.unscheduleRows(): Removed ${count} announcement(s) for ${rideUrlsWithAnnouncements.length} rides`);
+                    }
+                } catch (error) {
+                    console.error(`RideManager.unscheduleRows(): Error removing announcements:`, error);
+                    // Don't throw - announcement cleanup is not critical to unscheduling
+                }
+            }
         },
         /**
          * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector
