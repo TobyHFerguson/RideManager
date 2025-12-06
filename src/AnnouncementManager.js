@@ -458,6 +458,82 @@ var AnnouncementManager = (function() {
             }
         }
 
+        /**
+         * Handle ride cancellation with announcement
+         * @param {Row} row - Row object from ScheduleAdapter
+         * @param {string} reason - User-provided cancellation reason (empty string if force=true)
+         * @returns {Object} {announcementSent: boolean, error?: string}
+         */
+        handleCancellation(row, reason = '') {
+            try {
+                // Check if announcement exists
+                if (!row.Announcement || !row.Status) {
+                    console.log(`AnnouncementManager.handleCancellation: No announcement for row ${row.rowNum}, skipping`);
+                    return { announcementSent: false };
+                }
+
+                // Use core logic to determine if email should be sent
+                const now = new Date().getTime();
+                const shouldSendEmail = AnnouncementCore.shouldSendCancellationEmail(row.Status, row.SendAt, now);
+
+                if (shouldSendEmail) {
+                    // Send cancellation email
+                    const emailResult = this._sendCancellationEmail(row, reason);
+                    if (!emailResult.success) {
+                        return { announcementSent: false, error: emailResult.error };
+                    }
+                }
+
+                // Update status to cancelled regardless of whether email was sent
+                row.Status = 'cancelled';
+                row._adapter.save();
+
+                console.log(`AnnouncementManager.handleCancellation: Row ${row.rowNum} cancelled, email sent: ${shouldSendEmail}`);
+                return { announcementSent: shouldSendEmail };
+            } catch (error) {
+                console.error(`AnnouncementManager.handleCancellation error for row ${row.rowNum}:`, error);
+                return { announcementSent: false, error: error.message };
+            }
+        }
+
+        /**
+         * Handle ride reinstatement with announcement
+         * @param {Row} row - Row object from ScheduleAdapter
+         * @param {string} reason - User-provided reinstatement reason (empty string if force=true)
+         * @returns {Object} {announcementSent: boolean, error?: string}
+         */
+        handleReinstatement(row, reason = '') {
+            try {
+                // Check if announcement exists
+                if (!row.Announcement || !row.Status) {
+                    console.log(`AnnouncementManager.handleReinstatement: No announcement for row ${row.rowNum}, skipping`);
+                    return { announcementSent: false };
+                }
+
+                // Use core logic to determine if email should be sent
+                const now = new Date().getTime();
+                const shouldSendEmail = AnnouncementCore.shouldSendReinstatementEmail(row.Status, row.SendAt, now);
+
+                if (shouldSendEmail) {
+                    // Send reinstatement email
+                    const emailResult = this._sendReinstatementEmail(row, reason);
+                    if (!emailResult.success) {
+                        return { announcementSent: false, error: emailResult.error };
+                    }
+                }
+
+                // Update status to pending regardless of whether email was sent
+                row.Status = 'pending';
+                row._adapter.save();
+
+                console.log(`AnnouncementManager.handleReinstatement: Row ${row.rowNum} reinstated, email sent: ${shouldSendEmail}`);
+                return { announcementSent: shouldSendEmail };
+            } catch (error) {
+                console.error(`AnnouncementManager.handleReinstatement error for row ${row.rowNum}:`, error);
+                return { announcementSent: false, error: error.message };
+            }
+        }
+
         // ========== PRIVATE HELPER METHODS ==========
 
         /**
@@ -1000,6 +1076,145 @@ var AnnouncementManager = (function() {
             }
             
             this.props.deleteProperty(this.TRIGGER_KEY);
+        }
+
+        /**
+         * Send cancellation email
+         * @private
+         * @param {Row} row - Row object
+         * @param {string} reason - Cancellation reason
+         * @returns {Object} {success: boolean, error?: string}
+         */
+        _sendCancellationEmail(row, reason) {
+            try {
+                const globals = getGlobals();
+                const templateUrl = globals.CANCELLATION_TEMPLATE;
+                
+                if (!templateUrl) {
+                    throw new Error('CANCELLATION_TEMPLATE not configured in Globals');
+                }
+
+                // Load and expand template
+                const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'CancellationReason');
+
+                // Send email
+                const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
+                if (!recipientEmail) {
+                    throw new Error('RIDE_ANNOUNCEMENT_EMAIL not configured in Globals');
+                }
+
+                MailApp.sendEmail(recipientEmail, subject, '', {
+                    htmlBody: html,
+                    name: 'Ride Scheduler',
+                    replyTo: globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail()
+                });
+
+                console.log(`AnnouncementManager: Sent cancellation email for row ${row.rowNum} to ${recipientEmail}`);
+                return { success: true };
+            } catch (error) {
+                console.error(`AnnouncementManager._sendCancellationEmail error for row ${row.rowNum}:`, error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        /**
+         * Send reinstatement email
+         * @private
+         * @param {Row} row - Row object
+         * @param {string} reason - Reinstatement reason
+         * @returns {Object} {success: boolean, error?: string}
+         */
+        _sendReinstatementEmail(row, reason) {
+            try {
+                const globals = getGlobals();
+                const templateUrl = globals.REINSTATEMENT_TEMPLATE;
+                
+                if (!templateUrl) {
+                    throw new Error('REINSTATEMENT_TEMPLATE not configured in Globals');
+                }
+
+                // Load and expand template
+                const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'ReinstatementReason');
+
+                // Send email
+                const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
+                if (!recipientEmail) {
+                    throw new Error('RIDE_ANNOUNCEMENT_EMAIL not configured in Globals');
+                }
+
+                MailApp.sendEmail(recipientEmail, subject, '', {
+                    htmlBody: html,
+                    name: 'Ride Scheduler',
+                    replyTo: globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail()
+                });
+
+                console.log(`AnnouncementManager: Sent reinstatement email for row ${row.rowNum} to ${recipientEmail}`);
+                return { success: true };
+            } catch (error) {
+                console.error(`AnnouncementManager._sendReinstatementEmail error for row ${row.rowNum}:`, error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        /**
+         * Load template document and expand with row data
+         * @private
+         * @param {string} templateUrl - Template document URL
+         * @param {Row} row - Row object
+         * @param {string} reason - Cancellation/reinstatement reason
+         * @param {string} reasonFieldName - Field name for reason ('CancellationReason' or 'ReinstatementReason')
+         * @returns {Object} {html: string, subject: string}
+         */
+        _loadAndExpandTemplate(templateUrl, row, reason, reasonFieldName) {
+            // Extract document ID from template URL
+            const documentId = this._extractDocId(templateUrl);
+            if (!documentId) {
+                throw new Error(`Invalid template URL: ${templateUrl}`);
+            }
+
+            // Open the template document
+            const doc = DocumentApp.openById(documentId);
+
+            // Build rowData object for template expansion
+            const rowData = {
+                _rowNum: row.rowNum,
+                RideName: row.RideName,
+                Date: row.StartDate,
+                RideLeaders: row.RideLeaders.join(', '),
+                StartTime: row.StartTime,
+                Location: row.Location,
+                Address: row.Address,
+                Group: row.Group,
+                RideURL: row.RideURL,
+                RouteURL: row.RouteURL,
+                RouteName: row.RouteName,
+                [reasonFieldName]: reason, // Add the reason field dynamically
+                ...row._data
+            };
+
+            // Fetch route data for template enrichment (gain, length, fpm, startPin, lat, long)
+            let route = null;
+            if (row.RouteURL) {
+                try {
+                    route = getRoute(row.RouteURL);
+                } catch (error) {
+                    console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${error.message}`);
+                }
+            }
+
+            // Convert document to HTML
+            let html = this._convertDocToHtml(doc);
+
+            // Expand template fields in the HTML (with route data for enrichment)
+            const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
+            html = expandResult.expandedText;
+
+            // Extract subject from HTML
+            const emailContent = this._extractSubjectFromHtml(html);
+            const subject = emailContent.subject || `Ride ${reasonFieldName === 'CancellationReason' ? 'Cancellation' : 'Reinstatement'}: ${row.RideName || 'Unknown Ride'}`;
+            const htmlBody = emailContent.body;
+
+            return { html: htmlBody, subject };
         }
     }
     
