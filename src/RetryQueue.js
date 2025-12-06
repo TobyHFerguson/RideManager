@@ -374,6 +374,24 @@ var RetryQueue = (function() {
         }
 
         /**
+         * Remove queue item by event ID (for cancellation)
+         * Used when a ride is cancelled to remove pending calendar creation from retry queue
+         * @param {string} eventId - Google Calendar event ID
+         */
+        removeByEventId(eventId) {
+            const queue = this._getQueue();
+            const itemToRemove = queue.find(item => item.params && item.params.eventId === eventId);
+            
+            if (itemToRemove) {
+                const newQueue = RetryQueueCore.removeItem(queue, itemToRemove.id);
+                this._saveQueue(newQueue);
+                console.log(`RetryQueue: Removed item for event ${eventId}`);
+            } else {
+                console.log(`RetryQueue: No item found for event ${eventId}`);
+            }
+        }
+
+        /**
          * Get current queue status for debugging
          */
         getStatus() {

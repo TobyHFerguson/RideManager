@@ -700,4 +700,138 @@ describe('AnnouncementCore', () => {
             expect(result.body).toBe('');
         });
     });
+
+    describe('shouldSendCancellationEmail', () => {
+        const now = new Date('2025-12-06T18:00:00Z').getTime(); // Current time
+
+        it('should return true for pending status after send time', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z'); // Yesterday
+            const result = AnnouncementCore.shouldSendCancellationEmail('pending', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should return false for pending status before send time', () => {
+            const sendAt = new Date('2025-12-07T18:00:00Z'); // Tomorrow
+            const result = AnnouncementCore.shouldSendCancellationEmail('pending', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return true for failed status after send time', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z'); // Yesterday
+            const result = AnnouncementCore.shouldSendCancellationEmail('failed', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should return false for failed status before send time', () => {
+            const sendAt = new Date('2025-12-07T18:00:00Z'); // Tomorrow
+            const result = AnnouncementCore.shouldSendCancellationEmail('failed', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return false for cancelled status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendCancellationEmail('cancelled', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return false for sent status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendCancellationEmail('sent', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return false for abandoned status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendCancellationEmail('abandoned', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should handle sendAt as timestamp number', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z').getTime(); // Yesterday as number
+            const result = AnnouncementCore.shouldSendCancellationEmail('pending', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should handle sendAt as string', () => {
+            const sendAt = '2025-12-05T18:00:00Z'; // Yesterday as string
+            const result = AnnouncementCore.shouldSendCancellationEmail('pending', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should return true when current time equals send time', () => {
+            const sendAt = new Date('2025-12-06T18:00:00Z'); // Exactly now
+            const result = AnnouncementCore.shouldSendCancellationEmail('pending', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should return false for empty status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendCancellationEmail('', sendAt, now);
+            expect(result).toBe(false);
+        });
+    });
+
+    describe('shouldSendReinstatementEmail', () => {
+        const now = new Date('2025-12-06T18:00:00Z').getTime(); // Current time
+
+        it('should return true for cancelled status after send time', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z'); // Yesterday
+            const result = AnnouncementCore.shouldSendReinstatementEmail('cancelled', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should return false for cancelled status before send time', () => {
+            const sendAt = new Date('2025-12-07T18:00:00Z'); // Tomorrow
+            const result = AnnouncementCore.shouldSendReinstatementEmail('cancelled', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return false for pending status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendReinstatementEmail('pending', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return false for failed status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendReinstatementEmail('failed', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return false for sent status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendReinstatementEmail('sent', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should return false for abandoned status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendReinstatementEmail('abandoned', sendAt, now);
+            expect(result).toBe(false);
+        });
+
+        it('should handle sendAt as timestamp number', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z').getTime(); // Yesterday as number
+            const result = AnnouncementCore.shouldSendReinstatementEmail('cancelled', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should handle sendAt as string', () => {
+            const sendAt = '2025-12-05T18:00:00Z'; // Yesterday as string
+            const result = AnnouncementCore.shouldSendReinstatementEmail('cancelled', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should return true when current time equals send time', () => {
+            const sendAt = new Date('2025-12-06T18:00:00Z'); // Exactly now
+            const result = AnnouncementCore.shouldSendReinstatementEmail('cancelled', sendAt, now);
+            expect(result).toBe(true);
+        });
+
+        it('should return false for empty status', () => {
+            const sendAt = new Date('2025-12-05T18:00:00Z');
+            const result = AnnouncementCore.shouldSendReinstatementEmail('', sendAt, now);
+            expect(result).toBe(false);
+        });
+    });
 });

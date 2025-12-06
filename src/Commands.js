@@ -1,7 +1,16 @@
 const Commands = (() => {
     return Object.freeze({
         cancelSelectedRidesWithCreds(rows, rwgps, force = false) {
-            UIManager.processRows(rows, [rowCheck.cancelled, rowCheck.unscheduled], [], rwgps, RideManager.cancelRows, force);
+            // Check if any rows have announcements that need special handling
+            const rowsWithAnnouncements = rows.filter(r => r.Announcement && r.Status);
+            
+            if (rowsWithAnnouncements.length > 0 && !force) {
+                // Handle cancellation with UI for announcements
+                UIManager.processCancellationWithAnnouncements(rows, rwgps);
+            } else {
+                // Standard cancellation flow
+                UIManager.processRows(rows, [rowCheck.cancelled, rowCheck.unscheduled], [], rwgps, RideManager.cancelRows, force);
+            }
         },
         importSelectedRoutesWithCredentials(rows, rwgps, force = false) {
             UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows, force);
@@ -12,7 +21,16 @@ const Commands = (() => {
             UIManager.processRows(rows, errorFuns, warningFuns, rwgps, undefined, force);
         },
         reinstateSelectedRidesWithCreds(rows, rwgps, force = false) {
-            UIManager.processRows(rows, [rowCheck.notCancelled], [], rwgps, RideManager.reinstateRows, force);
+            // Check if any rows have announcements that need special handling
+            const rowsWithAnnouncements = rows.filter(r => r.Announcement && r.Status === 'cancelled');
+            
+            if (rowsWithAnnouncements.length > 0 && !force) {
+                // Handle reinstatement with UI for announcements
+                UIManager.processReinstatementWithAnnouncements(rows, rwgps);
+            } else {
+                // Standard reinstatement flow
+                UIManager.processRows(rows, [rowCheck.notCancelled], [], rwgps, RideManager.reinstateRows, force);
+            }
         },
         scheduleSelectedRidesWithCredentials(rows, rwgps, force = false) {
             const errorFuns = [rowCheck.unmanagedRide, rowCheck.scheduled, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute, rowCheck.foreignRoute]

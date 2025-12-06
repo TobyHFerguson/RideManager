@@ -3,9 +3,9 @@ module.exports = {
   verbose: true,
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  roots: ['<rootDir>/test', '<rootDir>/submodules/Dates/test'],
+  roots: ['<rootDir>/test'],
   testMatch: ['**/__tests__/**/*.test.js', '**/?(*.)+(spec|test).js'],
-  collectCoverageFrom: ['src/**/*.js', 'submodules/Dates/src/**/*.js'],
+  collectCoverageFrom: ['src/**/*.js'],
   coveragePathIgnorePatterns: ['/node_modules/', '/test/'],
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
   coverageThreshold: {
