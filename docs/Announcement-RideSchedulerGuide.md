@@ -1,4 +1,4 @@
-^\# Ride Announcement System - Ride Scheduler's Guide
+# Ride Announcement System - Ride Scheduler's Guide
 
 **For:** Ride Schedulers who create and manage ride announcements  
 **Focus:** Creating announcements, editing content, ensuring messages are sent
@@ -10,13 +10,12 @@
 ### Creating a Ride Announcement
 
 1. **In the spreadsheet**, select the row(s) for your ride(s)
-2. **Click:** Extensions → RLC Functions → Create Announcement
-3. **Review** the confirmation dialog
-4. **Click "Create"**
-5. **Click the link** in the `Announcement` column to open your document
-6. **Edit the document** - add details, photos, emojis, formatting
-7. **(Optional) Test it** - send a test announcement to yourself to check what it'll look like
-8. **That's it!** The email will send automatically 2 days before the ride at 6:00 PM
+2. **Click:** Ride Schedulers → Schedule Selected Rides
+   If the ride is successfully scheduled a new announcement document will be made from the template (your own personal template or, if that can't be found, the [master template](https://docs.google.com/document/d/1tFcT5H1Sul0r0Nez2xdaqMP2MkvzB8HvkLLRwUr3Lns/edit?usp=drive_link))
+3. **Click the link** in the `Announcement` column to open your document
+4. **Edit the document** - add details, photos, emojis, formatting
+5. **(Optional) Test it** - send a test announcement to yourself to check what it'll look like
+6. **That's it!** The email will be sent automatically 2 days before the ride at 6:00 PM
 
 ---
 
@@ -24,19 +23,20 @@
 
 ### What is a Personal Template?
 
-By default, all announcements use the club's master template. But you can create your own template with your personal style, favorite emojis, or custom layout!
+By default, all announcements use the club's [master template](https://docs.google.com/document/d/1tFcT5H1Sul0r0Nez2xdaqMP2MkvzB8HvkLLRwUr3Lns/edit?usp=drive_link). But you can create your own template with your personal style, favorite emojis, or custom layout!
 
 ### How to Set Up Your Personal Template
 
 1. **Create your template document:**
    - Create a template in the [Ride Announcements](https://drive.google.com/drive/folders/1uwZzbl1SkkAOwA_6-uIj-ZR368_sxJNm?usp=sharing) folder by:
      - Creating it from scratch
-     - Copying another Master Template
+     - Copying another Template
      - Copying an announcement that is ready to be sent
-   - Make sure you share it with toby.h.ferguson@gmail.com (that's the account that currently runs the code) 
+   - Make sure you:
+     *  Share it with toby.h.ferguson@gmail.com (that's the account that currently runs the code) 
+     *  Name it so its clear to you and others just what it is!
    - Customize it with your preferred formatting, emojis, layout
    - Keep the `{FieldName}` placeholders where you want ride data
-   - Save it in a location you can access
 
 2. **Add yourself to Personal Templates sheet:**
    - Open the "Personal Templates" sheet in the CRS
@@ -81,13 +81,13 @@ By default, all announcements use the club's master template. But you can create
 ```
 Today: Create announcement
     ↓
-Document created from template
+Document created from template; `sendAt` column date is 2 days before ride start, at 6:00 pm
     ↓
 Edit document (add custom content, photos, details)
     ↓
 24 hours before send: You receive reminder email
     ↓
-6:00 PM, 2 days before ride: Email sent automatically
+`sendAt` date & time (default - 6:00 PM, 2 days before ride): Email sent automatically
     ↓
 Done!
 ```
@@ -200,10 +200,10 @@ You can edit or remove any of this auto-filled information if needed.
 4. When the scheduled time arrives, the email will include your latest edits
 
 ### Sending a Test Announcement
-Simply select the row or rows you want test announcements for (any column) then select the `Ride Schedulers / Test Selected Announcements` - you'll be prompted for an email address, and then the announcement(s) will be sent to that address. (Only `pending` announcements can be tested - others will be ignored!)
+Simply select the row or rows you want test announcements for (any column) then select the `Ride Schedulers --> Test Selected Announcements` - you'll be prompted for an email address, and then the announcement(s) will be sent to that address. (Only `pending` announcements can be tested - others will be ignored!)
 
 ### Sending immediately
-If you just decide you want to send one or more announcements **officially** right now then select the announcements (only `pending` - others will be ignored!) and select `Ride Schedulers / Send Pending Announcements`. 
+If you just decide you want to send one or more announcements **officially** right now then select the announcements (only `pending` - others will be ignored!) and select `Ride Schedulers --> Send Pending Announcements`. 
 
 ---
 
@@ -373,35 +373,36 @@ This typically includes:
 
 ### Example Announcement
 
-```
-🚴‍♀️ Thursday Night Ride is On! ✨
 
-Join us for our weekly Thursday evening ride through the Westside!
+>🚴‍♀️ Thursday Night Ride is On! ✨
+>
+>[Thu A (12/4 17:00) [1] BT- Doyle st., Soquel ave, Walnut ave, Highland ave, Coolidge Dr., Western Dr., W cliff](https://ridewithgps.com/events/436003-thu-a-12-4-17-00-1-bt-doyle-st-soquel-av)
+>
+>Join us for our weekly Thursday evening ride through the Westside! Don't forget to RSVP using the above link so we know you're coming!
+>
+>📅 When: Thursday, December 4 at 5:00 PM sharp
+>📍 Where: The Bicycle Trip (1234 Main St, Santa Cruz) ( [Apple Maps](https://maps.apple.com/?ll=36.97887,-122.01297&q=Ride%20Start) / [Google Maps](https://maps.google.com/?q=36.97887,-122.01297))
+>
+>With the time change, it's already dark by 5 PM — so don't forget 
+>your bike lights! Safety first!
+>
+>Route Details:
+>- Distance: 24.5 miles
+>- Elevation: 1,234 ft (50 ft/mi)
+>- Pace: Casual, no-drop ride
+>
+>This is a casual, no-drop ride where everyone rides at a comfortable 
+>pace. Whether you're here for the miles or just the good vibes, 
+>you're welcome!
+>
+>Post-Ride Hangout:
+>After the ride, we'll head to Gilman Brewing for drinks, bites, and 
+>great company.
+>
+>Questions? Contact me at leader@email.com
+>
+>See you there! 🎉
 
-📅 When: Thursday, December 5 at 5:00 PM sharp
-📍 Where: The Bicycle Trip (1234 Main St, Santa Cruz)
-
-With the time change, it's already dark by 5 PM — so don't forget 
-your bike lights! Safety first!
-
-Route Details:
-- Distance: 24.5 miles
-- Elevation: 1,234 ft (50 ft/mi)
-- Pace: Casual, no-drop ride
-- Route: [View on RWGPS]
-
-This is a casual, no-drop ride where everyone rides at a comfortable 
-pace. Whether you're here for the miles or just the good vibes, 
-you're welcome!
-
-Post-Ride Hangout:
-After the ride, we'll head to Gilman Brewing for drinks, bites, and 
-great company.
-
-Questions? Contact me at leader@email.com
-
-See you there! 🎉
-```
 
 ---
 
