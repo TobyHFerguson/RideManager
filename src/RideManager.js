@@ -212,11 +212,11 @@ const RideManager = (function () {
         }
     }
 
-    function processRows_(rows, rwgps, fn) {
+    function processRows_(rows, rwgps, fn, reason = '') {
         const errors = [];
         rows.forEach(row => {
             try {
-                fn(row, rwgps);
+                fn(row, rwgps, reason);
             } catch (e) {
                 e.message = `Error processing row ${row.rowNum}: ${e.message}`;
                 errors.push(e);
@@ -227,14 +227,14 @@ const RideManager = (function () {
         }
     }
     return {
-        cancelRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, cancelRow_)
+        cancelRows: function (rows, rwgps, reason = '') {
+            processRows_(rows, rwgps, cancelRow_, reason)
         },
         importRows: function (rows, rwgps) {
             processRows_(rows, rwgps, importRow_);
         },
-        reinstateRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, reinstateRow_);
+        reinstateRows: function (rows, rwgps, reason = '') {
+            processRows_(rows, rwgps, reinstateRow_, reason);
         },
         scheduleRows: function (rows, rwgps) {
             processRows_(rows, rwgps, schedule_row_);

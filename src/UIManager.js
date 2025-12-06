@@ -91,6 +91,201 @@ const UIManager = {
             `You can check retry status using:\nExtensions → DTRT → View Retry Queue Status`;
         
         SpreadsheetApp.getUi().alert('Background Retry Queued', message, SpreadsheetApp.getUi().ButtonSet.OK);
+    },
+
+    /**
+     * Process cancellation with announcement handling
+     * @param {Array} rows - Rows to cancel
+     * @param {Object} rwgps - RWGPS connector
+     */
+    processCancellationWithAnnouncements: function(rows, rwgps) {
+        const ui = SpreadsheetApp.getUi();
+        
+        // Validate rows first
+        evalRows(rows, rwgps, [rowCheck.cancelled, rowCheck.unscheduled], []);
+        const processableRows = rows.filter(r => r.errors.length === 0);
+        
+        if (processableRows.length === 0) {
+            const message = create_error_message(rows) + "All selected rides are unprocessable and need to have their errors fixed.";
+            ui.alert(message);
+            return;
+        }
+        
+        // Process each row individually
+        const results = [];
+        let cancelled = 0;
+        
+        for (const row of processableRows) {
+            try {
+                // Check if row has announcement
+                if (!row.Announcement || !row.Status) {
+                    // No announcement - simple cancellation
+                    RideManager.cancelRows([row], rwgps);
+                    cancelled++;
+                    continue;
+                }
+                
+                // Determine if email will be sent
+                const now = new Date().getTime();
+                const shouldSendEmail = AnnouncementCore.shouldSendCancellationEmail(row.Status, row.SendAt, now);
+                
+                if (!shouldSendEmail) {
+                    // No email needed - just inform user
+                    const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                        `This ride has an announcement scheduled for ${row.SendAt}.\n` +
+                        `Since the announcement hasn't been sent yet, no cancellation email will be sent.\n` +
+                        `The announcement status will be set to 'cancelled'.\n\n` +
+                        `Cancel this ride?`;
+                    
+                    const response = ui.alert('Cancel Ride', confirmMsg, ui.ButtonSet.YES_NO);
+                    if (response === ui.Button.YES) {
+                        RideManager.cancelRows([row], rwgps);
+                        cancelled++;
+                        results.push(`Row ${row.rowNum}: Cancelled (no email sent - before SendAt)`);
+                    }
+                } else {
+                    // Email will be sent - get reason from user
+                    const promptMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                        `The announcement for this ride was already sent at ${row.SendAt}.\n` +
+                        `A cancellation email will be sent to all riders.\n\n` +
+                        `Please provide a brief reason for the cancellation:`;
+                    
+                    const reasonResponse = ui.prompt('Cancellation Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
+                    
+                    if (reasonResponse.getSelectedButton() === ui.Button.OK) {
+                        const reason = reasonResponse.getResponseText();
+                        
+                        // Perform cancellation with reason
+                        RideManager.cancelRows([row], rwgps, reason);
+                        cancelled++;
+                        
+                        // Check if email was actually sent
+                        const manager = new AnnouncementManager();
+                        // Email sending happens inside RideManager.cancelRows
+                        results.push(`Row ${row.rowNum}: Cancelled - cancellation email sent`);
+                    }
+                }
+            } catch (error) {
+                results.push(`Row ${row.rowNum}: ERROR - ${error.message}`);
+                console.error(`Error cancelling row ${row.rowNum}:`, error);
+            }
+        }
+        
+        // Show final results
+        if (results.length > 0) {
+            const resultMsg = `Cancellation Complete\n\n${cancelled} ride(s) cancelled.\n\n` +
+                `Details:\n${results.join('\n')}`;
+            ui.alert('Cancellation Results', resultMsg, ui.ButtonSet.OK);
+        }
+        
+        // Helper function for error messages
+        function create_error_message(rows) {
+            let message = "";
+            let error_rows = rows.filter(row => row.errors.length > 0);
+            if (error_rows.length > 0) {
+                message += "These rides had errors and will not be processed:\n";
+                let errors = error_rows.flatMap(row => row.errors.map(error => `Row ${row.rowNum}: ${error}`));
+                message += errors.join("\n");
+                message += "\n\n";
+            }
+            return message;
+        }
+    },
+
+    /**
+     * Process reinstatement with announcement handling
+     * @param {Array} rows - Rows to reinstate
+     * @param {Object} rwgps - RWGPS connector
+     */
+    processReinstatementWithAnnouncements: function(rows, rwgps) {
+        const ui = SpreadsheetApp.getUi();
+        
+        // Validate rows first
+        evalRows(rows, rwgps, [rowCheck.notCancelled], []);
+        const processableRows = rows.filter(r => r.errors.length === 0);
+        
+        if (processableRows.length === 0) {
+            const message = create_error_message(rows) + "All selected rides are unprocessable and need to have their errors fixed.";
+            ui.alert(message);
+            return;
+        }
+        
+        // Process each row individually
+        const results = [];
+        let reinstated = 0;
+        
+        for (const row of processableRows) {
+            try {
+                // Check if row has announcement
+                if (!row.Announcement || !row.Status || row.Status !== 'cancelled') {
+                    // No announcement or not cancelled - simple reinstatement
+                    RideManager.reinstateRows([row], rwgps);
+                    reinstated++;
+                    continue;
+                }
+                
+                // Determine if email will be sent
+                const now = new Date().getTime();
+                const shouldSendEmail = AnnouncementCore.shouldSendReinstatementEmail(row.Status, row.SendAt, now);
+                
+                if (!shouldSendEmail) {
+                    // No email needed - just inform user
+                    const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                        `This ride has an announcement scheduled for ${row.SendAt}.\n` +
+                        `Since the announcement hasn't been sent yet, no reinstatement email will be sent.\n` +
+                        `The announcement status will be returned to 'pending' and will be sent at the scheduled time.\n\n` +
+                        `Reinstate this ride?`;
+                    
+                    const response = ui.alert('Reinstate Ride', confirmMsg, ui.ButtonSet.YES_NO);
+                    if (response === ui.Button.YES) {
+                        RideManager.reinstateRows([row], rwgps);
+                        reinstated++;
+                        results.push(`Row ${row.rowNum}: Reinstated (no email sent - before SendAt)`);
+                    }
+                } else {
+                    // Email will be sent - get reason from user
+                    const promptMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                        `The announcement for this ride was already sent at ${row.SendAt}.\n` +
+                        `A reinstatement email will be sent to all riders.\n\n` +
+                        `Please provide a brief reason for the reinstatement:`;
+                    
+                    const reasonResponse = ui.prompt('Reinstatement Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
+                    
+                    if (reasonResponse.getSelectedButton() === ui.Button.OK) {
+                        const reason = reasonResponse.getResponseText();
+                        
+                        // Perform reinstatement with reason
+                        RideManager.reinstateRows([row], rwgps, reason);
+                        reinstated++;
+                        
+                        results.push(`Row ${row.rowNum}: Reinstated - reinstatement email sent`);
+                    }
+                }
+            } catch (error) {
+                results.push(`Row ${row.rowNum}: ERROR - ${error.message}`);
+                console.error(`Error reinstating row ${row.rowNum}:`, error);
+            }
+        }
+        
+        // Show final results
+        if (results.length > 0) {
+            const resultMsg = `Reinstatement Complete\n\n${reinstated} ride(s) reinstated.\n\n` +
+                `Details:\n${results.join('\n')}`;
+            ui.alert('Reinstatement Results', resultMsg, ui.ButtonSet.OK);
+        }
+        
+        // Helper function for error messages
+        function create_error_message(rows) {
+            let message = "";
+            let error_rows = rows.filter(row => row.errors.length > 0);
+            if (error_rows.length > 0) {
+                message += "These rides had errors and will not be processed:\n";
+                let errors = error_rows.flatMap(row => row.errors.map(error => `Row ${row.rowNum}: ${error}`));
+                message += errors.join("\n");
+                message += "\n\n";
+            }
+            return message;
+        }
     }
 
 

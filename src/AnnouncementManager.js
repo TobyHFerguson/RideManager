@@ -1176,6 +1176,9 @@ var AnnouncementManager = (function() {
             const doc = DocumentApp.openById(documentId);
 
             // Build rowData object for template expansion
+            // Use "No reason given" if reason is empty or not provided
+            const reasonText = reason && reason.trim() ? reason : 'No reason given';
+            
             const rowData = {
                 _rowNum: row.rowNum,
                 RideName: row.RideName,
@@ -1188,7 +1191,7 @@ var AnnouncementManager = (function() {
                 RideURL: row.RideURL,
                 RouteURL: row.RouteURL,
                 RouteName: row.RouteName,
-                [reasonFieldName]: reason, // Add the reason field dynamically
+                [reasonFieldName]: reasonText, // Add the reason field with default
                 ...row._data
             };
 
