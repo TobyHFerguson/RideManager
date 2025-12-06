@@ -461,7 +461,7 @@ var AnnouncementManager = (function() {
         /**
          * Handle ride cancellation with announcement
          * @param {Row} row - Row object from ScheduleAdapter
-         * @param {string} reason - User-provided cancellation reason (empty string if force=true)
+         * @param {string} [reason=''] - User-provided cancellation reason (empty string if force=true or no user input)
          * @returns {Object} {announcementSent: boolean, error?: string}
          */
         handleCancellation(row, reason = '') {
@@ -499,7 +499,7 @@ var AnnouncementManager = (function() {
         /**
          * Handle ride reinstatement with announcement
          * @param {Row} row - Row object from ScheduleAdapter
-         * @param {string} reason - User-provided reinstatement reason (empty string if force=true)
+         * @param {string} [reason=''] - User-provided reinstatement reason (empty string if force=true or no user input)
          * @returns {Object} {announcementSent: boolean, error?: string}
          */
         handleReinstatement(row, reason = '') {

@@ -34,7 +34,7 @@ const RideManager = (function () {
         // Handle announcement cancellation
         if (row.Announcement && row.Status) {
             try {
-                const manager = new (AnnouncementManager)();
+                const manager = new AnnouncementManager();
                 const result = manager.handleCancellation(row, reason);
                 
                 // Log to UserLogger
@@ -90,7 +90,7 @@ const RideManager = (function () {
         // Handle announcement reinstatement
         if (row.Announcement && row.Status === 'cancelled') {
             try {
-                const manager = new (AnnouncementManager)();
+                const manager = new AnnouncementManager();
                 const result = manager.handleReinstatement(row, reason);
                 
                 // Log to UserLogger
