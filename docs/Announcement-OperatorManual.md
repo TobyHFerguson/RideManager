@@ -678,3 +678,151 @@ const adapter = ScheduleAdapter.getInstance();
 const row = adapter.getAllRows().find(r => r.rowNum === 123);
 Logger.log(`Row ${row.rowNum}: Status=${row.Status}, SendAt=${row.SendAt}`);
 ```
+
+---
+
+## Cancellation and Reinstatement Handling
+
+### Overview
+
+The system automatically handles announcements when rides are cancelled or reinstated. Email notifications are sent based on timing relative to the scheduled send time.
+
+### Configuration
+
+Two additional global properties must be configured:
+
+| Property | Value | Purpose |
+|----------|-------|---------|
+| `CANCELLATION_TEMPLATE` | Google Doc URL | Template for cancellation emails |
+| `REINSTATEMENT_TEMPLATE` | Google Doc URL | Template for reinstatement emails |
+
+**Setup:**
+1. Create cancellation template document (similar to regular announcement template)
+2. Add `{CancellationReason}` field for user-provided reason
+3. Set CANCELLATION_TEMPLATE in Globals sheet to document URL
+4. Repeat for reinstatement template with `{ReinstatementReason}` field
+
+### Email Timing Logic
+
+#### Cancellation
+
+**Before SendAt:**
+- Status → `cancelled`
+- No email sent
+- Scheduled announcement blocked
+- Reminders blocked
+
+**After SendAt:**
+- Status → `cancelled`
+- Cancellation email sent immediately
+- Template expanded with ride data
+- User activity logged
+
+#### Reinstatement
+
+**Before SendAt:**
+- Status → `pending`
+- No email sent
+- Announcement returns to queue
+- Will send at scheduled time
+
+**After SendAt:**
+- Status → `pending`
+- Reinstatement email sent immediately
+- Template expanded with ride data
+- Note: Past SendAt means no future scheduled send
+
+### Troubleshooting
+
+#### Problem: No cancellation/reinstatement email sent
+
+**Symptoms:**
+- Ride cancelled/reinstated but no email received
+- No error in LastError column
+
+**Investigation:**
+1. Check if announcement exists (Announcement column not empty)
+2. Verify Status column value
+3. Check SendAt time vs current time
+4. Verify CANCELLATION_TEMPLATE/REINSTATEMENT_TEMPLATE in Globals
+5. Check Apps Script execution logs
+
+**Common causes:**
+- Template URL not configured in Globals
+- SendAt time not yet reached (email only sent after SendAt)
+- Announcement status was already `cancelled` (for reinstatement)
+- No announcement was created for the ride
+
+#### Problem: Template fields not expanding
+
+**Symptoms:**
+- Email sent but shows `{CancellationReason}` or `{ReinstatementReason}` unexpanded
+
+**Investigation:**
+1. Check if reason was provided during cancellation/reinstatement
+2. Verify template field syntax matches exactly
+3. Review execution logs for template expansion errors
+
+**Resolution:**
+- Reason fields may be empty if cancelled via force=true mode
+- Check User Activity Log for reason text
+- Verify template uses correct field names
+
+#### Problem: Calendar retry queue not cleaned up
+
+**Symptoms:**
+- Cancelled ride still shows in retry queue
+- Background retry attempts for cancelled rides
+
+**Investigation:**
+1. Check if GoogleEventId exists for the row
+2. View retry queue status (Extensions → View Retry Queue Status)
+3. Review Apps Script logs for retry queue operations
+
+**Resolution:**
+- System automatically removes from queue on cancellation
+- If manual intervention needed, use RetryQueue methods in Apps Script
+- Verify GoogleEventId is populated in spreadsheet row
+
+### Monitoring
+
+**Status transitions to watch:**
+
+| From | To | Trigger | Email Sent? |
+|------|-------|---------|-------------|
+| `pending` | `cancelled` | Cancel before SendAt | No |
+| `pending` | `cancelled` | Cancel after SendAt | Yes (cancellation) |
+| `cancelled` | `pending` | Reinstate before SendAt | No |
+| `cancelled` | `pending` | Reinstate after SendAt | Yes (reinstatement) |
+
+**User Activity Log entries:**
+```
+Action: CANCEL_RIDE
+Details: Row 42, Sat A (12/7 10:00) [5] Nice Route, Reason: Weather too bad
+Additional: {"announcementSent": true}
+
+Action: REINSTATE_RIDE  
+Details: Row 42, Sat A (12/7 10:00) [5] Nice Route, Reason: Weather improved
+Additional: {"announcementSent": false}
+```
+
+### Manual Testing
+
+**Test cancellation email:**
+```javascript
+// In Apps Script editor
+const adapter = new ScheduleAdapter();
+const row = adapter.loadAll().find(r => r.rowNum === 123); // Pick a test row
+const manager = new AnnouncementManager();
+const result = manager.handleCancellation(row, 'Test cancellation');
+Logger.log(result);
+```
+
+**Test reinstatement email:**
+```javascript
+const adapter = new ScheduleAdapter();
+const row = adapter.loadAll().find(r => r.rowNum === 123);
+const manager = new AnnouncementManager();
+const result = manager.handleReinstatement(row, 'Test reinstatement');
+Logger.log(result);
+```

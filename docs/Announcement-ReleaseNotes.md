@@ -192,6 +192,92 @@ Before deploying to production:
 4. **Retry Window:** Failed sends retry for 24 hours, then mark as permanently failed
 5. **Permissions:** Announcement documents require shared drive or proper permissions
 
+---
+
+## Version 2.0 - Cancellation and Reinstatement Support
+
+**Release Date:** TBD  
+**Feature:** Manual Override for Cancelled/Reinstated Rides  
+**Issue:** #115
+
+### New Functionality
+
+This release adds support for automatically handling announcement emails when rides are cancelled or reinstated.
+
+### Behavior
+
+#### Ride Cancellation
+
+When a ride is cancelled:
+
+1. **Before SendAt time**: 
+   - Announcement status changes to `cancelled`
+   - No cancellation email is sent
+   - Scheduled announcement will not be sent
+   - Reminders will not be sent
+
+2. **After SendAt time**:
+   - Announcement status changes to `cancelled`
+   - Cancellation email is immediately sent to announcement recipients
+   - Email uses CANCELLATION_TEMPLATE from Globals
+   - User activity is logged
+
+#### Ride Reinstatement
+
+When a cancelled ride is reinstated:
+
+1. **Before SendAt time**:
+   - Announcement status returns to `pending`
+   - No reinstatement email is sent
+   - Announcement returns to normal queue (will send at scheduled time)
+
+2. **After SendAt time**:
+   - Announcement status returns to `pending`
+   - Reinstatement email is immediately sent to announcement recipients
+   - Email uses REINSTATEMENT_TEMPLATE from Globals
+   - User activity is logged
+   - Note: Since SendAt has passed, no future scheduled announcement will be sent
+
+### New Global Configuration
+
+Two new global properties are required:
+
+| Property Name | Type | Description | Example |
+|---------------|------|-------------|---------|
+| `CANCELLATION_TEMPLATE` | URL | Google Doc URL for cancellation email template | `https://docs.google.com/document/d/...` |
+| `REINSTATEMENT_TEMPLATE` | URL | Google Doc URL for reinstatement email template | `https://docs.google.com/document/d/...` |
+
+### Template Fields
+
+Both cancellation and reinstatement templates support all standard announcement fields plus:
+
+- `{CancellationReason}` - User-provided reason for cancellation (cancellation template only)
+- `{ReinstatementReason}` - User-provided reason for reinstatement (reinstatement template only)
+- `{RideName}` - Automatically includes "CANCELLED: " prefix for cancelled rides
+- All other standard fields: `{DateTime}`, `{Date}`, `{Day}`, `{Time}`, `{RideLink}`, etc.
+
+### User Activity Logging
+
+All cancellation and reinstatement operations are logged to the User Activity Log with:
+- Action type: `CANCEL_RIDE` or `REINSTATE_RIDE`
+- Row number and ride name
+- Cancellation/reinstatement reason
+- Whether announcement email was sent
+
+### Integration with Calendar Retry Queue
+
+- **Cancellation**: If a calendar event creation is pending in the retry queue, it is automatically removed when the ride is cancelled
+- **Reinstatement**: Pending retry operations are left in the queue to continue (ride needs the calendar event)
+
+### Backward Compatibility
+
+This feature is fully backward compatible:
+- Existing announcements continue to work normally
+- If CANCELLATION_TEMPLATE or REINSTATEMENT_TEMPLATE is not configured, cancellation/reinstatement still works but no email is sent
+- Rides without announcements are not affected
+
+---
+
 ## Support
 
 For issues or questions:

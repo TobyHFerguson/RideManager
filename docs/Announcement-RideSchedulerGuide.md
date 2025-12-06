@@ -419,6 +419,78 @@ This typically includes:
 
 ---
 
+## Cancelling or Reinstating Rides with Announcements
+
+### What Happens When You Cancel a Ride
+
+When you cancel a ride that has an announcement:
+
+**If you cancel BEFORE the announcement send time (6 PM, 2 days before):**
+- The announcement status changes to "cancelled"
+- The announcement email will NOT be sent
+- No cancellation notice is sent
+- The system just quietly stops the announcement
+
+**If you cancel AFTER the announcement send time:**
+- The announcement status changes to "cancelled"
+- A cancellation email is IMMEDIATELY sent to all riders
+- The email uses the cancellation template
+- You'll be asked to provide a brief reason for the cancellation
+
+### What Happens When You Reinstate a Cancelled Ride
+
+When you reinstate a previously cancelled ride:
+
+**If you reinstate BEFORE the announcement send time:**
+- The announcement status returns to "pending"
+- The announcement will be sent at the normal time (6 PM, 2 days before)
+- No reinstatement notice is sent immediately
+- Everything returns to normal
+
+**If you reinstate AFTER the announcement send time:**
+- The announcement status returns to "pending"
+- A reinstatement email is IMMEDIATELY sent to all riders
+- The email uses the reinstatement template
+- You'll be asked to provide a brief reason for the reinstatement
+- Note: The regular announcement already went out, this just notifies people the ride is back on
+
+### Examples
+
+**Example 1: Early Cancellation (Quiet)**
+- Ride scheduled: Saturday, December 7 at 10:00 AM
+- Announcement send time: Thursday, December 5 at 6:00 PM
+- You cancel: Wednesday, December 4 at 3:00 PM
+- Result: Announcement cancelled quietly, no email sent to anyone
+
+**Example 2: Late Cancellation (Email Sent)**
+- Ride scheduled: Saturday, December 7 at 10:00 AM
+- Announcement send time: Thursday, December 5 at 6:00 PM
+- Announcement was sent: Thursday, December 5 at 6:05 PM
+- You cancel: Friday, December 6 at 10:00 AM
+- Result: Cancellation email sent immediately to all riders
+
+**Example 3: Early Reinstatement (Quiet)**
+- Ride cancelled: Wednesday, December 4
+- You reinstate: Thursday, December 5 at 3:00 PM
+- Announcement send time: Thursday, December 5 at 6:00 PM
+- Result: Announcement sent at 6 PM as originally planned
+
+**Example 4: Late Reinstatement (Email Sent)**
+- Announcement already sent: Thursday, December 5 at 6:05 PM
+- Ride cancelled: Friday, December 6 at 8:00 AM
+- Cancellation email sent: Friday, December 6 at 8:05 AM
+- You reinstate: Friday, December 6 at 2:00 PM
+- Result: Reinstatement email sent immediately to all riders
+
+### Tips
+
+- **Cancel early if possible** - If you know you need to cancel, do it before the announcement goes out to avoid confusion
+- **Provide a clear reason** - When you cancel/reinstate after the announcement time, you'll be asked for a reason. Be brief but clear: "Heavy rain forecast" or "Weather improved"
+- **Check the announcement status** - After cancelling/reinstating, check the spreadsheet to verify the status changed correctly
+- **Rides without announcements** - If you didn't create an announcement for a ride, cancelling/reinstating works normally but no emails are sent
+
+---
+
 ## Quick Reference
 
 ### Your Workflow
@@ -441,5 +513,7 @@ This typically includes:
 - ✅ Add images, emojis, formatting
 - ✅ System retries automatically if failed
 - ✅ You get 24-hour reminder
+- ✅ Cancel before send = no email, after send = cancellation notice
+- ✅ Reinstate before send = normal announcement, after send = reinstatement notice
 - ❌ Can't recall after sent
 - ❌ Keep images under 100KB
