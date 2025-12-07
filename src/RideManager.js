@@ -23,13 +23,41 @@ const RideManager = (function () {
         return route ? `${route.first_lat},${route.first_lng}` : '';
     }
 
-    function cancelRow_(row, rwgps) {
+    function cancelRow_(row, rwgps, reason = '') {
         const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
         event.cancel();
         row.setRideLink(event.name, row.RideURL);
         rwgps.edit_event(row.RideURL, event)
         const description = `<a href="${row.RideURL}">${event.name}</a>`;
         GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
+        
+        // Handle announcement cancellation
+        if (row.Announcement && row.Status) {
+            try {
+                const manager = new AnnouncementManager();
+                const result = manager.handleCancellation(row, reason);
+                
+                // Log to UserLogger
+                UserLogger.log('CANCEL_RIDE', `Row ${row.rowNum}, ${row.RideName}, Reason: ${reason || '(none)'}`, {
+                    announcementSent: result.announcementSent,
+                    error: result.error
+                });
+            } catch (error) {
+                console.error(`RideManager.cancelRow_: Error handling announcement cancellation: ${error.message}`);
+                // Don't throw - ride cancellation succeeded, announcement is secondary
+            }
+        }
+        
+        // Remove from calendar retry queue if present
+        if (row.GoogleEventId) {
+            try {
+                const retryQueue = new RetryQueue();
+                retryQueue.removeByEventId(row.GoogleEventId);
+            } catch (error) {
+                console.error(`RideManager.cancelRow_: Error removing from retry queue: ${error.message}`);
+                // Don't throw - this is cleanup
+            }
+        }
     }
     function importRow_(row, rwgps) {
         let route = {
@@ -51,13 +79,32 @@ const RideManager = (function () {
     }
 
 
-    function reinstateRow_(row, rwgps) {
+    function reinstateRow_(row, rwgps, reason = '') {
         const event = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
         event.reinstate();
         row.setRideLink(event.name, row.RideURL);
         rwgps.edit_event(row.RideURL, event)
         const description = `<a href="${row.RideURL}">${event.name}</a>`;
         GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
+        
+        // Handle announcement reinstatement
+        if (row.Announcement && row.Status === 'cancelled') {
+            try {
+                const manager = new AnnouncementManager();
+                const result = manager.handleReinstatement(row, reason);
+                
+                // Log to UserLogger
+                UserLogger.log('REINSTATE_RIDE', `Row ${row.rowNum}, ${row.RideName}, Reason: ${reason || '(none)'}`, {
+                    announcementSent: result.announcementSent,
+                    error: result.error
+                });
+            } catch (error) {
+                console.error(`RideManager.reinstateRow_: Error handling announcement reinstatement: ${error.message}`);
+                // Don't throw - ride reinstatement succeeded, announcement is secondary
+            }
+        }
+        
+        // Note: We do NOT remove from retry queue on reinstatement - let retry continue
     }
 
     function schedule_row_(row, rwgps) {
@@ -165,11 +212,11 @@ const RideManager = (function () {
         }
     }
 
-    function processRows_(rows, rwgps, fn) {
+    function processRows_(rows, rwgps, fn, reason = '') {
         const errors = [];
         rows.forEach(row => {
             try {
-                fn(row, rwgps);
+                fn(row, rwgps, reason);
             } catch (e) {
                 e.message = `Error processing row ${row.rowNum}: ${e.message}`;
                 errors.push(e);
@@ -180,14 +227,14 @@ const RideManager = (function () {
         }
     }
     return {
-        cancelRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, cancelRow_)
+        cancelRows: function (rows, rwgps, reason = '') {
+            processRows_(rows, rwgps, cancelRow_, reason)
         },
         importRows: function (rows, rwgps) {
             processRows_(rows, rwgps, importRow_);
         },
-        reinstateRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, reinstateRow_);
+        reinstateRows: function (rows, rwgps, reason = '') {
+            processRows_(rows, rwgps, reinstateRow_, reason);
         },
         scheduleRows: function (rows, rwgps) {
             processRows_(rows, rwgps, schedule_row_);
