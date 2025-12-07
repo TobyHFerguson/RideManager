@@ -25,10 +25,17 @@ var RetryQueueSpreadsheetAdapter = (function() {
         /**
          * Creates a new RetryQueueSpreadsheetAdapter
          * @param {string} [sheetName='Retry Queue'] - Name of the sheet to manage
+         * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} [spreadsheet] - Optional spreadsheet object (defaults to active spreadsheet)
          */
-        constructor(sheetName = 'Retry Queue') {
+        constructor(sheetName = 'Retry Queue', spreadsheet = null) {
             this.sheetName = sheetName;
-            this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+            
+            // Use provided spreadsheet or get active spreadsheet
+            try {
+                this.spreadsheet = spreadsheet || SpreadsheetApp.getActiveSpreadsheet();
+            } catch (error) {
+                throw new Error('RetryQueueSpreadsheetAdapter requires an active spreadsheet or spreadsheet parameter. Error: ' + error.message);
+            }
             
             // Get or create the sheet
             this.sheet = this.spreadsheet.getSheetByName(sheetName);

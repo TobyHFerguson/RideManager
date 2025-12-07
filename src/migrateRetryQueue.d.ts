@@ -21,10 +21,12 @@ declare function checkRetryQueueMigration(): void;
 
 /**
  * Clear old PropertiesService queue (ONLY after verifying migration)
+ * @param skipConfirmation - If true, skip UI confirmation (for automated scripts)
  */
-declare function clearOldPropertiesServiceQueue(): void;
+declare function clearOldPropertiesServiceQueue(skipConfirmation?: boolean): void;
 
 /**
  * Delete all backup queues from PropertiesService
+ * @param skipConfirmation - If true, skip UI confirmation (for automated scripts)
  */
-declare function deleteAllBackups(): void;
+declare function deleteAllBackups(skipConfirmation?: boolean): void;

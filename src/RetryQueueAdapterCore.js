@@ -85,12 +85,12 @@ var RetryQueueAdapterCore = (function() {
                 calendarId: row['Calendar ID'] || '',
                 rideUrl: row['Ride URL'] || '',
                 rideTitle: row['Ride Title'] || '',
-                rowNum: row['Row Num'] || undefined,
+                rowNum: row['Row Num'] || '',
                 userEmail: row['User Email'] || '',
                 enqueuedAt: row['Enqueued At'] ? new Date(row['Enqueued At']).getTime() : 0,
                 nextRetryAt: row['Next Retry At'] ? new Date(row['Next Retry At']).getTime() : 0,
                 attemptCount: parseInt(row['Attempt Count']) || 0,
-                lastError: row['Last Error'] || null,
+                lastError: row['Last Error'] || '',
                 params: row['Params'] ? JSON.parse(row['Params']) : {}
             };
         }

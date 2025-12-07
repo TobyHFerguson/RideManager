@@ -183,7 +183,7 @@ describe('RetryQueueAdapterCore', () => {
             expect(item.type).toBe('');
             expect(item.enqueuedAt).toBe(0);
             expect(item.attemptCount).toBe(0);
-            expect(item.lastError).toBe(null);
+            expect(item.lastError).toBe('');
             expect(item.params).toEqual({});
         });
 

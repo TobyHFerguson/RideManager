@@ -4,8 +4,10 @@
 declare class RetryQueueSpreadsheetAdapter {
     /**
      * Creates a new RetryQueueSpreadsheetAdapter
+     * @param sheetName - Name of the sheet to manage (defaults to 'Retry Queue')
+     * @param spreadsheet - Optional spreadsheet object (defaults to active spreadsheet)
      */
-    constructor(sheetName?: string);
+    constructor(sheetName?: string, spreadsheet?: GoogleAppsScript.Spreadsheet.Spreadsheet);
 
     /**
      * Load all queue items from the spreadsheet

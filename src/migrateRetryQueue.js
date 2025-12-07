@@ -146,20 +146,33 @@ function checkRetryQueueMigration() {
 
 /**
  * Clear old PropertiesService queue (ONLY after verifying migration)
+ * @param {boolean} skipConfirmation - If true, skip UI confirmation (for automated scripts)
  */
-function clearOldPropertiesServiceQueue() {
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-        'Clear Old Queue',
-        'This will delete the retry queue from PropertiesService.\n\n' +
-        'Make sure you have:\n' +
-        '1. Run migrateRetryQueueToSpreadsheet()\n' +
-        '2. Verified items in Retry Queue spreadsheet\n\n' +
-        'Continue?',
-        ui.ButtonSet.YES_NO
-    );
+function clearOldPropertiesServiceQueue(skipConfirmation = false) {
+    let shouldClear = skipConfirmation;
     
-    if (response !== ui.Button.YES) {
+    if (!skipConfirmation) {
+        try {
+            const ui = SpreadsheetApp.getUi();
+            const response = ui.alert(
+                'Clear Old Queue',
+                'This will delete the retry queue from PropertiesService.\n\n' +
+                'Make sure you have:\n' +
+                '1. Run migrateRetryQueueToSpreadsheet()\n' +
+                '2. Verified items in Retry Queue spreadsheet\n\n' +
+                'Continue?',
+                ui.ButtonSet.YES_NO
+            );
+            
+            shouldClear = (response === ui.Button.YES);
+        } catch (error) {
+            // Not in spreadsheet context, require explicit confirmation
+            Logger.log('Not in spreadsheet context. Use clearOldPropertiesServiceQueue(true) to skip confirmation.');
+            return;
+        }
+    }
+    
+    if (!shouldClear) {
         Logger.log('Cancelled by user');
         return;
     }
@@ -174,18 +187,31 @@ function clearOldPropertiesServiceQueue() {
 
 /**
  * Delete all backup queues from PropertiesService
+ * @param {boolean} skipConfirmation - If true, skip UI confirmation (for automated scripts)
  */
-function deleteAllBackups() {
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-        'Delete Backups',
-        'This will permanently delete all backup queues.\n\n' +
-        'Only do this after confirming migration was successful.\n\n' +
-        'Continue?',
-        ui.ButtonSet.YES_NO
-    );
+function deleteAllBackups(skipConfirmation = false) {
+    let shouldDelete = skipConfirmation;
     
-    if (response !== ui.Button.YES) {
+    if (!skipConfirmation) {
+        try {
+            const ui = SpreadsheetApp.getUi();
+            const response = ui.alert(
+                'Delete Backups',
+                'This will permanently delete all backup queues.\n\n' +
+                'Only do this after confirming migration was successful.\n\n' +
+                'Continue?',
+                ui.ButtonSet.YES_NO
+            );
+            
+            shouldDelete = (response === ui.Button.YES);
+        } catch (error) {
+            // Not in spreadsheet context, require explicit confirmation
+            Logger.log('Not in spreadsheet context. Use deleteAllBackups(true) to skip confirmation.');
+            return;
+        }
+    }
+    
+    if (!shouldDelete) {
         Logger.log('Cancelled by user');
         return;
     }
