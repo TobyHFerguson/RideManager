@@ -1,8 +1,8 @@
-# Retry Queue Migration Guide
+# Calendar Retry Queue Migration Guide
 
 ## Overview
 
-The Google Calendar Retry Queue has been refactored from an internal PropertiesService-based system to a visible Google Spreadsheet. This provides operators with real-time visibility into queued retry operations.
+The Google Calendar Calendar Retry Queue has been refactored from an internal PropertiesService-based system to a visible Google Spreadsheet. This provides operators with real-time visibility into queued retry operations.
 
 ## What Changed
 
@@ -13,7 +13,7 @@ The Google Calendar Retry Queue has been refactored from an internal PropertiesS
 - No audit trail
 
 ### After (Google Spreadsheet)
-- Queue items stored in "Retry Queue" spreadsheet
+- Queue items stored in "Calendar Retry Queue" spreadsheet
 - Full visibility for operators
 - Easy filtering, sorting, and searching
 - Complete audit trail of retry attempts
@@ -40,7 +40,7 @@ The new implementation follows the repository's standard GAS/JavaScript separati
 
 ## Spreadsheet Structure
 
-The "Retry Queue" spreadsheet contains these columns:
+The "Calendar Retry Queue" spreadsheet contains these columns:
 
 | Column | Description |
 |--------|-------------|
@@ -72,7 +72,7 @@ If you have an existing retry queue in PropertiesService, follow these steps:
    
    This will:
    - Read existing queue from PropertiesService
-   - Create "Retry Queue" spreadsheet if needed
+   - Create "Calendar Retry Queue" spreadsheet if needed
    - Copy all items to spreadsheet
    - Create a backup in PropertiesService
 
@@ -102,14 +102,14 @@ If you have an existing retry queue in PropertiesService, follow these steps:
 
 ### For New Systems
 
-No migration needed! The "Retry Queue" spreadsheet will be created automatically on first use.
+No migration needed! The "Calendar Retry Queue" spreadsheet will be created automatically on first use.
 
 ## Operator Usage
 
 ### Viewing Queue Status
 
 1. Open your spreadsheet
-2. Navigate to the "Retry Queue" sheet
+2. Navigate to the "Calendar Retry Queue" sheet
 3. Use spreadsheet features to:
    - Sort by status, next retry time, or attempt count
    - Filter by ride name or error message
@@ -164,7 +164,7 @@ The following test functions work with the new spreadsheet-based queue:
 testRetryQueueFullScenario()  // Run comprehensive test
 
 // Check execution log for results
-// Check "Retry Queue" spreadsheet for visual confirmation
+// Check "Calendar Retry Queue" spreadsheet for visual confirmation
 
 cleanupRetryQueueTest()  // Clean up when done
 ```
@@ -183,11 +183,11 @@ The retry strategy remains unchanged:
 
 ### Spreadsheet Not Created
 
-**Symptom**: Error about missing "Retry Queue" sheet
+**Symptom**: Error about missing "Calendar Retry Queue" sheet
 
 **Solution**: Sheet is auto-created on first use. Try:
 ```javascript
-const adapter = new RetryQueueSpreadsheetAdapter('Retry Queue');
+const adapter = new RetryQueueSpreadsheetAdapter('Calendar Retry Queue');
 adapter.save([]);  // Force sheet creation
 ```
 
@@ -205,7 +205,7 @@ adapter.save([]);  // Force sheet creation
 **Symptom**: Operations enqueued but don't appear in spreadsheet
 
 **Solution**:
-- Check spreadsheet name is exactly "Retry Queue"
+- Check spreadsheet name is exactly "Calendar Retry Queue"
 - Verify bmPreFiddler library is available
 - Check execution permissions
 
@@ -230,7 +230,7 @@ Typical queue size (< 100 items) has negligible performance impact.
 
 ## Security
 
-**Access Control**: The "Retry Queue" spreadsheet inherits permissions from the parent spreadsheet. Only users with appropriate access can view queue items.
+**Access Control**: The "Calendar Retry Queue" spreadsheet inherits permissions from the parent spreadsheet. Only users with appropriate access can view queue items.
 
 **Sensitive Data**: Queue items contain:
 - Ride URLs and titles
@@ -255,5 +255,5 @@ Possible future improvements:
 For issues or questions:
 1. Check execution logs (View > Executions)
 2. Run diagnostic functions (`inspectQueueDetails()`, `checkRetryQueueMigration()`)
-3. Check "Retry Queue" spreadsheet for operation status
+3. Check "Calendar Retry Queue" spreadsheet for operation status
 4. Review error messages in Last Error column

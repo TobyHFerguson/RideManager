@@ -35,18 +35,18 @@ describe('RetryQueueAdapterCore', () => {
             const columns = RetryQueueAdapterCore.getColumnNames();
             
             expect(columns).toEqual([
-                'ID',
-                'Type',
-                'Calendar ID',
-                'Ride URL',
-                'Ride Title',
-                'Row Num',
-                'User Email',
-                'Enqueued At',
-                'Next Retry At',
-                'Attempt Count',
-                'Last Error',
+                'QueueID',
                 'Status',
+                'Type',
+                'RideName',
+                'RideURL',
+                'RowNum',
+                'CalendarID',
+                'EnqueuedAt',
+                'NextRetryAt',
+                'AttemptCount',
+                'LastError',
+                'UserEmail',
                 'Params'
             ]);
         });
@@ -56,17 +56,17 @@ describe('RetryQueueAdapterCore', () => {
         it('should convert queue item to row object', () => {
             const row = RetryQueueAdapterCore.itemToRow(baseItem);
             
-            expect(row['ID']).toBe('test-uuid-123');
+            expect(row['QueueID']).toBe('test-uuid-123');
             expect(row['Type']).toBe('create');
-            expect(row['Calendar ID']).toBe('cal-123@group.calendar.google.com');
-            expect(row['Ride URL']).toBe('https://ridewithgps.com/events/12345');
-            expect(row['Ride Title']).toBe('Morning Ride');
-            expect(row['Row Num']).toBe(42);
-            expect(row['User Email']).toBe('user@example.com');
-            expect(row['Enqueued At']).toBe(new Date(baseTime).toISOString());
-            expect(row['Next Retry At']).toBe(new Date(baseTime + (5 * 60 * 1000)).toISOString());
-            expect(row['Attempt Count']).toBe(0);
-            expect(row['Last Error']).toBe('');
+            expect(row['CalendarID']).toBe('cal-123@group.calendar.google.com');
+            expect(row['RideURL']).toBe('https://ridewithgps.com/events/12345');
+            expect(row['RideName']).toBe('Morning Ride');
+            expect(row['RowNum']).toBe(42);
+            expect(row['UserEmail']).toBe('user@example.com');
+            expect(row['EnqueuedAt']).toBe(new Date(baseTime).toISOString());
+            expect(row['NextRetryAt']).toBe(new Date(baseTime + (5 * 60 * 1000)).toISOString());
+            expect(row['AttemptCount']).toBe(0);
+            expect(row['LastError']).toBe('');
             expect(row['Status']).toBe('pending');
             expect(row['Params']).toBe(JSON.stringify(baseItem.params));
         });
@@ -86,7 +86,7 @@ describe('RetryQueueAdapterCore', () => {
             };
             const row = RetryQueueAdapterCore.itemToRow(item);
             expect(row['Status']).toBe('retrying');
-            expect(row['Last Error']).toBe('Calendar not found');
+            expect(row['LastError']).toBe('Calendar not found');
         });
 
         it('should handle failed status (attemptCount > 0, no nextRetryAt)', () => {
@@ -112,34 +112,34 @@ describe('RetryQueueAdapterCore', () => {
             };
             const row = RetryQueueAdapterCore.itemToRow(item);
             
-            expect(row['Ride Title']).toBe('');
-            expect(row['Row Num']).toBe('');
-            expect(row['User Email']).toBe('');
-            expect(row['Last Error']).toBe('');
+            expect(row['RideName']).toBe('');
+            expect(row['RowNum']).toBe('');
+            expect(row['UserEmail']).toBe('');
+            expect(row['LastError']).toBe('');
             expect(row['Params']).toBe('');
         });
 
         it('should handle zero rowNum correctly', () => {
             const item = { ...baseItem, rowNum: 0 };
             const row = RetryQueueAdapterCore.itemToRow(item);
-            expect(row['Row Num']).toBe(0);
+            expect(row['RowNum']).toBe(0);
         });
     });
 
     describe('rowToItem', () => {
         it('should convert row object to queue item', () => {
             const row = {
-                'ID': 'test-uuid-123',
+                'QueueID': 'test-uuid-123',
                 'Type': 'update',
-                'Calendar ID': 'cal-456@group.calendar.google.com',
-                'Ride URL': 'https://ridewithgps.com/events/67890',
-                'Ride Title': 'Evening Ride',
-                'Row Num': 24,
-                'User Email': 'admin@example.com',
-                'Enqueued At': new Date(baseTime).toISOString(),
-                'Next Retry At': new Date(baseTime + 10000).toISOString(),
-                'Attempt Count': 5,
-                'Last Error': 'Network timeout',
+                'CalendarID': 'cal-456@group.calendar.google.com',
+                'RideURL': 'https://ridewithgps.com/events/67890',
+                'RideName': 'Evening Ride',
+                'RowNum': 24,
+                'UserEmail': 'admin@example.com',
+                'EnqueuedAt': new Date(baseTime).toISOString(),
+                'NextRetryAt': new Date(baseTime + 10000).toISOString(),
+                'AttemptCount': 5,
+                'LastError': 'Network timeout',
                 'Status': 'retrying',
                 'Params': JSON.stringify({ eventId: 'evt-123' })
             };
@@ -162,17 +162,17 @@ describe('RetryQueueAdapterCore', () => {
 
         it('should handle empty/missing fields', () => {
             const row = {
-                'ID': '',
+                'QueueID': '',
                 'Type': '',
-                'Calendar ID': '',
-                'Ride URL': '',
-                'Ride Title': '',
-                'Row Num': '',
-                'User Email': '',
-                'Enqueued At': '',
-                'Next Retry At': '',
-                'Attempt Count': '',
-                'Last Error': '',
+                'CalendarID': '',
+                'RideURL': '',
+                'RideName': '',
+                'RowNum': '',
+                'UserEmail': '',
+                'EnqueuedAt': '',
+                'NextRetryAt': '',
+                'AttemptCount': '',
+                'LastError': '',
                 'Status': 'pending',
                 'Params': ''
             };
@@ -189,13 +189,13 @@ describe('RetryQueueAdapterCore', () => {
 
         it('should parse Attempt Count as integer', () => {
             const row = {
-                'ID': 'test',
+                'QueueID': 'test',
                 'Type': 'create',
-                'Calendar ID': 'cal',
-                'Ride URL': 'url',
-                'Attempt Count': '15',
-                'Enqueued At': new Date(baseTime).toISOString(),
-                'Next Retry At': new Date(baseTime).toISOString(),
+                'CalendarID': 'cal',
+                'RideURL': 'url',
+                'AttemptCount': '15',
+                'EnqueuedAt': new Date(baseTime).toISOString(),
+                'NextRetryAt': new Date(baseTime).toISOString(),
                 'Params': '{}'
             };
             
@@ -206,13 +206,13 @@ describe('RetryQueueAdapterCore', () => {
 
         it('should handle invalid JSON in Params', () => {
             const row = {
-                'ID': 'test',
+                'QueueID': 'test',
                 'Type': 'create',
-                'Calendar ID': 'cal',
-                'Ride URL': 'url',
-                'Attempt Count': '0',
-                'Enqueued At': new Date(baseTime).toISOString(),
-                'Next Retry At': new Date(baseTime).toISOString(),
+                'CalendarID': 'cal',
+                'RideURL': 'url',
+                'AttemptCount': '0',
+                'EnqueuedAt': new Date(baseTime).toISOString(),
+                'NextRetryAt': new Date(baseTime).toISOString(),
                 'Params': 'invalid json'
             };
             
@@ -254,9 +254,9 @@ describe('RetryQueueAdapterCore', () => {
             const rows = RetryQueueAdapterCore.itemsToRows(items);
             
             expect(rows).toHaveLength(3);
-            expect(rows[0]['ID']).toBe('item-1');
-            expect(rows[1]['ID']).toBe('item-2');
-            expect(rows[2]['ID']).toBe('item-3');
+            expect(rows[0]['QueueID']).toBe('item-1');
+            expect(rows[1]['QueueID']).toBe('item-2');
+            expect(rows[2]['QueueID']).toBe('item-3');
         });
 
         it('should handle empty array', () => {
@@ -288,9 +288,9 @@ describe('RetryQueueAdapterCore', () => {
     describe('findIndexById', () => {
         it('should find index of row by ID', () => {
             const rows = [
-                { 'ID': 'id-1' },
-                { 'ID': 'id-2' },
-                { 'ID': 'id-3' }
+                { 'QueueID': 'id-1' },
+                { 'QueueID': 'id-2' },
+                { 'QueueID': 'id-3' }
             ];
             
             expect(RetryQueueAdapterCore.findIndexById(rows, 'id-1')).toBe(0);
@@ -299,7 +299,7 @@ describe('RetryQueueAdapterCore', () => {
         });
 
         it('should return -1 if ID not found', () => {
-            const rows = [{ 'ID': 'id-1' }];
+            const rows = [{ 'QueueID': 'id-1' }];
             expect(RetryQueueAdapterCore.findIndexById(rows, 'nonexistent')).toBe(-1);
         });
 
@@ -326,9 +326,9 @@ describe('RetryQueueAdapterCore', () => {
             const newRows = RetryQueueAdapterCore.updateRow(rows, updatedItem);
             
             expect(newRows).toHaveLength(3);
-            expect(newRows[1]['ID']).toBe('id-2');
-            expect(newRows[1]['Attempt Count']).toBe(10);
-            expect(newRows[1]['Last Error']).toBe('New error');
+            expect(newRows[1]['QueueID']).toBe('id-2');
+            expect(newRows[1]['AttemptCount']).toBe(10);
+            expect(newRows[1]['LastError']).toBe('New error');
         });
 
         it('should not mutate original array', () => {
@@ -339,7 +339,7 @@ describe('RetryQueueAdapterCore', () => {
             
             RetryQueueAdapterCore.updateRow(rows, updatedItem);
             
-            expect(rows[0]['Attempt Count']).toBe(0); // Original unchanged
+            expect(rows[0]['AttemptCount']).toBe(0); // Original unchanged
         });
 
         it('should return original array if ID not found', () => {
@@ -357,20 +357,20 @@ describe('RetryQueueAdapterCore', () => {
     describe('removeRow', () => {
         it('should remove row by ID', () => {
             const rows = [
-                { 'ID': 'id-1' },
-                { 'ID': 'id-2' },
-                { 'ID': 'id-3' }
+                { 'QueueID': 'id-1' },
+                { 'QueueID': 'id-2' },
+                { 'QueueID': 'id-3' }
             ];
             
             const newRows = RetryQueueAdapterCore.removeRow(rows, 'id-2');
             
             expect(newRows).toHaveLength(2);
-            expect(newRows[0]['ID']).toBe('id-1');
-            expect(newRows[1]['ID']).toBe('id-3');
+            expect(newRows[0]['QueueID']).toBe('id-1');
+            expect(newRows[1]['QueueID']).toBe('id-3');
         });
 
         it('should not mutate original array', () => {
-            const rows = [{ 'ID': 'id-1' }, { 'ID': 'id-2' }];
+            const rows = [{ 'QueueID': 'id-1' }, { 'QueueID': 'id-2' }];
             
             RetryQueueAdapterCore.removeRow(rows, 'id-1');
             
@@ -378,7 +378,7 @@ describe('RetryQueueAdapterCore', () => {
         });
 
         it('should return same-length array if ID not found', () => {
-            const rows = [{ 'ID': 'id-1' }];
+            const rows = [{ 'QueueID': 'id-1' }];
             const newRows = RetryQueueAdapterCore.removeRow(rows, 'nonexistent');
             expect(newRows).toHaveLength(1);
         });
@@ -394,8 +394,8 @@ describe('RetryQueueAdapterCore', () => {
             const newRows = RetryQueueAdapterCore.addRow(rows, newItem);
             
             expect(newRows).toHaveLength(2);
-            expect(newRows[0]['ID']).toBe('id-1');
-            expect(newRows[1]['ID']).toBe('id-2');
+            expect(newRows[0]['QueueID']).toBe('id-1');
+            expect(newRows[1]['QueueID']).toBe('id-2');
         });
 
         it('should not mutate original array', () => {
@@ -414,7 +414,7 @@ describe('RetryQueueAdapterCore', () => {
             const newRows = RetryQueueAdapterCore.addRow([], newItem);
             
             expect(newRows).toHaveLength(1);
-            expect(newRows[0]['ID']).toBe(baseItem.id);
+            expect(newRows[0]['QueueID']).toBe(baseItem.id);
         });
     });
 
@@ -429,12 +429,12 @@ describe('RetryQueueAdapterCore', () => {
 
         it('should detect missing ID', () => {
             const row = RetryQueueAdapterCore.itemToRow(baseItem);
-            row['ID'] = '';
+            row['QueueID'] = '';
             
             const result = RetryQueueAdapterCore.validateRow(row);
             
             expect(result.valid).toBe(false);
-            expect(result.errors).toContain('ID is required');
+            expect(result.errors).toContain('QueueID is required');
         });
 
         it('should detect invalid Type', () => {
@@ -449,30 +449,30 @@ describe('RetryQueueAdapterCore', () => {
 
         it('should detect missing Calendar ID', () => {
             const row = RetryQueueAdapterCore.itemToRow(baseItem);
-            row['Calendar ID'] = '';
+            row['CalendarID'] = '';
             
             const result = RetryQueueAdapterCore.validateRow(row);
             
             expect(result.valid).toBe(false);
-            expect(result.errors).toContain('Calendar ID is required');
+            expect(result.errors).toContain('CalendarID is required');
         });
 
         it('should detect missing Ride URL', () => {
             const row = RetryQueueAdapterCore.itemToRow(baseItem);
-            row['Ride URL'] = '';
+            row['RideURL'] = '';
             
             const result = RetryQueueAdapterCore.validateRow(row);
             
             expect(result.valid).toBe(false);
-            expect(result.errors).toContain('Ride URL is required');
+            expect(result.errors).toContain('RideURL is required');
         });
 
         it('should accumulate multiple errors', () => {
             const row = {
-                'ID': '',
+                'QueueID': '',
                 'Type': 'invalid',
-                'Calendar ID': '',
-                'Ride URL': ''
+                'CalendarID': '',
+                'RideURL': ''
             };
             
             const result = RetryQueueAdapterCore.validateRow(row);
@@ -485,27 +485,27 @@ describe('RetryQueueAdapterCore', () => {
     describe('sortByNextRetry', () => {
         it('should sort rows by next retry time', () => {
             const rows = [
-                { 'ID': 'id-1', 'Next Retry At': new Date(baseTime + 10000).toISOString() },
-                { 'ID': 'id-2', 'Next Retry At': new Date(baseTime + 5000).toISOString() },
-                { 'ID': 'id-3', 'Next Retry At': new Date(baseTime + 15000).toISOString() }
+                { 'QueueID': 'id-1', 'NextRetryAt': new Date(baseTime + 10000).toISOString() },
+                { 'QueueID': 'id-2', 'NextRetryAt': new Date(baseTime + 5000).toISOString() },
+                { 'QueueID': 'id-3', 'NextRetryAt': new Date(baseTime + 15000).toISOString() }
             ];
             
             const sorted = RetryQueueAdapterCore.sortByNextRetry(rows);
             
-            expect(sorted[0]['ID']).toBe('id-2'); // Earliest
-            expect(sorted[1]['ID']).toBe('id-1');
-            expect(sorted[2]['ID']).toBe('id-3'); // Latest
+            expect(sorted[0]['QueueID']).toBe('id-2'); // Earliest
+            expect(sorted[1]['QueueID']).toBe('id-1');
+            expect(sorted[2]['QueueID']).toBe('id-3'); // Latest
         });
 
         it('should not mutate original array', () => {
             const rows = [
-                { 'ID': 'id-1', 'Next Retry At': new Date(baseTime + 10000).toISOString() },
-                { 'ID': 'id-2', 'Next Retry At': new Date(baseTime + 5000).toISOString() }
+                { 'QueueID': 'id-1', 'NextRetryAt': new Date(baseTime + 10000).toISOString() },
+                { 'QueueID': 'id-2', 'NextRetryAt': new Date(baseTime + 5000).toISOString() }
             ];
             
             RetryQueueAdapterCore.sortByNextRetry(rows);
             
-            expect(rows[0]['ID']).toBe('id-1'); // Original order unchanged
+            expect(rows[0]['QueueID']).toBe('id-1'); // Original order unchanged
         });
     });
 
@@ -519,12 +519,12 @@ describe('RetryQueueAdapterCore', () => {
             
             const pending = RetryQueueAdapterCore.filterByStatus(rows, 'pending');
             expect(pending).toHaveLength(2);
-            expect(pending[0]['ID']).toBe('id-1');
-            expect(pending[1]['ID']).toBe('id-3');
+            expect(pending[0]['QueueID']).toBe('id-1');
+            expect(pending[1]['QueueID']).toBe('id-3');
             
             const retrying = RetryQueueAdapterCore.filterByStatus(rows, 'retrying');
             expect(retrying).toHaveLength(1);
-            expect(retrying[0]['ID']).toBe('id-2');
+            expect(retrying[0]['QueueID']).toBe('id-2');
         });
 
         it('should return empty array if no matches', () => {

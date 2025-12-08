@@ -49,7 +49,7 @@ function migrateRetryQueueToSpreadsheet() {
         }
         
         // Create spreadsheet adapter
-        const adapter = new RetryQueueSpreadsheetAdapter('Retry Queue');
+        const adapter = new RetryQueueSpreadsheetAdapter('Calendar Retry Queue');
         
         // Check if spreadsheet already has items
         const existingItems = adapter.loadAll();
@@ -124,7 +124,7 @@ function checkRetryQueueMigration() {
     
     // Check Spreadsheet
     try {
-        const adapter = new RetryQueueSpreadsheetAdapter('Retry Queue');
+        const adapter = new RetryQueueSpreadsheetAdapter('Calendar Retry Queue');
         const spreadsheetItems = adapter.loadAll();
         Logger.log(`\nSpreadsheet queue: ${spreadsheetItems.length} items`);
         

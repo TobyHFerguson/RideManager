@@ -4,19 +4,19 @@
  * This module contains business logic for converting retry queue items to/from
  * spreadsheet rows. It has NO GAS dependencies and can be fully tested in Jest.
  * 
- * The spreadsheet structure mirrors the queue item structure for easy monitoring:
- * - ID: Unique identifier
+ * The spreadsheet structure follows the Calendar Retry Queue specification:
+ * - QueueID: Unique identifier (UUID)
+ * - Status: pending | retrying | succeeded | failed | abandoned
  * - Type: create | update | delete
- * - Calendar ID: Target calendar
- * - Ride URL: Stable identifier for the ride
- * - Ride Title: Human-readable ride name
- * - Row Num: Source row in Consolidated Rides sheet
- * - User Email: Who initiated the operation
- * - Enqueued At: ISO timestamp when added to queue
- * - Next Retry At: ISO timestamp for next retry attempt
- * - Attempt Count: Number of retry attempts so far
- * - Last Error: Most recent error message
- * - Status: pending | retrying | success | failed
+ * - RideName: Human-readable ride name
+ * - RideURL: Stable identifier (RWGPS URL)
+ * - RowNum: Source row in Consolidated Rides sheet
+ * - CalendarID: Target calendar
+ * - EnqueuedAt: ISO timestamp when added to queue
+ * - NextRetryAt: ISO timestamp for next retry attempt
+ * - AttemptCount: Number of retry attempts so far
+ * - LastError: Most recent error message
+ * - UserEmail: Who initiated the operation
  * - Params: JSON string of operation-specific parameters
  */
 
@@ -34,18 +34,18 @@ var RetryQueueAdapterCore = (function() {
          */
         static getColumnNames() {
             return [
-                'ID',
-                'Type',
-                'Calendar ID',
-                'Ride URL',
-                'Ride Title',
-                'Row Num',
-                'User Email',
-                'Enqueued At',
-                'Next Retry At',
-                'Attempt Count',
-                'Last Error',
+                'QueueID',
                 'Status',
+                'Type',
+                'RideName',
+                'RideURL',
+                'RowNum',
+                'CalendarID',
+                'EnqueuedAt',
+                'NextRetryAt',
+                'AttemptCount',
+                'LastError',
+                'UserEmail',
                 'Params'
             ];
         }
@@ -57,18 +57,18 @@ var RetryQueueAdapterCore = (function() {
          */
         static itemToRow(item) {
             return {
-                'ID': item.id || '',
+                'QueueID': item.id || '',
+                'Status': item.status || this._determineStatus(item),
                 'Type': item.type || '',
-                'Calendar ID': item.calendarId || '',
-                'Ride URL': item.rideUrl || '',
-                'Ride Title': item.rideTitle || '',
-                'Row Num': item.rowNum !== undefined ? item.rowNum : '',
-                'User Email': item.userEmail || '',
-                'Enqueued At': item.enqueuedAt ? new Date(item.enqueuedAt).toISOString() : '',
-                'Next Retry At': item.nextRetryAt ? new Date(item.nextRetryAt).toISOString() : '',
-                'Attempt Count': item.attemptCount !== undefined ? item.attemptCount : 0,
-                'Last Error': item.lastError || '',
-                'Status': this._determineStatus(item),
+                'RideName': item.rideTitle || '',
+                'RideURL': item.rideUrl || '',
+                'RowNum': item.rowNum !== undefined ? item.rowNum : '',
+                'CalendarID': item.calendarId || '',
+                'EnqueuedAt': item.enqueuedAt ? new Date(item.enqueuedAt).toISOString() : '',
+                'NextRetryAt': item.nextRetryAt ? new Date(item.nextRetryAt).toISOString() : '',
+                'AttemptCount': item.attemptCount !== undefined ? item.attemptCount : 0,
+                'LastError': item.lastError || '',
+                'UserEmail': item.userEmail || '',
                 'Params': item.params ? JSON.stringify(item.params) : ''
             };
         }
@@ -80,17 +80,18 @@ var RetryQueueAdapterCore = (function() {
          */
         static rowToItem(row) {
             return {
-                id: row['ID'] || '',
+                id: row['QueueID'] || '',
+                status: row['Status'] || '',
                 type: row['Type'] || '',
-                calendarId: row['Calendar ID'] || '',
-                rideUrl: row['Ride URL'] || '',
-                rideTitle: row['Ride Title'] || '',
-                rowNum: row['Row Num'] || '',
-                userEmail: row['User Email'] || '',
-                enqueuedAt: row['Enqueued At'] ? new Date(row['Enqueued At']).getTime() : 0,
-                nextRetryAt: row['Next Retry At'] ? new Date(row['Next Retry At']).getTime() : 0,
-                attemptCount: parseInt(row['Attempt Count']) || 0,
-                lastError: row['Last Error'] || '',
+                rideTitle: row['RideName'] || '',
+                rideUrl: row['RideURL'] || '',
+                rowNum: row['RowNum'] || '',
+                calendarId: row['CalendarID'] || '',
+                enqueuedAt: row['EnqueuedAt'] ? new Date(row['EnqueuedAt']).getTime() : 0,
+                nextRetryAt: row['NextRetryAt'] ? new Date(row['NextRetryAt']).getTime() : 0,
+                attemptCount: parseInt(row['AttemptCount']) || 0,
+                lastError: row['LastError'] || '',
+                userEmail: row['UserEmail'] || '',
                 params: row['Params'] ? JSON.parse(row['Params']) : {}
             };
         }
@@ -120,7 +121,7 @@ var RetryQueueAdapterCore = (function() {
          * @returns {number} Index of item, or -1 if not found
          */
         static findIndexById(rows, id) {
-            return rows.findIndex(row => row['ID'] === id);
+            return rows.findIndex(row => row['QueueID'] === id);
         }
 
         /**
@@ -147,7 +148,7 @@ var RetryQueueAdapterCore = (function() {
          * @returns {Array} New array without the row
          */
         static removeRow(rows, id) {
-            return rows.filter(row => row['ID'] !== id);
+            return rows.filter(row => row['QueueID'] !== id);
         }
 
         /**
@@ -184,17 +185,20 @@ var RetryQueueAdapterCore = (function() {
         static validateRow(row) {
             const errors = [];
             
-            if (!row['ID']) {
-                errors.push('ID is required');
+            if (!row['QueueID']) {
+                errors.push('QueueID is required');
             }
             if (!row['Type'] || !['create', 'update', 'delete'].includes(row['Type'])) {
                 errors.push('Type must be create, update, or delete');
             }
-            if (!row['Calendar ID']) {
-                errors.push('Calendar ID is required');
+            if (!row['CalendarID']) {
+                errors.push('CalendarID is required');
             }
-            if (!row['Ride URL']) {
-                errors.push('Ride URL is required');
+            if (!row['RideURL']) {
+                errors.push('RideURL is required');
+            }
+            if (row['Status'] && !['pending', 'retrying', 'succeeded', 'failed', 'abandoned'].includes(row['Status'])) {
+                errors.push('Status must be pending, retrying, succeeded, failed, or abandoned');
             }
             
             return {
@@ -210,8 +214,8 @@ var RetryQueueAdapterCore = (function() {
          */
         static sortByNextRetry(rows) {
             return [...rows].sort((a, b) => {
-                const timeA = new Date(a['Next Retry At']).getTime();
-                const timeB = new Date(b['Next Retry At']).getTime();
+                const timeA = new Date(a['NextRetryAt']).getTime();
+                const timeB = new Date(b['NextRetryAt']).getTime();
                 return timeA - timeB;
             });
         }
@@ -236,7 +240,9 @@ var RetryQueueAdapterCore = (function() {
                 total: rows.length,
                 pending: rows.filter(r => r['Status'] === 'pending').length,
                 retrying: rows.filter(r => r['Status'] === 'retrying').length,
+                succeeded: rows.filter(r => r['Status'] === 'succeeded').length,
                 failed: rows.filter(r => r['Status'] === 'failed').length,
+                abandoned: rows.filter(r => r['Status'] === 'abandoned').length,
                 byType: {
                     create: rows.filter(r => r['Type'] === 'create').length,
                     update: rows.filter(r => r['Type'] === 'update').length,

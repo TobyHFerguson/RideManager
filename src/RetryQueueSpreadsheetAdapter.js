@@ -24,10 +24,10 @@ var RetryQueueSpreadsheetAdapter = (function() {
     class RetryQueueSpreadsheetAdapter {
         /**
          * Creates a new RetryQueueSpreadsheetAdapter
-         * @param {string} [sheetName='Retry Queue'] - Name of the sheet to manage
+         * @param {string} [sheetName='Calendar Retry Queue'] - Name of the sheet to manage
          * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} [spreadsheet] - Optional spreadsheet object (defaults to active spreadsheet)
          */
-        constructor(sheetName = 'Retry Queue', spreadsheet = null) {
+        constructor(sheetName = 'Calendar Retry Queue', spreadsheet = null) {
             this.sheetName = sheetName;
             
             // Use provided spreadsheet or get active spreadsheet
@@ -197,12 +197,13 @@ var RetryQueueSpreadsheetAdapter = (function() {
             
             // Set column widths for specific columns
             const columnWidths = {
-                'ID': 150,
+                'QueueID': 80,
+                'Status': 100,
                 'Type': 80,
-                'Calendar ID': 250,
-                'Ride URL': 350,
-                'Ride Title': 200,
-                'Last Error': 300,
+                'RideName': 200,
+                'RideURL': 350,
+                'CalendarID': 250,
+                'LastError': 300,
                 'Params': 400
             };
             

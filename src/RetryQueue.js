@@ -23,7 +23,8 @@ var RetryQueue = (function() {
             this.TRIGGER_KEY = 'calendarRetryTriggerId';
             
             // Use spreadsheet adapter for queue persistence (operator-visible)
-            this.adapter = new RetryQueueSpreadsheetAdapter('Retry Queue');
+            this.adapter = new RetryQueueSpreadsheetAdapter('Calendar Retry Queue');
+            this.PROCESSING_KEY = 'RETRY_QUEUE_PROCESSING';
         }
 
         /**
@@ -43,6 +44,9 @@ var RetryQueue = (function() {
                 () => new Date().getTime()
             );
             
+            // Set initial status
+            queueItem.status = 'pending';
+            
             // Add to spreadsheet
             this.adapter.enqueue(queueItem);
             this._ensureTriggerExists();
@@ -56,66 +60,87 @@ var RetryQueue = (function() {
          * Called by time-based trigger
          */
         processQueue() {
-            const queue = this.adapter.loadAll();
-            if (queue.length === 0) {
-                console.log('RetryQueue: Queue empty, removing trigger');
-                this._removeTrigger();
-                return { processed: 0, succeeded: 0, failed: 0, remaining: 0 };
+            // Prevent concurrent processing
+            if (this._isProcessing()) {
+                console.log('RetryQueue: Already processing, skipping run');
+                return { processed: 0, succeeded: 0, failed: 0, remaining: 0, skipped: true };
             }
-
-            const now = new Date().getTime();
-            const dueItems = RetryQueueCore.getDueItems(queue, now);
             
-            console.log(`RetryQueue: Processing ${dueItems.length} due items out of ${queue.length} total`);
-            
-            let succeeded = 0;
-            let failed = 0;
-            
-            dueItems.forEach(item => {
-                try {
-                    const result = this._executeOperation(item);
-                    
-                    if (result.success) {
-                        // Remove from queue on success
-                        this.adapter.remove(item.id);
-                        succeeded++;
-                        console.log(`RetryQueue: Operation ${item.id} succeeded on attempt ${item.attemptCount + 1}`);
-                        
-                        // Notify user of success
-                        this._notifySuccess(item);
-                    } else {
-                        // Use core logic to update after failure
-                        const updateResult = RetryQueueCore.updateAfterFailure(item, result.error, now);
-                        
-                        if (updateResult.shouldRetry) {
-                            this.adapter.update(updateResult.updatedItem);
-                            console.log(`RetryQueue: Operation ${item.id} failed, will retry at ${new Date(updateResult.updatedItem.nextRetryAt)}`);
-                        } else {
-                            // Max retries exceeded
-                            this.adapter.remove(item.id);
-                            failed++;
-                            console.error(`RetryQueue: Operation ${item.id} failed permanently after ${updateResult.updatedItem.attemptCount} attempts`);
-                            this._notifyFailure(updateResult.updatedItem);
-                        }
-                    }
-                } catch (error) {
-                    console.error(`RetryQueue: Unexpected error processing item ${item.id}:`, error);
-                    item.lastError = error.message;
-                    this.adapter.update(item);
+            try {
+                this._setProcessing(true);
+                
+                const queue = this.adapter.loadAll();
+                if (queue.length === 0) {
+                    console.log('RetryQueue: Queue empty, removing trigger');
+                    this._removeTrigger();
+                    return { processed: 0, succeeded: 0, failed: 0, remaining: 0 };
                 }
-            });
-            
-            const remainingQueue = this.adapter.loadAll();
-            if (remainingQueue.length === 0) {
-                this._removeTrigger();
+
+                const now = new Date().getTime();
+                const dueItems = RetryQueueCore.getDueItems(queue, now);
+                
+                console.log(`RetryQueue: Processing ${dueItems.length} due items out of ${queue.length} total`);
+                
+                let succeeded = 0;
+                let failed = 0;
+                
+                dueItems.forEach(item => {
+                    try {
+                        // Mark as retrying (visual feedback in spreadsheet)
+                        item.status = 'retrying';
+                        this.adapter.update(item);
+                        
+                        const result = this._executeOperation(item);
+                        
+                        if (result.success) {
+                            // Mark as succeeded and remove from queue immediately
+                            item.status = 'succeeded';
+                            this.adapter.remove(item.id);
+                            succeeded++;
+                            console.log(`RetryQueue: Operation ${item.id} succeeded on attempt ${item.attemptCount + 1}`);
+                            
+                            // Notify user of success
+                            this._notifySuccess(item);
+                        } else {
+                            // Use core logic to update after failure
+                            const updateResult = RetryQueueCore.updateAfterFailure(item, result.error, now);
+                            
+                            if (updateResult.shouldRetry) {
+                                // Mark as failed and keep in queue for retry
+                                updateResult.updatedItem.status = 'failed';
+                                this.adapter.update(updateResult.updatedItem);
+                                console.log(`RetryQueue: Operation ${item.id} failed, will retry at ${new Date(updateResult.updatedItem.nextRetryAt)}`);
+                            } else {
+                                // Max retries exceeded - mark as abandoned and keep in queue for investigation
+                                updateResult.updatedItem.status = 'abandoned';
+                                this.adapter.update(updateResult.updatedItem);
+                                failed++;
+                                console.error(`RetryQueue: Operation ${item.id} abandoned after ${updateResult.updatedItem.attemptCount} attempts`);
+                                this._notifyFailure(updateResult.updatedItem);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`RetryQueue: Unexpected error processing item ${item.id}:`, error);
+                        item.lastError = error.message;
+                        item.status = 'failed';
+                        this.adapter.update(item);
+                    }
+                });
+                
+                const remainingQueue = this.adapter.loadAll();
+                if (remainingQueue.length === 0) {
+                    this._removeTrigger();
+                }
+                
+                return {
+                    processed: dueItems.length,
+                    succeeded: succeeded,
+                    failed: failed,
+                    remaining: remainingQueue.length
+                };
+            } finally {
+                this._setProcessing(false);
             }
-            
-            return {
-                processed: dueItems.length,
-                succeeded: succeeded,
-                failed: failed,
-                remaining: remainingQueue.length
-            };
         }
 
         /**
@@ -354,6 +379,27 @@ var RetryQueue = (function() {
             });
             
             this.props.deleteProperty(this.TRIGGER_KEY);
+        }
+
+        /**
+         * Check if queue is currently being processed (for concurrent lock)
+         * @private
+         */
+        _isProcessing() {
+            return this.props.getProperty(this.PROCESSING_KEY) === 'true';
+        }
+
+        /**
+         * Set or clear processing lock
+         * @private
+         * @param {boolean} value - True to set lock, false to clear
+         */
+        _setProcessing(value) {
+            if (value) {
+                this.props.setProperty(this.PROCESSING_KEY, 'true');
+            } else {
+                this.props.deleteProperty(this.PROCESSING_KEY);
+            }
         }
 
         /**
