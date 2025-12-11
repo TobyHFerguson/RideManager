@@ -85,9 +85,23 @@ var RetryQueueSpreadsheetAdapter = (function() {
             } else {
                 // Queue has items - save them
                 const fiddler = this._getFiddler();
+                
+                // Check if sheet exists - if not, we need to preserve focus
+                const sheetExists = this.spreadsheet.getSheetByName(this.sheetName) !== null;
+                let originalActiveSheet = null;
+                
+                if (!sheetExists) {
+                    // Sheet will be created by dumpValues() - preserve current focus
+                    originalActiveSheet = this.spreadsheet.getActiveSheet();
+                }
+                
                 fiddler.setData(rows);
-                fiddler.dumpValues();  // Actually write to spreadsheet!
-                // Fiddler handles flushing internally
+                fiddler.dumpValues();  // This creates the sheet if it doesn't exist
+                
+                // Restore original active sheet if we created a new sheet
+                if (originalActiveSheet) {
+                    this.spreadsheet.setActiveSheet(originalActiveSheet);
+                }
             }
             
             // Clear cache to force reload on next operation
