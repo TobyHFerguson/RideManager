@@ -244,17 +244,34 @@ const RideManager = (function () {
                 const rideUrlsToBeDeleted = rows.map(row => row.RideURL);
                 rwgps.batch_delete_events(rideUrlsToBeDeleted);
             } catch (err) {
-                // Ignore the case where the event has already been deleted in rwgps land since we want it to be deleted anyway!
-                // 404 = Not Found (already deleted)
-                // 500 = Internal Server Error (often means event doesn't exist on RWGPS)
                 const is404 = err.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
                 const is500 = err.message.indexOf('Request failed for https://ridewithgps.com returned code 500') !== -1;
                 
-                if (!is404 && !is500) {
+                if (is404) {
+                    // 404 = Not Found - ride already deleted, continue
+                    console.log('RideManager.unscheduleRows: Ride already deleted on RWGPS (404)');
+                } else if (is500) {
+                    // 500 could be transient server error - retry to confirm deletion
+                    console.log('RideManager.unscheduleRows: Got 500 error, retrying to confirm ride is deleted');
+                    try {
+                        const rideUrlsToBeDeleted = rows.map(row => row.RideURL);
+                        rwgps.batch_delete_events(rideUrlsToBeDeleted);
+                        // Retry succeeded - this was a transient error, rethrow original
+                        throw err;
+                    } catch (retryErr) {
+                        const retryIs404 = retryErr.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
+                        if (retryIs404) {
+                            // Retry got 404 - ride is indeed deleted
+                            console.log('RideManager.unscheduleRows: Retry confirmed ride deleted (404)');
+                        } else {
+                            // Different error on retry - rethrow
+                            throw retryErr;
+                        }
+                    }
+                } else {
+                    // Other error - rethrow
                     throw err;
                 }
-                // Log but continue - unscheduling is idempotent
-                console.log('RideManager.unscheduleRows: Ignoring RWGPS error (ride likely already deleted):', err.message);
             }
             
             // Collect RideURLs for batch announcement removal
