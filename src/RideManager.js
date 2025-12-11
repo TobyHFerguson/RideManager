@@ -245,9 +245,16 @@ const RideManager = (function () {
                 rwgps.batch_delete_events(rideUrlsToBeDeleted);
             } catch (err) {
                 // Ignore the case where the event has already been deleted in rwgps land since we want it to be deleted anyway!
-                if (err.message.indexOf('Request failed for https://ridewithgps.com returned code 404') === -1) {
+                // 404 = Not Found (already deleted)
+                // 500 = Internal Server Error (often means event doesn't exist on RWGPS)
+                const is404 = err.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
+                const is500 = err.message.indexOf('Request failed for https://ridewithgps.com returned code 500') !== -1;
+                
+                if (!is404 && !is500) {
                     throw err;
                 }
+                // Log but continue - unscheduling is idempotent
+                console.log('RideManager.unscheduleRows: Ignoring RWGPS error (ride likely already deleted):', err.message);
             }
             
             // Collect RideURLs for batch announcement removal
