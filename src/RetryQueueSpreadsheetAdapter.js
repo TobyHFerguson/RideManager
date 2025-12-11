@@ -37,26 +37,12 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 throw new Error('RetryQueueSpreadsheetAdapter requires an active spreadsheet or spreadsheet parameter. Error: ' + error.message);
             }
             
-            // Get or create the sheet
-            this.sheet = this.spreadsheet.getSheetByName(sheetName);
-            const sheetWasCreated = !this.sheet;
-            if (!this.sheet) {
-                this.sheet = this._createSheet(sheetName);
-            }
-            
             // Initialize Fiddler for data I/O
-            // If sheet was just created, Fiddler needs to be initialized after the flush
+            // Fiddler will create the sheet automatically when first dumpValues() is called
             this.fiddler = bmPreFiddler.PreFiddler().getFiddler({
                 sheetName: sheetName,
                 createIfMissing: true
             });
-            
-            // If we just created the sheet, we need to ensure Fiddler sees the headers
-            if (sheetWasCreated) {
-                // Force Fiddler to reinitialize by calling getData once
-                // This ensures Fiddler recognizes the header row
-                this.fiddler.getData();
-            }
             
             // Cache spreadsheet data to avoid multiple reads
             this._cachedRows = null;
@@ -161,7 +147,7 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @returns {GoogleAppsScript.Spreadsheet.Sheet}
          */
         getSheet() {
-            return this.sheet;
+            return this.spreadsheet.getSheetByName(this.sheetName);
         }
 
         // ===== PRIVATE METHODS =====
@@ -176,65 +162,6 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 // Fiddler returns empty array if no data or sheet doesn't exist yet
                 this._cachedRows = data || [];
             }
-        }
-
-        /**
-         * Create the retry queue sheet with headers
-         * @private
-         * @param {string} sheetName - Name of sheet to create
-         * @returns {GoogleAppsScript.Spreadsheet.Sheet} Created sheet
-         */
-        _createSheet(sheetName) {
-            // Save current active sheet to restore after creation
-            const originalActiveSheet = this.spreadsheet.getActiveSheet();
-            
-            const sheet = this.spreadsheet.insertSheet(sheetName);
-            
-            // Set up headers
-            const headers = RetryQueueAdapterCore.getColumnNames();
-            sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-            
-            // Format header row
-            const headerRange = sheet.getRange(1, 1, 1, headers.length);
-            headerRange.setFontWeight('bold');
-            headerRange.setBackground('#4285f4');
-            headerRange.setFontColor('#ffffff');
-            
-            // Freeze header row
-            sheet.setFrozenRows(1);
-            
-            // Auto-resize columns
-            for (let i = 1; i <= headers.length; i++) {
-                sheet.autoResizeColumn(i);
-            }
-            
-            // Set column widths for specific columns
-            const columnWidths = {
-                'QueueID': 80,
-                'Status': 100,
-                'Type': 80,
-                'RideName': 200,
-                'RideURL': 350,
-                'CalendarID': 250,
-                'LastError': 300,
-                'Params': 400
-            };
-            
-            headers.forEach((header, index) => {
-                if (columnWidths[header]) {
-                    sheet.setColumnWidth(index + 1, columnWidths[header]);
-                }
-            });
-            
-            console.log(`RetryQueueSpreadsheetAdapter: Created sheet "${sheetName}" with headers`);
-            
-            // Flush to ensure sheet is fully created before Fiddler initialization
-            SpreadsheetApp.flush();
-            
-            // Restore original active sheet (insertSheet activates the new sheet)
-            this.spreadsheet.setActiveSheet(originalActiveSheet);
-            
-            return sheet;
         }
     }
 
