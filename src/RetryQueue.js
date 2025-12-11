@@ -420,6 +420,33 @@ var RetryQueue = (function() {
         }
 
         /**
+         * Remove queue items by ride URL (for unscheduling)
+         * Used when a ride is unscheduled to remove pending calendar operations from retry queue
+         * @param {string} rideUrl - RWGPS ride URL (e.g., https://ridewithgps.com/events/436786)
+         * @returns {number} Number of items removed
+         */
+        removeByRideUrl(rideUrl) {
+            if (!rideUrl) {
+                return 0;
+            }
+            
+            const queue = this.adapter.loadAll();
+            const itemsToRemove = queue.filter(item => item.rideUrl === rideUrl);
+            
+            let removed = 0;
+            itemsToRemove.forEach(item => {
+                this.adapter.remove(item.id);
+                removed++;
+            });
+            
+            if (removed > 0) {
+                console.log(`RetryQueue: Removed ${removed} item(s) for ride ${rideUrl}`);
+            }
+            
+            return removed;
+        }
+
+        /**
          * Get current queue status for debugging
          */
         getStatus() {

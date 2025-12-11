@@ -306,6 +306,18 @@ const RideManager = (function () {
                     // Don't throw - announcement cleanup is not critical to unscheduling
                 }
             }
+            
+            // Remove retry queue items for unscheduled rides
+            rows.forEach(row => {
+                if (row.RideURL) {
+                    try {
+                        new RetryQueue().removeByRideUrl(row.RideURL);
+                    } catch (error) {
+                        console.error(`RideManager.unscheduleRows(): Error removing retry queue items for ${row.RideURL}:`, error);
+                        // Don't throw - retry queue cleanup is not critical to unscheduling
+                    }
+                }
+            });
         },
         /**
          * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector
