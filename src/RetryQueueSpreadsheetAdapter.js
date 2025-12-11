@@ -86,29 +86,18 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 // Queue has items - save them
                 const fiddler = this._getFiddler();
                 
-                // Check if sheet exists - if not, we need to preserve focus
-                const sheetExists = this.spreadsheet.getSheetByName(this.sheetName) !== null;
-                let originalActiveSheet = null;
-                
-                console.log(`RetryQueueSpreadsheetAdapter.save: Sheet exists = ${sheetExists}`);
-                
-                if (!sheetExists) {
-                    // Sheet will be created by dumpValues() - preserve current focus
-                    originalActiveSheet = this.spreadsheet.getActiveSheet();
-                    console.log(`RetryQueueSpreadsheetAdapter.save: Saved active sheet: ${originalActiveSheet.getName()}`);
-                }
+                // ALWAYS preserve focus - any sheet access can trigger focus change
+                const originalActiveSheet = this.spreadsheet.getActiveSheet();
+                console.log(`RetryQueueSpreadsheetAdapter.save: Saved active sheet: ${originalActiveSheet.getName()}`);
                 
                 fiddler.setData(rows);
                 console.log(`RetryQueueSpreadsheetAdapter.save: About to call dumpValues`);
-                fiddler.dumpValues();  // This creates the sheet if it doesn't exist
+                fiddler.dumpValues();
                 console.log(`RetryQueueSpreadsheetAdapter.save: Called dumpValues`);
                 
-                // Restore original active sheet if we created a new sheet
-                if (originalActiveSheet) {
-                    console.log(`RetryQueueSpreadsheetAdapter.save: Restoring active sheet to ${originalActiveSheet.getName()}`);
-                    this.spreadsheet.setActiveSheet(originalActiveSheet);
-                    console.log(`RetryQueueSpreadsheetAdapter.save: Active sheet is now ${this.spreadsheet.getActiveSheet().getName()}`);
-                }
+                // Always restore original active sheet
+                this.spreadsheet.setActiveSheet(originalActiveSheet);
+                console.log(`RetryQueueSpreadsheetAdapter.save: Restored active sheet to ${originalActiveSheet.getName()}`);
             }
             
             // Clear cache to force reload on next operation
