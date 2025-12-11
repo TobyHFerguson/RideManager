@@ -63,9 +63,20 @@ var RetryQueueSpreadsheetAdapter = (function() {
          */
         save(items) {
             const rows = RetryQueueAdapterCore.itemsToRows(items);
-            this.fiddler.setData(rows);
-            this.fiddler.dumpValues();  // Actually write to spreadsheet!
-            SpreadsheetApp.flush();
+            
+            if (rows.length === 0) {
+                // Queue is empty - delete the sheet to keep workspace clean
+                const sheet = this.spreadsheet.getSheetByName(this.sheetName);
+                if (sheet) {
+                    this.spreadsheet.deleteSheet(sheet);
+                    console.log(`RetryQueueSpreadsheetAdapter: Deleted empty sheet "${this.sheetName}"`);
+                }
+            } else {
+                // Queue has items - save them
+                this.fiddler.setData(rows);
+                this.fiddler.dumpValues();  // Actually write to spreadsheet!
+                SpreadsheetApp.flush();
+            }
             
             // Clear cache to force reload on next operation
             this._cachedRows = null;
