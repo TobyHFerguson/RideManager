@@ -185,6 +185,9 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @returns {GoogleAppsScript.Spreadsheet.Sheet} Created sheet
          */
         _createSheet(sheetName) {
+            // Save current active sheet to restore after creation
+            const originalActiveSheet = this.spreadsheet.getActiveSheet();
+            
             const sheet = this.spreadsheet.insertSheet(sheetName);
             
             // Set up headers
@@ -227,6 +230,9 @@ var RetryQueueSpreadsheetAdapter = (function() {
             
             // Flush to ensure sheet is fully created before Fiddler initialization
             SpreadsheetApp.flush();
+            
+            // Restore original active sheet (insertSheet activates the new sheet)
+            this.spreadsheet.setActiveSheet(originalActiveSheet);
             
             return sheet;
         }
