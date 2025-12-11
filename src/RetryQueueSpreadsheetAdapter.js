@@ -39,15 +39,24 @@ var RetryQueueSpreadsheetAdapter = (function() {
             
             // Get or create the sheet
             this.sheet = this.spreadsheet.getSheetByName(sheetName);
+            const sheetWasCreated = !this.sheet;
             if (!this.sheet) {
                 this.sheet = this._createSheet(sheetName);
             }
             
             // Initialize Fiddler for data I/O
+            // If sheet was just created, Fiddler needs to be initialized after the flush
             this.fiddler = bmPreFiddler.PreFiddler().getFiddler({
                 sheetName: sheetName,
                 createIfMissing: true
             });
+            
+            // If we just created the sheet, we need to ensure Fiddler sees the headers
+            if (sheetWasCreated) {
+                // Force Fiddler to reinitialize by calling getData once
+                // This ensures Fiddler recognizes the header row
+                this.fiddler.getData();
+            }
             
             // Cache spreadsheet data to avoid multiple reads
             this._cachedRows = null;
@@ -214,6 +223,10 @@ var RetryQueueSpreadsheetAdapter = (function() {
             });
             
             console.log(`RetryQueueSpreadsheetAdapter: Created sheet "${sheetName}" with headers`);
+            
+            // Flush to ensure sheet is fully created before Fiddler initialization
+            SpreadsheetApp.flush();
+            
             return sheet;
         }
     }
