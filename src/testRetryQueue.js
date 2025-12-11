@@ -110,7 +110,7 @@ function testRetryQueueFullScenario() {
    */
   function simulateMultipleRetries(testRide) {
     const retryQueue = new RetryQueue();
-    const queue = retryQueue._getQueue();
+    const queue = retryQueue.adapter.loadAll();
     const item = queue.find(i => i.rideUrl === testRide.rideUrl);
     
     if (!item) {
@@ -123,7 +123,7 @@ function testRetryQueueFullScenario() {
     
     // Simulate time passing - set nextRetryAt to past
     item.nextRetryAt = Date.now() - 1000; // 1 second ago
-    retryQueue._saveQueue(queue);
+    retryQueue.adapter.update(item);
     
     Logger.log('⏰ Fast-forwarded time - processing retry now...');
     const retryQueue2 = new RetryQueue();
@@ -131,7 +131,7 @@ function testRetryQueueFullScenario() {
     
     // Check updated state
     const retryQueue3 = new RetryQueue();
-    const updatedQueue = retryQueue3._getQueue();
+    const updatedQueue = retryQueue3.adapter.loadAll();
     const updatedItem = updatedQueue.find(i => i.rideUrl === testRide.rideUrl);
     
     if (updatedItem) {
@@ -198,7 +198,7 @@ function testRetryQueueFullScenario() {
     
     Logger.log('\n=== Test Complete ===');
     Logger.log('Check your email for retry failure notifications');
-    Logger.log('Queue persisted in PropertiesService - use cleanupRetryQueueTest() to clear');
+    Logger.log('Queue persisted in "Retry Queue" spreadsheet - use cleanupRetryQueueTest() to clear');
     
   } catch (error) {
     Logger.log(`ERROR: ${error.message}`);
@@ -246,7 +246,7 @@ function testCutoffBehavior() {
   Logger.log('=== Testing 48-Hour Cutoff ===\n');
   
   const retryQueue = new RetryQueue();
-  const queue = retryQueue._getQueue();
+  const queue = retryQueue.adapter.loadAll();
   
   if (queue.length === 0) {
     Logger.log('Queue is empty - run testRetryQueueFullScenario() first');
@@ -263,7 +263,7 @@ function testCutoffBehavior() {
   Logger.log(`User email: ${item.userEmail}`);
   Logger.log('Item should be removed on next processQueue() call...\n');
   
-  retryQueue._saveQueue(queue);
+  retryQueue.adapter.update(item);
   const retryQueue2 = new RetryQueue();
   retryQueue2.processQueue();
   
@@ -357,7 +357,7 @@ function inspectQueueDetails() {
   Logger.log('=== Queue Details ===\n');
   
   const retryQueue = new RetryQueue();
-  const queue = retryQueue._getQueue();
+  const queue = retryQueue.adapter.loadAll();
   
   if (queue.length === 0) {
     Logger.log('Queue is empty');
@@ -405,9 +405,18 @@ function manualProcessQueue() {
 function cleanupRetryQueueTest() {
   Logger.log('=== Cleaning Up Test Data ===\n');
   
-  // Clear queue
+  // Clear spreadsheet queue
+  try {
+    const retryQueue = new RetryQueue();
+    retryQueue.clearQueue();
+    Logger.log('✓ Spreadsheet queue cleared');
+  } catch (error) {
+    Logger.log(`⚠ Error clearing spreadsheet queue: ${error.message}`);
+  }
+  
+  // Also clear old PropertiesService queue (for backwards compatibility)
   PropertiesService.getScriptProperties().deleteProperty('calendarRetryQueue');
-  Logger.log('✓ Queue cleared');
+  Logger.log('✓ PropertiesService queue cleared (if it existed)');
   
   // Clear test mode
   PropertiesService.getScriptProperties().deleteProperty('RETRY_QUEUE_TEST_MODE');
@@ -417,7 +426,7 @@ function cleanupRetryQueueTest() {
   // Delete trigger if exists
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(trigger => {
-    if (trigger.getHandlerFunction() === 'retryQueueTrigger') {
+    if (trigger.getHandlerFunction() === 'processRetryQueue') {
       ScriptApp.deleteTrigger(trigger);
       Logger.log('✓ Retry trigger deleted');
     }
