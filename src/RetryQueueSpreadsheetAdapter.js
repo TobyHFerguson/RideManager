@@ -87,7 +87,7 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 const fiddler = this._getFiddler();
                 fiddler.setData(rows);
                 fiddler.dumpValues();  // Actually write to spreadsheet!
-                SpreadsheetApp.flush();
+                // Fiddler handles flushing internally
             }
             
             // Clear cache to force reload on next operation
