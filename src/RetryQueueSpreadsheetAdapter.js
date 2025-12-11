@@ -76,12 +76,25 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {Object[]} items - Array of queue items
          */
         save(items) {
+            console.log('RetryQueueSpreadsheetAdapter.save: Starting with items:', items.length);
             const rows = RetryQueueAdapterCore.itemsToRows(items);
+            console.log('RetryQueueSpreadsheetAdapter.save: Converted to rows:', rows.length);
+            if (rows.length > 0) {
+                console.log('RetryQueueSpreadsheetAdapter.save: First row:', JSON.stringify(rows[0]));
+            }
+            console.log('RetryQueueSpreadsheetAdapter.save: Calling fiddler.setData with', rows.length, 'rows');
             this.fiddler.setData(rows);
+            console.log('RetryQueueSpreadsheetAdapter.save: Called fiddler.setData, now flushing');
             SpreadsheetApp.flush();
+            console.log('RetryQueueSpreadsheetAdapter.save: Flushed, now verifying...');
+            
+            // Verify the data was written
+            const verification = this.fiddler.getData();
+            console.log('RetryQueueSpreadsheetAdapter.save: Verification read:', verification ? verification.length : 'null', 'rows');
             
             // Clear cache to force reload on next operation
             this._cachedRows = null;
+            console.log('RetryQueueSpreadsheetAdapter.save: Complete');
         }
 
         /**
