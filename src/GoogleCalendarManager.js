@@ -49,12 +49,14 @@ class GoogleCalendarManager {
         const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
         if (!calendar) {
             console.error('GoogleCalendarManager.createEvent() - Calendar not found after retries. ', calendarId);
-            
-            // Queue for background retry if rowNum provided
-            if (rowNum !== null) {
+
+            // Queue for background retry if rideUrl provided
+            if (rideUrl !== null) {
                 return GoogleCalendarManager._queueForRetry({
                     type: 'create',
                     calendarId,
+                    rideUrl,
+                    rideTitle: title,
                     rowNum,
                     params: {
                         title,
