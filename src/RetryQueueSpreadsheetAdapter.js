@@ -89,10 +89,16 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {Object} item - Queue item to add
          */
         enqueue(item) {
+            console.log('RetryQueueSpreadsheetAdapter.enqueue: Starting with item:', JSON.stringify(item));
             this._ensureDataLoaded();
+            console.log('RetryQueueSpreadsheetAdapter.enqueue: Cached rows before add:', this._cachedRows.length);
             const newRows = RetryQueueAdapterCore.addRow(this._cachedRows, item);
+            console.log('RetryQueueSpreadsheetAdapter.enqueue: New rows count:', newRows.length);
             this._cachedRows = newRows;
-            this.save(RetryQueueAdapterCore.rowsToItems(newRows));
+            const items = RetryQueueAdapterCore.rowsToItems(newRows);
+            console.log('RetryQueueSpreadsheetAdapter.enqueue: Items to save:', items.length, JSON.stringify(items[items.length - 1]));
+            this.save(items);
+            console.log('RetryQueueSpreadsheetAdapter.enqueue: Save complete');
         }
 
         /**
