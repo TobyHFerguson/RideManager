@@ -16,6 +16,7 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `Commands.js` - Business logic commands
   - `rowCheck.js` - Validation logic
   - `RetryQueueCore.js` - Retry logic (exponential backoff, queue management)
+  - `RetryQueueMarshallingCore.js` - Queue data marshalling (items ↔ 2D arrays)
   - `HyperlinkUtils.js` - Hyperlink formula parsing
   - Dates submodule
 
@@ -25,7 +26,8 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `UIManager.js` - User interface dialogs
   - `MenuFunctions.js` - Menu handlers
   - `triggers.js` - GAS event handlers
-  - `RetryQueue.js` - GAS adapter for RetryQueueCore (PropertiesService, CalendarApp, etc.)
+  - `RetryQueue.js` - GAS orchestrator for RetryQueueCore
+  - `RetryQueueSpreadsheetAdapter.js` - SpreadsheetApp I/O for retry queue (uses RetryQueueMarshallingCore)
   - `GoogleCalendarManager.js` - Calendar API wrapper
 
 - **Legacy mixed modules** (MUST refactor when modifying):
@@ -35,13 +37,20 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
 
 #### CRITICAL Architecture Rules
 
-**Rule 1: Minimize GAS Code Execution**
-- Business logic MUST be in pure JavaScript modules
-- GAS modules should be thin adapters that only:
+**Rule 1: Maximize Testable Code - Minimize GAS Execution**
+- **Principle**: Anything that can be tested in Jest without requiring GAS MUST be in a pure JavaScript Core module
+- This includes:
+  - Business logic (calculations, decisions, state management)
+  - Data transformations and marshalling (format conversions, parsing, serialization)
+  - Validation rules
+  - Algorithm implementations
+- GAS modules should be thin adapters that ONLY:
   - Read/write from GAS services (SpreadsheetApp, PropertiesService, CalendarApp, etc.)
   - Call pure JavaScript functions
   - Handle GAS-specific errors
-- Example: `RetryQueueCore.js` (pure JS) vs `RetryQueue.js` (GAS adapter)
+  - Convert between GAS types and plain JavaScript types
+- **Goal**: Every code path should be verifiable through automated tests
+- **Example**: `RetryQueueMarshallingCore.js` (pure JS data conversion, 100% tested) vs `RetryQueueSpreadsheetAdapter.js` (thin GAS wrapper)
 
 **Rule 2: 100% Test Coverage Required**
 - ALL pure JavaScript modules MUST have Jest tests with 100% code coverage
@@ -49,13 +58,81 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
 - Only exception: `if (typeof require !== 'undefined')` compatibility checks
 - Test files go in `test/__tests__/YourModule.test.js`
 - Coverage reports generated in `coverage/` directory
+- **Not just business logic**: Data marshalling, format conversions, parsing - all must be tested
 
-**Rule 3: Testability First**
+**Rule 3: Testability First - Extract Before You Code**
 When creating new functionality:
-1. Write pure JavaScript core logic in `*Core.js` or similar
-2. Write comprehensive Jest tests achieving 100% coverage
-3. Create thin GAS adapter in `*.js` that wraps the core
-4. Document the separation in code comments
+1. **Identify what can be tested**: Separate pure logic from GAS API calls
+2. **Write pure JavaScript core logic** in `*Core.js` module (e.g., `RetryQueueCore.js`, `RetryQueueMarshallingCore.js`)
+3. **Write comprehensive Jest tests** achieving 100% coverage BEFORE writing the adapter
+4. **Create thin GAS adapter** in `*.js` that only handles GAS APIs
+5. **Document the separation** in code comments
+
+**Example**: RetryQueue Spreadsheet Access
+```javascript
+// ✅ CORRECT: Pure JS marshalling (100% tested in Jest)
+// RetryQueueMarshallingCore.js
+class RetryQueueMarshallingCore {
+    static itemToRow(item) {
+        return [
+            item.id || '',
+            item.operation || '',
+            item.params ? JSON.stringify(item.params) : '',
+            // ... all conversion logic here
+        ];
+    }
+    static rowToItem(row) {
+        return {
+            id: row[0] || '',
+            operation: row[1] || '',
+            params: row[2] ? JSON.parse(row[2]) : {},
+            // ... all parsing logic here
+        };
+    }
+}
+
+// ✅ CORRECT: Thin GAS adapter (only SpreadsheetApp calls)
+// RetryQueueSpreadsheetAdapter.js
+class RetryQueueSpreadsheetAdapter {
+    save(items) {
+        const sheet = this._getSheet();
+        // Use Core module for conversion
+        const rows = RetryQueueMarshallingCore.itemsToRows(items);
+        // Only GAS API call
+        sheet.getRange(2, 1, rows.length, 7).setValues(rows);
+    }
+    
+    loadAll() {
+        const sheet = this._getSheet();
+        // Only GAS API call
+        const values = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+        // Use Core module for conversion
+        return RetryQueueMarshallingCore.rowsToItems(values);
+    }
+}
+
+// ❌ WRONG: Data conversion inline in GAS adapter (untestable)
+class RetryQueueSpreadsheetAdapter {
+    save(items) {
+        const sheet = this._getSheet();
+        // WRONG: Conversion logic mixed with GAS calls
+        const rows = items.map(item => [
+            item.id || '',
+            item.operation || '',
+            JSON.stringify(item.params),
+            // ... can't test this without GAS
+        ]);
+        sheet.getRange(2, 1, rows.length, 7).setValues(rows);
+    }
+}
+```
+
+**Why This Matters**:
+- **Reliability**: Every conversion, every edge case is tested
+- **Debugging**: Pure JS modules can be debugged in Node.js with full tooling
+- **Refactoring**: Pure JS modules can be safely changed with test verification
+- **Speed**: Jest tests run in milliseconds vs GAS manual testing
+- **Confidence**: 100% coverage means all code paths are verified
 
 **Rule 4: Dependency Injection**
 Pure JavaScript modules should accept dependencies as parameters:

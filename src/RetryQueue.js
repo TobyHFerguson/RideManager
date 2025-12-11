@@ -3,12 +3,16 @@
  * 
  * This is a thin GAS-specific wrapper around RetryQueueCore.
  * All business logic is in RetryQueueCore (pure JavaScript, fully tested).
- * This layer only handles GAS APIs: PropertiesService, Utilities, CalendarApp, etc.
+ * This layer only handles GAS APIs: SpreadsheetApp, Utilities, CalendarApp, etc.
+ * 
+ * REFACTORED: Now uses RetryQueueSpreadsheetAdapter for persistence instead of PropertiesService.
+ * This provides operator visibility into queued retry operations.
  */
 
 // Node.js compatibility
 if (typeof require !== 'undefined') {
     var RetryQueueCore = require('./RetryQueueCore');
+    var RetryQueueSpreadsheetAdapter = require('./RetryQueueSpreadsheetAdapter');
 }
 
 var RetryQueue = (function() {
@@ -16,8 +20,11 @@ var RetryQueue = (function() {
     class RetryQueue {
         constructor() {
             this.props = PropertiesService.getScriptProperties();
-            this.QUEUE_KEY = 'calendarRetryQueue';
             this.TRIGGER_KEY = 'calendarRetryTriggerId';
+            
+            // Use spreadsheet adapter for queue persistence (operator-visible)
+            this.adapter = new RetryQueueSpreadsheetAdapter('Calendar Retry Queue');
+            this.PROCESSING_KEY = 'RETRY_QUEUE_PROCESSING';
         }
 
         /**
@@ -30,8 +37,6 @@ var RetryQueue = (function() {
          * @param {string} operation.userEmail - User who initiated the operation
          */
         enqueue(operation) {
-            const queue = this._getQueue();
-            
             // Use core logic to create queue item
             const queueItem = RetryQueueCore.createQueueItem(
                 operation,
@@ -39,8 +44,11 @@ var RetryQueue = (function() {
                 () => new Date().getTime()
             );
             
-            queue.push(queueItem);
-            this._saveQueue(queue);
+            // Set initial status
+            queueItem.status = 'pending';
+            
+            // Add to spreadsheet
+            this.adapter.enqueue(queueItem);
             this._ensureTriggerExists();
             
             console.log(`RetryQueue: Enqueued operation ${queueItem.id} for ride ${operation.rideUrl}`);
@@ -52,70 +60,87 @@ var RetryQueue = (function() {
          * Called by time-based trigger
          */
         processQueue() {
-            const queue = this._getQueue();
-            if (queue.length === 0) {
-                console.log('RetryQueue: Queue empty, removing trigger');
-                this._removeTrigger();
-                return { processed: 0, succeeded: 0, failed: 0, remaining: 0 };
+            // Prevent concurrent processing
+            if (this._isProcessing()) {
+                console.log('RetryQueue: Already processing, skipping run');
+                return { processed: 0, succeeded: 0, failed: 0, remaining: 0, skipped: true };
             }
-
-            const now = new Date().getTime();
-            const dueItems = RetryQueueCore.getDueItems(queue, now);
             
-            console.log(`RetryQueue: Processing ${dueItems.length} due items out of ${queue.length} total`);
-            
-            let succeeded = 0;
-            let failed = 0;
-            
-            dueItems.forEach(item => {
-                try {
-                    const result = this._executeOperation(item);
-                    
-                    if (result.success) {
-                        // Remove from queue on success
-                        const newQueue = RetryQueueCore.removeItem(this._getQueue(), item.id);
-                        this._saveQueue(newQueue);
-                        succeeded++;
-                        console.log(`RetryQueue: Operation ${item.id} succeeded on attempt ${item.attemptCount + 1}`);
-                        
-                        // Notify user of success
-                        this._notifySuccess(item);
-                    } else {
-                        // Use core logic to update after failure
-                        const updateResult = RetryQueueCore.updateAfterFailure(item, result.error, now);
-                        
-                        if (updateResult.shouldRetry) {
-                            const newQueue = RetryQueueCore.updateItem(this._getQueue(), updateResult.updatedItem);
-                            this._saveQueue(newQueue);
-                            console.log(`RetryQueue: Operation ${item.id} failed, will retry at ${new Date(updateResult.updatedItem.nextRetryAt)}`);
-                        } else {
-                            // Max retries exceeded
-                            const newQueue = RetryQueueCore.removeItem(this._getQueue(), item.id);
-                            this._saveQueue(newQueue);
-                            failed++;
-                            console.error(`RetryQueue: Operation ${item.id} failed permanently after ${updateResult.updatedItem.attemptCount} attempts`);
-                            this._notifyFailure(updateResult.updatedItem);
-                        }
-                    }
-                } catch (error) {
-                    console.error(`RetryQueue: Unexpected error processing item ${item.id}:`, error);
-                    item.lastError = error.message;
-                    const newQueue = RetryQueueCore.updateItem(this._getQueue(), item);
-                    this._saveQueue(newQueue);
+            try {
+                this._setProcessing(true);
+                
+                const queue = this.adapter.loadAll();
+                if (queue.length === 0) {
+                    console.log('RetryQueue: Queue empty, removing trigger');
+                    this._removeTrigger();
+                    return { processed: 0, succeeded: 0, failed: 0, remaining: 0 };
                 }
-            });
-            
-            const remainingQueue = this._getQueue();
-            if (remainingQueue.length === 0) {
-                this._removeTrigger();
+
+                const now = new Date().getTime();
+                const dueItems = RetryQueueCore.getDueItems(queue, now);
+                
+                console.log(`RetryQueue: Processing ${dueItems.length} due items out of ${queue.length} total`);
+                
+                let succeeded = 0;
+                let failed = 0;
+                
+                dueItems.forEach(item => {
+                    try {
+                        // Mark as retrying (visual feedback in spreadsheet)
+                        item.status = 'retrying';
+                        this.adapter.update(item);
+                        
+                        const result = this._executeOperation(item);
+                        
+                        if (result.success) {
+                            // Mark as succeeded and remove from queue immediately
+                            item.status = 'succeeded';
+                            this.adapter.remove(item.id);
+                            succeeded++;
+                            console.log(`RetryQueue: Operation ${item.id} succeeded on attempt ${item.attemptCount + 1}`);
+                            
+                            // Notify user of success
+                            this._notifySuccess(item);
+                        } else {
+                            // Use core logic to update after failure
+                            const updateResult = RetryQueueCore.updateAfterFailure(item, result.error, now);
+                            
+                            if (updateResult.shouldRetry) {
+                                // Mark as failed and keep in queue for retry
+                                updateResult.updatedItem.status = 'failed';
+                                this.adapter.update(updateResult.updatedItem);
+                                console.log(`RetryQueue: Operation ${item.id} failed, will retry at ${new Date(updateResult.updatedItem.nextRetryAt)}`);
+                            } else {
+                                // Max retries exceeded - mark as abandoned and keep in queue for investigation
+                                updateResult.updatedItem.status = 'abandoned';
+                                this.adapter.update(updateResult.updatedItem);
+                                failed++;
+                                console.error(`RetryQueue: Operation ${item.id} abandoned after ${updateResult.updatedItem.attemptCount} attempts`);
+                                this._notifyFailure(updateResult.updatedItem);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`RetryQueue: Unexpected error processing item ${item.id}:`, error);
+                        item.lastError = error.message;
+                        item.status = 'failed';
+                        this.adapter.update(item);
+                    }
+                });
+                
+                const remainingQueue = this.adapter.loadAll();
+                if (remainingQueue.length === 0) {
+                    this._removeTrigger();
+                }
+                
+                return {
+                    processed: dueItems.length,
+                    succeeded: succeeded,
+                    failed: failed,
+                    remaining: remainingQueue.length
+                };
+            } finally {
+                this._setProcessing(false);
             }
-            
-            return {
-                processed: dueItems.length,
-                succeeded: succeeded,
-                failed: failed,
-                remaining: remainingQueue.length
-            };
         }
 
         /**
@@ -357,20 +382,24 @@ var RetryQueue = (function() {
         }
 
         /**
-         * Get current queue from PropertiesService (GAS-specific)
+         * Check if queue is currently being processed (for concurrent lock)
          * @private
          */
-        _getQueue() {
-            const queueJson = this.props.getProperty(this.QUEUE_KEY);
-            return queueJson ? JSON.parse(queueJson) : [];
+        _isProcessing() {
+            return this.props.getProperty(this.PROCESSING_KEY) === 'true';
         }
 
         /**
-         * Save queue to PropertiesService (GAS-specific)
+         * Set or clear processing lock
          * @private
+         * @param {boolean} value - True to set lock, false to clear
          */
-        _saveQueue(queue) {
-            this.props.setProperty(this.QUEUE_KEY, JSON.stringify(queue));
+        _setProcessing(value) {
+            if (value) {
+                this.props.setProperty(this.PROCESSING_KEY, 'true');
+            } else {
+                this.props.deleteProperty(this.PROCESSING_KEY);
+            }
         }
 
         /**
@@ -379,12 +408,11 @@ var RetryQueue = (function() {
          * @param {string} eventId - Google Calendar event ID
          */
         removeByEventId(eventId) {
-            const queue = this._getQueue();
+            const queue = this.adapter.loadAll();
             const itemToRemove = queue.find(item => item.params && item.params.eventId === eventId);
             
             if (itemToRemove) {
-                const newQueue = RetryQueueCore.removeItem(queue, itemToRemove.id);
-                this._saveQueue(newQueue);
+                this.adapter.remove(itemToRemove.id);
                 console.log(`RetryQueue: Removed item for event ${eventId}`);
             } else {
                 console.log(`RetryQueue: No item found for event ${eventId}`);
@@ -392,10 +420,37 @@ var RetryQueue = (function() {
         }
 
         /**
+         * Remove queue items by ride URL (for unscheduling)
+         * Used when a ride is unscheduled to remove pending calendar operations from retry queue
+         * @param {string} rideUrl - RWGPS ride URL (e.g., https://ridewithgps.com/events/436786)
+         * @returns {number} Number of items removed
+         */
+        removeByRideUrl(rideUrl) {
+            if (!rideUrl) {
+                return 0;
+            }
+            
+            const queue = this.adapter.loadAll();
+            const itemsToRemove = queue.filter(item => item.rideUrl === rideUrl);
+            
+            let removed = 0;
+            itemsToRemove.forEach(item => {
+                this.adapter.remove(item.id);
+                removed++;
+            });
+            
+            if (removed > 0) {
+                console.log(`RetryQueue: Removed ${removed} item(s) for ride ${rideUrl}`);
+            }
+            
+            return removed;
+        }
+
+        /**
          * Get current queue status for debugging
          */
         getStatus() {
-            const queue = this._getQueue();
+            const queue = this.adapter.loadAll();
             const now = new Date().getTime();
             
             const stats = RetryQueueCore.getStatistics(queue, now);
@@ -411,7 +466,7 @@ var RetryQueue = (function() {
          * Clear entire queue (for testing/debugging)
          */
         clearQueue() {
-            this._saveQueue([]);
+            this.adapter.clear();
             this._removeTrigger();
             console.log('RetryQueue: Queue cleared');
         }

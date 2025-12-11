@@ -46,15 +46,45 @@ class GoogleCalendarManager {
      * @returns {Object} { success: boolean, eventId?: string, queued?: boolean }
      */
     static createEvent(calendarId, title, startTime, endTime, location, description, rideUrl = null, rowNum = null) {
-        const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
-        if (!calendar) {
-            console.error('GoogleCalendarManager.createEvent() - Calendar not found after retries. ', calendarId);
+        // Check for test mode - force failure if requested
+        const isTestMode = PropertiesService.getScriptProperties().getProperty('RETRY_QUEUE_TEST_MODE') === 'true';
+        const shouldForceFailure = PropertiesService.getScriptProperties().getProperty('RETRY_QUEUE_FORCE_FAILURE') === 'true';
+        
+        if (isTestMode && shouldForceFailure) {
+            console.log('GoogleCalendarManager [TEST MODE]: Forcing failure, queueing operation');
             
-            // Queue for background retry if rowNum provided
-            if (rowNum !== null) {
+            // Queue for background retry with the forced failure
+            if (rideUrl !== null) {
                 return GoogleCalendarManager._queueForRetry({
                     type: 'create',
                     calendarId,
+                    rideUrl,
+                    rideTitle: title,
+                    rowNum,
+                    params: {
+                        title,
+                        startTime: startTime.getTime(),
+                        endTime: endTime.getTime(),
+                        location,
+                        description
+                    }
+                });
+            }
+            
+            return { success: false, error: 'Forced test failure - RETRY_QUEUE_FORCE_FAILURE enabled' };
+        }
+        
+        const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
+        if (!calendar) {
+            console.error('GoogleCalendarManager.createEvent() - Calendar not found after retries. ', calendarId);
+
+            // Queue for background retry if rideUrl provided
+            if (rideUrl !== null) {
+                return GoogleCalendarManager._queueForRetry({
+                    type: 'create',
+                    calendarId,
+                    rideUrl,
+                    rideTitle: title,
                     rowNum,
                     params: {
                         title,

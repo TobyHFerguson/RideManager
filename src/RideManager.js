@@ -240,46 +240,109 @@ const RideManager = (function () {
             processRows_(rows, rwgps, schedule_row_);
         },
         unscheduleRows: function (rows, rwgps) {
-            try {
-                const rideUrlsToBeDeleted = rows.map(row => row.RideURL);
-                rwgps.batch_delete_events(rideUrlsToBeDeleted);
-            } catch (err) {
-                // Ignore the case where the event has already been deleted in rwgps land since we want it to be deleted anyway!
-                if (err.message.indexOf('Request failed for https://ridewithgps.com returned code 404') === -1) {
-                    throw err;
+            // Collect RideURLs and GoogleEventIds BEFORE any modifications
+            const rideData = rows.map(row => ({
+                rideUrl: row.RideURL || null,
+                googleEventId: row.GoogleEventId || null,
+                group: row.Group
+            }));
+            
+            // Step 1: Delete rides from RWGPS (batch operation, but handle errors gracefully)
+            const rideUrlsToDelete = rideData.map(data => data.rideUrl).filter(url => url);
+            if (rideUrlsToDelete.length > 0) {
+                try {
+                    rwgps.batch_delete_events(rideUrlsToDelete);
+                    console.log(`RideManager.unscheduleRows: Deleted ${rideUrlsToDelete.length} ride(s) from RWGPS`);
+                } catch (err) {
+                    const is404 = err.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
+                    const is500 = err.message.indexOf('Request failed for https://ridewithgps.com returned code 500') !== -1;
+                    
+                    if (is404) {
+                        // 404 = Not Found - rides already deleted, continue
+                        console.log('RideManager.unscheduleRows: Rides already deleted on RWGPS (404)');
+                    } else if (is500) {
+                        // 500 could be transient server error - retry to confirm deletion
+                        console.log('RideManager.unscheduleRows: Got 500 error, retrying to confirm rides deleted');
+                        try {
+                            rwgps.batch_delete_events(rideUrlsToDelete);
+                            // Retry succeeded - this was a transient error, log but continue
+                            console.error('RideManager.unscheduleRows: Retry succeeded - original 500 was transient, continuing');
+                        } catch (retryErr) {
+                            const retryIs404 = retryErr.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
+                            if (retryIs404) {
+                                // Retry got 404 - rides are indeed deleted
+                                console.log('RideManager.unscheduleRows: Retry confirmed rides deleted (404)');
+                            } else {
+                                // Different error on retry - log but continue with cleanup
+                                console.error('RideManager.unscheduleRows: RWGPS deletion failed, continuing with cleanup:', retryErr.message);
+                            }
+                        }
+                    } else {
+                        // Other error - log but continue with cleanup
+                        console.error('RideManager.unscheduleRows: RWGPS deletion failed, continuing with cleanup:', err.message);
+                    }
                 }
             }
             
-            // Collect RideURLs for batch announcement removal
-            const rideUrlsWithAnnouncements = [];
-            
-            rows.forEach(row => {
-                // Get RideURL BEFORE deleting the link (deleteRideLink clears the column)
-                const rideUrl = row.RideURL;
-                if (rideUrl) {
-                    rideUrlsWithAnnouncements.push(rideUrl);
+            // Step 2: Process each row individually (continue even if some fail)
+            rows.forEach((row, index) => {
+                const data = rideData[index];
+                
+                try {
+                    // Delete ride link from spreadsheet
+                    row.deleteRideLink();
+                } catch (error) {
+                    console.error(`RideManager.unscheduleRows: Error deleting ride link for row:`, error);
                 }
                 
-                row.deleteRideLink();
-                const id = getCalendarId(row.Group);
-                if (!id) {
-                    console.error(`RideManager.unscheduleRows(): No Calendar ID found for ${row.Group} - skipping GoogleCalendarManager.deleteEvent()`)
-                } else {
-                    GoogleCalendarManager.deleteEvent(getCalendarId(row.Group), row.GoogleEventId);
+                try {
+                    // Delete calendar event
+                    if (data.googleEventId) {
+                        const calendarId = getCalendarId(data.group);
+                        if (!calendarId) {
+                            console.error(`RideManager.unscheduleRows: No Calendar ID found for ${data.group} - skipping calendar deletion`);
+                        } else {
+                            GoogleCalendarManager.deleteEvent(calendarId, data.googleEventId);
+                        }
+                    }
+                    row.GoogleEventId = '';
+                } catch (error) {
+                    console.error(`RideManager.unscheduleRows: Error deleting calendar event ${data.googleEventId}:`, error);
+                    // Still clear the field even if deletion failed
+                    try {
+                        row.GoogleEventId = '';
+                    } catch (e) {
+                        console.error(`RideManager.unscheduleRows: Error clearing GoogleEventId:`, e);
+                    }
                 }
-                row.GoogleEventId = '';
             });
             
-            // Batch remove announcements for all rides at once
+            // Step 3: Batch remove announcements
+            const rideUrlsWithAnnouncements = rideData.map(data => data.rideUrl).filter(url => url);
             if (rideUrlsWithAnnouncements.length > 0) {
                 try {
                     const count = new (AnnouncementManager)().removeByRideUrls(rideUrlsWithAnnouncements);
                     if (count > 0) {
-                        console.log(`RideManager.unscheduleRows(): Removed ${count} announcement(s) for ${rideUrlsWithAnnouncements.length} rides`);
+                        console.log(`RideManager.unscheduleRows: Removed ${count} announcement(s) for ${rideUrlsWithAnnouncements.length} rides`);
                     }
                 } catch (error) {
-                    console.error(`RideManager.unscheduleRows(): Error removing announcements:`, error);
-                    // Don't throw - announcement cleanup is not critical to unscheduling
+                    console.error(`RideManager.unscheduleRows: Error removing announcements:`, error);
+                    // Don't throw - announcement cleanup is not critical
+                }
+            }
+            
+            // Step 4: Remove retry queue items (batch all removals in single instance)
+            const rideUrls = rideData.map(data => data.rideUrl).filter(url => url);
+            if (rideUrls.length > 0) {
+                try {
+                    const retryQueue = new RetryQueue();
+                    rideUrls.forEach(rideUrl => {
+                        retryQueue.removeByRideUrl(rideUrl);
+                    });
+                    console.log(`RideManager.unscheduleRows: Removed retry queue items for ${rideUrls.length} ride(s)`);
+                } catch (error) {
+                    console.error(`RideManager.unscheduleRows: Error removing retry queue items:`, error);
+                    // Don't throw - retry queue cleanup is not critical
                 }
             }
         },
