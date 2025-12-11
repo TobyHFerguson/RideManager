@@ -331,17 +331,20 @@ const RideManager = (function () {
                 }
             }
             
-            // Step 4: Remove retry queue items
-            rideData.forEach(data => {
-                if (data.rideUrl) {
-                    try {
-                        new RetryQueue().removeByRideUrl(data.rideUrl);
-                    } catch (error) {
-                        console.error(`RideManager.unscheduleRows: Error removing retry queue items for ${data.rideUrl}:`, error);
-                        // Don't throw - retry queue cleanup is not critical
-                    }
+            // Step 4: Remove retry queue items (batch all removals in single instance)
+            const rideUrls = rideData.map(data => data.rideUrl).filter(url => url);
+            if (rideUrls.length > 0) {
+                try {
+                    const retryQueue = new RetryQueue();
+                    rideUrls.forEach(rideUrl => {
+                        retryQueue.removeByRideUrl(rideUrl);
+                    });
+                    console.log(`RideManager.unscheduleRows: Removed retry queue items for ${rideUrls.length} ride(s)`);
+                } catch (error) {
+                    console.error(`RideManager.unscheduleRows: Error removing retry queue items:`, error);
+                    // Don't throw - retry queue cleanup is not critical
                 }
-            });
+            }
         },
         /**
          * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector

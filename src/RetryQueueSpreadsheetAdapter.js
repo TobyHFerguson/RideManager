@@ -2,20 +2,23 @@
  * RetryQueueSpreadsheetAdapter - GAS adapter for retry queue spreadsheet I/O
  * 
  * This is a thin GAS-specific wrapper that handles spreadsheet access.
- * All business logic is in RetryQueueAdapterCore (pure JavaScript, fully tested).
- * This layer only handles GAS APIs: SpreadsheetApp, bmPreFiddler.
+ * All data marshalling is in RetryQueueMarshallingCore (pure JavaScript, fully tested).
+ * This layer only handles GAS APIs: SpreadsheetApp (no Fiddler).
  * 
- * ARCHITECTURE PATTERN: Load → Work → Save
- * ========================================
- * Similar to ScheduleAdapter, this follows:
- * 1. LOAD: Create adapter and load rows
- * 2. WORK: Modify items in memory using RetryQueueCore logic
- * 3. SAVE: Persist changes in a single batch
+ * ARCHITECTURE PATTERN: Direct SpreadsheetApp Access
+ * ===================================================
+ * Unlike ScheduleAdapter (which uses Fiddler for complex formulas), this adapter
+ * uses SpreadsheetApp directly like UserLogger. This approach:
+ * - Avoids focus changes caused by Fiddler's dumpValues()
+ * - Is simpler for append-only queue operations
+ * - Doesn't require formula preservation
+ * 
+ * Pattern: getSheet() → getValues() → RetryQueueMarshallingCore → items → Core → setValues()
  */
 
 // Node.js compatibility
 if (typeof require !== 'undefined') {
-    var RetryQueueAdapterCore = require('./RetryQueueAdapterCore');
+    var RetryQueueMarshallingCore = require('./RetryQueueMarshallingCore');
 }
 
 var RetryQueueSpreadsheetAdapter = (function() {
@@ -37,26 +40,40 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 throw new Error('RetryQueueSpreadsheetAdapter requires an active spreadsheet or spreadsheet parameter. Error: ' + error.message);
             }
             
-            // Lazy initialization - Fiddler created on first use
-            this._fiddler = null;
-            
             // Cache spreadsheet data to avoid multiple reads
             this._cachedRows = null;
         }
 
         /**
-         * Get or create Fiddler instance (lazy initialization)
+         * Get or create the retry queue sheet
          * @private
-         * @returns {Fiddler} Fiddler instance
+         * @returns {GoogleAppsScript.Spreadsheet.Sheet|null} Sheet object or null if doesn't exist
          */
-        _getFiddler() {
-            if (!this._fiddler) {
-                this._fiddler = bmPreFiddler.PreFiddler().getFiddler({
-                    sheetName: this.sheetName,
-                    createIfMissing: true
-                });
-            }
-            return this._fiddler;
+        _getSheet() {
+            return this.spreadsheet.getSheetByName(this.sheetName);
+        }
+
+        /**
+         * Create the retry queue sheet with headers
+         * @private
+         * @returns {GoogleAppsScript.Spreadsheet.Sheet} Newly created sheet
+         */
+        _createSheet() {
+            // Preserve active sheet - insertSheet() changes focus
+            const originalActiveSheet = this.spreadsheet.getActiveSheet();
+            
+            const sheet = this.spreadsheet.insertSheet(this.sheetName);
+            // Set headers from RetryQueueMarshallingCore
+            const columnNames = RetryQueueMarshallingCore.getColumnNames();
+            const columnCount = RetryQueueMarshallingCore.getColumnCount();
+            sheet.getRange(1, 1, 1, columnCount).setValues([columnNames]);
+            sheet.getRange(1, 1, 1, columnCount).setFontWeight('bold');
+            sheet.setFrozenRows(1);
+            
+            // Restore original active sheet
+            this.spreadsheet.setActiveSheet(originalActiveSheet);
+            
+            return sheet;
         }
 
         /**
@@ -65,7 +82,7 @@ var RetryQueueSpreadsheetAdapter = (function() {
          */
         loadAll() {
             this._ensureDataLoaded();
-            return RetryQueueAdapterCore.rowsToItems(this._cachedRows);
+            return RetryQueueMarshallingCore.rowsToItems(this._cachedRows);
         }
 
         /**
@@ -73,31 +90,36 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {Object[]} items - Array of queue items
          */
         save(items) {
-            const rows = RetryQueueAdapterCore.itemsToRows(items);
-            
-            if (rows.length === 0) {
+            if (items.length === 0) {
                 // Queue is empty - delete the sheet to keep workspace clean
-                const sheet = this.spreadsheet.getSheetByName(this.sheetName);
+                const sheet = this._getSheet();
                 if (sheet) {
                     this.spreadsheet.deleteSheet(sheet);
                     console.log(`RetryQueueSpreadsheetAdapter: Deleted empty sheet "${this.sheetName}"`);
                 }
             } else {
-                // Queue has items - save them
-                const fiddler = this._getFiddler();
+                // Queue has items - save them using SpreadsheetApp directly
+                let sheet = this._getSheet();
                 
-                // ALWAYS preserve focus - any sheet access can trigger focus change
-                const originalActiveSheet = this.spreadsheet.getActiveSheet();
-                console.log(`RetryQueueSpreadsheetAdapter.save: Saved active sheet: ${originalActiveSheet.getName()}`);
+                if (!sheet) {
+                    // Create sheet if it doesn't exist (like UserLogger does)
+                    sheet = this._createSheet();
+                }
                 
-                fiddler.setData(rows);
-                console.log(`RetryQueueSpreadsheetAdapter.save: About to call dumpValues`);
-                fiddler.dumpValues();
-                console.log(`RetryQueueSpreadsheetAdapter.save: Called dumpValues`);
+                // Convert items to 2D array format for setValues()
+                const rows = RetryQueueMarshallingCore.itemsToRows(items);
+                const columnCount = RetryQueueMarshallingCore.getColumnCount();
                 
-                // Always restore original active sheet
-                this.spreadsheet.setActiveSheet(originalActiveSheet);
-                console.log(`RetryQueueSpreadsheetAdapter.save: Restored active sheet to ${originalActiveSheet.getName()}`);
+                // Clear existing data (except header row) and write new data
+                const lastRow = sheet.getLastRow();
+                if (lastRow > 1) {
+                    sheet.getRange(2, 1, lastRow - 1, columnCount).clear();
+                }
+                
+                // Write all rows at once
+                if (rows.length > 0) {
+                    sheet.getRange(2, 1, rows.length, columnCount).setValues(rows);
+                }
             }
             
             // Clear cache to force reload on next operation
@@ -109,10 +131,9 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {Object} item - Queue item to add
          */
         enqueue(item) {
-            this._ensureDataLoaded();
-            const newRows = RetryQueueAdapterCore.addRow(this._cachedRows, item);
-            this._cachedRows = newRows;
-            this.save(RetryQueueAdapterCore.rowsToItems(newRows));
+            const items = this.loadAll();
+            items.push(item);
+            this.save(items);
         }
 
         /**
@@ -120,10 +141,12 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {Object} updatedItem - Updated queue item
          */
         update(updatedItem) {
-            this._ensureDataLoaded();
-            const newRows = RetryQueueAdapterCore.updateRow(this._cachedRows, updatedItem);
-            this._cachedRows = newRows;
-            this.save(RetryQueueAdapterCore.rowsToItems(newRows));
+            const items = this.loadAll();
+            const index = items.findIndex(item => item.id === updatedItem.id);
+            if (index !== -1) {
+                items[index] = updatedItem;
+                this.save(items);
+            }
         }
 
         /**
@@ -131,10 +154,9 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {string} id - Item ID to remove
          */
         remove(id) {
-            this._ensureDataLoaded();
-            const newRows = RetryQueueAdapterCore.removeRow(this._cachedRows, id);
-            this._cachedRows = newRows;
-            this.save(RetryQueueAdapterCore.rowsToItems(newRows));
+            const items = this.loadAll();
+            const filtered = items.filter(item => item.id !== id);
+            this.save(filtered);
         }
 
         /**
@@ -143,21 +165,20 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @returns {Object|null} Queue item or null if not found
          */
         findById(id) {
-            this._ensureDataLoaded();
-            const index = RetryQueueAdapterCore.findIndexById(this._cachedRows, id);
-            if (index === -1) {
-                return null;
-            }
-            return RetryQueueAdapterCore.rowToItem(this._cachedRows[index]);
+            const items = this.loadAll();
+            return items.find(item => item.id === id) || null;
         }
 
         /**
          * Get queue statistics
-         * @returns {Object} Statistics object
+         * @returns {Object} Statistics object with total count
          */
         getStatistics() {
-            this._ensureDataLoaded();
-            return RetryQueueAdapterCore.getStatistics(this._cachedRows);
+            const items = this.loadAll();
+            return {
+                total: items.length,
+                items: items
+            };
         }
 
         /**
@@ -191,10 +212,24 @@ var RetryQueueSpreadsheetAdapter = (function() {
          */
         _ensureDataLoaded() {
             if (!this._cachedRows) {
-                const fiddler = this._getFiddler();
-                const data = fiddler.getData();
-                // Fiddler returns empty array if no data or sheet doesn't exist yet
-                this._cachedRows = data || [];
+                const sheet = this._getSheet();
+                
+                if (!sheet) {
+                    // Sheet doesn't exist yet - return empty array
+                    this._cachedRows = [];
+                } else {
+                    // Read all data rows (skip header)
+                    const lastRow = sheet.getLastRow();
+                    if (lastRow <= 1) {
+                        // Only header row exists
+                        this._cachedRows = [];
+                    } else {
+                        // Get all data rows (2D array format)
+                        const columnCount = RetryQueueMarshallingCore.getColumnCount();
+                        const values = sheet.getRange(2, 1, lastRow - 1, columnCount).getValues();
+                        this._cachedRows = values;
+                    }
+                }
             }
         }
     }

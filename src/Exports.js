@@ -58,6 +58,9 @@ var Exports = {
     get RetryQueueAdapterCore() {
         return RetryQueueAdapterCore;
     },
+    get RetryQueueMarshallingCore() {
+        return RetryQueueMarshallingCore;
+    },
     get RetryQueueSpreadsheetAdapter() {
         return RetryQueueSpreadsheetAdapter;
     },
