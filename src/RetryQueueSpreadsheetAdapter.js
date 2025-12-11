@@ -90,17 +90,24 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 const sheetExists = this.spreadsheet.getSheetByName(this.sheetName) !== null;
                 let originalActiveSheet = null;
                 
+                console.log(`RetryQueueSpreadsheetAdapter.save: Sheet exists = ${sheetExists}`);
+                
                 if (!sheetExists) {
                     // Sheet will be created by dumpValues() - preserve current focus
                     originalActiveSheet = this.spreadsheet.getActiveSheet();
+                    console.log(`RetryQueueSpreadsheetAdapter.save: Saved active sheet: ${originalActiveSheet.getName()}`);
                 }
                 
                 fiddler.setData(rows);
+                console.log(`RetryQueueSpreadsheetAdapter.save: About to call dumpValues`);
                 fiddler.dumpValues();  // This creates the sheet if it doesn't exist
+                console.log(`RetryQueueSpreadsheetAdapter.save: Called dumpValues`);
                 
                 // Restore original active sheet if we created a new sheet
                 if (originalActiveSheet) {
+                    console.log(`RetryQueueSpreadsheetAdapter.save: Restoring active sheet to ${originalActiveSheet.getName()}`);
                     this.spreadsheet.setActiveSheet(originalActiveSheet);
+                    console.log(`RetryQueueSpreadsheetAdapter.save: Active sheet is now ${this.spreadsheet.getActiveSheet().getName()}`);
                 }
             }
             
