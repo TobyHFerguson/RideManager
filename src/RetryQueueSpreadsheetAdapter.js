@@ -37,15 +37,26 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 throw new Error('RetryQueueSpreadsheetAdapter requires an active spreadsheet or spreadsheet parameter. Error: ' + error.message);
             }
             
-            // Initialize Fiddler for data I/O
-            // Fiddler will create the sheet automatically when first dumpValues() is called
-            this.fiddler = bmPreFiddler.PreFiddler().getFiddler({
-                sheetName: sheetName,
-                createIfMissing: true
-            });
+            // Lazy initialization - Fiddler created on first use
+            this._fiddler = null;
             
             // Cache spreadsheet data to avoid multiple reads
             this._cachedRows = null;
+        }
+
+        /**
+         * Get or create Fiddler instance (lazy initialization)
+         * @private
+         * @returns {Fiddler} Fiddler instance
+         */
+        _getFiddler() {
+            if (!this._fiddler) {
+                this._fiddler = bmPreFiddler.PreFiddler().getFiddler({
+                    sheetName: this.sheetName,
+                    createIfMissing: true
+                });
+            }
+            return this._fiddler;
         }
 
         /**
@@ -73,8 +84,9 @@ var RetryQueueSpreadsheetAdapter = (function() {
                 }
             } else {
                 // Queue has items - save them
-                this.fiddler.setData(rows);
-                this.fiddler.dumpValues();  // Actually write to spreadsheet!
+                const fiddler = this._getFiddler();
+                fiddler.setData(rows);
+                fiddler.dumpValues();  // Actually write to spreadsheet!
                 SpreadsheetApp.flush();
             }
             
@@ -169,7 +181,8 @@ var RetryQueueSpreadsheetAdapter = (function() {
          */
         _ensureDataLoaded() {
             if (!this._cachedRows) {
-                const data = this.fiddler.getData();
+                const fiddler = this._getFiddler();
+                const data = fiddler.getData();
                 // Fiddler returns empty array if no data or sheet doesn't exist yet
                 this._cachedRows = data || [];
             }
