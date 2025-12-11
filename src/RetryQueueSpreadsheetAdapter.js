@@ -76,25 +76,13 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {Object[]} items - Array of queue items
          */
         save(items) {
-            console.log('RetryQueueSpreadsheetAdapter.save: Starting with items:', items.length);
             const rows = RetryQueueAdapterCore.itemsToRows(items);
-            console.log('RetryQueueSpreadsheetAdapter.save: Converted to rows:', rows.length);
-            if (rows.length > 0) {
-                console.log('RetryQueueSpreadsheetAdapter.save: First row:', JSON.stringify(rows[0]));
-            }
-            console.log('RetryQueueSpreadsheetAdapter.save: Calling fiddler.setData with', rows.length, 'rows');
             this.fiddler.setData(rows);
-            console.log('RetryQueueSpreadsheetAdapter.save: Called fiddler.setData, now flushing');
+            this.fiddler.dumpValues();  // Actually write to spreadsheet!
             SpreadsheetApp.flush();
-            console.log('RetryQueueSpreadsheetAdapter.save: Flushed, now verifying...');
-            
-            // Verify the data was written
-            const verification = this.fiddler.getData();
-            console.log('RetryQueueSpreadsheetAdapter.save: Verification read:', verification ? verification.length : 'null', 'rows');
             
             // Clear cache to force reload on next operation
             this._cachedRows = null;
-            console.log('RetryQueueSpreadsheetAdapter.save: Complete');
         }
 
         /**
@@ -102,16 +90,10 @@ var RetryQueueSpreadsheetAdapter = (function() {
          * @param {Object} item - Queue item to add
          */
         enqueue(item) {
-            console.log('RetryQueueSpreadsheetAdapter.enqueue: Starting with item:', JSON.stringify(item));
             this._ensureDataLoaded();
-            console.log('RetryQueueSpreadsheetAdapter.enqueue: Cached rows before add:', this._cachedRows.length);
             const newRows = RetryQueueAdapterCore.addRow(this._cachedRows, item);
-            console.log('RetryQueueSpreadsheetAdapter.enqueue: New rows count:', newRows.length);
             this._cachedRows = newRows;
-            const items = RetryQueueAdapterCore.rowsToItems(newRows);
-            console.log('RetryQueueSpreadsheetAdapter.enqueue: Items to save:', items.length, JSON.stringify(items[items.length - 1]));
-            this.save(items);
-            console.log('RetryQueueSpreadsheetAdapter.enqueue: Save complete');
+            this.save(RetryQueueAdapterCore.rowsToItems(newRows));
         }
 
         /**
