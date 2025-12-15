@@ -11,8 +11,6 @@ function onOpen() {
   // and onEdit only has access to old values, not formulas.
   const adapter = new ScheduleAdapter();
   adapter.storeFormulas();
-  initializeGlobals();
-  initializeGroupCache();
 }
 
 function createMenu_() {
@@ -105,7 +103,7 @@ function editEventReport_(event) {
   const activeUser = Session.getActiveUser();
   const userEmail = activeUser ? activeUser.getEmail() : 'Unknown User';
   console.log(`User ${userEmail} edited the spreadsheet. DTRT is ${dtrtIsEnabled_() ? 'enabled' : 'disabled'}`);
-  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
+  console.log(`editHandler called with event: ${JSON.stringify(event)}`);
   console.log(`event.oldValue: ${event.oldValue}`);
   console.log(`event.value: ${event.value}`);
   console.log(`event.range.getValue(): ${event.range.getValue()}`);
@@ -126,12 +124,15 @@ function editEventReport_(event) {
  * 
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
  */
-function myEdit(event) {
+function editHandler(event) {
   // event.value is only defined if the edited cell is a single cell
-  editEventReport_(event);
+  // editEventReport_(event);
   const adapter = new ScheduleAdapter();
   if (event.range.getSheet().getName() === adapter.getSheetName()) {
     return handleCRSheetEdit_(event, adapter);
+  } else { // Assume that the edit was a different sheet
+    console.log('Calling CacheManager.clearCache()');
+    Exports.CacheManager.clearCache();
   }
 }
 

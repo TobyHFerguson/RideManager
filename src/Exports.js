@@ -78,6 +78,9 @@ var Exports = {
     },
     get Globals() {
         return Globals;
+    },
+    get CacheManager() {
+        return CacheManager;
     }
 };
 
