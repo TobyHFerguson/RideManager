@@ -25,7 +25,6 @@ function createMenu_() {
     .addItem('Unschedule Selected Rides', unscheduleSelectedRides_.name)
     .addSeparator()
     .addItem('Import Selected Routes', importSelectedRoutes_.name)
-    .addItem('Link Selected Route URLs', linkSelectedRouteUrls_.name)
     .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
     .addItem('Test Selected Announcements', testSendAnnouncement_.name)
@@ -80,9 +79,6 @@ function cancelSelectedRides_() {
 }
 function importSelectedRoutes_() {
   MenuFunctions.importSelectedRoutes();
-}
-function linkSelectedRouteUrls_() {
-  MenuFunctions.linkSelectedRouteUrls();
 }
 function reinstateSelectedRides_() {
   MenuFunctions.reinstateSelectedRides();
@@ -229,8 +225,8 @@ function editRouteColumn_(event, adapter) {
     return;
   }
 
-  // Fetch route data from RWGPS (GAS operation)
-  const route = getRoute(url);
+  // Fetch route data from RWGPS (GAS operation), skipping the local cache
+  const route = getRoute(url, true);
   
   // Prompt for foreign route name if needed (GAS operation)
   let userProvidedName;

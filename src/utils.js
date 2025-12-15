@@ -50,11 +50,19 @@ function printCallerError(...args) {
   console.error(callerName, ...args);
 }
 
-function getRoute(url) {
+/**
+ * 
+ * @param {string} url url of route to get
+ * @param {boolean} [false] readThrough if true then read through the cache, updating it in the process
+ * @returns 
+ */
+function getRoute(url, readThrough = false) {
   const cache = CacheService.getDocumentCache(); // See https://developers.google.com/apps-script/reference/cache
-  let cachedRoute = cache.get(url);
-  if (cachedRoute) {
-    return JSON.parse(cachedRoute);
+  if (!readThrough) {
+    let cachedRoute = cache.get(url);
+    if (cachedRoute) {
+      return JSON.parse(cachedRoute);
+    }
   }
 
   const re = /(https:\/\/ridewithgps.com\/routes\/\d+)/;
@@ -97,9 +105,9 @@ function testGetRoute3() {
 
 function testGetRoute4() {
   try {
-      getRoute('https://ridewithgps.com/routes/2126')
+    getRoute('https://ridewithgps.com/routes/2126')
   }
   catch (e) {
-      console.log(e)
+    console.log(e)
   }
 }

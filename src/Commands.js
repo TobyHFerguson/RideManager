@@ -15,11 +15,6 @@ const Commands = (() => {
         importSelectedRoutesWithCredentials(rows, rwgps, force = false) {
             UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows, force);
         },
-        linkSelectedRouteUrlsWithCredentials(rows, rwgps, force = false) {
-            const errorFuns = [rowCheck.badRoute]
-            const warningFuns = []
-            UIManager.processRows(rows, errorFuns, warningFuns, rwgps, undefined, force);
-        },
         reinstateSelectedRidesWithCreds(rows, rwgps, force = false) {
             // Check if any rows have announcements that need special handling
             const rowsWithAnnouncements = rows.filter(r => r.Announcement && r.Status === 'cancelled');

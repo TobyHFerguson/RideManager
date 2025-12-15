@@ -77,10 +77,6 @@ const MenuFunctions = (() => {
       let command = Exports.Commands.importSelectedRoutesWithCredentials;
       executeCommand(command, autoconfirm, force);
     },
-    linkSelectedRouteUrls(force = false) {
-      let command = Exports.Commands.linkSelectedRouteUrlsWithCredentials;
-      executeCommand(command, force);
-    },
     reinstateSelectedRides(force = false) {
       let command = Exports.Commands.reinstateSelectedRidesWithCreds;
       executeCommand(command, force);
