@@ -7,6 +7,9 @@ declare namespace MenuFunctions {
     function unscheduleSelectedRides(force?: boolean): void;
     function updateRiderCount(force?: boolean): void;
     function updateSelectedRides(force?: boolean): void;
+    function viewRetryQueueStatus(): void;
+    function processRetryQueueNow(): void;
+    function sendPendingAnnouncements(): void;
 }
 
 declare const MenuFunctions: {
@@ -18,4 +21,7 @@ declare const MenuFunctions: {
     unscheduleSelectedRides: (force?: boolean) => void;
     updateRiderCount: (force?: boolean) => void;
     updateSelectedRides: (force?: boolean) => void;
+    viewRetryQueueStatus: () => void;
+    processRetryQueueNow: () => void;
+    sendPendingAnnouncements: () => void;
 };

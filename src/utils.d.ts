@@ -66,4 +66,14 @@ declare function duration(msg: string, start: Date, end?: Date): void;
  */
 declare function printCallerError(...args: any[]): void;
 
-export { zip, tableColumns, duration, printCallerError };
+/**
+ * Get route data from RideWithGPS
+ * 
+ * @param url - Route URL (must match https://ridewithgps.com/routes/DIGITS pattern)
+ * @param readThrough - If true, bypass cache and fetch fresh data (default: false)
+ * @returns Route object from RWGPS API
+ * @throws Error if URL is invalid or route cannot be accessed
+ */
+declare function getRoute(url: string, readThrough?: boolean): any;
+
+export { zip, tableColumns, duration, printCallerError, getRoute };

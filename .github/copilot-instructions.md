@@ -329,6 +329,195 @@ describe('ModuleName', () => {
 3. Verify 100% coverage in terminal output
 4. Check `coverage/lcov-report/index.html` for details
 
+## TypeScript Type Coverage (MANDATORY)
+
+**CRITICAL: Maximum Type Safety Required**
+
+All code in the `src/` directory MUST have comprehensive TypeScript type coverage and ZERO type errors.
+
+### Type Coverage Requirements
+
+1. **Zero Type Errors Policy**
+   - `npm run typecheck` MUST pass with ZERO errors in `src/` directory
+   - Pre-existing errors in `submodules/` are acceptable (not our code)
+   - Every code change MUST be verified with `npm run typecheck` before deployment
+   - ❌ NEVER commit code that introduces new type errors
+
+2. **Comprehensive `.d.ts` Files**
+   - Every `.js` module in `src/` MUST have a corresponding `.d.ts` file
+   - Type declarations MUST accurately reflect the actual implementation
+   - Update `.d.ts` files whenever changing function signatures
+   - Use JSDoc comments in `.js` files to enhance type inference
+
+3. **Type Error Suppression Strategy**
+   - **Prefer `@ts-expect-error`** over `@ts-ignore`
+   - `@ts-expect-error`: Used when you KNOW there's a type error (fails if error is fixed)
+   - `@ts-ignore`: Only for unavoidable compatibility issues (e.g., `typeof require !== 'undefined'`)
+   - **ALWAYS add explanatory comment** explaining why suppression is needed
+   - Minimize use of type escapes - fix the root cause when possible
+
+4. **Type Escape Guidelines**
+
+   ```javascript
+   // ✅ GOOD - @ts-expect-error with explanation
+   // @ts-expect-error - Google Apps Script globals not in type definitions
+   const value = globalVariable;
+   
+   // ✅ GOOD - @ts-ignore for compatibility check
+   // @ts-ignore - Node.js compatibility check for Jest tests
+   if (typeof require !== 'undefined') {
+       var Module = require('./Module');
+   }
+   
+   // ❌ BAD - @ts-ignore without explanation
+   // @ts-ignore
+   const result = someFunction();
+   
+   // ❌ BAD - Using type escape instead of fixing the issue
+   // @ts-ignore
+   const route = getRoute(); // Should add proper type to getRoute()
+   ```
+
+5. **Ambient vs Module Declarations**
+   - **Ambient** (no exports): For GAS globals available everywhere
+     ```typescript
+     // UserLogger.d.ts - Ambient (no export)
+     declare const UserLogger: UserLoggerNamespace;
+     // Use directly: UserLogger.log()
+     ```
+   - **Module** (with exports): For modules imported explicitly
+     ```typescript
+     // Event.d.ts - Module (with export)
+     export class Event { ... }
+     // Import required: const Event = require('./Event')
+     ```
+
+6. **Type Checking Workflow**
+   ```bash
+   # CRITICAL: Run type check before committing ANY code change
+   
+   npm run typecheck
+   
+   # This runs: tsc --noEmit
+   # Which uses tsconfig.json settings (checkJs: true, allowJs: true)
+   # Checks all files in src/**/*.js as configured in tsconfig.json
+   
+   # Must pass with ZERO errors in src/ before deployment
+   # Pre-existing errors in submodules/ are acceptable
+   ```
+   
+   **VS Code Integration:**
+   - VS Code uses the same tsconfig.json for inline error checking
+   - Errors shown in VS Code = errors that will fail `npm run typecheck`
+   - Fix ALL type errors shown in VS Code before committing
+   - Use triple-slash references (`/// <reference path="..." />`) to resolve "Cannot find name" errors
+   
+   **CRITICAL: jsconfig.json Override**
+   - `src/jsconfig.json` overrides root `tsconfig.json` for VS Code in src/ directory
+   - MUST keep both files synchronized with same strict settings:
+     - `"noImplicitAny": true`
+     - `"strict": true`
+     - `"useUnknownInCatchVariables": true`
+   - If VS Code and `npm run typecheck` show different errors, check both config files
+
+7. **GAS Global Declarations Pattern (CRITICAL)**
+   
+   **Problem**: In Google Apps Script, all `.js` files are concatenated into a single global scope. Variables declared with `var` at top level become global variables. TypeScript/VS Code doesn't know about these runtime globals.
+   
+   **Solution**: Use `gas-globals.d.ts` ambient declaration file
+   
+   ```typescript
+   // src/gas-globals.d.ts - Declares GAS runtime globals for TypeScript
+   
+   import type ScheduleAdapterClass from './ScheduleAdapter';
+   import type RetryQueueClass from './RetryQueue';
+   // ... other imports
+   
+   declare global {
+       // Classes - use 'typeof' to get the constructor type
+       const ScheduleAdapter: typeof ScheduleAdapterClass;
+       const RetryQueue: typeof RetryQueueClass;
+       
+       // Utility functions that are global in GAS
+       function getRoute(url: string, readThrough?: boolean): any;
+       function getAppVersion(): string;
+   }
+   
+   export {}; // Make this a module
+   ```
+   
+   **Usage in JavaScript files**:
+   ```javascript
+   /// <reference path="./gas-globals.d.ts" />
+   
+   function myFunction() {
+       // TypeScript now knows ScheduleAdapter is available globally
+       const adapter = new ScheduleAdapter();
+       const version = getAppVersion();
+   }
+   ```
+   
+   **JSDoc Instance Types**:
+   When a function parameter is an *instance* of a class (not the class itself), use:
+   ```javascript
+   /**
+    * @param {InstanceType<typeof ScheduleAdapter>} adapter - Instance of ScheduleAdapter
+    */
+   function handleEdit(event, adapter) {
+       adapter.restoreFormula(row, 'Route'); // TypeScript knows instance methods
+   }
+   ```
+   
+   **Key Rules**:
+   - ✅ Use `typeof ClassName` for class constructors (can use `new`)
+   - ✅ Use `InstanceType<typeof ClassName>` in JSDoc for class instances
+   - ✅ Reference `gas-globals.d.ts` in files that use global variables
+   - ✅ Keep `gas-globals.d.ts` updated when adding new global functions/classes
+   - ❌ Don't declare globals directly in module .d.ts files (won't work)
+
+8. **Common Type Issues and Solutions**
+
+   | Issue | Solution |
+   |-------|----------|
+   | Cannot find name 'X' | Add to `gas-globals.d.ts` or triple-slash reference |
+   | Property 'X' does not exist | Update `.d.ts` to include the property |
+   | Type 'X' is not assignable to 'Y' | Add type assertion or fix type mismatch |
+   | Implicit 'any' type | Add explicit type annotation or JSDoc |
+   | 'Property missing in type' for class instance | Use `InstanceType<typeof ClassName>` in JSDoc |
+   | 'typeof X' has no method Y | Use instance type, not constructor type |
+   | VS Code errors but `npm run typecheck` passes | Restart TypeScript server in VS Code |
+
+9. **Error Type Guards (useUnknownInCatchVariables: true)**
+   
+   With strict mode enabled, catch block variables are `unknown` type. Always use type guards:
+   
+   ```javascript
+   // ✅ GOOD - Type guard for error handling
+   try {
+       somethingRisky();
+   } catch (error) {
+       const err = error instanceof Error ? error : new Error(String(error));
+       console.error(err.message);
+       UserLogger.log('ERROR', err.message, { stack: err.stack });
+   }
+   
+   // ❌ BAD - Direct use of unknown error
+   try {
+       somethingRisky();
+   } catch (error) {
+       console.error(error.message); // TS Error: 'error' is of type 'unknown'
+   }
+   ```
+
+10. **Deployment Checklist**
+   - ✅ All tests pass: `npm test`
+   - ✅ Type check passes: `npm run typecheck`
+   - ✅ No new type errors introduced
+   - ✅ All `.d.ts` files updated
+   - ✅ Type escapes minimized and documented
+
+**REMEMBER**: Type errors are bugs waiting to happen. Zero tolerance for type errors in `src/`.
+
 ## Fiddler Library (MANDATORY)
 This repository uses the [bmPreFiddler](https://github.com/brucemcpherson/bmPreFiddler) to manage [Fiddler](https://github.com/brucemcpherson/bmFiddler) GAS spreadsheet access.
 
