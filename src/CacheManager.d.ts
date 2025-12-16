@@ -1,5 +1,5 @@
 /**
- * clearCache - Cache management utility
+ * CacheManager - Cache management utility
  * 
  * Type definitions for clearing document cache.
  */
@@ -12,9 +12,9 @@
  * 
  * @example
  * ```javascript
- * clearCache(); // Clears 'Globals' and 'Groups' from document cache
+ * CacheManager.clearCache(); // Clears 'Globals' and 'Groups' from document cache
  * ```
  */
-declare function clearCache(): void;
-
-export { clearCache };
+declare namespace CacheManager {
+    function clearCache(): void;
+}

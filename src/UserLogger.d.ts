@@ -46,5 +46,3 @@ interface UserLoggerNamespace {
 }
 
 declare const UserLogger: UserLoggerNamespace;
-
-export default UserLogger;

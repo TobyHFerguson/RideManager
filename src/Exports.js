@@ -73,6 +73,9 @@ var Exports = {
     get GoogleCalendarManager() {
         return GoogleCalendarManager;
     },
+    get TriggerManager() {
+        return TriggerManager;
+    },
     get Groups() {
         return Groups;
     },
@@ -81,6 +84,13 @@ var Exports = {
     },
     get CacheManager() {
         return CacheManager;
+    },
+    get TriggerManager() {
+        return TriggerManager;
+    },
+    get TriggerManagerCore() {
+        return TriggerManagerCore;
     }
 };
+
 

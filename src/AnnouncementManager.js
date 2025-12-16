@@ -9,14 +9,14 @@
 // Node.js compatibility
 if (typeof require !== 'undefined') {
     var AnnouncementCore = require('./AnnouncementCore');
+    var TriggerManager = require('./TriggerManager');
 }
 
 var AnnouncementManager = (function() {
     
     class AnnouncementManager {
         constructor() {
-            this.props = PropertiesService.getScriptProperties();
-            this.TRIGGER_KEY = 'announcementTriggerId';
+            this.triggerManager = new TriggerManager();
         }
 
         /**
@@ -99,7 +99,8 @@ var AnnouncementManager = (function() {
                 // Save the row (will mark columns as dirty and persist on adapter.save())
                 row._adapter.save();
                 
-                this._ensureTriggerExists();
+                // Schedule trigger for this announcement (owner-only, idempotent)
+                this._scheduleNextAnnouncement();
                 
                 console.log(`AnnouncementManager: Set announcement for row ${row.rowNum}, scheduled for ${sendDate}`);
                 return docUrl;
@@ -308,12 +309,11 @@ var AnnouncementManager = (function() {
             // Save all changes back to spreadsheet
             adapter.save();
             
-            // Check if there are any pending announcements remaining
+            // Schedule next announcement trigger
+            this._scheduleNextAnnouncement();
+            
+            // Get statistics for return
             const stats = AnnouncementCore.getStatistics(allRows);
-            if (stats.total === 0) {
-                console.log('AnnouncementManager: No pending announcements, removing trigger');
-                this._removeTrigger();
-            }
             
             return {
                 sent: sent,
@@ -434,21 +434,8 @@ var AnnouncementManager = (function() {
                 // Save all changes
                 adapter.save();
                 
-                // Delete the trigger if it exists
-                const triggerId = this.props.getProperty(this.TRIGGER_KEY);
-                if (triggerId) {
-                    try {
-                        const triggers = ScriptApp.getProjectTriggers();
-                        const trigger = triggers.find(t => t.getUniqueId() === triggerId);
-                        if (trigger) {
-                            ScriptApp.deleteTrigger(trigger);
-                            console.log(`AnnouncementManager: Deleted trigger ${triggerId}`);
-                        }
-                        this.props.deleteProperty(this.TRIGGER_KEY);
-                    } catch (error) {
-                        console.warn(`AnnouncementManager: Could not delete trigger: ${error.message}`);
-                    }
-                }
+                // Remove scheduled trigger (owner-only, idempotent)
+                this._scheduleNextAnnouncement();
                 
                 console.log(`AnnouncementManager: Cleared ${count} announcements (${trashedCount} docs trashed, ${failedCount} failed)`);
                 return count;
@@ -1036,46 +1023,52 @@ var AnnouncementManager = (function() {
         }
 
         /**
-         * Ensure hourly trigger exists for queue processing
+         * Schedule the next announcement trigger based on pending announcements
+         * Uses TriggerManager to create scheduled trigger for earliest pending announcement
+         * Removes trigger if no pending announcements
          * @private
          */
-        _ensureTriggerExists() {
-            const existingTriggerId = this.props.getProperty(this.TRIGGER_KEY);
-            
-            if (existingTriggerId) {
-                // Check if trigger still exists
-                const triggers = ScriptApp.getProjectTriggers();
-                const exists = triggers.some(t => t.getUniqueId() === existingTriggerId);
-                if (exists) return;
+        _scheduleNextAnnouncement() {
+            try {
+                // Only owner can manage triggers
+                if (!this.triggerManager.isOwner()) {
+                    console.log('AnnouncementManager: Skipping trigger scheduling (not owner)');
+                    return;
+                }
+                
+                // Load all rows to find next pending announcement
+                const adapter = new ScheduleAdapter();
+                const allRows = adapter.loadAll();
+                
+                // Find earliest pending announcement
+                const pendingRows = allRows.filter(r => 
+                    r.Announcement && 
+                    r.Status === 'pending' && 
+                    r.SendAt
+                );
+                
+                if (pendingRows.length === 0) {
+                    // No pending announcements - remove trigger
+                    this.triggerManager.removeAnnouncementTrigger();
+                    console.log('AnnouncementManager: No pending announcements, trigger removed');
+                    return;
+                }
+                
+                // Find earliest send time
+                const earliestRow = pendingRows.reduce((earliest, row) => 
+                    row.SendAt.getTime() < earliest.SendAt.getTime() ? row : earliest
+                );
+                
+                const nextSendTime = earliestRow.SendAt.getTime();
+                
+                // Schedule trigger for earliest announcement
+                this.triggerManager.scheduleAnnouncementTrigger(nextSendTime);
+                console.log(`AnnouncementManager: Scheduled trigger for ${earliestRow.SendAt.toLocaleString()} (row ${earliestRow.rowNum})`);
+                
+            } catch (error) {
+                console.error('AnnouncementManager._scheduleNextAnnouncement error:', error);
+                // Don't throw - trigger scheduling failures shouldn't break announcement creation
             }
-            
-            // Create new hourly trigger
-            const trigger = ScriptApp.newTrigger('processAnnouncementQueue')
-                .timeBased()
-                .everyHours(1)
-                .create();
-            
-            this.props.setProperty(this.TRIGGER_KEY, trigger.getUniqueId());
-            console.log(`AnnouncementManager: Created trigger ${trigger.getUniqueId()}`);
-        }
-
-        /**
-         * Remove the queue processing trigger
-         * @private
-         */
-        _removeTrigger() {
-            const triggerId = this.props.getProperty(this.TRIGGER_KEY);
-            if (!triggerId) return;
-            
-            const triggers = ScriptApp.getProjectTriggers();
-            const trigger = triggers.find(t => t.getUniqueId() === triggerId);
-            
-            if (trigger) {
-                ScriptApp.deleteTrigger(trigger);
-                console.log(`AnnouncementManager: Deleted trigger ${triggerId}`);
-            }
-            
-            this.props.deleteProperty(this.TRIGGER_KEY);
         }
 
         /**

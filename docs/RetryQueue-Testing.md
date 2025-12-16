@@ -4,7 +4,13 @@ This guide explains how to test the RetryQueue system in Google Apps Script with
 
 ## Setup
 
-1. **Deploy Code to GAS**
+1. **Install Triggers (Owner-Only)**
+   - Open spreadsheet as the owner
+   - Run **Ride Schedulers → Install Triggers** from menu
+   - Verify all 4 triggers installed successfully
+   - Check User Activity Log for installation confirmation
+
+2. **Deploy Code to GAS**
    - Push all files to GAS using clasp: `clasp push`
    - Open the project in GAS editor: `clasp open`
 
@@ -277,8 +283,11 @@ Check your script's email quota (100 emails/day for free accounts). Also check s
 ### Trigger not executing
 Check Apps Script Triggers dashboard:
 1. Click clock icon in GAS editor
-2. Verify `retryQueueTrigger` exists
-3. Check execution history for errors
+2. Verify `dailyRetryCheck` exists (daily backstop at 2 AM)
+3. Check for `retryQueueTrigger` (dynamic, created when items pending)
+4. Verify triggers installed by **owner only** (not other users)
+5. Check execution history for errors
+6. If missing, owner must reinstall via **Ride Schedulers → Install Triggers** menu
 
 ## Real-World Testing
 
