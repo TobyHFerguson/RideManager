@@ -1,3 +1,5 @@
 /test/
 /play/
 /out/
+**/*.d.ts
+**/*.ts

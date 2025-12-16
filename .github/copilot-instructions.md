@@ -17,6 +17,7 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `rowCheck.js` - Validation logic
   - `RetryQueueCore.js` - Retry logic (exponential backoff, queue management)
   - `RetryQueueMarshallingCore.js` - Queue data marshalling (items ↔ 2D arrays)
+  - `TriggerManagerCore.js` - Trigger management logic (configuration, validation, scheduling decisions)
   - `HyperlinkUtils.js` - Hyperlink formula parsing
   - Dates submodule
 
@@ -26,6 +27,7 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `UIManager.js` - User interface dialogs
   - `MenuFunctions.js` - Menu handlers
   - `triggers.js` - GAS event handlers
+  - `TriggerManager.js` - GAS orchestrator for TriggerManagerCore (ScriptApp operations)
   - `RetryQueue.js` - GAS orchestrator for RetryQueueCore
   - `RetryQueueSpreadsheetAdapter.js` - SpreadsheetApp I/O for retry queue (uses RetryQueueMarshallingCore)
   - `GoogleCalendarManager.js` - Calendar API wrapper
@@ -246,6 +248,37 @@ const commands = Exports.getCommands();
 6. `Commands.js` execute via `RideManager.js`
 7. `Schedule.save()` writes changes back to spreadsheet
 
+#### Trigger Management
+**TriggerManagerCore.js** (Pure JavaScript, 100% tested):
+- Trigger configuration and validation logic
+- Scheduling decision logic (when to create/remove triggers)
+- Owner validation logic
+- No GAS dependencies
+
+**TriggerManager.js** (GAS adapter):
+- Thin wrapper around TriggerManagerCore
+- Handles ScriptApp trigger creation/deletion
+- Manages document properties for coordination
+- Logs all operations to User Activity Log
+
+**Trigger Types Managed**:
+1. **onOpen** - Installable trigger (runs as owner)
+2. **onEdit** - Installable trigger (runs as owner)
+3. **Daily Announcement Check** - Backstop (runs 2 AM daily)
+4. **Daily Retry Check** - Backstop (runs 2 AM daily)
+5. **Announcement Scheduled** - Dynamic (fires at announcement send time)
+6. **Retry Scheduled** - Dynamic (fires at retry due time)
+
+**Installation**:
+- Owner-only via menu: "Ride Schedulers > Install Triggers"
+- Idempotent: Safe to run multiple times
+- All operations logged to User Activity Log
+
+**Pattern**: "Backstop + Scheduled"
+- Daily backstops provide self-healing (catch missed operations)
+- Scheduled triggers provide precision timing
+- Owner-only ensures single source of trigger management
+
 ### Testing Strategy
 
 #### Jest Tests (Required for Pure JavaScript)
@@ -459,6 +492,58 @@ class NewFeature {
     }
 }
 ```
+
+## CRITICAL: Code Modification Workflow
+
+**MANDATORY: Every code change MUST follow this checklist**
+
+When modifying ANY code file, you MUST update all related artifacts:
+
+### 1. Update Tests (MANDATORY for Pure JavaScript)
+- ✅ Add/update Jest tests for modified functionality
+- ✅ Verify 100% coverage: `npm test -- --coverage --collectCoverageFrom='src/YourModule.js'`
+- ✅ All tests must pass: `npm test`
+- ❌ NEVER skip test updates - untested code is broken code
+
+### 2. Update TypeScript Declarations (MANDATORY)
+- ✅ Update corresponding `.d.ts` file for any modified JavaScript module
+- ✅ Add JSDoc comments to functions for better type inference
+- ✅ Verify types: `npm run typecheck`
+- ❌ NEVER deploy without type correctness
+
+### 3. Update Documentation (MANDATORY for User-Facing Changes)
+- ✅ Update relevant files in `docs/` folder if behavior changes
+- ✅ Update copilot-instructions.md if architectural patterns change
+- ✅ Update README.md if setup/deployment changes
+- ❌ NEVER leave documentation inconsistent with code
+
+### 4. Deployment Verification (MANDATORY)
+- ✅ Run full validation: `npm run dev:push` (includes validate-exports, typecheck)
+- ✅ Verify deployment success
+- ✅ Test in GAS environment (manual testing of critical paths)
+- ❌ NEVER assume deployment worked without verification
+
+**Example Workflow for Adding Trigger Cleanup:**
+```
+1. ✅ Modify triggers.js (add cleanup calls)
+2. ✅ Update triggers.d.ts (add JSDoc, verify signatures)
+3. ✅ Update TriggerManagerCore.test.js (if logic changed)
+4. ✅ Update docs/Announcement-OperatorManual.md (trigger lifecycle)
+5. ✅ Run npm test -- verify all pass
+6. ✅ Run npm run typecheck -- verify no errors
+7. ✅ Deploy: npm run dev:push
+8. ✅ Test in spreadsheet: verify triggers clean up
+```
+
+**If you skip ANY step:**
+- Tests may be incomplete (hidden bugs)
+- Types may be wrong (TypeScript errors)
+- Documentation may be outdated (user confusion)
+- Deployment may fail (wasted time)
+
+**REMEMBER**: "I'll just do this quick fix" → Technical debt → Hours debugging later
+
+**ALWAYS ask yourself**: "Did I update tests, types, and docs?" before calling work complete.
 
 
 

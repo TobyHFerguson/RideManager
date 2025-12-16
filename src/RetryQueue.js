@@ -13,6 +13,7 @@
 if (typeof require !== 'undefined') {
     var RetryQueueCore = require('./RetryQueueCore');
     var RetryQueueSpreadsheetAdapter = require('./RetryQueueSpreadsheetAdapter');
+    var TriggerManager = require('./TriggerManager');
 }
 
 var RetryQueue = (function() {
@@ -20,7 +21,7 @@ var RetryQueue = (function() {
     class RetryQueue {
         constructor() {
             this.props = PropertiesService.getScriptProperties();
-            this.TRIGGER_KEY = 'calendarRetryTriggerId';
+            this.triggerManager = new TriggerManager();
             
             // Use spreadsheet adapter for queue persistence (operator-visible)
             this.adapter = new RetryQueueSpreadsheetAdapter('Calendar Retry Queue');
@@ -49,7 +50,9 @@ var RetryQueue = (function() {
             
             // Add to spreadsheet
             this.adapter.enqueue(queueItem);
-            this._ensureTriggerExists();
+            
+            // Schedule trigger for this retry (owner-only, idempotent)
+            this._scheduleNextRetry();
             
             console.log(`RetryQueue: Enqueued operation ${queueItem.id} for ride ${operation.rideUrl}`);
             return queueItem.id;
@@ -71,8 +74,8 @@ var RetryQueue = (function() {
                 
                 const queue = this.adapter.loadAll();
                 if (queue.length === 0) {
-                    console.log('RetryQueue: Queue empty, removing trigger');
-                    this._removeTrigger();
+                    console.log('RetryQueue: Queue empty');
+                    this._scheduleNextRetry(); // Will remove trigger since queue is empty
                     return { processed: 0, succeeded: 0, failed: 0, remaining: 0 };
                 }
 
@@ -127,10 +130,10 @@ var RetryQueue = (function() {
                     }
                 });
                 
+                // Schedule next retry (will remove trigger if queue empty)
+                this._scheduleNextRetry();
+                
                 const remainingQueue = this.adapter.loadAll();
-                if (remainingQueue.length === 0) {
-                    this._removeTrigger();
-                }
                 
                 return {
                     processed: dueItems.length,
@@ -337,48 +340,61 @@ var RetryQueue = (function() {
         }
 
         /**
-         * Ensure time-based trigger exists for queue processing (GAS-specific)
+         * Schedule the next retry trigger based on queue contents
+         * Uses TriggerManager to create scheduled trigger for earliest due retry
+         * Removes trigger if queue is empty
          * @private
          */
-        _ensureTriggerExists() {
-            const existingTriggerId = this.props.getProperty(this.TRIGGER_KEY);
-            
-            if (existingTriggerId) {
-                // Check if trigger still exists
-                const triggers = ScriptApp.getProjectTriggers();
-                const triggerExists = triggers.some(t => t.getUniqueId() === existingTriggerId);
-                if (triggerExists) {
-                    return; // Trigger already exists
+        _scheduleNextRetry() {
+            try {
+                // Only owner can manage triggers
+                if (!this.triggerManager.isOwner()) {
+                    console.log('RetryQueue: Skipping trigger scheduling (not owner)');
+                    return;
                 }
+                
+                // Load all pending retry items
+                const allItems = this.adapter.loadAll();
+                const now = new Date().getTime();
+                
+                if (allItems.length === 0) {
+                    // Queue is empty - remove trigger
+                    this.triggerManager.removeRetryTrigger();
+                    console.log('RetryQueue: Queue empty, trigger removed');
+                    return;
+                }
+                
+                // Find earliest next retry time
+                const nextRetryTimes = allItems
+                    .map(item => {
+                        // Calculate next retry time using core logic
+                        const nextRetry = RetryQueueCore.calculateNextRetry(
+                            item.attemptCount,
+                            item.enqueuedAt,
+                            now
+                        );
+                        return nextRetry;
+                    })
+                    .filter(time => time !== null);
+                
+                if (nextRetryTimes.length === 0) {
+                    // No valid retry times - remove trigger
+                    this.triggerManager.removeRetryTrigger();
+                    console.log('RetryQueue: No valid retry times, trigger removed');
+                    return;
+                }
+                
+                // Find earliest retry time
+                const earliestRetry = Math.min(...nextRetryTimes);
+                
+                // Schedule trigger for earliest retry
+                this.triggerManager.scheduleRetryTrigger(earliestRetry);
+                console.log(`RetryQueue: Scheduled trigger for ${new Date(earliestRetry).toLocaleString()}`);
+                
+            } catch (error) {
+                console.error('RetryQueue._scheduleNextRetry error:', error);
+                // Don't throw - trigger scheduling failures shouldn't break enqueue operations
             }
-            
-            // Create new trigger - runs every 5 minutes
-            const trigger = ScriptApp.newTrigger('processRetryQueue')
-                .timeBased()
-                .everyMinutes(5)
-                .create();
-            
-            this.props.setProperty(this.TRIGGER_KEY, trigger.getUniqueId());
-            console.log('RetryQueue: Created new trigger:', trigger.getUniqueId());
-        }
-
-        /**
-         * Remove time-based trigger when queue is empty (GAS-specific)
-         * @private
-         */
-        _removeTrigger() {
-            const triggerId = this.props.getProperty(this.TRIGGER_KEY);
-            if (!triggerId) return;
-            
-            const triggers = ScriptApp.getProjectTriggers();
-            triggers.forEach(trigger => {
-                if (trigger.getUniqueId() === triggerId) {
-                    ScriptApp.deleteTrigger(trigger);
-                    console.log('RetryQueue: Deleted trigger:', triggerId);
-                }
-            });
-            
-            this.props.deleteProperty(this.TRIGGER_KEY);
         }
 
         /**
@@ -467,7 +483,8 @@ var RetryQueue = (function() {
          */
         clearQueue() {
             this.adapter.clear();
-            this._removeTrigger();
+            // Schedule next retry (will remove trigger since queue is empty)
+            this._scheduleNextRetry();
             console.log('RetryQueue: Queue cleared');
         }
     }
