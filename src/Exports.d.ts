@@ -24,7 +24,9 @@ import RetryQueueCore from './RetryQueueCore';
 import GoogleCalendarManager from './GoogleCalendarManager';
 import Groups from './Groups';
 import Globals from './Globals';
-import CacheManager from './CacheManager'
+import CacheManager from './CacheManager';
+import TriggerManager from './TriggerManager';
+import TriggerManagerCore from './TriggerManagerCore';
 
 /**
  * Centralized exports object
@@ -76,6 +78,10 @@ interface ExportsNamespace {
     readonly Globals: typeof Globals;
     /** CacheManager module */
     readonly CacheManager: typeof CacheManager;
+    /** TriggerManager class */
+    readonly TriggerManager: typeof TriggerManager;
+    /** TriggerManagerCore class */
+    readonly TriggerManagerCore: typeof TriggerManagerCore;
 }
 
 declare const Exports: ExportsNamespace;

@@ -1,17 +1,22 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "noImplicitAny": false,
+    "noImplicitAny": true,
+    "strict": true,
+    "useUnknownInCatchVariables": true,
     "lib": [
       "esnext"
     ],
     "allowJs": true,
-    "checkJs": true
+    "checkJs": true,
+    "types": []
   },
   "include": [
     "**/*.js",
     "**/*.gs",
-    "**/*.ts"
+    "**/*.ts",
+    "**/*.d.ts",
+    "gas-globals.d.ts"
   ],
   "exclude": [
     "node_modules"

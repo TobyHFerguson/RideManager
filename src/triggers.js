@@ -1,4 +1,4 @@
-/// <reference path="./UserLogger.d.ts" />
+/// <reference path="./gas-globals.d.ts" />
 /** @OnlyCurrentDoc */
 
 // @ts-check
@@ -51,7 +51,7 @@ function dtrtIsEnabled_() {
  * @param {boolean} value
  */
 function setDTRTSetting_(value) {
-  PropertiesService.getUserProperties().setProperty('DTRT', value);
+  PropertiesService.getUserProperties().setProperty('DTRT', String(value));
   alert_('DTRT setting has been ' + (value ? 'enabled' : 'disabled'));
 }
 
@@ -162,7 +162,7 @@ function editHandler(event) {
  *
  * @private
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
- * @param {ScheduleAdapter} adapter - Reusable adapter instance
+ * @param {InstanceType<typeof ScheduleAdapter>} adapter - Reusable adapter instance
  * @returns {*|undefined} Returns the value from next() when processing continues, or undefined if the edit was rejected/handled.
  */
 function handleCRSheetEdit_(event, adapter) {
@@ -198,15 +198,17 @@ function handleCRSheetEdit_(event, adapter) {
       try {
         editRouteColumn_(event, adapter);
       } catch (e) {
-        alert_(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
+        const error = e instanceof Error ? e : new Error(String(e));
+        alert_(`Error: ${error.message} - the route cell will be reverted to its previous value.`);
         adapter.restoreFormula(event.range.getRow(), 'Route');
         return;
       }
     }
     return next_(adapter)
   } catch (e) {
-    alert_(e.message)
-    throw e
+    const error = e instanceof Error ? e : new Error(String(e));
+    alert_(error.message)
+    throw error
   }
 }
 
@@ -409,9 +411,10 @@ function testSendAnnouncement_() {
     // Send announcements
     const manager = new AnnouncementManager();
     let successCount = 0;
+    /** @type {any[]} */
     const failedRows = [];
     
-    rowsWithAnnouncements.forEach(row => {
+    rowsWithAnnouncements.forEach(/** @param {any} row */ (row) => {
       try {
         // Temporarily override the recipient email in globals
         const globals = getGlobals();
@@ -463,8 +466,9 @@ function testSendAnnouncement_() {
     ui.alert(title, message, ui.ButtonSet.OK);
     
   } catch (error) {
-    console.error('testSendAnnouncement_ error:', error);
-    alert_(`Error in test send: ${error.message}`);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('testSendAnnouncement_ error:', err);
+    alert_(`Error in test send: ${err.message}`);
   }
 }
 
@@ -518,7 +522,7 @@ function announcementTrigger() {
     
     // Clean up this trigger since it has fired
     try {
-      const triggerManager = TriggerManager.getInstance();
+      const triggerManager = new TriggerManager();
       triggerManager.removeAnnouncementTrigger();
       console.log('announcementTrigger: Cleaned up trigger');
     } catch (cleanupError) {
@@ -527,10 +531,11 @@ function announcementTrigger() {
     }
     
   } catch (error) {
-    console.error('announcementTrigger error:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('announcementTrigger error:', err);
     UserLogger.log('ANNOUNCEMENT_TRIGGER_ERROR', 'Scheduled announcement processing failed', {
-      error: error.message,
-      stack: error.stack
+      error: err.message,
+      stack: err.stack
     });
   }
 }
@@ -583,7 +588,7 @@ function retryQueueTrigger() {
     
     // Clean up this trigger since it has fired
     try {
-      const triggerManager = TriggerManager.getInstance();
+      const triggerManager = new TriggerManager();
       triggerManager.removeRetryTrigger();
       console.log('retryQueueTrigger: Cleaned up trigger');
     } catch (cleanupError) {
@@ -592,10 +597,11 @@ function retryQueueTrigger() {
     }
     
   } catch (error) {
-    console.error('retryQueueTrigger error:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('retryQueueTrigger error:', err);
     UserLogger.log('RETRY_QUEUE_TRIGGER_ERROR', 'Retry queue processing failed', {
-      error: error.message,
-      stack: error.stack
+      error: err.message,
+      stack: err.stack
     });
   }
 }
@@ -668,9 +674,10 @@ function installTriggers_() {
     ui.alert(title, message, ui.ButtonSet.OK);
     
   } catch (error) {
-    console.error('installTriggers_ error:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('installTriggers_ error:', err);
     
-    const message = `Error installing triggers:\n\n${error.message}\n\n` +
+    const message = `Error installing triggers:\n\n${err.message}\n\n` +
       `Check the execution log for details.`;
     
     ui.alert('Installation Failed', message, ui.ButtonSet.OK);
