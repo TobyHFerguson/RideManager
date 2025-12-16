@@ -1,7 +1,9 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
 if (typeof require !== 'undefined') {
     // @ts-ignore
-    (Event = require('./Event'));
-    var dates = require('../submodules/Dates/src/dates');
+    (SCCCCEvent = require('./Event'));
+    var dates = require('./common/dates');
     var { getGroupNames } = require('./Groups');
     // @ts-ignore
     var { getGlobals } = require('./Globals');
@@ -17,6 +19,13 @@ const EventFactory = function () {
      * @param {number | Date} meet_time - meeting time
      * @param {number | Date} start_time - starting time
      * @returns string describing the ride
+     */
+    /**
+     * @param {string[]} leaders
+     * @param {string} address
+     * @param {Date} meet_time
+     * @param {Date} start_time
+     * @param {string} event_id
      */
     function createDescription(leaders, address, meet_time, start_time, event_id) {
         const result =
@@ -34,10 +43,14 @@ Note: When using a browser use the "Go to route" link below to open up the route
         return result;
     }
 
+    /**
+     * @param {any} row
+     * @param {number} numRiders
+     */
     function makeRideName(row, numRiders) {
-        const name = (!row.RideName || Event.managedEventName(row.RideName, getGroupNames()))
-            ? Event.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName)
-            : Event.makeUnmanagedRideName(row.RideName, numRiders);
+        const name = (!row.RideName || SCCCCEvent.managedEventName(row.RideName, getGroupNames()))
+            ? SCCCCEvent.makeManagedRideName(numRiders, row.StartDate, row.StartTime, row.Group, row.RouteName)
+            : SCCCCEvent.makeUnmanagedRideName(row.RideName, numRiders);
         return name;
     }
 
@@ -47,12 +60,17 @@ Note: When using a browser use the "Go to route" link below to open up the route
          * @param {Organizer[]} organizers the organizers (i.e. ride leaders) for this event
          * @returns 
          */
+        /**
+         * @param {any} row
+         * @param {Array<{id: number, text: string}>} organizers
+         * @param {string} event_id
+         */
         newEvent: function (row, organizers, event_id) {
             if (!organizers || !organizers.length) {
                 organizers = [{ id: globals.RIDE_LEADER_TBD_ID, text: globals.RIDE_LEADER_TBD_NAME }];
             }
             if (!row) throw new Error("no row object given");
-            const event = new Event();
+            const event = new SCCCCEvent();
             event.location = row.Location && !(row.Location.startsWith("#")) ? row.Location : "";
             event.route_ids = [row.RouteURL.split('/')[4]];
             event.start_time = row.StartTime;
@@ -61,22 +79,27 @@ Note: When using a browser use the "Go to route" link below to open up the route
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
             let meet_time = dates.addMinutes(row.StartTime, -15);
-            event.desc = createDescription(organizers.map(o => o.text), address, meet_time, row.StartTime, event_id);
+            const startTime = row.StartTime instanceof Date ? row.StartTime : new Date(row.StartTime);
+            const meetTimeDate = meet_time instanceof Date ? meet_time : (typeof meet_time === 'number' ? new Date(meet_time) : new Date());
+            event.desc = createDescription(organizers.map(o => o.text), address, meetTimeDate, startTime, event_id);
             return event;
         },
+        /**
+         * @param {any} rwgpsEvent
+         */
         fromRwgpsEvent: function (rwgpsEvent) {
-            const event = new Event();
+            const event = new SCCCCEvent();
             event.all_day = rwgpsEvent.all_day ? "1" : "0";
             event.desc = rwgpsEvent.desc ? rwgpsEvent.desc.replaceAll('\r', '') : '';
             event.location = rwgpsEvent.location;
             event.name = rwgpsEvent.name;
             event.organizer_tokens = rwgpsEvent.organizer_ids;
-            event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map(r => r.id + "") : [];
+            event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map((/** @type {{id: any}} */ r) => r.id + "") : [];
             const sd = (rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date());
             event.start_date = sd.toISOString();
             event.start_time = sd.toISOString();
             event.visibility = rwgpsEvent.visibility;
-            if (event.name.trim().endsWith(']')) {
+            if (event.name && event.name.trim().endsWith(']')) {
                 console.error(`Event name '${event.name}' should not end with ']' - this is likely a bug in the RWGPS event import code`);
             }
             return event;

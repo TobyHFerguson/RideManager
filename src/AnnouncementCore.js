@@ -1,3 +1,4 @@
+// @ts-check
 // AnnouncementCore.js - Pure JavaScript business logic for ride announcement management
 // This module is fully testable in Jest (no GAS dependencies)
 
@@ -107,12 +108,14 @@ var AnnouncementCore = (function() {
     /**
      * Get rows from spreadsheet that are due for sending or reminder
      * 
-     * @param {Array} rows - Array of Row objects from spreadsheet
+     * @param {any[]} rows - Array of Row objects from spreadsheet
      * @param {number} currentTime - Current timestamp
      * @returns {Object} Object with dueToSend and dueForReminder arrays
      */
     function getDueItems(rows, currentTime) {
+        /** @type {any[]} */
         const dueToSend = [];
+        /** @type {any[]} */
         const dueForReminder = [];
         const reminderWindow = 24 * 60 * 60 * 1000; // 24 hours in ms
         
@@ -176,7 +179,7 @@ var AnnouncementCore = (function() {
     /**
      * Get statistics about announcements from rows
      * 
-     * @param {Array} rows - Array of Row objects
+     * @param {any[]} rows - Array of Row objects
      * @returns {Object} Statistics object
      */
     function getStatistics(rows) {
@@ -193,7 +196,7 @@ var AnnouncementCore = (function() {
                 stats.total++;
                 const status = row.Status || 'pending';
                 if (stats.hasOwnProperty(status)) {
-                    stats[status]++;
+                    /** @type {any} */ (stats)[status]++;
                 }
             }
         });
@@ -205,17 +208,18 @@ var AnnouncementCore = (function() {
      * Enrich row data with calculated template fields
      * Adds DateTime, Date, Day, Time, RideLink, Gain, Length, FPM, StartPin, Lat, Long fields
      * 
-     * @param {Object} rowData - Original row data
-     * @param {Object} [route=null] - Optional route object from RWGPS with distance, elevation_gain, first_lat, first_lng
-     * @returns {Object} Enriched row data with calculated fields
+     * @param {any} rowData - Original row data
+     * @param {any} [route] - Optional route object from RWGPS with distance, elevation_gain, first_lat, first_lng
+     * @returns {any} Enriched row data with calculated fields
      */
-    function enrichRowData(rowData, route = null) {
+    function enrichRowData(rowData, route) {
+        /** @type {any} */
         const enriched = { ...rowData };
         
         // Parse the start date/time
         const startDate = rowData.Date ? new Date(rowData.Date) : null;
         
-        if (startDate && !isNaN(startDate)) {
+        if (startDate && !isNaN(startDate.getTime())) {
             // Format date and time fields
             const options = { timeZone: 'America/Los_Angeles' };
             
@@ -307,13 +311,22 @@ var AnnouncementCore = (function() {
         return enriched;
     }
 
+    /**
+     * Expand template placeholders with row data
+     * 
+     * @param {string} template - Template text with {FieldName} placeholders
+     * @param {any} rowData - Row data object
+     * @param {any} [route] - Optional route object
+     * @returns {Object} Object with expandedText and missingFields
+     */
     function expandTemplate(template, rowData, route = null) {
+        /** @type {string[]} */
         const missingFields = [];
         
         // Enrich row data with calculated fields before expansion
         const enrichedData = enrichRowData(rowData, route);
         
-        const expandedText = template.replace(/{([^}]+)}/g, (match, fieldName) => {
+        const expandedText = template.replace(/{([^}]+)}/g, (/** @type {string} */ match, /** @type {string} */ fieldName) => {
             const value = enrichedData[fieldName];
             
             if (value === null || value === undefined || value === '') {

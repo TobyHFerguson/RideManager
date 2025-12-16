@@ -1,3 +1,4 @@
+// @ts-check
 /// <reference path="./UserLogger.d.ts" />
 /**
  * TriggerManager - Centralized trigger management for ALL project triggers

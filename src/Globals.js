@@ -1,3 +1,4 @@
+// @ts-check
 // This file is used to store global variables that are used across the project
 
 /**

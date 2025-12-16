@@ -108,6 +108,23 @@ declare class RetryQueue {
     clear(): void;
 
     /**
+     * Remove queue items by Google Calendar event ID
+     * Used when canceling/deleting calendar events
+     * 
+     * @param eventId - Calendar event ID to remove from queue
+     */
+    removeByEventId(eventId: string): void;
+
+    /**
+     * Remove queue items by ride URL
+     * Used when unscheduling rides
+     * 
+     * @param rideUrl - Ride URL to remove from queue
+     * @returns Number of items removed
+     */
+    removeByRideUrl(rideUrl: string): number;
+
+    /**
      * Get raw queue data (internal use)
      * @private
      */

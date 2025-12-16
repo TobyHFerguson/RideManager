@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * TriggerManagerCore - Pure JavaScript trigger management logic
  * 

@@ -1,9 +1,11 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
 
 if (typeof require !== 'undefined') {
-  var dates = require('../submodules/Dates/src/dates');
+  var dates = require('./common/dates');
 }
 
-class Event {
+class SCCCCEvent {
   // Managed names can be of the form:
 // Mon A 1/1 10:00 AM Ride route name
 // Mon A 1/1 10:00 route name
@@ -18,7 +20,10 @@ class Event {
 
 // In addition, there can be an optional 'CANCELLED: ' prefix.
 
-static makeManagedRE(groupNames = []) {
+  /**
+   * @param {string[]} [groupNames]
+   */
+  static makeManagedRE(groupNames = []) {
   const grps = groupNames.join('|');
   const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)\\[(?<count>\\d{1,2})\\](?<suffix>.*$)`;
   const MANAGED_RE = new RegExp(MANAGED_RE_STR);
@@ -58,16 +63,21 @@ static makeManagedRE(groupNames = []) {
    * @returns {boolean} true iff this is a managed ride
    */
   static managedEventName(eventName, groupNames) {
-    const RE = Event.makeManagedRE(groupNames);
+    const RE = SCCCCEvent.makeManagedRE(groupNames);
     return !eventName || RE.test(eventName);
   }
 
+  /**
+   * @param {string} name
+   * @param {number} count
+   * @param {string[]} groupNames
+   */
   static updateCountInName(name, count, groupNames) {
-    let match = Event.makeManagedRE(groupNames).exec(name);
-    if (match) {
+    let match = SCCCCEvent.makeManagedRE(groupNames).exec(name);
+    if (match && match.groups) {
       return `${match.groups.cancelled}${match.groups.meta}[${count}]${match.groups.suffix}`.trim();
     }
-    return Event.makeUnmanagedRideName(name, count);
+    return SCCCCEvent.makeUnmanagedRideName(name, count);
   }
   constructor() {
     this.all_day = '0',
@@ -96,28 +106,39 @@ static makeManagedRE(groupNames = []) {
    * @param {Number} numRiders - number of riders
    * @returns true iff the rider count has changed
    */
+  /**
+   * @param {number} numRiders
+   * @param {string[]} groupNames
+   */
   updateRiderCount(numRiders, groupNames) {
     const currentName = this.name;
-    this.name = Event.updateCountInName(this.name, numRiders, groupNames);
+    this.name = SCCCCEvent.updateCountInName(this.name, numRiders, groupNames);
     return currentName !== this.name
   }
 
+  /**
+   * @param {string[]} groupNames
+   */
   managedEvent(groupNames) {
-    const result = Event.managedEventName(this.name, groupNames);
+    const result = SCCCCEvent.managedEventName(this.name, groupNames);
     return result;
   }
+  /**
+   * @param {string} name
+   * @param {string[]} groupNames
+   */
   static getGroupName(name, groupNames) {
-    const match = Event.makeManagedRE(groupNames).exec(name);
-    if (match) {
+    const match = SCCCCEvent.makeManagedRE(groupNames).exec(name);
+    if (match && match.groups) {
       return match.groups.meta.split(' ')[1];
     }
     return '';
   }
 }
 
-// For GAS: Ensure Event is available globally regardless of file load order
+// For GAS: Ensure SCCCCEvent is available globally regardless of file load order
 // The Exports pattern with getters handles lazy evaluation
 if (typeof module !== 'undefined') {
-  module.exports = Event;
+  module.exports = SCCCCEvent;
 }
 

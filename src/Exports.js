@@ -1,3 +1,4 @@
+// @ts-check
 if (typeof require !== 'undefined') {
     const {RWGPS, RWGPSService} = require('./Externals')
     const Commands = require('./Commands')
@@ -44,7 +45,7 @@ var Exports = {
         return UserLogger;
     },
     get Event() {
-        return Event;
+        return SCCCCEvent;
     },
     get EventFactory() {
         return EventFactory;
@@ -90,6 +91,9 @@ var Exports = {
     },
     get TriggerManagerCore() {
         return TriggerManagerCore;
+    },
+    get dates() {
+        return dates;
     }
 };
 

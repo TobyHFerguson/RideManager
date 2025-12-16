@@ -10,7 +10,9 @@ declare class GoogleCalendarManager {
      * @param {Date} endTime - The end time of the event.
      * @param {string} location - The location of the event.
      * @param {string} description - The description of the event.
-     * @returns {string | undefined} The event ID, or undefined if creation failed.
+     * @param {string | null} rideUrl - Optional ride URL for retry queue.
+     * @param {number | null} rowNum - Optional row number for retry queue.
+     * @returns {string | {success: boolean, error?: string, queued?: boolean, eventId?: string} | undefined} The event ID if successful, result object if queued/failed, or undefined.
      */
     static createEvent(
         calendarId: string,
@@ -18,8 +20,10 @@ declare class GoogleCalendarManager {
         startTime: Date,
         endTime: Date,
         location: string,
-        description: string
-    ): string | undefined;
+        description: string,
+        rideUrl?: string | null,
+        rowNum?: number | null
+    ): string | {success: boolean, error?: string, queued?: boolean, eventId?: string} | undefined;
 
     /**
      * Deletes an event from the specified calendar.

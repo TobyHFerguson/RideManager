@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * EXAMPLE: How to use the new ScheduleAdapter + Row architecture
  * 

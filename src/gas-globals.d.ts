@@ -19,6 +19,14 @@ import type TriggerManagerClass from './TriggerManager';
 import type ExportsType from './Exports';
 import type GlobalsType from './Globals';
 import type { Externals as ExternalsType } from './Externals';
+import type RowClass from './Row';
+import type SCCCCEventClass from './Event';
+import type EventFactoryNamespace from './EventFactory';
+import type CommandsNamespace from './Commands';
+import type rowCheckNamespace from './rowCheck';
+import type RideManagerNamespace from './RideManager';
+import type UIManagerNamespace from './UIManager';
+import type AnnouncementCoreNamespace from './AnnouncementCore';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
@@ -31,16 +39,36 @@ declare global {
     const AnnouncementManager: typeof AnnouncementManagerClass;
     const RetryQueue: typeof RetryQueueClass;
     const TriggerManager: typeof TriggerManagerClass;
+    const Row: typeof RowClass;
+    const SCCCCEvent: typeof SCCCCEventClass;
     
-    // Objects - don't use 'typeof', they're singleton instances
+    // Objects/Namespaces - singleton instances or frozen objects
     const MenuFunctions: MenuFunctionsType;
-    const Exports: typeof ExportsType;
+    const Exports: ExportsType; // This is the interface, not typeof
+    const EventFactory: typeof EventFactoryNamespace;
+    const Commands: typeof CommandsNamespace;
+    const rowCheck: typeof rowCheckNamespace;
+    const RideManager: typeof RideManagerNamespace;
+    const UIManager: typeof UIManagerNamespace;
+    const AnnouncementCore: typeof AnnouncementCoreNamespace;
+    
+    // External libraries available in GAS runtime
+    const RWGPSLib: typeof import('./Externals').RWGPSLib;
+    const RWGPSLib12: typeof import('./Externals').RWGPSLib;
+    const bmPreFiddler: any; // Third-party library
+    const dates: typeof import('./common/dates');
+    
+    // GAS built-in services (already typed by @types/google-apps-script)
+    // But we reference them here for completeness
+    // SpreadsheetApp, PropertiesService, CalendarApp, UrlFetchApp, etc.
     
     // Utility functions that are global in GAS
     function getRoute(url: string, readThrough?: boolean): any;
     function getGlobals(): typeof GlobalsType;
     function getExternals(): ExternalsType;
     function getAppVersion(): string;
+    function getGroupNames(): string[];
+    function getGroupSpecs(): any;
 }
 
 export {};

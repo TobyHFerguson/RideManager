@@ -1,3 +1,4 @@
+// @ts-check
 
 function assertEqual_(actual, expected, message) {
   if (actual !== expected) {

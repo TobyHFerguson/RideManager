@@ -1,3 +1,8 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
+if (typeof require !== 'undefined') {
+    var dates = require('./common/dates');
+}
 
 const rowCheck = {
     unmanagedRide: function (row) {

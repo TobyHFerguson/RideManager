@@ -7,17 +7,17 @@ declare const EventFactory: {
      * @param {Row} row - The row object to make event from.
      * @param {Organizer[]} organizers - The organizers (i.e. ride leaders) for this event.
      * @param {string|number} event_id - The event ID.
-     * @returns {Event} The created event object.
+     * @returns {SCCCCEvent} The created event object.
      */
-    newEvent(row: Row, organizers: Organizer[], event_id: string | number): Event;
+    newEvent(row: Row, organizers: Organizer[], event_id: string | number): SCCCCEvent;
 
     /**
-     * Converts a RWGPS event object to an Event.
+     * Converts a RWGPS event object to a SCCCCEvent.
      * @param {any} rwgpsEvent - The RWGPS event object.
-     * @returns {Event} The converted event object.
+     * @returns {SCCCCEvent} The converted event object.
      * @throws {Error} If the event name ends with ']'.
      */
-    fromRwgpsEvent(rwgpsEvent: any): Event;
+    fromRwgpsEvent(rwgpsEvent: any): SCCCCEvent;
 };
 
 /**

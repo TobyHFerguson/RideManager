@@ -1,3 +1,5 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
 if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
@@ -9,10 +11,10 @@ const head = (PropertiesService.getScriptProperties().getProperty('head') || 'he
  * Execute the given command with the given credentials.
  * 
  * If no credentials are found then collect them from the user and try again.
- * @param {Function} command command to execute
  */
 
 function getRWGPSLib_() {
+  // @ts-expect-error - RWGPSLib12 is conditionally loaded in GAS environment
   return head ? RWGPSLib : RWGPSLib12;
 }
 
@@ -28,6 +30,10 @@ function getRWGPSService_() {
 }
 
 const MenuFunctions = (() => {
+  /**
+   * @param {(rows: Row[], rwgps: any, force?: boolean) => void} command
+   * @param {boolean} [force]
+   */
   function executeCommand(command, force = false) {
     const g2 = getGroupSpecs();
     const globals = getGlobals();
@@ -45,10 +51,11 @@ const MenuFunctions = (() => {
       // User logging executed after they've agreed to any warnings in UIManager
       command(rows, rwgps, force);
     } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
       // Log errors too
-      UserLogger.log(`${command.name}_ERROR`, e.message, { 
+      UserLogger.log(`${command.name}_ERROR`, error.message, { 
         rowNumbers, 
-        error: e.stack 
+        error: error.stack 
       });
       
       if (e instanceof AggregateError) {

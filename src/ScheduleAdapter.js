@@ -1,4 +1,5 @@
 // @ts-check
+/// <reference path="./gas-globals.d.ts" />
 
 /**
  * ScheduleAdapter - GAS-specific adapter for reading/writing schedule data
@@ -82,7 +83,7 @@ const ScheduleAdapter = (function() {
          */
         loadAll() {
             this._ensureDataLoaded();
-            return this._cachedData.map((row, index) => this._createRow(row, index + 2));
+            return this._cachedData.map((/** @type {any} */ row, /** @type {number} */ index) => this._createRow(row, index + 2));
         }
 
         /**
@@ -104,8 +105,9 @@ const ScheduleAdapter = (function() {
             const ranges = this._convertCellRangesToRowRanges(rangeList);
             const allData = this._cachedData;
             
+            /** @type {Row[]} */
             const selectedRows = [];
-            ranges.forEach(range => {
+            ranges.forEach((/** @type {GoogleAppsScript.Spreadsheet.Range} */ range) => {
                 const startRow = range.getRow();
                 const numRows = range.getNumRows();
                 
@@ -132,12 +134,12 @@ const ScheduleAdapter = (function() {
             const startDateColumn = getGlobals().STARTDATETIMECOLUMNNAME;
             
             return allData
-                .map((row, index) => ({ data: row, rowNum: index + 2 }))
-                .filter(({ data }) => {
+                .map((/** @type {any} */ row, /** @type {number} */ index) => ({ data: row, rowNum: index + 2 }))
+                .filter(({ data }: { data: any }) => {
                     const rowDate = new Date(data[startDateColumn]);
                     return rowDate > date;
                 })
-                .map(({ data, rowNum }) => this._createRow(data, rowNum));
+                .map(({ data, rowNum }: { data: any, rowNum: number }) => this._createRow(data, rowNum));
         }
 
         /**
@@ -178,7 +180,7 @@ const ScheduleAdapter = (function() {
                 }
                 
                 // Write each dirty field
-                dirtyFields.forEach(columnName => {
+                dirtyFields.forEach((/** @type {string} */ columnName) => {
                     const columnIndex = this._getColumnIndex(columnName) + 1; // 1-based
                     const cell = this.sheet.getRange(row.rowNum, columnIndex);
                     const value = row._data[columnName];
@@ -294,7 +296,7 @@ const ScheduleAdapter = (function() {
             const rideColumnName = getGlobals().RIDECOLUMNNAME;
             const routeColumnName = getGlobals().ROUTECOLUMNNAME;
             
-            this._cachedData.forEach((row, index) => {
+            this._cachedData.forEach((/** @type {any} */ row, /** @type {number} */ index) => {
                 if (rideFormulas && rideFormulas[index] && rideFormulas[index][0]) {
                     row[rideColumnName] = rideFormulas[index][0];
                 }
@@ -431,9 +433,9 @@ const ScheduleAdapter = (function() {
         restoreFormula(rowNum, columnName) {
             const indexNum = rowNum - 2; // Convert to 0-based formula array index
             const propertyName = columnName === 'Ride' ? 'rideColumnFormulas' : 'routeColumnFormulas';
-            const formulas = JSON.parse(
-                PropertiesService.getDocumentProperties().getProperty(propertyName)
-            );
+            const formulasJson = PropertiesService.getDocumentProperties().getProperty(propertyName);
+            if (!formulasJson) return;
+            const formulas = JSON.parse(formulasJson);
             
             if (formulas && formulas[indexNum]) {
                 const formula = formulas[indexNum];

@@ -509,14 +509,230 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
    }
    ```
 
-10. **Deployment Checklist**
+10. **VS Code TypeScript Error Checking (CRITICAL)**
+   
+   **MANDATORY: VS Code TypeScript server is MORE STRICT than `tsc --noEmit`**
+   
+   The VS Code TypeScript language server catches implicit type errors that the command-line TypeScript compiler (`tsc --noEmit`) does NOT catch. This means:
+   
+   - ✅ **ALWAYS check VS Code errors** using the `get_errors` tool
+   - ❌ **NEVER assume `npm run typecheck` passing means no type errors**
+   - 🔍 **VS Code catches**: Implicit `any` types, generic types without parameters, implicit `any[]` arrays
+   - ⚠️ **tsc --noEmit allows**: Many implicit types that VS Code flags as errors
+   
+   **How to Find VS Code Errors:**
+   ```bash
+   # Use get_errors tool to see VS Code's TypeScript server errors
+   # This shows the SAME errors VS Code displays in the editor
+   get_errors(['src/'])
+   ```
+   
+   **Common VS Code-Only Errors:**
+   
+   1. **Generic Array Type Without Parameter**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      /**
+       * @param {Array} items - Array of items
+       */
+      function process(items) { }
+      
+      // ✅ CORRECT - Use any[] or specific type
+      /**
+       * @param {any[]} items - Array of items
+       */
+      function process(items) { }
+      ```
+   
+   2. **Implicit any[] Type on Variables**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      const results = items.filter(x => x.valid);
+      
+      // ✅ CORRECT - Explicit type annotation
+      /** @type {any[]} */
+      const results = items.filter(x => x.valid);
+      
+      // ✅ BETTER - Specific type
+      /** @type {string[]} */
+      const names = items.map(x => x.name);
+      ```
+   
+   3. **Implicit any on Function Parameters**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      function expandTemplate(template, rowData) {
+          return template.replace(/\{(\w+)\}/g, (match, field) => {
+              return rowData[field] || '';
+          });
+      }
+      
+      // ✅ CORRECT - Full JSDoc with parameter types
+      /**
+       * Expand template placeholders with row data
+       * 
+       * @param {string} template - Template text with {FieldName} placeholders
+       * @param {any} rowData - Row data object
+       * @returns {string} Expanded text
+       */
+      function expandTemplate(template, rowData) {
+          return template.replace(/\{(\w+)\}/g, 
+              (/** @type {string} */ match, /** @type {string} */ field) => {
+                  return rowData[field] || '';
+              }
+          );
+      }
+      ```
+   
+   4. **Implicit any[] in Lambda/Callback Parameters**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      const names = items.map(item => item.name);
+      
+      // ✅ CORRECT - Inline type annotation
+      const names = items.map((/** @type {any} */ item) => item.name);
+      
+      // ✅ BETTER - Type the array first
+      /** @type {Array<{name: string}>} */
+      const items = getItems();
+      const names = items.map(item => item.name); // Type inferred
+      ```
+   
+   **Type Annotation Patterns (VS Code Compliance):**
+   
+   ```javascript
+   // Pattern 1: Variable declarations
+   /** @type {any[]} */
+   const items = [];
+   
+   /** @type {string[]} */
+   const names = ['Alice', 'Bob'];
+   
+   /** @type {{id: string, name: string}[]} */
+   const users = [];
+   
+   // Pattern 2: Function JSDoc
+   /**
+    * Process items with validation
+    * 
+    * @param {any[]} items - Array of items to process
+    * @param {string} mode - Processing mode
+    * @returns {{success: boolean, errors: string[]}} Result object
+    */
+   function processItems(items, mode) {
+       /** @type {string[]} */
+       const errors = [];
+       // ... implementation
+       return { success: errors.length === 0, errors };
+   }
+   
+   // Pattern 3: Lambda parameters in callbacks
+   items.forEach((/** @type {any} */ item, /** @type {number} */ index) => {
+       console.log(`Item ${index}: ${item.name}`);
+   });
+   
+   // Pattern 4: Replace callback with multiple parameters
+   text.replace(/pattern/g, (/** @type {string} */ match, /** @type {string} */ group) => {
+       return transform(match, group);
+   });
+   ```
+   
+   **VS Code Error Checking Workflow:**
+   
+   1. **After ANY code change:**
+      ```bash
+      # Check VS Code errors (more strict)
+      get_errors(['src/'])
+      
+      # Also check CLI (should still pass)
+      npm run typecheck
+      ```
+   
+   2. **Fixing implicit type errors:**
+      - Look at the error message for the expected type
+      - Add `/** @type {T} */` annotation BEFORE the declaration
+      - For function parameters, add full JSDoc block with `@param {T}`
+      - For lambda parameters, use inline `(/** @type {T} */ param) =>`
+   
+   3. **Common patterns to fix:**
+      - `{Array}` → `{any[]}` or `{T[]}` in JSDoc
+      - Implicit `any[]` variable → `/** @type {any[]} */ const x = ...`
+      - Missing function JSDoc → Add `@param {T}` for all parameters
+      - Lambda without types → `(/** @type {T} */ x) => ...`
+   
+   **Real-World Example (AnnouncementCore.js):**
+   
+   ```javascript
+   // BEFORE: 11 VS Code errors (but tsc --noEmit passed!)
+   
+   /**
+    * Get items due for sending/reminder
+    * @param {Array} rows - All announcement rows
+    * @returns {Object} Due items
+    */
+   static getDueItems(rows, currentTime) {
+       const dueToSend = rows.filter(/* ... */);
+       const dueForReminder = rows.filter(/* ... */);
+       return { dueToSend, dueForReminder };
+   }
+   
+   static expandTemplate(template, rowData, route) {
+       const missingFields = [];
+       const expandedText = template.replace(/\{(\w+)\}/g, (match, fieldName) => {
+           // ...
+       });
+       return { expandedText, missingFields };
+   }
+   
+   // AFTER: 0 VS Code errors (explicit types everywhere)
+   
+   /**
+    * Get items due for sending/reminder
+    * @param {any[]} rows - All announcement rows (FIXED: Array → any[])
+    * @param {number} currentTime - Current timestamp
+    * @returns {Object} Due items
+    */
+   static getDueItems(rows, currentTime) {
+       /** @type {any[]} */  // ADDED: Explicit type
+       const dueToSend = rows.filter(/* ... */);
+       /** @type {any[]} */  // ADDED: Explicit type
+       const dueForReminder = rows.filter(/* ... */);
+       return { dueToSend, dueForReminder };
+   }
+   
+   /**
+    * Expand template placeholders with row data
+    * 
+    * @param {string} template - Template text with {FieldName} placeholders
+    * @param {any} rowData - Row data object
+    * @param {any} [route] - Optional route object
+    * @returns {Object} Object with expandedText and missingFields
+    */
+   static expandTemplate(template, rowData, route) {
+       /** @type {string[]} */  // ADDED: Explicit type
+       const missingFields = [];
+       const expandedText = template.replace(/\{(\w+)\}/g, 
+           (/** @type {string} */ match, /** @type {string} */ fieldName) => {
+               // ADDED: Lambda parameter types
+               // ...
+           }
+       );
+       return { expandedText, missingFields };
+   }
+   ```
+
+11. **Deployment Checklist**
    - ✅ All tests pass: `npm test`
+   - ✅ **VS Code errors checked: `get_errors(['src/'])`** (MANDATORY - added)
    - ✅ Type check passes: `npm run typecheck`
    - ✅ No new type errors introduced
    - ✅ All `.d.ts` files updated
    - ✅ Type escapes minimized and documented
 
-**REMEMBER**: Type errors are bugs waiting to happen. Zero tolerance for type errors in `src/`.
+**REMEMBER**: 
+- **VS Code TypeScript server is MORE STRICT than tsc --noEmit**
+- **ALWAYS use `get_errors` tool to check VS Code errors**
+- **Type errors are bugs waiting to happen. Zero tolerance for type errors in `src/`**
 
 ## Fiddler Library (MANDATORY)
 This repository uses the [bmPreFiddler](https://github.com/brucemcpherson/bmPreFiddler) to manage [Fiddler](https://github.com/brucemcpherson/bmFiddler) GAS spreadsheet access.
@@ -707,7 +923,7 @@ When modifying ANY code file, you MUST update all related artifacts:
 - ❌ NEVER leave documentation inconsistent with code
 
 ### 4. Deployment Verification (MANDATORY)
-- ✅ Run full validation: `npm run dev:push` (includes validate-exports, typecheck)
+- ✅ Run full validation: `npm run typecheck; npm run validate-exports; clasp-wrapper.sh push`
 - ✅ Verify deployment success
 - ✅ Test in GAS environment (manual testing of critical paths)
 - ❌ NEVER assume deployment worked without verification

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * RetryQueueMarshallingCore - Pure JavaScript data marshalling for retry queue
  * 

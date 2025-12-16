@@ -1,8 +1,19 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
+if (typeof require !== 'undefined') {
+    var dates = require('./common/dates');
+}
+
 const Commands = (() => {
     return Object.freeze({
+        /**
+         * @param {Row[]} rows
+         * @param {any} rwgps
+         * @param {boolean} [force]
+         */
         cancelSelectedRidesWithCreds(rows, rwgps, force = false) {
             // Check if any rows have announcements that need special handling
-            const rowsWithAnnouncements = rows.filter(r => r.Announcement && r.Status);
+            const rowsWithAnnouncements = rows.filter((/** @type {Row} */ r) => r.Announcement && r.Status);
             
             if (rowsWithAnnouncements.length > 0 && !force) {
                 // Handle cancellation with UI for announcements

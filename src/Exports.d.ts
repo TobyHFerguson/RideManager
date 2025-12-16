@@ -17,7 +17,7 @@ import HyperlinkUtils from './HyperlinkUtils';
 import UIManager from './UIManager';
 import RideManager from './RideManager';
 import UserLogger from './UserLogger';
-import Event from './Event';
+import SCCCCEvent from './Event';
 import EventFactory from './EventFactory';
 import RetryQueue from './RetryQueue';
 import RetryQueueCore from './RetryQueueCore';
@@ -27,6 +27,7 @@ import Globals from './Globals';
 import CacheManager from './CacheManager';
 import TriggerManager from './TriggerManager';
 import TriggerManagerCore from './TriggerManagerCore';
+import * as dates from './common/dates';
 
 /**
  * Centralized exports object
@@ -62,8 +63,8 @@ interface ExportsNamespace {
     readonly RideManager: typeof RideManager;
     /** UserLogger module */
     readonly UserLogger: typeof UserLogger;
-    /** Event class */
-    readonly Event: typeof Event;
+    /** SCCCCEvent class */
+    readonly Event: typeof SCCCCEvent;
     /** EventFactory module */
     readonly EventFactory: typeof EventFactory;
     /** RetryQueue class */
@@ -82,6 +83,8 @@ interface ExportsNamespace {
     readonly TriggerManager: typeof TriggerManager;
     /** TriggerManagerCore class */
     readonly TriggerManagerCore: typeof TriggerManagerCore;
+    /** dates utility module */
+    readonly dates: typeof dates;
 }
 
 declare const Exports: ExportsNamespace;

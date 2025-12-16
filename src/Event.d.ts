@@ -1,8 +1,9 @@
 /**
- * The Event class represents a ride event and provides static and instance methods
+ * The SCCCCEvent class represents a ride event and provides static and instance methods
  * for creating, updating, and managing event names and properties.
+ * (Renamed from Event to avoid DOM Event shadowing)
  */
-declare class Event {
+declare class SCCCCEvent {
     all_day: string;
     auto_expire_participants: string;
     desc: string | undefined;
@@ -94,3 +95,5 @@ declare class Event {
      */
     static getGroupName(name: string, groupNames: string[]): string;
 }
+
+export default SCCCCEvent;
