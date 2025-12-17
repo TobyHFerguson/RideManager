@@ -47,9 +47,10 @@ const RideManager = (function () {
     /**
      * @param {any} row
      * @param {any} rwgps
+     * @param {boolean} sendEmail
      * @param {string} [reason]
      */
-    function cancelRow_(row, rwgps, reason = '') {
+    function cancelRow_(row, rwgps, sendEmail = false, reason = '') {
         const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
         rideEvent.cancel();
         row.setRideLink(rideEvent.name, row.RideURL);
@@ -61,7 +62,7 @@ const RideManager = (function () {
         if (row.Announcement && row.Status) {
             try {
                 const manager = new AnnouncementManager();
-                const result = manager.handleCancellation(row, reason);
+                const result = manager.handleCancellation(row, sendEmail, reason);
                 
                 // Log to UserLogger
                 UserLogger.log('CANCEL_RIDE', `Row ${row.rowNum}, ${row.RideName}, Reason: ${reason || '(none)'}`, {
@@ -115,9 +116,10 @@ const RideManager = (function () {
     /**
      * @param {any} row
      * @param {any} rwgps
+     * @param {boolean} sendEmail
      * @param {string} [reason]
      */
-    function reinstateRow_(row, rwgps, reason = '') {
+    function reinstateRow_(row, rwgps, sendEmail = false, reason = '') {
         const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
         rideEvent.reinstate();
         row.setRideLink(rideEvent.name, row.RideURL);
@@ -129,7 +131,7 @@ const RideManager = (function () {
         if (row.Announcement && row.Status === 'cancelled') {
             try {
                 const manager = new AnnouncementManager();
-                const result = manager.handleReinstatement(row, reason);
+                const result = manager.handleReinstatement(row, sendEmail, reason);
                 
                 // Log to UserLogger
                 UserLogger.log('REINSTATE_RIDE', `Row ${row.rowNum}, ${row.RideName}, Reason: ${reason || '(none)'}`, {
@@ -277,14 +279,15 @@ const RideManager = (function () {
      * @param {any[]} rows
      * @param {any} rwgps
      * @param {Function} fn
+     * @param {boolean} sendEmail
      * @param {string} reason
      */
-    function processRows_(rows, rwgps, fn, reason = '') {
+    function processRows_(rows, rwgps, fn, sendEmail = false, reason = '') {
         /** @type {Error[]} */
         const errors = [];
         rows.forEach(row => {
             try {
-                fn(row, rwgps, reason);
+                fn(row, rwgps, sendEmail, reason);
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(String(e));
                 err.message = `Error processing row ${row.rowNum}: ${err.message}`;
@@ -299,10 +302,11 @@ const RideManager = (function () {
         /**
          * @param {any[]} rows
          * @param {any} rwgps
+         * @param {boolean} sendEmail
          * @param {string} reason
          */
-        cancelRows: function (rows, rwgps, reason = '') {
-            processRows_(rows, rwgps, cancelRow_, reason)
+        cancelRows: function (rows, rwgps, sendEmail = false, reason = '') {
+            processRows_(rows, rwgps, cancelRow_, sendEmail, reason)
         },
         /**
          * @param {any[]} rows
@@ -314,10 +318,11 @@ const RideManager = (function () {
         /**
          * @param {any[]} rows
          * @param {any} rwgps
+         * @param {boolean} sendEmail
          * @param {string} reason
          */
-        reinstateRows: function (rows, rwgps, reason = '') {
-            processRows_(rows, rwgps, reinstateRow_, reason);
+        reinstateRows: function (rows, rwgps, sendEmail = false, reason = '') {
+            processRows_(rows, rwgps, reinstateRow_, sendEmail, reason);
         },
         /**
          * @param {any[]} rows

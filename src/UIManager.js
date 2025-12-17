@@ -121,54 +121,55 @@ const UIManager = {
             try {
                 // Check if row has announcement
                 if (!row.Announcement || !row.Status) {
-                    // No announcement - simple cancellation
-                    RideManager.cancelRows([row], rwgps);
+                    // No announcement - simple cancellation, no user prompt needed
+                    RideManager.cancelRows([row], rwgps, false, '');
                     cancelled++;
+                    results.push(`Row ${row.rowNum}: Cancelled (no announcement)`);
                     continue;
                 }
                 
-                // Determine if email will be sent
-                const now = new Date().getTime();
-                const shouldSendEmail = AnnouncementCore.shouldSendCancellationEmail(row.Status, row.SendAt, now);
+                // Has announcement - ask user if they want to send cancellation email
+                const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                    `This ride has an announcement.\n` +
+                    `Do you want to send a cancellation email to all riders?`;
                 
-                if (!shouldSendEmail) {
-                    // No email needed - just inform user
-                    const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
-                        `This ride has an announcement scheduled for ${row.SendAt}.\n` +
-                        `Since the announcement hasn't been sent yet, no cancellation email will be sent.\n` +
-                        `The announcement status will be set to 'cancelled'.\n\n` +
-                        `Cancel this ride?`;
-                    
-                    const response = ui.alert('Cancel Ride', confirmMsg, ui.ButtonSet.YES_NO);
-                    if (response === ui.Button.YES) {
-                        RideManager.cancelRows([row], rwgps);
-                        cancelled++;
-                        results.push(`Row ${row.rowNum}: Cancelled (no email sent - before SendAt)`);
-                    }
-                } else {
-                    // Email will be sent - get reason from user
+                const response = ui.alert('Send Cancellation Email?', confirmMsg, ui.ButtonSet.YES_NO_CANCEL);
+                
+                if (response === ui.Button.CANCEL) {
+                    // User cancelled the operation
+                    continue;
+                }
+                
+                const sendEmail = (response === ui.Button.YES);
+                let reason = '';
+                
+                if (sendEmail) {
+                    // Get reason from user
                     const promptMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
-                        `The announcement for this ride was already sent at ${row.SendAt}.\n` +
-                        `A cancellation email will be sent to all riders.\n\n` +
                         `Please provide a brief reason for the cancellation:`;
                     
                     const reasonResponse = ui.prompt('Cancellation Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
                     
-                    if (reasonResponse.getSelectedButton() === ui.Button.OK) {
-                        const reason = reasonResponse.getResponseText();
-                        
-                        // Perform cancellation with reason
-                        RideManager.cancelRows([row], rwgps, reason);
-                        cancelled++;
-                        
-                        // Check if email was actually sent
-                        const manager = new AnnouncementManager();
-                        // Email sending happens inside RideManager.cancelRows
-                        results.push(`Row ${row.rowNum}: Cancelled - cancellation email sent`);
+                    if (reasonResponse.getSelectedButton() === ui.Button.CANCEL) {
+                        // User cancelled
+                        continue;
                     }
+                    
+                    reason = reasonResponse.getResponseText();
+                }
+                
+                // Perform cancellation
+                RideManager.cancelRows([row], rwgps, sendEmail, reason);
+                cancelled++;
+                
+                if (sendEmail) {
+                    results.push(`Row ${row.rowNum}: Cancelled - cancellation email sent`);
+                } else {
+                    results.push(`Row ${row.rowNum}: Cancelled (no email sent)`);
                 }
             } catch (error) {
-                results.push(`Row ${row.rowNum}: ERROR - ${error.message}`);
+                const err = error instanceof Error ? error : new Error(String(error));
+                results.push(`Row ${row.rowNum}: ERROR - ${err.message}`);
                 console.error(`Error cancelling row ${row.rowNum}:`, error);
             }
         }
@@ -220,51 +221,55 @@ const UIManager = {
             try {
                 // Check if row has announcement
                 if (!row.Announcement || !row.Status || row.Status !== 'cancelled') {
-                    // No announcement or not cancelled - simple reinstatement
-                    RideManager.reinstateRows([row], rwgps);
+                    // No announcement or not cancelled - simple reinstatement, no user prompt needed
+                    RideManager.reinstateRows([row], rwgps, false, '');
                     reinstated++;
+                    results.push(`Row ${row.rowNum}: Reinstated (no announcement)`);
                     continue;
                 }
                 
-                // Determine if email will be sent
-                const now = new Date().getTime();
-                const shouldSendEmail = AnnouncementCore.shouldSendReinstatementEmail(row.Status, row.SendAt, now);
+                // Has announcement - ask user if they want to send reinstatement email
+                const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                    `This ride has an announcement.\n` +
+                    `Do you want to send a reinstatement email to all riders?`;
                 
-                if (!shouldSendEmail) {
-                    // No email needed - just inform user
-                    const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
-                        `This ride has an announcement scheduled for ${row.SendAt}.\n` +
-                        `Since the announcement hasn't been sent yet, no reinstatement email will be sent.\n` +
-                        `The announcement status will be returned to 'pending' and will be sent at the scheduled time.\n\n` +
-                        `Reinstate this ride?`;
-                    
-                    const response = ui.alert('Reinstate Ride', confirmMsg, ui.ButtonSet.YES_NO);
-                    if (response === ui.Button.YES) {
-                        RideManager.reinstateRows([row], rwgps);
-                        reinstated++;
-                        results.push(`Row ${row.rowNum}: Reinstated (no email sent - before SendAt)`);
-                    }
-                } else {
-                    // Email will be sent - get reason from user
+                const response = ui.alert('Send Reinstatement Email?', confirmMsg, ui.ButtonSet.YES_NO_CANCEL);
+                
+                if (response === ui.Button.CANCEL) {
+                    // User cancelled the operation
+                    continue;
+                }
+                
+                const sendEmail = (response === ui.Button.YES);
+                let reason = '';
+                
+                if (sendEmail) {
+                    // Get reason from user
                     const promptMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
-                        `The announcement for this ride was already sent at ${row.SendAt}.\n` +
-                        `A reinstatement email will be sent to all riders.\n\n` +
                         `Please provide a brief reason for the reinstatement:`;
                     
                     const reasonResponse = ui.prompt('Reinstatement Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
                     
-                    if (reasonResponse.getSelectedButton() === ui.Button.OK) {
-                        const reason = reasonResponse.getResponseText();
-                        
-                        // Perform reinstatement with reason
-                        RideManager.reinstateRows([row], rwgps, reason);
-                        reinstated++;
-                        
-                        results.push(`Row ${row.rowNum}: Reinstated - reinstatement email sent`);
+                    if (reasonResponse.getSelectedButton() === ui.Button.CANCEL) {
+                        // User cancelled
+                        continue;
                     }
+                    
+                    reason = reasonResponse.getResponseText();
+                }
+                
+                // Perform reinstatement
+                RideManager.reinstateRows([row], rwgps, sendEmail, reason);
+                reinstated++;
+                
+                if (sendEmail) {
+                    results.push(`Row ${row.rowNum}: Reinstated - reinstatement email sent`);
+                } else {
+                    results.push(`Row ${row.rowNum}: Reinstated (no email sent)`);
                 }
             } catch (error) {
-                results.push(`Row ${row.rowNum}: ERROR - ${error.message}`);
+                const err = error instanceof Error ? error : new Error(String(error));
+                results.push(`Row ${row.rowNum}: ERROR - ${err.message}`);
                 console.error(`Error reinstating row ${row.rowNum}:`, error);
             }
         }

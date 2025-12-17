@@ -7,8 +7,10 @@ declare const RideManager: {
      * Cancels the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to cancel.
      * @param {any} rwgps - RWGPS connector/service.
+     * @param {boolean} sendEmail - Whether to send cancellation email.
+     * @param {string} reason - Optional cancellation reason.
      */
-    cancelRows(rows: Row[], rwgps: any): void;
+    cancelRows(rows: Row[], rwgps: any, sendEmail?: boolean, reason?: string): void;
 
     /**
      * Imports the given rows' routes.
@@ -21,8 +23,10 @@ declare const RideManager: {
      * Reinstates the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to reinstate.
      * @param {any} rwgps - RWGPS connector/service.
+     * @param {boolean} sendEmail - Whether to send reinstatement email.
+     * @param {string} reason - Optional reinstatement reason.
      */
-    reinstateRows(rows: Row[], rwgps: any): void;
+    reinstateRows(rows: Row[], rwgps: any, sendEmail?: boolean, reason?: string): void;
 
     /**
      * Schedules the given rows' rides.
