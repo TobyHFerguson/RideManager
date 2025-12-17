@@ -8,7 +8,7 @@
   "version": "1.0.0",
   "main": "Events.js",
   "config": {
-    "CLASP_DEV_SCRIPT_ID": "1Dx64_1bqJJ-B4el2CdBndT295DfLRY1apHruyxjkzzrEfGSW56p81Hya",
+    "CLASP_DEV_SCRIPT_ID": "17IPlyndI_1mxxsSjsrs55GqistKdJZTE74MfTXEHXdn2oB0adekqulCE",
     "CLASP_PROD_SCRIPT_ID": "1jZK91BUtxxCsxB8aJqruLDUgelyduLlOMz9siepdnpdsPy35pkrkpzjc"
   },
   "scripts": {
