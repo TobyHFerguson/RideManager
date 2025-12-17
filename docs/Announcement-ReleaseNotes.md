@@ -47,7 +47,7 @@ A new optional sheet allows ride schedulers to use their own announcement templa
 - `Active` column must be `TRUE` for template to be used
 - Email matching is case-insensitive
 - System checks personal templates first, falls back to master template if:
-  - Personal Templates sheet doesn't exist
+  - Personal Templates sheet doesn't exist or doesn't have correct permissions
   - User has no entry in sheet
   - User's entry has `Active = FALSE`
   - Template URL is invalid

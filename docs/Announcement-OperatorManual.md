@@ -26,8 +26,8 @@ The Ride Announcement System is a fully automated email notification system for 
   - Daily backstop: Runs at 2:00 AM daily
   - Scheduled triggers: Fire at precise announcement send times
 - **Functions:** `dailyAnnouncementCheck` (backstop), `announcementTrigger` (scheduled)
-- **Storage:** Spreadsheet columns + Document Properties for trigger coordination
-- **Template:** Google Doc master template
+- **Spreadsheet:** Spreadsheet columns + Document Properties for trigger coordination
+- **Folders & Files:** Master template and announcements stored in [Ride Announcements](https://drive.google.com/drive/folders/1uwZzbl1SkkAOwA_6-uIj-ZR368_sxJNm?usp=sharing) folder. Share with Ride Scheduler group as `Content Manager`.
 - **Retry Logic:** Exponential backoff over 24 hours
 - **Notifications:** 24-hour reminder emails to ride schedulers
 
