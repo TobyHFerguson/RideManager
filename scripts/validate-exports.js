@@ -12,13 +12,17 @@ const path = require('path');
 const exportsPath = path.join(__dirname, '../src/Exports.js');
 const exportsContent = fs.readFileSync(exportsPath, 'utf8');
 
-// Extract all getter property names from Exports object
-const getterPattern = /get\s+(\w+)\s*\(\)/g;
-const modules = [];
+// Extract getter property names and their returned values
+// Pattern: get PropertyName() { return ActualModuleName; }
+const getterPattern = /get\s+(\w+)\s*\(\)\s*{\s*return\s+(\w+);?\s*}/g;
+const modules = []; // Array of {property, module} objects
 let match;
 
 while ((match = getterPattern.exec(exportsContent)) !== null) {
-    modules.push(match[1]);
+    modules.push({
+        property: match[1],  // Property name in Exports
+        module: match[2]     // Actual module name returned
+    });
 }
 
 console.log(`\n📦 Validating ${modules.length} modules in Exports.js...\n`);
@@ -100,12 +104,14 @@ globalDeclarations.forEach((declarations, identifier) => {
 });
 
 // For each module, check if a corresponding file exists that defines it
-modules.forEach(moduleName => {
-    // Check common file naming patterns
+modules.forEach(({property, module: moduleName}) => {
+    // Check common file naming patterns, including subdirectories
     const possibleFiles = [
         `src/${moduleName}.js`,
         `src/${moduleName.toLowerCase()}.js`,
-        `src/${moduleName.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1)}.js`
+        `src/${moduleName.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1)}.js`,
+        `src/common/${moduleName}.js`,
+        `src/common/${moduleName.toLowerCase()}.js`
     ];
     
     let found = false;
@@ -117,8 +123,9 @@ modules.forEach(moduleName => {
             // Check if the file defines the module as a var/const or class
             const varPattern = new RegExp(`(var|const|let)\\s+${moduleName}\\s*=`, 'm');
             const classPattern = new RegExp(`class\\s+${moduleName}\\s*(?:{|extends)`, 'm');
+            
             if (varPattern.test(content) || classPattern.test(content)) {
-                console.log(`  ✅ ${moduleName} - defined in ${filePath}`);
+                console.log(`  ✅ ${property}${property !== moduleName ? ` (returns ${moduleName})` : ''} - defined in ${filePath}`);
                 found = true;
                 break;
             }
@@ -126,14 +133,16 @@ modules.forEach(moduleName => {
     }
     
     if (!found) {
-        errors.push(`  ❌ ${moduleName} - no corresponding file found or module not defined`);
+        errors.push(`  ❌ ${property}${property !== moduleName ? ` (returns ${moduleName})` : ''} - no corresponding file found or module not defined`);
     }
 });
 
 // Check for modules used in code but not in Exports
 const jsFiles = allJsFiles.filter(f => f !== 'Exports.js');
 
-const modulesInExports = new Set(modules);
+// Create a Set of module names (the actual variables returned by getters)
+const moduleNamesInExports = new Set(modules.map(m => m.module));
+
 const potentialModules = new Set();
 
 jsFiles.forEach(file => {
@@ -154,7 +163,7 @@ jsFiles.forEach(file => {
 });
 
 potentialModules.forEach(mod => {
-    if (!modulesInExports.has(mod)) {
+    if (!moduleNamesInExports.has(mod)) {
         warnings.push(`  ⚠️  ${mod} - defined in code but not exported in Exports.js`);
     }
 });

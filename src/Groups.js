@@ -1,3 +1,4 @@
+// @ts-check
 function getGroupNames() {
   return Object.keys(getGroupSpecs());  // ["A", "B", "C", ...]
 }

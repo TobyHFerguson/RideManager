@@ -1,6 +1,8 @@
+/// <reference path="./gas-globals.d.ts" />
 /** @OnlyCurrentDoc */
 
 // @ts-check
+
 function onOpen() {
   createMenu_();
 
@@ -11,8 +13,6 @@ function onOpen() {
   // and onEdit only has access to old values, not formulas.
   const adapter = new ScheduleAdapter();
   adapter.storeFormulas();
-  initializeGlobals();
-  initializeGroupCache();
 }
 
 function createMenu_() {
@@ -25,8 +25,6 @@ function createMenu_() {
     .addItem('Unschedule Selected Rides', unscheduleSelectedRides_.name)
     .addSeparator()
     .addItem('Import Selected Routes', importSelectedRoutes_.name)
-    .addItem('Link Selected Route URLs', linkSelectedRouteUrls_.name)
-    .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
     .addItem('Test Selected Announcements', testSendAnnouncement_.name)
     .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
@@ -34,6 +32,7 @@ function createMenu_() {
     .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
     .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
     .addSeparator()
+    .addItem('Install Triggers', installTriggers_.name)
     .addItem(getDTRTMenuText_(), toggleDTRT_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addToUi();
@@ -47,8 +46,11 @@ function dtrtIsEnabled_() {
   return PropertiesService.getUserProperties().getProperty('DTRT') === 'true';
 }
 
+/**
+ * @param {boolean} value
+ */
 function setDTRTSetting_(value) {
-  PropertiesService.getUserProperties().setProperty('DTRT', value);
+  PropertiesService.getUserProperties().setProperty('DTRT', String(value));
   alert_('DTRT setting has been ' + (value ? 'enabled' : 'disabled'));
 }
 
@@ -81,9 +83,6 @@ function cancelSelectedRides_() {
 function importSelectedRoutes_() {
   MenuFunctions.importSelectedRoutes();
 }
-function linkSelectedRouteUrls_() {
-  MenuFunctions.linkSelectedRouteUrls();
-}
 function reinstateSelectedRides_() {
   MenuFunctions.reinstateSelectedRides();
 }
@@ -92,9 +91,6 @@ function scheduleSelectedRides_() {
 }
 function unscheduleSelectedRides_() {
   MenuFunctions.unscheduleSelectedRides();
-}
-function updateRiderCount() {
-  MenuFunctions.updateRiderCount();
 }
 function updateSelectedRides_() {
   MenuFunctions.updateSelectedRides();
@@ -109,14 +105,15 @@ function editEventReport_(event) {
   const activeUser = Session.getActiveUser();
   const userEmail = activeUser ? activeUser.getEmail() : 'Unknown User';
   console.log(`User ${userEmail} edited the spreadsheet. DTRT is ${dtrtIsEnabled_() ? 'enabled' : 'disabled'}`);
-  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
+  console.log(`editHandler called with event: ${JSON.stringify(event)}`);
   console.log(`event.oldValue: ${event.oldValue}`);
   console.log(`event.value: ${event.value}`);
   console.log(`event.range.getValue(): ${event.range.getValue()}`);
   console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
   if (event.range.getRichTextValue()) {
-    console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
-    console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+    const richText = event.range.getRichTextValue();
+    console.log(`event.range.getRichTextValue().getText(): ${richText?.getText()}`);
+    console.log(`event.range.getRichTextValue().getLinkUrl(): ${richText?.getLinkUrl()}`);
   }
   const adapter = new ScheduleAdapter();
   const row = adapter.loadSelected()[0];
@@ -130,12 +127,15 @@ function editEventReport_(event) {
  * 
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
  */
-function myEdit(event) {
+function editHandler(event) {
   // event.value is only defined if the edited cell is a single cell
-  editEventReport_(event);
+  // editEventReport_(event);
   const adapter = new ScheduleAdapter();
   if (event.range.getSheet().getName() === adapter.getSheetName()) {
     return handleCRSheetEdit_(event, adapter);
+  } else { // Assume that the edit was a different sheet
+    console.log('Calling CacheManager.clearCache()');
+    Exports.CacheManager.clearCache();
   }
 }
 
@@ -158,7 +158,7 @@ function myEdit(event) {
  *
  * @private
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
- * @param {ScheduleAdapter} adapter - Reusable adapter instance
+ * @param {InstanceType<typeof ScheduleAdapter>} adapter - Reusable adapter instance
  * @returns {*|undefined} Returns the value from next() when processing continues, or undefined if the edit was rejected/handled.
  */
 function handleCRSheetEdit_(event, adapter) {
@@ -194,15 +194,17 @@ function handleCRSheetEdit_(event, adapter) {
       try {
         editRouteColumn_(event, adapter);
       } catch (e) {
-        alert_(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
+        const error = e instanceof Error ? e : new Error(String(e));
+        alert_(`Error: ${error.message} - the route cell will be reverted to its previous value.`);
         adapter.restoreFormula(event.range.getRow(), 'Route');
         return;
       }
     }
     return next_(adapter)
   } catch (e) {
-    alert_(e.message)
-    throw e
+    const error = e instanceof Error ? e : new Error(String(e));
+    alert_(error.message)
+    throw error
   }
 }
 
@@ -229,8 +231,8 @@ function editRouteColumn_(event, adapter) {
     return;
   }
 
-  // Fetch route data from RWGPS (GAS operation)
-  const route = getRoute(url);
+  // Fetch route data from RWGPS (GAS operation), skipping the local cache
+  const route = getRoute(url, true);
   
   // Prompt for foreign route name if needed (GAS operation)
   let userProvidedName;
@@ -266,6 +268,9 @@ function editRouteColumn_(event, adapter) {
   }
 }
 
+/**
+ * @param {string} message
+ */
 function alert_(message) {
   SpreadsheetApp.getUi().alert(message);
 }
@@ -360,8 +365,8 @@ function testSendAnnouncement_() {
     }
     
     // Filter for rows with announcements
-    const rowsWithAnnouncements = selectedRows.filter(r => r.Announcement);
-    
+    const rowsWithAnnouncements = selectedRows.filter(/** @param {any} r */ r => r.Announcement);
+
     if (rowsWithAnnouncements.length === 0) {
       ui.alert('No Announcements', 
         `None of the selected rows have announcements.\n\nSelected rows: ${selectedRows.length}`,
@@ -370,7 +375,7 @@ function testSendAnnouncement_() {
     }
     
     // Ask for test email address
-    const rowNumbers = rowsWithAnnouncements.map(r => r.rowNum).join(', ');
+    const rowNumbers = rowsWithAnnouncements.map(/** @param {any} r */ r => r.rowNum).join(', ');
     const emailResponse = ui.prompt(
       'Test Email Address',
       `Enter test email address to send ${rowsWithAnnouncements.length} announcement(s) for:\nRows: ${rowNumbers}`,
@@ -388,7 +393,7 @@ function testSendAnnouncement_() {
     }
     
     // Confirm
-    const rideNames = rowsWithAnnouncements.map(r => r.RideName || 'Unknown').join('\n  • ');
+    const rideNames = rowsWithAnnouncements.map(/** @param {any} r */ r => r.RideName || 'Unknown').join('\n  • ');
     const confirmResponse = ui.alert(
       'Confirm Test Send',
       `Send ${rowsWithAnnouncements.length} announcement(s) to:\n${testEmail}\n\nRides:\n  • ${rideNames}\n\nThis will NOT update the Status column in the spreadsheet.`,
@@ -402,17 +407,18 @@ function testSendAnnouncement_() {
     // Send announcements
     const manager = new AnnouncementManager();
     let successCount = 0;
+    /** @type {any[]} */
     const failedRows = [];
     
-    rowsWithAnnouncements.forEach(row => {
+    rowsWithAnnouncements.forEach(/** @param {any} row */ (row) => {
       try {
         // Temporarily override the recipient email in globals
         const globals = getGlobals();
         const tempGlobals = { ...globals, RIDE_ANNOUNCEMENT_EMAIL: testEmail };
         
         // Mock getGlobals to return test email
-        const originalGetGlobals = this.getGlobals;
-        this.getGlobals = function() { return tempGlobals; };
+        const originalGetGlobals = /** @type {function(): any} */ (this.getGlobals);
+        this.getGlobals = /** @type {function(): any} */ (function() { return tempGlobals; });
         
         // Send the announcement
         const result = manager.sendAnnouncement(row);
@@ -426,7 +432,8 @@ function testSendAnnouncement_() {
           failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: result.error });
         }
         
-      } catch (error) {
+      } catch (e) {
+        const error = /** @type {Error} */ (e);
         failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: error.message });
         console.error(`testSendAnnouncement_ error for row ${row.rowNum}:`, error);
       }
@@ -439,7 +446,7 @@ function testSendAnnouncement_() {
     
     if (failedRows.length > 0) {
       message += `Failed announcements:\n`;
-      failedRows.forEach(f => {
+      failedRows.forEach(/** @param {{rowNum: number, rideName: string, error: string}} f */ f => {
         message += `  Row ${f.rowNum} (${f.rideName}): ${f.error}\n`;
       });
       message += `\n`;
@@ -455,10 +462,230 @@ function testSendAnnouncement_() {
     ui.alert(title, message, ui.ButtonSet.OK);
     
   } catch (error) {
-    console.error('testSendAnnouncement_ error:', error);
-    alert_(`Error in test send: ${error.message}`);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('testSendAnnouncement_ error:', err);
+    alert_(`Error in test send: ${err.message}`);
   }
 }
+
+// ========== TRIGGER HANDLERS ==========
+
+/**
+ * Daily backstop check for announcements
+ * Runs once per day to catch missed announcements and ensure scheduled trigger exists
+ * Owner-only (trigger should only be created by owner)
+ */
+function dailyAnnouncementCheck() {
+  try {
+    console.log('dailyAnnouncementCheck: Starting daily backstop check');
+    UserLogger.log('DAILY_ANNOUNCEMENT_CHECK', 'Starting daily backstop check', {});
+    
+    const manager = new AnnouncementManager();
+    
+    // Process any missed or due announcements
+    const result = manager.processQueue();
+    
+    console.log('dailyAnnouncementCheck: Completed', result);
+    UserLogger.log('DAILY_ANNOUNCEMENT_CHECK_COMPLETE', 'Daily backstop check completed', result);
+    
+  } catch (e) {
+    const error = /** @type {Error} */ (e);
+    console.error('Daily announcement check failed:', error);
+    UserLogger.log('DAILY_ANNOUNCEMENT_CHECK_ERROR', 'Daily backstop check failed', {
+      error: error.message,
+      stack: error.stack
+    });
+  }
+}
+
+/**
+ * Scheduled announcement trigger
+ * Fires at specific time to send pending announcement(s)
+ * Owner-only (trigger created by owner via TriggerManager)
+ */
+function announcementTrigger() {
+  try {
+    console.log('announcementTrigger: Processing scheduled announcements');
+    UserLogger.log('ANNOUNCEMENT_TRIGGER', 'Processing scheduled announcements', {});
+    
+    const manager = new AnnouncementManager();
+    
+    // Process due announcements
+    const result = manager.processQueue();
+    
+    console.log('announcementTrigger: Completed', result);
+    UserLogger.log('ANNOUNCEMENT_TRIGGER_COMPLETE', 'Scheduled announcements processed', result);
+    
+    // Clean up this trigger since it has fired
+    try {
+      const triggerManager = new TriggerManager();
+      triggerManager.removeAnnouncementTrigger();
+      console.log('announcementTrigger: Cleaned up trigger');
+    } catch (cleanupError) {
+      console.warn('announcementTrigger: Failed to cleanup trigger:', cleanupError);
+      // Non-fatal - daily backstop will handle cleanup
+    }
+    
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('announcementTrigger error:', err);
+    UserLogger.log('ANNOUNCEMENT_TRIGGER_ERROR', 'Scheduled announcement processing failed', {
+      error: err.message,
+      stack: err.stack
+    });
+  }
+}
+
+/**
+ * Daily backstop check for retry queue
+ * Runs once per day to catch missed retries and ensure scheduled trigger exists
+ * Owner-only (trigger should only be created by owner)
+ */
+function dailyRetryCheck() {
+  try {
+    console.log('dailyRetryCheck: Starting daily backstop check');
+    UserLogger.log('DAILY_RETRY_CHECK', 'Starting daily backstop check', {});
+    
+    const retryQueue = new RetryQueue();
+    
+    // Process any missed or due retries
+    const result = retryQueue.processQueue();
+    
+    console.log('dailyRetryCheck: Completed', result);
+    UserLogger.log('DAILY_RETRY_CHECK_COMPLETE', 'Daily backstop check completed', result);
+    
+  } catch (e) {
+    const error = /** @type {Error} */ (e);
+    console.error('Daily retry check failed:', error);
+    UserLogger.log('DAILY_RETRY_CHECK_ERROR', 'Daily backstop check failed', {
+      error: error.message,
+      stack: error.stack
+    });
+  }
+}
+
+/**
+ * Scheduled retry queue trigger
+ * Fires at specific time to process due retry operations
+ * Owner-only (trigger created by owner via TriggerManager)
+ */
+function retryQueueTrigger() {
+  try {
+    console.log('retryQueueTrigger: Processing due retries');
+    UserLogger.log('RETRY_QUEUE_TRIGGER', 'Processing due retries', {});
+    
+    const retryQueue = new RetryQueue();
+    
+    // Process due retries
+    const result = retryQueue.processQueue();
+    
+    console.log('retryQueueTrigger: Completed', result);
+    UserLogger.log('RETRY_QUEUE_TRIGGER_COMPLETE', 'Due retries processed', result);
+    
+    // Clean up this trigger since it has fired
+    try {
+      const triggerManager = new TriggerManager();
+      triggerManager.removeRetryTrigger();
+      console.log('retryQueueTrigger: Cleaned up trigger');
+    } catch (cleanupError) {
+      console.warn('retryQueueTrigger: Failed to cleanup trigger:', cleanupError);
+      // Non-fatal - daily backstop will handle cleanup
+    }
+    
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('retryQueueTrigger error:', err);
+    UserLogger.log('RETRY_QUEUE_TRIGGER_ERROR', 'Retry queue processing failed', {
+      error: err.message,
+      stack: err.stack
+    });
+  }
+}
+
+/**
+ * Install all required triggers (owner-only)
+ * Called from menu item: Ride Schedulers > Install Triggers
+ * Idempotent: Safe to call multiple times
+ */
+function installTriggers_() {
+  const ui = SpreadsheetApp.getUi();
+  
+  try {
+    const triggerManager = new TriggerManager();
+    
+    // Check if current user is owner
+    if (!triggerManager.isOwner()) {
+      const owner = SpreadsheetApp.getActiveSpreadsheet().getOwner()?.getEmail() || 'unknown';
+      const currentUser = Session.getEffectiveUser().getEmail();
+      
+      const message = `Only the spreadsheet owner can install triggers.\n\n` +
+        `Owner: ${owner}\n` +
+        `Current user: ${currentUser}\n\n` +
+        `Please ask the owner to run this menu item.`;
+      
+      ui.alert('Owner Permission Required', message, ui.ButtonSet.OK);
+      
+      UserLogger.log('INSTALL_TRIGGERS_DENIED', 'Non-owner attempted to install triggers', {
+        owner,
+        currentUser
+      });
+      
+      return;
+    }
+    
+    // Confirm with owner before installing
+    const confirmMessage = `This will install ALL required triggers:\n\n` +
+      `• onOpen (runs when spreadsheet opens)\n` +
+      `• onEdit (runs when cells are edited)\n` +
+      `• Daily Announcement Check (runs at 2 AM daily)\n` +
+      `• Daily Retry Queue Check (runs at 2 AM daily)\n\n` +
+      `Scheduled triggers for specific announcements or retries\n` +
+      `will be created automatically as needed.\n\n` +
+      `This operation is safe to run multiple times (idempotent).\n\n` +
+      `Continue?`;
+    
+    const response = ui.alert('Install Triggers', confirmMessage, ui.ButtonSet.YES_NO);
+    
+    if (response !== ui.Button.YES) {
+      UserLogger.log('INSTALL_TRIGGERS_CANCELLED', 'User cancelled trigger installation', {});
+      return;
+    }
+    
+    // Install triggers
+    const summary = triggerManager.installAllTriggers();
+    
+    // Build success message
+    let message = `Trigger Installation Complete\n\n`;
+    message += `Installed: ${summary.installed}\n`;
+    message += `Already existed: ${summary.existed}\n`;
+    
+    if (summary.failed > 0) {
+      message += `Failed: ${summary.failed}\n\n`;
+      message += `Check the execution log for details on failures.`;
+    } else {
+      message += `\nAll triggers are now active and running as the spreadsheet owner.`;
+    }
+    
+    const title = summary.failed > 0 ? 'Installation Completed with Errors' : 'Installation Successful';
+    ui.alert(title, message, ui.ButtonSet.OK);
+    
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('installTriggers_ error:', err);
+    
+    const message = `Error installing triggers:\n\n${err.message}\n\n` +
+      `Check the execution log for details.`;
+    
+    ui.alert('Installation Failed', message, ui.ButtonSet.OK);
+  }
+}
+
+
+
+
+
+
+
 
 
 

@@ -96,7 +96,7 @@ export interface FormattedAnnouncementItem {
 /**
  * AnnouncementCore module containing all pure JavaScript business logic
  */
-declare class AnnouncementCore {
+declare namespace AnnouncementCore {
     /**
      * Calculate when announcement should be sent
      * Returns 6 PM local time, 2 calendar days before ride date
@@ -105,7 +105,7 @@ declare class AnnouncementCore {
      * @param timezone - IANA timezone identifier (e.g., 'America/Los_Angeles')
      * @returns Date object for send time
      */
-    static calculateSendTime(rideDate: Date | string, timezone: string): Date;
+    function calculateSendTime(rideDate: Date | string, timezone: string): Date;
 
     /**
      * Create a new announcement queue item
@@ -120,7 +120,7 @@ declare class AnnouncementCore {
      * @param getCurrentTime - Function to get current timestamp
      * @returns New queue item
      */
-    static createQueueItem(
+    function createQueueItem(
         rideURL: string,
         documentId: string,
         sendTime: Date | number,
@@ -141,7 +141,7 @@ declare class AnnouncementCore {
      * @param lastAttemptTime - Last attempt time timestamp
      * @returns Next retry time in ms, or null if should stop retrying
      */
-    static calculateNextRetry(attemptCount: number, sendTime: number, lastAttemptTime: number): number | null;
+    function calculateNextRetry(attemptCount: number, sendTime: number, lastAttemptTime: number): number | null;
 
     /**
      * Get rows due for sending or reminder
@@ -150,7 +150,7 @@ declare class AnnouncementCore {
      * @param currentTime - Current timestamp
      * @returns Rows due to send and rows due for reminder
      */
-    static getDueItems(rows: any[], currentTime: number): { dueToSend: any[], dueForReminder: any[] };
+    function getDueItems(rows: any[], currentTime: number): { dueToSend: any[], dueForReminder: any[] };
 
     /**
      * Calculate updated values after send failure
@@ -162,7 +162,7 @@ declare class AnnouncementCore {
      * @param currentTime - Current timestamp
      * @returns Object with status, attempts, lastError fields
      */
-    static calculateFailureUpdate(attempts: number, sendTime: number, error: string, currentTime: number): {
+    function calculateFailureUpdate(attempts: number, sendTime: number, error: string, currentTime: number): {
         status: string;
         attempts: number;
         lastError: string;
@@ -174,7 +174,7 @@ declare class AnnouncementCore {
      * @param rows - Array of Row objects
      * @returns Statistics object
      */
-    static getStatistics(rows: any[]): AnnouncementStatistics;
+    function getStatistics(rows: any[]): AnnouncementStatistics;
 
     /**
      * Expand template by replacing {FieldName} placeholders with rowData values
@@ -185,7 +185,7 @@ declare class AnnouncementCore {
      * @param route - Optional RWGPS route object with distance, elevation_gain, first_lat, first_lng
      * @returns Expanded text and array of missing field names
      */
-    static expandTemplate(template: string, rowData: Record<string, any>, route?: any | null): TemplateExpansionResult;
+    function expandTemplate(template: string, rowData: Record<string, any>, route?: any | null): TemplateExpansionResult;
 
     /**
      * Extract subject line from template
@@ -194,7 +194,7 @@ declare class AnnouncementCore {
      * @param template - Template text (possibly with Subject line)
      * @returns Subject and body (body is template with subject removed)
      */
-    static extractSubject(template: string): EmailContent;
+    function extractSubject(template: string): EmailContent;
 }
 
 export default AnnouncementCore;

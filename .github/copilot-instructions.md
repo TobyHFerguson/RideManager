@@ -1,5 +1,50 @@
 # Copilot Instructions
 
+## Quick Start (READ THIS FIRST)
+
+**CRITICAL Pre-Deployment Checks** (MANDATORY before EVERY code change):
+```bash
+npm test && npm run typecheck && npm run validate-exports
+```
+
+**MANDATORY After EVERY Code Modification**:
+1. ✅ Use `get_errors` tool to check VS Code reports ZERO problems
+2. ✅ If errors exist, FIX THEM before proceeding
+3. ✅ NEVER leave code with VS Code errors - they indicate bugs
+
+**Key Workflow Commands**:
+- `npm run dev:push` - Deploy to dev environment (with debug version)
+- `npm run prod:push` - Deploy to prod (requires clean git)
+- `npm test -- --coverage` - Full test coverage report
+- `npm run typecheck` - TypeScript validation (must be ZERO errors)
+- `npm run validate-exports` - Verify module loading order
+
+**Golden Rules**:
+1. ✅ **ALL** business logic in `*Core.js` modules (pure JavaScript, 100% tested)
+2. ✅ GAS APIs ONLY in thin adapter modules (minimal logic)
+3. ✅ NEVER mix business logic with GAS API calls
+4. ✅ Update tests, types (`.d.ts`), and docs with EVERY code change
+5. ✅ Add new modules to `Exports.js` or GAS won't find them
+6. ✅ **MANDATORY**: Run `get_errors` tool after EVERY code change (must show ZERO errors)
+
+**Architecture Pattern**:
+```javascript
+// ✅ CORRECT: Pure logic + tested
+class AnnouncementCore {
+    static calculateSendTime(rideDate) { /* pure logic */ }
+}
+
+// ✅ CORRECT: Thin GAS adapter
+class AnnouncementManager {
+    sendAnnouncement() {
+        const sendTime = AnnouncementCore.calculateSendTime(ride.date);
+        GmailApp.sendEmail(/* GAS API call */);
+    }
+}
+```
+
+**If you violate these rules**, code will be rejected or break in production.
+
 ## Architecture Overview
 This is a Google Apps Script (GAS) project that manages ride scheduling through integration with RideWithGPS and Google Calendar. The codebase mixes GAS-specific APIs with standard JavaScript/Node.js code.
 
@@ -9,14 +54,19 @@ This is a Google Apps Script (GAS) project that manages ride scheduling through 
 The codebase strictly separates GAS-specific code from pure JavaScript to maximize testability:
 
 - **Pure JavaScript modules** (can run in Node.js/Jest, MUST have 100% test coverage):
-  - `Event.js` - Event data model
+  - `SCCCC.js` - SCCCC event data model
   - `EventFactory.js` - Event creation logic
   - `Groups.js` - Group specifications
   - `Globals.js` - Global configuration
   - `Commands.js` - Business logic commands
   - `rowCheck.js` - Validation logic
+  - `ActionSelector.js` - DTRT (Do The Right Thing) logic for automatic scheduling
+  - `RouteColumnEditor.js` - Route URL/formula parsing and manipulation
   - `RetryQueueCore.js` - Retry logic (exponential backoff, queue management)
   - `RetryQueueMarshallingCore.js` - Queue data marshalling (items ↔ 2D arrays)
+  - `RetryQueueAdapterCore.js` - Spreadsheet row conversion logic
+  - `AnnouncementCore.js` - Announcement scheduling and template expansion
+  - `TriggerManagerCore.js` - Trigger management logic (configuration, validation, scheduling decisions)
   - `HyperlinkUtils.js` - Hyperlink formula parsing
   - Dates submodule
 
@@ -25,9 +75,11 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `RideManager.js` - RWGPS and Calendar integration
   - `UIManager.js` - User interface dialogs
   - `MenuFunctions.js` - Menu handlers
-  - `triggers.js` - GAS event handlers
+  - `triggers.js` - GAS event handlers (onOpen, onEdit, scheduled triggers)
+  - `TriggerManager.js` - GAS orchestrator for TriggerManagerCore (ScriptApp operations)
   - `RetryQueue.js` - GAS orchestrator for RetryQueueCore
   - `RetryQueueSpreadsheetAdapter.js` - SpreadsheetApp I/O for retry queue (uses RetryQueueMarshallingCore)
+  - `AnnouncementManager.js` - GAS adapter for AnnouncementCore (Gmail, SpreadsheetApp)
   - `GoogleCalendarManager.js` - Calendar API wrapper
 
 - **Legacy mixed modules** (MUST refactor when modifying):
@@ -177,8 +229,9 @@ if (typeof module !== 'undefined') {
 ```
 
 **Critical Naming Convention**: The variable name MUST match the class/module name:
-- ✅ `var Event = (function() { class Event { ... } return Event; })()`
+- ✅ `var SCCCCEvent = (function() { class SCCCCEvent { ... } return SCCCCEvent; })()`
 - ✅ `var Row = (function() { class Row { ... } return Row; })()`
+- ✅ `var dates = { convert, weekday, MMDD, ... };` (for namespace modules)
 - ❌ `const Event = ...` (causes redeclaration errors)
 - ❌ `var Event = Event;` (syntax error - already declared by the class)
 
@@ -215,6 +268,16 @@ const command = Exports.Commands.someCommand;
 const commands = Exports.getCommands();
 ```
 
+**CRITICAL: Property Names MUST Match Variable Names**:
+- The property name in `Exports.js` MUST match the actual variable name being returned
+- File names can differ, but variable names must match
+- This allows `npm run validate-exports` to verify all modules are defined
+- Examples:
+  - ✅ `get SCCCCEvent() { return SCCCCEvent; }` - matches variable name
+  - ✅ `get dates() { return dates; }` - matches variable name in `common/dates.js`
+  - ❌ `get Event() { return SCCCCEvent; }` - property name doesn't match variable (validation fails)
+- **Rule**: When adding a new module to Exports.js, the property name MUST be the same as the `var`/`const` name in the source file
+
 ### Key Components
 
 #### Schedule & Row Classes
@@ -245,6 +308,83 @@ const commands = Exports.getCommands();
 5. User confirms via dialog
 6. `Commands.js` execute via `RideManager.js`
 7. `Schedule.save()` writes changes back to spreadsheet
+
+#### Announcement System (Major Feature)
+**AnnouncementCore.js** (Pure JavaScript, 100% tested):
+- Send time calculations (6 PM, 2 days before ride)
+- Queue item creation and management
+- Template expansion logic (replaces {FieldName} placeholders)
+- Exponential backoff retry logic for failed sends
+- Status transitions and validation
+- Statistics calculations
+
+**AnnouncementManager.js** (GAS adapter):
+- Gmail integration for sending announcements
+- Google Doc template rendering
+- Spreadsheet persistence for announcement queue
+- Trigger scheduling for timed sends
+- Error handling and retry queue integration
+
+**Key Concepts**:
+- **Announcement Queue**: Spreadsheet-based (not PropertiesService) for operator visibility
+- **Template Expansion**: Google Docs with {FieldName} placeholders → expanded with row data
+- **Timed Sends**: Scheduled triggers fire at exact send time (with backstop at 2 AM daily)
+- **Status Flow**: pending → sending → sent | failed (with retry logic)
+- **Cancellation Handling**: Special logic for cancelled rides (sends cancellation email if announcement already sent)
+
+**Documentation**:
+- Operator Manual: `docs/Announcement-OperatorManual.md`
+- Ride Scheduler Guide: `docs/Announcement-RideSchedulerGuide.md`
+- Release Notes: `docs/Announcement-ReleaseNotes.md`
+
+#### Retry Queue System
+**RetryQueueCore.js** (Pure JavaScript, 100% tested):
+- Exponential backoff calculation (5min → 48hr cutoff)
+- Queue state management (pending, retrying, succeeded, failed, abandoned)
+- Due time calculations
+
+**RetryQueueSpreadsheetAdapter.js** (GAS adapter):
+- Spreadsheet-based persistence (moved from PropertiesService for visibility)
+- Uses `RetryQueueMarshallingCore` for data conversion (also 100% tested)
+- Row-level operations with metadata tracking
+
+**Purpose**: Automatically retry failed Calendar API operations with exponential backoff
+- Initial retry: 5 minutes (for transient API failures)
+- Max retry: After 48 hours from enqueue time
+- Visibility: Operators can view queue status in "Retry Queue" spreadsheet
+
+**Documentation**: `docs/RetryQueue.md`, `docs/RetryQueueMigration.md`
+
+#### Trigger Management
+**TriggerManagerCore.js** (Pure JavaScript, 100% tested):
+- Trigger configuration and validation logic
+- Scheduling decision logic (when to create/remove triggers)
+- Owner validation logic
+- No GAS dependencies
+
+**TriggerManager.js** (GAS adapter):
+- Thin wrapper around TriggerManagerCore
+- Handles ScriptApp trigger creation/deletion
+- Manages document properties for coordination
+- Logs all operations to User Activity Log
+
+**Trigger Types Managed**:
+1. **onOpen** - Installable trigger (runs as owner)
+2. **onEdit** - Installable trigger (runs as owner)
+3. **Daily Announcement Check** - Backstop (runs 2 AM daily)
+4. **Daily Retry Check** - Backstop (runs 2 AM daily)
+5. **Announcement Scheduled** - Dynamic (fires at announcement send time)
+6. **Retry Scheduled** - Dynamic (fires at retry due time)
+
+**Installation**:
+- Owner-only via menu: "Ride Schedulers > Install Triggers"
+- Idempotent: Safe to run multiple times
+- All operations logged to User Activity Log
+
+**Pattern**: "Backstop + Scheduled"
+- Daily backstops provide self-healing (catch missed operations)
+- Scheduled triggers provide precision timing
+- Owner-only ensures single source of trigger management
 
 ### Testing Strategy
 
@@ -295,6 +435,782 @@ describe('ModuleName', () => {
 2. Run coverage for new modules: `npm test -- --coverage`
 3. Verify 100% coverage in terminal output
 4. Check `coverage/lcov-report/index.html` for details
+
+## Development Workflow (CRITICAL)
+
+### Essential Commands
+
+**Testing & Validation (MANDATORY before every deployment)**:
+```bash
+# Run all tests
+npm test
+
+# Run tests with full coverage report
+npm test -- --coverage
+
+# Run specific test file
+npm test -- test/__tests__/ModuleName.test.js
+
+# Type check (ZERO errors required)
+npm run typecheck
+
+# Validate all modules in Exports.js are defined
+npm run validate-exports
+
+# Full pre-deployment validation
+npm run typecheck && npm run validate-exports && npm test
+```
+
+**Deployment Workflows**:
+```bash
+# Development deployment (with debug version)
+npm run dev:push
+# This runs: validate-exports → typecheck → set dev env → create debug Version.js → push to GAS
+
+# Production deployment (requires clean git)
+npm run prod:push  
+# This runs: validate-exports → typecheck → verify clean git → create prod Version.js → push to GAS
+
+# Pull from GAS (development)
+npm run dev:pull
+
+# Pull from GAS (production, requires clean git)
+npm run prod:pull
+
+# Direct clasp commands (uses clasp-wrapper.sh for credential swapping)
+npm run clasp:push    # Push to current environment
+npm run clasp:pull    # Pull from current environment
+npm run clasp:status  # Check file sync status
+npm run clasp:open    # Open project in GAS web editor
+```
+
+**Key Scripts Explained**:
+- **`clasp-wrapper.sh`**: Temporarily swaps GAS credentials from `.clasp-credentials.json` to `~/.clasprc.json` for project-specific authentication. All `clasp:*` and deployment commands use this wrapper.
+- **`validate-exports`**: Verifies all modules referenced in `Exports.js` are defined (catches loading order issues before GAS deployment)
+- **`prepare-debug-version`**: Creates `Version.js` with current git commit hash for debugging
+- **`prepare-prod-version`**: Creates `Version.js` with committed version (enforces clean git state)
+
+### Module Addition Checklist
+
+When adding a new module to the codebase:
+
+1. **Create the module** following naming conventions:
+   - Pure JavaScript logic: `ModuleNameCore.js`
+   - GAS adapter: `ModuleName.js`
+   - Type definitions: `ModuleName.d.ts` (for both)
+
+2. **Write comprehensive tests** (Core modules ONLY):
+   - Create `test/__tests__/ModuleNameCore.test.js`
+   - Achieve 100% coverage
+   - Run: `npm test -- --coverage --collectCoverageFrom='src/ModuleNameCore.js'`
+
+3. **Add to Exports.js** (CRITICAL - prevents loading order issues):
+   ```javascript
+   // Add getter for your module
+   get ModuleName() {
+       return ModuleName;
+   }
+   ```
+   - Property name MUST match the variable name in the source file
+   - Run `npm run validate-exports` to verify
+
+4. **Update gas-globals.d.ts** if module exposes global functions/classes:
+   ```typescript
+   declare global {
+       const ModuleName: typeof ModuleNameClass;
+       function globalFunction(): ReturnType;
+   }
+   ```
+
+5. **Verify deployment**:
+   ```bash
+   npm run typecheck          # Zero errors required
+   npm run validate-exports   # Verify module is accessible
+   npm run dev:push          # Deploy to dev environment
+   ```
+
+### Debugging Workflow
+
+**Local Debugging (Pure JavaScript modules)**:
+```bash
+# Run specific test with watch mode
+npm test -- --watch test/__tests__/ModuleName.test.js
+
+# Debug test in Node.js
+node --inspect-brk node_modules/.bin/jest test/__tests__/ModuleName.test.js
+
+# Check test coverage for specific file
+npm test -- --coverage --collectCoverageFrom='src/ModuleName.js'
+```
+
+**GAS Debugging**:
+1. Deploy with debug version: `npm run dev:push`
+2. Open in GAS editor: `npm run clasp:open`
+3. Use `console.log()` and view logs in GAS execution logs
+4. Check version in spreadsheet: Menu > "Ride Schedulers" > "Show Version"
+5. Check User Activity Log for operation history
+
+**Common Issues**:
+- **"Module not found" in GAS**: Run `npm run validate-exports` to check module is in Exports.js
+- **Loading order issues**: Ensure module uses `Exports.ModuleName` for cross-module access
+- **Type errors**: Run `npm run typecheck` and check `gas-globals.d.ts` for missing declarations
+- **Failed deployment**: Check `.clasp-credentials.json` exists and is valid
+
+### Architecture Validation
+
+**Before committing code, verify**:
+```bash
+# 0. VS Code errors (MANDATORY FIRST STEP)
+get_errors(['src/'])  # Must show ZERO errors
+
+# 1. All tests pass
+npm test
+
+# 2. Type checking passes
+npm run typecheck
+
+# 3. All modules exported
+npm run validate-exports
+
+# 4. Coverage meets requirements (pure JS modules)
+npm test -- --coverage
+
+# One-liner validation:
+npm test && npm run typecheck && npm run validate-exports
+```
+
+**CRITICAL**: The `get_errors` tool check is MANDATORY and must be done FIRST.
+VS Code's TypeScript language server catches errors that `tsc --noEmit` may miss.
+
+**Red Flags** (indicates architecture violation):
+- ❌ GAS API calls in `*Core.js` files (should be pure JavaScript)
+- ❌ Business logic in adapter files (should delegate to Core)
+- ❌ Mixing data transformation with SpreadsheetApp calls (separate in Core + Adapter)
+- ❌ Hardcoded GAS dependencies (use dependency injection)
+- ❌ Tests missing or <100% coverage for Core modules
+
+## TypeScript Type Coverage (MANDATORY)
+
+**CRITICAL: Maximum Type Safety Required**
+
+All code in the `src/` directory MUST have comprehensive TypeScript type coverage and ZERO type errors.
+
+### Type Coverage Requirements
+
+1. **Zero Type Errors Policy**
+   - `npm run typecheck` MUST pass with ZERO errors in `src/` directory
+   - Pre-existing errors in `submodules/` are acceptable (not our code)
+   - Every code change MUST be verified with `npm run typecheck` before deployment
+   - ❌ NEVER commit code that introduces new type errors
+
+2. **Comprehensive `.d.ts` Files**
+   - Every `.js` module in `src/` MUST have a corresponding `.d.ts` file
+   - Type declarations MUST accurately reflect the actual implementation
+   - Update `.d.ts` files whenever changing function signatures
+   - Use JSDoc comments in `.js` files to enhance type inference
+
+3. **Type Error Suppression Strategy**
+   - **Prefer `@ts-expect-error`** over `@ts-ignore`
+   - `@ts-expect-error`: Used when you KNOW there's a type error (fails if error is fixed)
+   - `@ts-ignore`: Only for unavoidable compatibility issues (e.g., `typeof require !== 'undefined'`)
+   - **ALWAYS add explanatory comment** explaining why suppression is needed
+   - Minimize use of type escapes - fix the root cause when possible
+
+4. **Type Escape Guidelines**
+
+   ```javascript
+   // ✅ GOOD - @ts-expect-error with explanation
+   // @ts-expect-error - Google Apps Script globals not in type definitions
+   const value = globalVariable;
+   
+   // ✅ GOOD - @ts-ignore for compatibility check
+   // @ts-ignore - Node.js compatibility check for Jest tests
+   if (typeof require !== 'undefined') {
+       var Module = require('./Module');
+   }
+   
+   // ❌ BAD - @ts-ignore without explanation
+   // @ts-ignore
+   const result = someFunction();
+   
+   // ❌ BAD - Using type escape instead of fixing the issue
+   // @ts-ignore
+   const route = getRoute(); // Should add proper type to getRoute()
+   ```
+
+5. **Ambient vs Module Declarations**
+   - **Ambient** (no exports): For GAS globals available everywhere
+     ```typescript
+     // UserLogger.d.ts - Ambient (no export)
+     declare const UserLogger: UserLoggerNamespace;
+     // Use directly: UserLogger.log()
+     ```
+   - **Module** (with exports): For modules imported explicitly
+     ```typescript
+     // Event.d.ts - Module (with export)
+     export class Event { ... }
+     // Import required: const Event = require('./Event')
+     ```
+
+6. **Type Checking Workflow**
+   ```bash
+   # CRITICAL: Run type check before committing ANY code change
+   
+   npm run typecheck
+   
+   # This runs: tsc --noEmit
+   # Which uses tsconfig.json settings (checkJs: true, allowJs: true)
+   # Checks all files in src/**/*.js as configured in tsconfig.json
+   
+   # Must pass with ZERO errors in src/ before deployment
+   # Pre-existing errors in submodules/ are acceptable
+   ```
+   
+   **VS Code Integration:**
+   - VS Code uses the same tsconfig.json for inline error checking
+   - Errors shown in VS Code = errors that will fail `npm run typecheck`
+   - Fix ALL type errors shown in VS Code before committing
+   - Use triple-slash references (`/// <reference path="..." />`) to resolve "Cannot find name" errors
+   
+   **CRITICAL: jsconfig.json Override**
+   - `src/jsconfig.json` overrides root `tsconfig.json` for VS Code in src/ directory
+   - MUST keep both files synchronized with same strict settings:
+     - `"noImplicitAny": true`
+     - `"strict": true`
+     - `"useUnknownInCatchVariables": true`
+   - If VS Code and `npm run typecheck` show different errors, check both config files
+
+7. **GAS Global Declarations Pattern (CRITICAL)**
+   
+   **Problem**: In Google Apps Script, all `.js` files are concatenated into a single global scope. Variables declared with `var` at top level become global variables. TypeScript/VS Code doesn't know about these runtime globals.
+   
+   **Solution**: Use `gas-globals.d.ts` ambient declaration file
+   
+   ```typescript
+   // src/gas-globals.d.ts - Declares GAS runtime globals for TypeScript
+   
+   import type ScheduleAdapterClass from './ScheduleAdapter';
+   import type RetryQueueClass from './RetryQueue';
+   // ... other imports
+   
+   declare global {
+       // Classes - use 'typeof' to get the constructor type
+       const ScheduleAdapter: typeof ScheduleAdapterClass;
+       const RetryQueue: typeof RetryQueueClass;
+       
+       // Utility functions that are global in GAS
+       function getRoute(url: string, readThrough?: boolean): any;
+       function getAppVersion(): string;
+   }
+   
+   export {}; // Make this a module
+   ```
+   
+   **Usage in JavaScript files**:
+   ```javascript
+   /// <reference path="./gas-globals.d.ts" />
+   
+   function myFunction() {
+       // TypeScript now knows ScheduleAdapter is available globally
+       const adapter = new ScheduleAdapter();
+       const version = getAppVersion();
+   }
+   ```
+   
+   **JSDoc Instance Types**:
+   When a function parameter is an *instance* of a class (not the class itself), use:
+   ```javascript
+   /**
+    * @param {InstanceType<typeof ScheduleAdapter>} adapter - Instance of ScheduleAdapter
+    */
+   function handleEdit(event, adapter) {
+       adapter.restoreFormula(row, 'Route'); // TypeScript knows instance methods
+   }
+   ```
+   
+   **Key Rules**:
+   - ✅ Use `typeof ClassName` for class constructors (can use `new`)
+   - ✅ Use `InstanceType<typeof ClassName>` in JSDoc for class instances
+   - ✅ Reference `gas-globals.d.ts` in files that use global variables
+   - ✅ Keep `gas-globals.d.ts` updated when adding new global functions/classes
+   - ❌ Don't declare globals directly in module .d.ts files (won't work)
+
+8. **Common Type Issues and Solutions**
+
+   | Issue | Solution |
+   |-------|----------|
+   | Cannot find name 'X' | Add to `gas-globals.d.ts` or triple-slash reference |
+   | Property 'X' does not exist | Update `.d.ts` to include the property |
+   | Type 'X' is not assignable to 'Y' | Add type assertion or fix type mismatch |
+   | Implicit 'any' type | Add explicit type annotation or JSDoc |
+   | 'Property missing in type' for class instance | Use `InstanceType<typeof ClassName>` in JSDoc |
+   | 'typeof X' has no method Y | Use instance type, not constructor type |
+   | VS Code errors but `npm run typecheck` passes | Restart TypeScript server in VS Code |
+
+9. **Error Type Guards (useUnknownInCatchVariables: true)**
+   
+   With strict mode enabled, catch block variables are `unknown` type. Always use type guards:
+   
+   ```javascript
+   // ✅ GOOD - Type guard for error handling
+   try {
+       somethingRisky();
+   } catch (error) {
+       const err = error instanceof Error ? error : new Error(String(error));
+       console.error(err.message);
+       UserLogger.log('ERROR', err.message, { stack: err.stack });
+   }
+   
+   // ❌ BAD - Direct use of unknown error
+   try {
+       somethingRisky();
+   } catch (error) {
+       console.error(error.message); // TS Error: 'error' is of type 'unknown'
+   }
+   ```
+
+10. **VS Code TypeScript Error Checking (CRITICAL)**
+   
+   **MANDATORY: VS Code TypeScript server is MORE STRICT than `tsc --noEmit`**
+   
+   The VS Code TypeScript language server catches implicit type errors that the command-line TypeScript compiler (`tsc --noEmit`) does NOT catch. This means:
+   
+   - ✅ **ALWAYS check VS Code errors** using the `get_errors` tool
+   - ❌ **NEVER assume `npm run typecheck` passing means no type errors**
+   - 🔍 **VS Code catches**: Implicit `any` types, generic types without parameters, implicit `any[]` arrays
+   - ⚠️ **tsc --noEmit allows**: Many implicit types that VS Code flags as errors
+   
+   **How to Find VS Code Errors:**
+   ```bash
+   # Use get_errors tool to see VS Code's TypeScript server errors
+   # This shows the SAME errors VS Code displays in the editor
+   get_errors(['src/'])
+   ```
+   
+   **Common VS Code-Only Errors:**
+   
+   1. **Generic Array Type Without Parameter**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      /**
+       * @param {Array} items - Array of items
+       */
+      function process(items) { }
+      
+      // ✅ CORRECT - Use any[] or specific type
+      /**
+       * @param {any[]} items - Array of items
+       */
+      function process(items) { }
+      ```
+   
+   2. **Implicit any[] Type on Variables**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      const results = items.filter(x => x.valid);
+      
+      // ✅ CORRECT - Explicit type annotation
+      /** @type {any[]} */
+      const results = items.filter(x => x.valid);
+      
+      // ✅ BETTER - Specific type
+      /** @type {string[]} */
+      const names = items.map(x => x.name);
+      ```
+   
+   3. **Implicit any on Function Parameters**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      function expandTemplate(template, rowData) {
+          return template.replace(/\{(\w+)\}/g, (match, field) => {
+              return rowData[field] || '';
+          });
+      }
+      
+      // ✅ CORRECT - Full JSDoc with parameter types
+      /**
+       * Expand template placeholders with row data
+       * 
+       * @param {string} template - Template text with {FieldName} placeholders
+       * @param {any} rowData - Row data object
+       * @returns {string} Expanded text
+       */
+      function expandTemplate(template, rowData) {
+          return template.replace(/\{(\w+)\}/g, 
+              (/** @type {string} */ match, /** @type {string} */ field) => {
+                  return rowData[field] || '';
+              }
+          );
+      }
+      ```
+   
+   4. **Implicit any[] in Lambda/Callback Parameters**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      const names = items.map(item => item.name);
+      
+      // ✅ CORRECT - Inline type annotation
+      const names = items.map((/** @type {any} */ item) => item.name);
+      
+      // ✅ BETTER - Type the array first
+      /** @type {Array<{name: string}>} */
+      const items = getItems();
+      const names = items.map(item => item.name); // Type inferred
+      ```
+   
+   **Type Annotation Patterns (VS Code Compliance):**
+   
+   ```javascript
+   // Pattern 1: Variable declarations
+   /** @type {any[]} */
+   const items = [];
+   
+   /** @type {string[]} */
+   const names = ['Alice', 'Bob'];
+   
+   /** @type {{id: string, name: string}[]} */
+   const users = [];
+   
+   // Pattern 2: Function JSDoc
+   /**
+    * Process items with validation
+    * 
+    * @param {any[]} items - Array of items to process
+    * @param {string} mode - Processing mode
+    * @returns {{success: boolean, errors: string[]}} Result object
+    */
+   function processItems(items, mode) {
+       /** @type {string[]} */
+       const errors = [];
+       // ... implementation
+       return { success: errors.length === 0, errors };
+   }
+   
+   // Pattern 3: Lambda parameters in callbacks
+   items.forEach((/** @type {any} */ item, /** @type {number} */ index) => {
+       console.log(`Item ${index}: ${item.name}`);
+   });
+   
+   // Pattern 4: Replace callback with multiple parameters
+   text.replace(/pattern/g, (/** @type {string} */ match, /** @type {string} */ group) => {
+       return transform(match, group);
+   });
+   ```
+   
+   **VS Code Error Checking Workflow:**
+   
+   1. **After ANY code change:**
+      ```bash
+      # Check VS Code errors (more strict)
+      get_errors(['src/'])
+      
+      # Also check CLI (should still pass)
+      npm run typecheck
+      ```
+   
+   2. **Fixing implicit type errors:**
+      - Look at the error message for the expected type
+      - Add `/** @type {T} */` annotation BEFORE the declaration
+      - For function parameters, add full JSDoc block with `@param {T}`
+      - For lambda parameters, use inline `(/** @type {T} */ param) =>`
+   
+   3. **Common patterns to fix:**
+      - `{Array}` → `{any[]}` or `{T[]}` in JSDoc
+      - Implicit `any[]` variable → `/** @type {any[]} */ const x = ...`
+      - Missing function JSDoc → Add `@param {T}` for all parameters
+      - Lambda without types → `(/** @type {T} */ x) => ...`
+   
+   **Real-World Example (AnnouncementCore.js):**
+   
+   ```javascript
+   // BEFORE: 11 VS Code errors (but tsc --noEmit passed!)
+   
+   /**
+    * Get items due for sending/reminder
+    * @param {Array} rows - All announcement rows
+    * @returns {Object} Due items
+    */
+   static getDueItems(rows, currentTime) {
+       const dueToSend = rows.filter(/* ... */);
+       const dueForReminder = rows.filter(/* ... */);
+       return { dueToSend, dueForReminder };
+   }
+   
+   static expandTemplate(template, rowData, route) {
+       const missingFields = [];
+       const expandedText = template.replace(/\{(\w+)\}/g, (match, fieldName) => {
+           // ...
+       });
+       return { expandedText, missingFields };
+   }
+   
+   // AFTER: 0 VS Code errors (explicit types everywhere)
+   
+   /**
+    * Get items due for sending/reminder
+    * @param {any[]} rows - All announcement rows (FIXED: Array → any[])
+    * @param {number} currentTime - Current timestamp
+    * @returns {Object} Due items
+    */
+   static getDueItems(rows, currentTime) {
+       /** @type {any[]} */  // ADDED: Explicit type
+       const dueToSend = rows.filter(/* ... */);
+       /** @type {any[]} */  // ADDED: Explicit type
+       const dueForReminder = rows.filter(/* ... */);
+       return { dueToSend, dueForReminder };
+   }
+   
+   /**
+    * Expand template placeholders with row data
+    * 
+    * @param {string} template - Template text with {FieldName} placeholders
+    * @param {any} rowData - Row data object
+    * @param {any} [route] - Optional route object
+    * @returns {Object} Object with expandedText and missingFields
+    */
+   static expandTemplate(template, rowData, route) {
+       /** @type {string[]} */  // ADDED: Explicit type
+       const missingFields = [];
+       const expandedText = template.replace(/\{(\w+)\}/g, 
+           (/** @type {string} */ match, /** @type {string} */ fieldName) => {
+               // ADDED: Lambda parameter types
+               // ...
+           }
+       );
+       return { expandedText, missingFields };
+   }
+   ```
+
+11. **TypeScript Import Types in JSDoc**
+   
+   **Pattern**: Use `@typedef` with `import()` to reference types from `.d.ts` files in JSDoc comments.
+   
+   When a JavaScript file needs to reference a type from another module's `.d.ts` file:
+   
+   ```javascript
+   // At top of file, after triple-slash references
+   /**
+    * @typedef {import('./Externals').Organizer} Organizer
+    */
+   
+   // Now you can use Organizer in JSDoc
+   /**
+    * @param {Organizer[]} organizers - Array of organizer objects
+    */
+   function processOrganizers(organizers) {
+       // ...
+   }
+   ```
+   
+   **Why this matters**:
+   - Allows JavaScript files to reference TypeScript types without converting to TypeScript
+   - Provides full type checking and IntelliSense in VS Code
+   - Keeps type definitions centralized in `.d.ts` files
+   - Enables cross-module type references
+   
+   **Common pattern for instance types**:
+   ```javascript
+   /**
+    * @param {InstanceType<typeof Row>} row - Instance of Row class
+    * @param {InstanceType<typeof SCCCCEvent>} event - Instance of SCCCCEvent class
+    * @returns {InstanceType<typeof SCCCCEvent>} - New event instance
+    */
+   function transform(row, event) {
+       // TypeScript knows row and event are instances, not classes
+   }
+   ```
+   
+   **CRITICAL: Never Use TypeScript Syntax in JavaScript Files**
+   
+   ❌ **WRONG - TypeScript-style inline type annotations**:
+   ```javascript
+   // BAD: Type annotations in destructuring (TypeScript syntax)
+   .filter(({ data }: { data: any }) => {
+       return data.value > 0;
+   })
+   ```
+   
+   ✅ **CORRECT - JSDoc inline type annotations**:
+   ```javascript
+   // GOOD: JSDoc type annotation for the parameter
+   .filter((/** @type {{ data: any, rowNum: number }} */ item) => {
+       return item.data.value > 0;
+   })
+   ```
+   
+   **Key Rules**:
+   - ❌ Never use `: Type` syntax in JavaScript (that's TypeScript only)
+   - ✅ Always use `/** @type {Type} */` or `(/** @type {Type} */ param)` in JavaScript
+   - ✅ For destructured parameters, annotate the whole parameter, not the destructuring
+   - ✅ Use `InstanceType<typeof ClassName>` when referring to class instances (not the class itself)
+   
+   **External type definitions**:
+   - `Externals.d.ts` contains shared types used across modules:
+     * `RWGPS` interface - Complete RWGPS API surface
+     * `Organizer` interface - Ride leader/organizer data structure
+     * `dates` namespace - Date utility functions
+   - These types are imported where needed using `@typedef {import('./Externals').TypeName}`
+   
+   **Best practices**:
+   - ✅ Define shared types in `Externals.d.ts` once
+   - ✅ Import types using `@typedef {import(...)}` pattern
+   - ✅ Use `InstanceType<typeof ClassName>` for class instances
+   - ✅ Keep type definitions synchronized with actual implementations
+   - ❌ Don't duplicate type definitions across files
+   - ❌ Don't mix constructor types and instance types
+
+12. **Comprehensive Type Definitions for External Dependencies**
+   
+   **CRITICAL**: All external library APIs MUST have complete type definitions in `Externals.d.ts`.
+   
+   When working with external libraries like RWGPSLib:
+   
+   1. **Document ALL methods used in codebase**:
+      ```typescript
+      interface RWGPS {
+          // Single event operations
+          get_event(eventUrl: string): any;
+          edit_event(eventUrl: string, event: any): void;
+          
+          // Batch operations
+          get_events(scheduledRowURLs: string[]): any[];
+          edit_events(edits: { url: string; event: any }[]): Promise<any>;
+          
+          // Route operations
+          importRoute(route: { url: string; expiry: string; tags: string[]; name?: string }): string;
+          copy_template_(templateUrl: string): string;
+          setRouteExpiration(routeUrl: string, expiryDate: Date, forceUpdate: boolean): void;
+          
+          // Organizer and RSVP operations
+          getOrganizers(rideLeaders: string[] | string): Organizer[];
+          getRSVPCounts(scheduledRowURLs: string[], scheduledRowLeaders: string[][]): number[];
+          
+          // Tag operations
+          unTagEvents(eventUrls: string[], tags: string[]): void;
+      }
+      ```
+   
+   2. **Find all usages with grep**:
+      ```bash
+      # Search for all method calls on the object
+      grep -r "rwgps\." src/ | grep -v "\.d\.ts"
+      ```
+   
+   3. **Document parameters and return types**:
+      - Use actual types when known (string, number, Date, etc.)
+      - Use `any` as fallback when type is complex/unknown
+      - Document object shapes with inline types `{ url: string; event: any }`
+      - Add JSDoc comments explaining each method's purpose
+   
+   4. **Import types in consuming modules**:
+      ```javascript
+      // EventFactory.js
+      /**
+       * @typedef {import('./Externals').RWGPS} RWGPS
+       * @typedef {import('./Externals').Organizer} Organizer
+       */
+      
+      /**
+       * @param {InstanceType<typeof Row>} row
+       * @param {Organizer[]} organizers
+       * @param {string | number} event_id
+       */
+      function newEvent(row, organizers, event_id) {
+          // Full type checking with IntelliSense
+      }
+      ```
+   
+   **Benefits of complete external type definitions**:
+   - ✅ Catch API usage errors at development time
+   - ✅ IntelliSense shows available methods and parameters
+   - ✅ Refactoring tools understand the API surface
+   - ✅ Type checking validates all API calls
+   - ✅ Documentation serves as API reference
+   
+   **Process for adding new external APIs**:
+   1. Search codebase for all usages: `grep -r "object\." src/`
+   2. Document each method in `Externals.d.ts`
+   3. Add JSDoc comments with parameter descriptions
+   4. Import type where used: `@typedef {import('./Externals').TypeName}`
+   5. Verify no type errors: `get_errors(['src/'])` and `npm run typecheck`
+
+13. **Ambient Declarations and Type Exports (CRITICAL)**
+   
+   **Pattern for GAS Global Functions**: When declaring global functions in `gas-globals.d.ts`, always export explicit types from module `.d.ts` files rather than using `typeof` on function imports.
+   
+   **Problem**: Using `typeof FunctionImport` as a return type
+   ```typescript
+   // ❌ BAD - typeof gives function type, not return type
+   // Globals.d.ts
+   declare function getGlobals(): Record<string, any>;
+   
+   // gas-globals.d.ts
+   import type GlobalsType from './Globals';
+   declare global {
+       function getGlobals(): typeof GlobalsType; // Wrong: function type, not return type
+   }
+   ```
+   
+   **Solution**: Export explicit type and use directly
+   ```typescript
+   // ✅ GOOD - Export explicit type
+   // Globals.d.ts
+   export type GlobalsObject = Record<string, any>;
+   
+   declare function getGlobals(): GlobalsObject;
+   
+   // gas-globals.d.ts
+   import type { GlobalsObject } from './Globals';
+   declare global {
+       function getGlobals(): GlobalsObject; // Correct: explicit type
+   }
+   ```
+   
+   **Alternative**: Use `ReturnType` utility type (less clear)
+   ```typescript
+   // ⚠️ ACCEPTABLE but less clear
+   // gas-globals.d.ts
+   import type GlobalsType from './Globals';
+   declare global {
+       function getGlobals(): ReturnType<typeof GlobalsType>;
+   }
+   ```
+   
+   **Key Rules**:
+   - ✅ Export explicit types from module `.d.ts` files when they represent return values
+   - ✅ Import and use the explicit type in ambient declarations
+   - ✅ Use descriptive type names (e.g., `GlobalsObject` not just `Globals`)
+   - ⚠️ Only use `ReturnType<typeof Function>` when explicit type export is not possible
+   - ❌ Never use `typeof FunctionImport` directly as a return type (gives function type)
+   - ❌ Don't rely on implicit type inference for ambient declarations
+   
+   **Benefits**:
+   - Clarity: Explicit type shows what the function returns
+   - Maintainability: Type can be reused and extended
+   - Documentation: Type name provides semantic meaning
+   - IntelliSense: Better autocomplete and type hints
+   
+   **Real-World Example from this codebase**:
+   The `getGlobals()` function was declared with `typeof GlobalsType` (the function itself) instead of `GlobalsObject` (the return type). Fixed by:
+   1. Added `export type GlobalsObject = Record<string, any>` to `Globals.d.ts`
+   2. Changed import in `gas-globals.d.ts`: `import type { GlobalsObject } from './Globals'`
+   3. Updated function signature: `function getGlobals(): GlobalsObject`
+
+14. **Deployment Checklist**
+   - ✅ All tests pass: `npm test`
+   - ✅ **VS Code errors checked: `get_errors(['src/'])`** (MANDATORY)
+   - ✅ Type check passes: `npm run typecheck`
+   - ✅ No new type errors introduced
+   - ✅ All `.d.ts` files updated (including `Externals.d.ts` for external APIs)
+   - ✅ Type imports added where needed (`@typedef {import(...)}`)
+   - ✅ Type escapes minimized and documented
+
+**REMEMBER**: 
+- **VS Code TypeScript server is MORE STRICT than tsc --noEmit**
+- **ALWAYS use `get_errors` tool to check VS Code errors**
+- **Complete type definitions for ALL external APIs in Externals.d.ts**
+- **Use @typedef {import(...)} pattern to reference types across modules**
+- **Type errors are bugs waiting to happen. Zero tolerance for type errors in `src/`**
 
 ## Fiddler Library (MANDATORY)
 This repository uses the [bmPreFiddler](https://github.com/brucemcpherson/bmPreFiddler) to manage [Fiddler](https://github.com/brucemcpherson/bmFiddler) GAS spreadsheet access.
@@ -460,5 +1376,344 @@ class NewFeature {
 }
 ```
 
+## Namespace vs Class in .d.ts Files (CRITICAL TypeScript Pattern)
 
+**Problem**: When a JavaScript module exports an object with static-like methods (namespace pattern), the `.d.ts` file must use `declare namespace`, NOT `declare class`.
 
+**JavaScript Implementation** (exports namespace object):
+```javascript
+// AnnouncementCore.js
+var AnnouncementCore = {
+    calculateSendTime: function(rideDate, timezone) { /* ... */ },
+    expandTemplate: function(template, rowData, route) { /* ... */ },
+    getDueItems: function(rows, currentTime) { /* ... */ }
+};
+
+if (typeof module !== 'undefined') {
+    module.exports = AnnouncementCore;
+}
+```
+
+**Type Definition Patterns**:
+
+```typescript
+// ❌ WRONG - Using 'declare class' for namespace object
+declare class AnnouncementCore {
+    static calculateSendTime(rideDate: Date | string, timezone: string): Date;
+    static expandTemplate(template: string, rowData: any, route?: any): any;
+}
+export default AnnouncementCore;
+```
+
+**Why this is wrong**:
+- TypeScript sees `AnnouncementCore` as a class constructor, not a namespace
+- When imported in gas-globals.d.ts as `const AnnouncementCore: typeof AnnouncementCoreClass`, VS Code resolves `AnnouncementCore.method()` calls to the module import type, not the global variable
+- Result: "Property 'method' does not exist on type 'typeof import(...)/AnnouncementCore')"
+
+```typescript
+// ✅ CORRECT - Using 'declare namespace' for namespace object
+declare namespace AnnouncementCore {
+    function calculateSendTime(rideDate: Date | string, timezone: string): Date;
+    function expandTemplate(template: string, rowData: any, route?: any): any;
+}
+export default AnnouncementCore;
+```
+
+**Why this works**:
+- Matches the actual JavaScript structure (object with functions, not class with static methods)
+- When imported in gas-globals.d.ts as `const AnnouncementCore: typeof AnnouncementCore`, TypeScript correctly resolves method calls
+- No conflict between module import types and global GAS variables
+
+**gas-globals.d.ts Pattern**:
+```typescript
+// Import the namespace type
+import type AnnouncementCore from './AnnouncementCore';
+
+declare global {
+    // Declare as global constant with the namespace type
+    const AnnouncementCore: typeof AnnouncementCore;
+}
+```
+
+**Key Rules**:
+- ✅ Use `declare namespace` when JS exports an object with functions
+- ✅ Use `function methodName()` inside namespace (not `static methodName()`)
+- ✅ Use `declare class` when JS exports an actual class constructor
+- ✅ Use `static methodName()` inside class for class static methods
+- ✅ Match `.d.ts` structure to actual JS export structure
+- ❌ Don't use `class` for namespace objects - causes "module import type" resolution issues
+
+**Real-World Example**:
+- AnnouncementCore.js exports namespace object → AnnouncementCore.d.ts uses `declare namespace`
+- TriggerManager.js exports class constructor → TriggerManager.d.ts uses `declare class`
+- Row.js exports class constructor → Row.d.ts uses `declare class`
+
+**Debugging Tip**:
+If you see errors like "Property 'X' does not exist on type 'typeof import(...)/ModuleName'", check:
+1. Is the `.d.ts` using `declare class` when it should be `declare namespace`?
+2. Is gas-globals.d.ts using the right import and declaration pattern?
+3. Does the JavaScript export structure match the TypeScript declaration?
+
+## CRITICAL: Code Modification Workflow
+
+**MANDATORY: Every code change MUST follow this checklist**
+
+When modifying ANY code file, you MUST update all related artifacts:
+
+### 0. Verify Zero VS Code Errors (MANDATORY AFTER EVERY EDIT)
+- ✅ **IMMEDIATELY** after modifying ANY file, run `get_errors` tool
+- ✅ Target the specific file or directory: `get_errors(['src/YourFile.js'])`
+- ✅ Fix ALL errors before proceeding to next change
+- ✅ If you see type errors about missing properties, update the `.d.ts` file
+- ✅ If you see "is of type 'unknown'" errors, add type guards in catch blocks
+- ❌ NEVER proceed with work when VS Code shows errors
+- ❌ NEVER say "I'll fix the errors later" - fix them NOW
+
+**Why This Matters**:
+- VS Code TypeScript server catches errors `tsc --noEmit` misses
+- Type errors indicate runtime bugs waiting to happen
+- 175 errors = 175 potential production failures
+- Zero tolerance policy: ZERO errors or code is not complete
+
+### 1. Update Tests (MANDATORY for Pure JavaScript)
+- ✅ Add/update Jest tests for modified functionality
+- ✅ Verify 100% coverage: `npm test -- --coverage --collectCoverageFrom='src/YourModule.js'`
+- ✅ All tests must pass: `npm test`
+- ❌ NEVER skip test updates - untested code is broken code
+
+### 2. Update TypeScript Declarations (MANDATORY)
+- ✅ Update corresponding `.d.ts` file for any modified JavaScript module
+- ✅ Add JSDoc comments to functions for better type inference
+- ✅ Verify types: `npm run typecheck`
+- ❌ NEVER deploy without type correctness
+
+### 3. Update Documentation (MANDATORY for User-Facing Changes)
+- ✅ Update relevant files in `docs/` folder if behavior changes
+- ✅ Update copilot-instructions.md if architectural patterns change
+- ✅ Update README.md if setup/deployment changes
+- ❌ NEVER leave documentation inconsistent with code
+
+### 4. Deployment Verification (MANDATORY)
+- ✅ **FIRST**: Check VS Code errors: `get_errors(['src/'])` - MUST be zero
+- ✅ Run full validation: `npm run typecheck; npm run validate-exports; npm test`
+- ✅ Deploy: `npm run dev:push` (or `prod:push` for production)
+- ✅ Verify deployment success
+- ✅ Test in GAS environment (manual testing of critical paths)
+- ❌ NEVER assume deployment worked without verification
+- ❌ NEVER deploy with VS Code errors present
+
+**Example Workflow for Adding Trigger Cleanup:**
+```
+1. ✅ Modify triggers.js (add cleanup calls)
+2. ✅ IMMEDIATELY check: get_errors(['src/triggers.js']) -- fix any errors
+3. ✅ Update triggers.d.ts (add JSDoc, verify signatures)
+4. ✅ Check again: get_errors(['src/triggers.js', 'src/triggers.d.ts']) -- must be zero
+5. ✅ Update TriggerManagerCore.test.js (if logic changed)
+6. ✅ Update docs/Announcement-OperatorManual.md (trigger lifecycle)
+7. ✅ Run npm test -- verify all pass
+8. ✅ Run npm run typecheck -- verify no errors
+9. ✅ Final check: get_errors(['src/']) -- must show ZERO errors
+10. ✅ Deploy: npm run dev:push
+11. ✅ Test in spreadsheet: verify triggers clean up
+```
+
+**If you skip ANY step:**
+- Tests may be incomplete (hidden bugs)
+- Types may be wrong (TypeScript errors)
+- Documentation may be outdated (user confusion)
+- Deployment may fail (wasted time)
+
+**REMEMBER**: "I'll just do this quick fix" → Technical debt → Hours debugging later
+
+**ALWAYS ask yourself**: "Did I update tests, types, and docs?" before calling work complete.
+
+## Common Type Errors and Fixes
+
+### 1. AnnouncementCore/Module Import Types
+When TypeScript sees `typeof import('./Module')`, it's treating the module as a type, not the actual exported object.
+
+**Problem**:
+```javascript
+// This doesn't work - TypeScript sees the module type, not the exported object
+AnnouncementCore.calculateSendTime(...)  // Error: Property 'calculateSendTime' does not exist
+```
+
+**Solution**: Add `@typedef` to properly import the module's default export:
+```javascript
+// At top of file after triple-slash references
+/**
+ * @typedef {import('./AnnouncementCore').default} AnnouncementCoreType
+ */
+
+// Then access the namespace methods normally
+const time = AnnouncementCore.calculateSendTime(date, timezone);
+```
+
+### 2. Row Instance vs Class Type
+Functions receiving Row instances must use `InstanceType<typeof Row>`, not just `Row`.
+
+**Problem**:
+```javascript
+/**
+ * @param {Row} row - WRONG: This means the Row class constructor
+ */
+function processRow(row) {
+    row.RideName  // Error: Property 'RideName' does not exist on type 'typeof Row'
+}
+```
+
+**Solution**:
+```javascript
+/**
+ * @param {InstanceType<typeof Row>} row - CORRECT: This means a Row instance
+ */
+function processRow(row) {
+    row.RideName  // ✅ Works - TypeScript knows this is an instance
+}
+```
+
+### 3. Error Type Guards (useUnknownInCatchVariables: true)
+ALL catch blocks must use type guards since errors are `unknown` type in strict mode.
+
+**Problem**:
+```javascript
+catch (error) {
+    console.log(error.message);  // Error: 'error' is of type 'unknown'
+}
+```
+
+**Solution**:
+```javascript
+catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.log(err.message);  // ✅ Works
+}
+```
+
+### 4. Object Return Types from Functions
+When a function returns `{success: boolean, error?: string}`, JSDoc must specify the shape.
+
+**Problem**:
+```javascript
+/**
+ * @returns {Object}  // Too vague - TypeScript doesn't know the properties
+ */
+function doSomething() {
+    return { success: true };
+}
+
+const result = doSomething();
+if (result.success) {}  // Error: Property 'success' does not exist on type 'Object'
+```
+
+**Solution**:
+```javascript
+/**
+ * @returns {{success: boolean, error?: string}}  // Specific shape
+ */
+function doSomething() {
+    return { success: true };
+}
+
+const result = doSomething();
+if (result.success) {}  // ✅ Works
+```
+
+### 5. Implicit any Parameters
+ALL function parameters need explicit types.
+
+**Problem**:
+```javascript
+function process(item) {  // Error: Parameter 'item' implicitly has an 'any' type
+    return item.name;
+}
+```
+
+**Solution**:
+```javascript
+/**
+ * @param {any} item - Item to process
+ */
+function process(item) {
+    return item.name;  // ✅ Works
+}
+```
+
+### 6. Lambda/Arrow Function Parameter Types
+Lambda parameters also need types when not inferrable.
+
+**Problem**:
+```javascript
+items.forEach(row => {  // Error: Parameter 'row' implicitly has an 'any' type
+    console.log(row.name);
+});
+```
+
+**Solution**:
+```javascript
+items.forEach((/** @type {any} */ row) => {  // Inline JSDoc type
+    console.log(row.name);  // ✅ Works
+});
+```
+
+### 7. Undefined vs Null for Optional Date Fields
+TypeScript distinguishes between `undefined` and `Date` in strict mode.
+
+**Problem**:
+```javascript
+row.SendAt = undefined;  // Error: Type 'undefined' is not assignable to type 'Date'
+```
+
+**Solutions**:
+```javascript
+// Option 1: Type definition allows undefined
+// In Row.d.ts: get SendAt(): Date | undefined;
+row.SendAt = undefined;  // ✅ Works if type allows it
+
+// Option 2: Use type assertion when necessary
+// @ts-ignore - Clearing SendAt field (design allows undefined)
+row.SendAt = undefined;
+
+// Option 3: Use null if type definition uses Date | null
+row.SendAt = null;
+```
+
+### 8. Accessing Private Properties
+Private properties marked in `.d.ts` cannot be accessed directly.
+
+**Problem**:
+```javascript
+row._adapter.save();  // Error: Property '_adapter' is private
+```
+
+**Solutions**:
+```javascript
+// Option 1: Add explanatory @ts-ignore comment
+// @ts-ignore - _adapter is internal but needed for immediate save
+row._adapter.save();
+
+// Option 2: Add public method to class
+// In Row class:
+save() {
+    this._adapter.save();
+}
+// Then call:
+row.save();  // ✅ Public method
+```
+
+### Pre-Flight Checklist for Zero VS Code Errors
+
+Before claiming work is complete:
+1. ✅ Run `get_errors(['src/YourFile.js'])` - must show ZERO
+2. ✅ Check all function parameters have JSDoc types
+3. ✅ Check all catch blocks have error type guards
+4. ✅ Check Row parameters use `InstanceType<typeof Row>`
+5. ✅ Check return types specify object shapes `{{success: boolean}}`
+6. ✅ Check lambda parameters have inline `@type` annotations
+7. ✅ Check module imports have proper `@typedef` for namespace access
+8. ✅ Run `npm run typecheck` - must show ZERO errors in src/
+
+**If you have 175 errors like the example**:
+- You skipped these steps
+- Fix them ALL before proceeding
+- Each error is a potential runtime bug

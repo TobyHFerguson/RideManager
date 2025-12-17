@@ -1,3 +1,4 @@
+// @ts-check
 class ProcessingManager {
   constructor(processFunction) {
     this.props = PropertiesService.getScriptProperties();

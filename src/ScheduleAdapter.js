@@ -1,4 +1,5 @@
 // @ts-check
+/// <reference path="./gas-globals.d.ts" />
 
 /**
  * ScheduleAdapter - GAS-specific adapter for reading/writing schedule data
@@ -82,7 +83,7 @@ const ScheduleAdapter = (function() {
          */
         loadAll() {
             this._ensureDataLoaded();
-            return this._cachedData.map((row, index) => this._createRow(row, index + 2));
+            return this._cachedData.map((/** @type {any} */ row, /** @type {number} */ index) => this._createRow(row, index + 2));
         }
 
         /**
@@ -104,8 +105,9 @@ const ScheduleAdapter = (function() {
             const ranges = this._convertCellRangesToRowRanges(rangeList);
             const allData = this._cachedData;
             
+            /** @type {Row[]} */
             const selectedRows = [];
-            ranges.forEach(range => {
+            ranges.forEach((/** @type {GoogleAppsScript.Spreadsheet.Range} */ range) => {
                 const startRow = range.getRow();
                 const numRows = range.getNumRows();
                 
@@ -132,12 +134,12 @@ const ScheduleAdapter = (function() {
             const startDateColumn = getGlobals().STARTDATETIMECOLUMNNAME;
             
             return allData
-                .map((row, index) => ({ data: row, rowNum: index + 2 }))
-                .filter(({ data }) => {
-                    const rowDate = new Date(data[startDateColumn]);
+                .map((/** @type {any} */ row, /** @type {number} */ index) => ({ data: row, rowNum: index + 2 }))
+                .filter((/** @type {{ data: any, rowNum: number }} */ item) => {
+                    const rowDate = new Date(item.data[startDateColumn]);
                     return rowDate > date;
                 })
-                .map(({ data, rowNum }) => this._createRow(data, rowNum));
+                .map((/** @type {{ data: any, rowNum: number }} */ item) => this._createRow(item.data, item.rowNum));
         }
 
         /**
@@ -178,7 +180,7 @@ const ScheduleAdapter = (function() {
                 }
                 
                 // Write each dirty field
-                dirtyFields.forEach(columnName => {
+                dirtyFields.forEach((/** @type {string} */ columnName) => {
                     const columnIndex = this._getColumnIndex(columnName) + 1; // 1-based
                     const cell = this.sheet.getRange(row.rowNum, columnIndex);
                     const value = row._data[columnName];
@@ -294,7 +296,7 @@ const ScheduleAdapter = (function() {
             const rideColumnName = getGlobals().RIDECOLUMNNAME;
             const routeColumnName = getGlobals().ROUTECOLUMNNAME;
             
-            this._cachedData.forEach((row, index) => {
+            this._cachedData.forEach((/** @type {any} */ row, /** @type {number} */ index) => {
                 if (rideFormulas && rideFormulas[index] && rideFormulas[index][0]) {
                     row[rideColumnName] = rideFormulas[index][0];
                 }
@@ -320,7 +322,7 @@ const ScheduleAdapter = (function() {
          * @private
          * @param {Object} data - Raw row data from Fiddler
          * @param {number} rowNum - Spreadsheet row number (1-based)
-         * @returns {Row} Row instance
+         * @returns {InstanceType<typeof Row>} Row instance
          */
         _createRow(data, rowNum) {
             const enrichedData = {
@@ -328,6 +330,7 @@ const ScheduleAdapter = (function() {
                 _rowNum: rowNum,
                 _range: this.sheet.getRange(rowNum, 1, 1, this.columnNames.length)
             };
+            // @ts-expect-error - Row is a constructor but TypeScript sees it as module export
             return new Row(enrichedData, this);
         }
 
@@ -431,9 +434,9 @@ const ScheduleAdapter = (function() {
         restoreFormula(rowNum, columnName) {
             const indexNum = rowNum - 2; // Convert to 0-based formula array index
             const propertyName = columnName === 'Ride' ? 'rideColumnFormulas' : 'routeColumnFormulas';
-            const formulas = JSON.parse(
-                PropertiesService.getDocumentProperties().getProperty(propertyName)
-            );
+            const formulasJson = PropertiesService.getDocumentProperties().getProperty(propertyName);
+            if (!formulasJson) return;
+            const formulas = JSON.parse(formulasJson);
             
             if (formulas && formulas[indexNum]) {
                 const formula = formulas[indexNum];

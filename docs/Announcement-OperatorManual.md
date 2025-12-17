@@ -22,10 +22,12 @@ The Ride Announcement System is a fully automated email notification system for 
 
 ### Key Components
 
-- **Trigger:** Time-based trigger runs every 1 hour (auto-installed)
-- **Function:** `processAnnouncementQueue`
-- **Storage:** Spreadsheet columns for state tracking
-- **Template:** Google Doc master template
+- **Triggers:** Managed centrally via TriggerManager (owner-only installation)
+  - Daily backstop: Runs at 2:00 AM daily
+  - Scheduled triggers: Fire at precise announcement send times
+- **Functions:** `dailyAnnouncementCheck` (backstop), `announcementTrigger` (scheduled)
+- **Spreadsheet:** Spreadsheet columns + Document Properties for trigger coordination
+- **Folders & Files:** Master template and announcements stored in [Ride Announcements](https://drive.google.com/drive/folders/1uwZzbl1SkkAOwA_6-uIj-ZR368_sxJNm?usp=sharing) folder. Share with Ride Scheduler group as `Content Manager`.
 - **Retry Logic:** Exponential backoff over 24 hours
 - **Notifications:** 24-hour reminder emails to ride schedulers
 
@@ -33,18 +35,25 @@ The Ride Announcement System is a fully automated email notification system for 
 
 - **Main send:** 6:00 PM, 2 calendar days before ride
 - **Reminder:** 24 hours before main send
-- **Check interval:** Every 1 hour
-- **Send window:** ±1 hour precision
+- **Precision:** Scheduled triggers fire at exact send time
+- **Backstop:** Daily check at 2 AM catches any missed sends
 
-### Automatic Trigger Installation
+### Trigger Installation (Owner-Only)
 
-**The trigger installs itself automatically** when the first announcement is created:
-1. Ride scheduler creates announcement (Extensions → Create Announcement)
-2. System checks if trigger exists (via Script Properties)
-3. If missing, creates `processAnnouncementQueue` hourly trigger
-4. Stores trigger ID in Script Properties (`announcementTriggerId`)
+**Triggers must be installed by the spreadsheet owner:**
 
-**No manual setup required** for normal operation.
+1. Open spreadsheet as the owner
+2. **Ride Schedulers → Install Triggers** from the menu
+3. Confirm installation
+4. Verify success message shows all 4 triggers installed:
+   - `onOpen` (spreadsheet open event)
+   - `editHandler` (cell edit event)
+   - `dailyAnnouncementCheck` (2 AM daily backstop)
+   - `dailyRetryCheck` (2 AM daily backstop)
+
+**Owner-only restriction:** Only the spreadsheet owner can install triggers to prevent conflicts from multiple users. Other users will see an error if they attempt installation.
+
+**Idempotent operation:** Safe to run multiple times - will not create duplicate triggers.
 
 ### Automatic Retry Schedule
 
@@ -110,15 +119,27 @@ If a send fails, the system automatically retries:
 | `"Error sending..."` | ❌ Send failed | Read error, fix root cause |
 | `"Skipping emoji-sized image..."` | Normal - emoji in document | None |
 | `"Warning: Large inline image..."` | May cause email delivery issues | Ask scheduler to resize images |
-| No recent executions | ⚠️ Trigger may be broken | Reinstall trigger |
+| No recent executions | ⚠️ Triggers not installed | Owner must run "Install Triggers" menu |
 
 ### Trigger Health Check
 
-**Verify trigger is running:**
+**Verify triggers are installed:**
 1. Extensions → Apps Script → Triggers (clock icon)
-2. Confirm `checkAnnouncementsAndReminders` is listed
-3. Check "Last run" time (should be within last 15 minutes)
-4. If missing or disabled, recreate it (see System Maintenance section)
+2. Confirm these triggers exist:
+   - `onOpen` - On open event
+   - `editHandler` - On edit event  
+   - `dailyAnnouncementCheck` - Time-driven, daily at 2 AM
+   - `dailyRetryCheck` - Time-driven, daily at 2 AM
+3. Check "Last run" time for daily triggers (should run once per day)
+4. Check for dynamically created triggers (may not be present):
+   - `announcementTrigger` - Created when announcements are scheduled, **self-removes after firing**
+   - `retryQueueTrigger` - Created when retries are scheduled, **self-removes after firing**
+   - **Note**: These triggers clean themselves up automatically after execution
+
+**If triggers are missing:**
+- Must be reinstalled by **spreadsheet owner only**
+- Use **Ride Schedulers → Install Triggers** menu
+- See [System Maintenance](#system-maintenance) section for details
 
 ---
 
@@ -218,14 +239,17 @@ If a send fails, the system automatically retries:
 3. Check script quotas (Apps Script → Project Settings)
 
 **Fix:**
-1. **Delete and recreate trigger:**
-   - Apps Script → Triggers → Delete `checkAnnouncementsAndReminders`
-   - Create new announcement (auto-installs trigger)
+1. **Reinstall triggers (Owner-only):**
+   - Spreadsheet → Ride Schedulers → Install Triggers
+   - Check User Activity Log for installation confirmation
 2. **Manually run function:**
-   - Apps Script → Editor → Select `checkAnnouncementsAndReminders`
+   - Apps Script → Editor → Select `dailyAnnouncementCheck`
    - Click Run
    - Check logs for errors
-3. **Check quotas:**
+3. **Verify owner status:**
+   - Only spreadsheet owner can install/manage triggers
+   - Verify current user is owner via File → Share
+4. **Check quotas:**
    - If quota exceeded, wait for reset (usually 24 hours)
 
 ---
@@ -817,6 +841,260 @@ const manager = new AnnouncementManager();
 const result = manager.handleCancellation(row, 'Test cancellation');
 Logger.log(result);
 ```
+
+---
+
+## System Maintenance
+
+### Trigger Management (Owner-Only)
+
+**Important**: Only the spreadsheet owner can install and manage triggers. This prevents conflicts from multiple users attempting to manage the same triggers.
+
+#### Installing Triggers
+
+**When to install:**
+- First-time system setup
+- After spreadsheet is copied/cloned
+- If triggers are accidentally deleted
+- When troubleshooting trigger-related issues
+
+**Installation process:**
+1. **Verify you are the owner:**
+   - File → Share → Check you are listed as owner
+   - Only owner can install triggers
+2. **Install triggers:**
+   - Spreadsheet → Ride Schedulers → Install Triggers
+   - Wait for confirmation dialog
+3. **Verify installation:**
+   - Extensions → Apps Script → Triggers
+   - Should see 4 core triggers:
+     - `onOpenHandler` (on spreadsheet open)
+     - `editHandler` (on spreadsheet edit)
+     - `dailyAnnouncementCheck` (time-driven, 2:00 AM)
+     - `dailyRetryCheck` (time-driven, 2:00 AM)
+4. **Check User Activity Log:**
+   - Look for "INSTALL_TRIGGERS" entry
+   - Verify all 4 triggers listed as installed
+
+**What gets installed:**
+
+| Trigger | Type | Purpose | When Runs |
+|---------|------|---------|-----------|
+| `onOpenHandler` | On Open | Update menus, show dialogs | When spreadsheet opens |
+| `editHandler` | On Edit | Detect row changes, trigger notifications | When cells edited |
+| `dailyAnnouncementCheck` | Time-Driven | Backstop for missed announcements | Daily at 2:00 AM |
+| `dailyRetryCheck` | Time-Driven | Backstop for missed retries | Daily at 2:00 AM |
+
+**Dynamic triggers** (created automatically by the system):
+- `announcementTrigger` - Created when announcement scheduled, fires at SendAt time
+- `retryQueueTrigger` - Created when retry scheduled, fires at retry due time
+
+#### Verifying Trigger Health
+
+**Check trigger list:**
+```
+1. Extensions → Apps Script → Triggers
+2. Verify 4 core triggers exist
+3. Verify 0-2 dynamic triggers (depending on pending operations)
+4. Check "Last run" times are recent
+```
+
+**Check execution history:**
+```
+1. Extensions → Apps Script → Executions
+2. Filter by trigger name
+3. Look for recent successful executions
+4. Check for error patterns
+```
+
+**Common issues:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No triggers in list | Not installed | Install Triggers menu item |
+| Triggers exist but not running | Disabled or quota exceeded | Check Apps Script quotas |
+| Only some triggers present | Partial installation | Remove all, reinstall |
+| Multiple duplicates | Multiple installations | Remove all, reinstall once |
+
+#### Reinstalling Triggers
+
+**When to reinstall:**
+- Triggers not executing despite being listed
+- Triggers show errors in execution log
+- After major system update/code deployment
+- If dynamic triggers stuck (not cleaning up)
+
+**Reinstallation process:**
+1. **Remove existing triggers:**
+   - Spreadsheet → Ride Schedulers → Remove All Triggers
+   - Wait for confirmation
+2. **Verify removal:**
+   - Apps Script → Triggers → Should be empty
+3. **Reinstall:**
+   - Spreadsheet → Ride Schedulers → Install Triggers
+   - Verify all 4 triggers created
+4. **Check logs:**
+   - User Activity Log should show removal and installation entries
+
+**Safe to reinstall:**
+- Installation is idempotent (can run multiple times safely)
+- Existing dynamic triggers are preserved
+- In-progress announcements and retries continue normally
+
+### Trigger Architecture
+
+**Pattern: "Backstop + Scheduled"**
+
+The system uses two complementary trigger types:
+
+1. **Backstop Triggers (Daily 2:00 AM)**
+   - `dailyAnnouncementCheck` - Scans for missed announcements
+   - `dailyRetryCheck` - Processes overdue retry items
+   - **Purpose**: Self-healing safety net
+   - **Runs**: Every day at 2 AM whether needed or not
+
+2. **Scheduled Triggers (Precise Timing)**
+   - `announcementTrigger` - Fires exactly at announcement SendAt time
+   - `retryQueueTrigger` - Fires exactly at retry due time
+   - **Purpose**: Precise timing for immediate processing
+   - **Created**: Dynamically when announcement/retry scheduled
+   - **Self-Cleaning**: Automatically removes itself after firing
+   - **Cleanup Method**: Calls `TriggerManager.removeAnnouncementTrigger()` or `removeRetryTrigger()`
+
+**Why this pattern:**
+- **Reliability**: Daily backstop catches any missed operations
+- **Precision**: Scheduled triggers provide exact timing
+- **Resilience**: System self-heals if scheduled trigger fails
+- **Simplicity**: No complex coordination needed
+- **Clean**: Dynamic triggers don't accumulate or become orphaned
+
+**Example flow:**
+
+```
+Announcement created for 6:00 PM Friday
+├─ Scheduled trigger created for 6:00 PM Friday
+├─ 6:00 PM Friday: Trigger fires, sends announcement, removes itself automatically
+└─ 2:00 AM Saturday: Backstop runs, finds nothing to do
+
+If scheduled trigger fails:
+├─ 6:00 PM Friday: Trigger fails (quota exceeded, script error, etc.)
+├─ 2:00 AM Saturday: Backstop detects missed announcement
+└─ 2:00 AM Saturday: Backstop sends announcement, cleans up
+```
+
+### Owner-Only Restrictions
+
+**Why owner-only:**
+- Prevents conflicts from multiple users managing triggers
+- Ensures single source of trigger management
+- Avoids duplicate trigger creation
+- Simplifies troubleshooting
+
+**What non-owners can do:**
+- View spreadsheet data
+- Edit ride details
+- Create announcement documents
+- Use all menu functions except trigger management
+
+**What non-owners cannot do:**
+- Install/remove triggers
+- Access trigger management menu items
+- Modify Apps Script code
+- View Apps Script execution logs
+
+**Checking ownership:**
+```
+1. File → Share
+2. Look for your email in the list
+3. Verify it shows "Owner" next to your name
+4. If "Editor" or "Viewer" → You are not the owner
+```
+
+**Transferring ownership:**
+```
+1. Current owner: File → Share
+2. Add new owner's email
+3. Change permission to "Owner"
+4. Original owner becomes "Editor" automatically
+5. New owner must reinstall triggers
+```
+
+### Monitoring and Diagnostics
+
+**Daily checks:**
+1. **User Activity Log**: Check for errors or unexpected activity
+2. **Execution history**: Verify triggers running successfully
+3. **Announcement status**: Verify pending announcements have future SendAt times
+4. **Retry queue**: Check for items stuck with many attempts
+
+**Weekly checks:**
+1. **Trigger list**: Verify 4 core triggers present
+2. **Quota usage**: Apps Script → Project Settings → Check quotas
+3. **Failed executions**: Review any failures in execution log
+
+**Monthly checks:**
+1. **Full trigger reinstall**: Remove and reinstall all triggers
+2. **Test announcement**: Create test announcement, verify sends correctly
+3. **Test cancellation**: Cancel test announcement, verify notification sent
+
+**Health check script:**
+```javascript
+// Run in Apps Script editor
+function healthCheck() {
+  const manager = TriggerManager.getInstance();
+  const issues = manager.validateAllTriggers();
+  
+  if (issues.length === 0) {
+    Logger.log('✅ All triggers healthy');
+  } else {
+    Logger.log('⚠️ Issues found:');
+    issues.forEach(issue => Logger.log('  - ' + issue));
+  }
+  
+  // Check for stuck items
+  const queue = new RetryQueue();
+  const stuck = queue._getStuckItems();
+  if (stuck.length > 0) {
+    Logger.log('⚠️ Stuck retry items: ' + stuck.length);
+  }
+}
+```
+
+### Troubleshooting Guide
+
+**Triggers not installing:**
+
+| Check | Solution |
+|-------|----------|
+| Are you the owner? | File → Share → Verify ownership |
+| Script authorization? | Run any menu item, authorize script |
+| Apps Script access? | Extensions → Apps Script → Should open editor |
+| Quota exceeded? | Apps Script → Project Settings → Check quotas |
+
+**Announcements not sending:**
+
+| Check | Solution |
+|-------|----------|
+| Trigger installed? | Install Triggers menu item |
+| SendAt time past? | Check row SendAt column |
+| Status = pending? | Should be `pending`, not `sent`/`cancelled` |
+| Backstop running? | Check Apps Script → Executions for `dailyAnnouncementCheck` |
+| Dynamic trigger? | Apps Script → Triggers → Look for `announcementTrigger` |
+
+**Dynamic triggers not cleaning up:**
+
+| Check | Solution |
+|-------|----------|
+| Execution succeeded? | Apps Script → Executions → Check for errors |
+| Multiple triggers? | Remove all, reinstall (cleans up orphans) |
+| Script errors? | Check execution log for exceptions |
+
+**Best practices:**
+- Always use menu items (Install/Remove Triggers) - don't manually manage in Apps Script
+- Only owner should manage triggers
+- Reinstall triggers after major code updates
+- Monitor User Activity Log for unexpected behavior
+- Keep Apps Script execution log clean (investigate all errors)
 
 **Test reinstatement email:**
 ```javascript

@@ -6,13 +6,7 @@
  */
 
 import Row from './Row';
-
-/**
- * RWGPS API wrapper instance
- */
-interface RWGPS {
-    // Add RWGPS methods as needed
-}
+import type { RWGPS } from './Externals';
 
 /**
  * Command functions for ride management operations

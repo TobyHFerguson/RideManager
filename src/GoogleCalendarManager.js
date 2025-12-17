@@ -1,3 +1,4 @@
+// @ts-check
 class GoogleCalendarManager {
     /**
      * Gets a calendar by ID with retry logic to handle temporary unavailability

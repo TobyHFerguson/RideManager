@@ -81,14 +81,41 @@ declare class AnnouncementManager {
     constructor();
 
     /**
-     * Create a ride announcement document and queue it for sending
+     * Create a ride announcement document and schedule it for sending
      * 
-     * @param rowData - Row data from Consolidated Rides sheet
-     * @param rideUrl - Stable ride URL identifier
-     * @returns Queue item ID
+     * @param row - Row object from ScheduleAdapter
+     * @returns URL of created announcement document
      * @throws Error if required globals are not configured
      */
-    createAnnouncement(rowData: RowData, rideUrl: string): string;
+    createAnnouncement(row: RowData): string;
+
+    /**
+     * Handle ride cancellation with announcement
+     * 
+     * @param row - Row object from ScheduleAdapter
+     * @param sendEmail - Whether to send cancellation email
+     * @param reason - Optional cancellation reason
+     * @returns Result with announcementSent flag and optional error
+     */
+    handleCancellation(row: RowData, sendEmail: boolean, reason?: string): {announcementSent: boolean, error?: string};
+
+    /**
+     * Handle ride reinstatement with announcement
+     * 
+     * @param row - Row object from ScheduleAdapter
+     * @param sendEmail - Whether to send reinstatement email
+     * @param reason - Optional reinstatement reason
+     * @returns Result with announcementSent flag and optional error
+     */
+    handleReinstatement(row: RowData, sendEmail: boolean, reason?: string): {announcementSent: boolean, error?: string};
+
+    /**
+     * Remove announcements by ride URLs
+     * 
+     * @param rideUrls - Array of ride URLs
+     * @returns Number of announcements removed
+     */
+    removeByRideUrls(rideUrls: string[]): number;
 
     /**
      * Send an announcement email

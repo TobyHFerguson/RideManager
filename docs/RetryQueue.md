@@ -80,13 +80,31 @@ Queue stored in PropertiesService with structure:
 
 **Note on Stable Identifiers**: The queue uses `rideUrl` (the RWGPS event URL) as the stable identifier rather than spreadsheet row numbers. This is critical because row numbers change when rows are inserted, deleted, or moved. The `rideUrl` is unique, stable, and allows the queue to find and update the correct ride when a retry succeeds.
 
-### Time-Based Trigger
+### Time-Based Triggers
 
-Function `processRetryQueue()` called every 5 minutes:
-- Processes all due items
+The retry queue uses a **"Backstop + Scheduled"** pattern:
+
+**Backstop Trigger:**
+- Function: `dailyRetryCheck`
+- Schedule: Daily at 2:00 AM
+- Purpose: Safety net for missed retries
+
+**Scheduled Trigger:**
+- Function: `retryQueueTrigger`  
+- Schedule: Dynamically created at earliest retry time
+- Purpose: Precise retry execution
+- Auto-removed when queue is empty
+
+**Installation:**
+- Owner-only via **Ride Schedulers → Install Triggers** menu
+- Backstop installed as part of core trigger set
+- Scheduled trigger created/removed automatically
+
+Behavior:
+- Processes all due retry items
 - Updates successful operations in spreadsheet
 - Schedules next retry for failed operations
-- Removes trigger when queue is empty
+- Self-healing via daily backstop
 
 ## Usage
 

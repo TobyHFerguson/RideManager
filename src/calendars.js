@@ -1,3 +1,4 @@
+// @ts-check
 // CalendarApp Class documentation: https://developers.google.com/apps-script/reference/calendar/calendar-app
 
 function createTestEvent() {
