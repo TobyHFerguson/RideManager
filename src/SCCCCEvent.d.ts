@@ -26,22 +26,20 @@ declare class SCCCCEvent {
 
     /**
      * Creates the name of a Managed Event.
-     * @param {number} numRiders - Number of riders for this event.
      * @param {Date|string} start_date - Event start date.
      * @param {Date|string} start_time - Event start time.
      * @param {string} groupName - Name of group.
      * @param {string} route_name - Name of route.
      * @returns {string} Name of event.
      */
-    static makeManagedRideName(numRiders: number, start_date: Date | string, start_time: Date | string, groupName: string, route_name: string): string;
+    static makeManagedRideName(start_date: Date | string, start_time: Date | string, groupName: string, route_name: string): string;
 
     /**
      * Creates the unmanaged event name by appending or updating the participant count.
      * @param {string} eventName - The current event name.
-     * @param {number} numRiders - The number of riders.
      * @returns {string} The new event name.
      */
-    static makeUnmanagedRideName(eventName: string, numRiders: number): string;
+    static makeUnmanagedRideName(eventName: string): string;
 
     /**
      * Returns true iff this is a Managed Ride.
@@ -50,15 +48,6 @@ declare class SCCCCEvent {
      * @returns {boolean} True iff this is a managed ride.
      */
     static managedEventName(eventName: string, groupNames: string[]): boolean;
-
-    /**
-     * Updates the rider count in the event name.
-     * @param {string} name - The event name.
-     * @param {number} count - The new rider count.
-     * @param {string[]} groupNames - List of all possible groups.
-     * @returns {string} The updated event name.
-     */
-    static updateCountInName(name: string, count: number, groupNames: string[]): string;
 
     /**
      * Cancels the event by prefixing the name.
@@ -71,14 +60,6 @@ declare class SCCCCEvent {
      * @returns {Event} The updated Event instance.
      */
     reinstate(): Event;
-
-    /**
-     * Updates the rider count, returning true iff the rider count has changed.
-     * @param {number} numRiders - Number of riders.
-     * @param {string[]} groupNames - List of all possible groups.
-     * @returns {boolean} True iff the rider count has changed.
-     */
-    updateRiderCount(numRiders: number, groupNames: string[]): boolean;
 
     /**
      * Returns true iff this event is a managed event.

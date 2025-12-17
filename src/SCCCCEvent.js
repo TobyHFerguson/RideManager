@@ -9,14 +9,11 @@ class SCCCCEvent {
   // Managed names can be of the form:
 // Mon A 1/1 10:00 AM Ride route name
 // Mon A 1/1 10:00 route name
-// Mon A 1/1 10:00 AM Ride [12] route name
-// Mon A 1/1 10:00 [12] route name
 
 // the sub patterns are:
 // 3 letter capitalized day name
 // 2 digit month / 2 digit day (US Style dates)
 // 2 digit hour : 2 digit minute AM or PM (12 hour times)
-// Number of participants surrounded by square brackets
 
 // In addition, there can be an optional 'CANCELLED: ' prefix.
 
@@ -25,7 +22,7 @@ class SCCCCEvent {
    */
   static makeManagedRE(groupNames = []) {
   const grps = groupNames.join('|');
-  const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)\\[(?<count>\\d{1,2})\\](?<suffix>.*$)`;
+  const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)(?<suffix>.*$)`;
   const MANAGED_RE = new RegExp(MANAGED_RE_STR);
   return MANAGED_RE;
 }
@@ -34,26 +31,24 @@ class SCCCCEvent {
    * responsible for all parts of the name and the Event body.
    * 
    * Note that due to the vagaries of Google Spreadsheets the start date and start time are independent, although both are a date and a time!
-   * @param {number} numRiders number of riders for this event
    * @param {Date} start_date event start date
    * @param {Date} start_time event start time
    * @param {string} groupName name of group
    * @param {string} route_name name of route
    * @returns {string} name of event
    */
-  static makeManagedRideName(numRiders, start_date, start_time, groupName, route_name) {
-    return `${dates.weekday(start_date)} ${groupName} (${dates.MMDD(start_date)} ${dates.T24(start_time)}) [${numRiders}] ${route_name}`;
+  static makeManagedRideName(start_date, start_time, groupName, route_name) {
+    return `${dates.weekday(start_date)} ${groupName} (${dates.MMDD(start_date)} ${dates.T24(start_time)}) ${route_name}`;
   }
   /**
    * Create the unmanaged event name by appending or updating the participant count to the main name
    * @param {string} eventName the current event name
-   * @param {number} numRiders the number of riders
    * @returns {string} the new event name
    */
-  static makeUnmanagedRideName(eventName, numRiders) {
+  static makeUnmanagedRideName(eventName) {
     const li = eventName.lastIndexOf(' [');
     const name = (li != -1) ? eventName.slice(0, li) : eventName;
-    let newName = `${name} [${numRiders}]`;
+    let newName = `${name}`;
     return newName;
   }
   /**
@@ -67,18 +62,7 @@ class SCCCCEvent {
     return !eventName || RE.test(eventName);
   }
 
-  /**
-   * @param {string} name
-   * @param {number} count
-   * @param {string[]} groupNames
-   */
-  static updateCountInName(name, count, groupNames) {
-    let match = SCCCCEvent.makeManagedRE(groupNames).exec(name);
-    if (match && match.groups) {
-      return `${match.groups.cancelled}${match.groups.meta}[${count}]${match.groups.suffix}`.trim();
-    }
-    return SCCCCEvent.makeUnmanagedRideName(name, count);
-  }
+
   constructor() {
     this.all_day = '0',
       this.auto_expire_participants = '1',
@@ -99,21 +83,6 @@ class SCCCCEvent {
   reinstate() {
     this.name = this.name.replace('CANCELLED: ', '');
     return this;
-  }
-
-  /**
-   * Update the rider count, returning true iff the rider count has changed
-   * @param {Number} numRiders - number of riders
-   * @returns true iff the rider count has changed
-   */
-  /**
-   * @param {number} numRiders
-   * @param {string[]} groupNames
-   */
-  updateRiderCount(numRiders, groupNames) {
-    const currentName = this.name;
-    this.name = SCCCCEvent.updateCountInName(this.name, numRiders, groupNames);
-    return currentName !== this.name
   }
 
   /**

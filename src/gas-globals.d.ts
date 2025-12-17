@@ -17,10 +17,10 @@ import type AnnouncementManagerClass from './AnnouncementManager';
 import type RetryQueueClass from './RetryQueue';
 import type TriggerManagerClass from './TriggerManager';
 import type ExportsType from './Exports';
-import type GlobalsType from './Globals';
+import type { GlobalsObject } from './Globals';
 import type { Externals as ExternalsType } from './Externals';
 import type RowClass from './Row';
-import type SCCCCEventClass from './Event';
+import type SCCCCEventClass from './SCCCCEvent';
 import type EventFactoryNamespace from './EventFactory';
 import type CommandsNamespace from './Commands';
 import type rowCheckNamespace from './rowCheck';
@@ -64,7 +64,7 @@ declare global {
     
     // Utility functions that are global in GAS
     function getRoute(url: string, readThrough?: boolean): any;
-    function getGlobals(): typeof GlobalsType;
+    function getGlobals(): GlobalsObject;
     function getExternals(): ExternalsType;
     function getAppVersion(): string;
     function getGroupNames(): string[];

@@ -169,16 +169,19 @@ function addMinutes(d, minutes) {
     return NaN;
 }
 
+// Collect functions into module object following standard pattern
+var dates = {
+    convert,
+    weekday,
+    MMDD,
+    MMDDYYYY,
+    T24,
+    T12,
+    add,
+    addMinutes
+};
+
 // Node.js module export
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        convert,
-        weekday,
-        MMDD,
-        MMDDYYYY,
-        T24,
-        T12,
-        add,
-        addMinutes
-    };
+if (typeof module !== 'undefined') {
+    module.exports = dates;
 }

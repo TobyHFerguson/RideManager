@@ -1,12 +1,17 @@
 /**
- * Initializes global variables from the 'Globals' sheet and caches them.
- * @returns {Record<string, any>} An object containing global key-value pairs.
+ * Type representing the global variables object
  */
-declare function initializeGlobals(): Record<string, any>;
+export type GlobalsObject = Record<string, any>;
+
+/**
+ * Initializes global variables from the 'Globals' sheet and caches them.
+ * @returns {GlobalsObject} An object containing global key-value pairs.
+ */
+declare function initializeGlobals(): GlobalsObject;
 
 /**
  * Retrieves global variables from cache, or initializes them if not present.
- * @returns {Record<string, any>} An object containing global key-value pairs.
+ * @returns {GlobalsObject} An object containing global key-value pairs.
  */
-declare function getGlobals(): Record<string, any>;
+declare function getGlobals(): GlobalsObject;
 

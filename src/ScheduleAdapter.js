@@ -135,11 +135,11 @@ const ScheduleAdapter = (function() {
             
             return allData
                 .map((/** @type {any} */ row, /** @type {number} */ index) => ({ data: row, rowNum: index + 2 }))
-                .filter(({ data }: { data: any }) => {
-                    const rowDate = new Date(data[startDateColumn]);
+                .filter((/** @type {{ data: any, rowNum: number }} */ item) => {
+                    const rowDate = new Date(item.data[startDateColumn]);
                     return rowDate > date;
                 })
-                .map(({ data, rowNum }: { data: any, rowNum: number }) => this._createRow(data, rowNum));
+                .map((/** @type {{ data: any, rowNum: number }} */ item) => this._createRow(item.data, item.rowNum));
         }
 
         /**
@@ -322,7 +322,7 @@ const ScheduleAdapter = (function() {
          * @private
          * @param {Object} data - Raw row data from Fiddler
          * @param {number} rowNum - Spreadsheet row number (1-based)
-         * @returns {Row} Row instance
+         * @returns {InstanceType<typeof Row>} Row instance
          */
         _createRow(data, rowNum) {
             const enrichedData = {
@@ -330,6 +330,7 @@ const ScheduleAdapter = (function() {
                 _rowNum: rowNum,
                 _range: this.sheet.getRange(rowNum, 1, 1, this.columnNames.length)
             };
+            // @ts-expect-error - Row is a constructor but TypeScript sees it as module export
             return new Row(enrichedData, this);
         }
 

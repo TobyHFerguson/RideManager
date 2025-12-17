@@ -74,14 +74,3 @@ declare function getCalendarId(groupName: string): string | undefined;
  */
 declare function getLocation(row: Row): string;
 
-/**
- * Reports if the ride name is truncated compared to the route name.
- * @param {string} routeName - The route name.
- * @param {string} rideName - The ride name.
- */
-declare function reportIfNameIsTruncated_(routeName: string, rideName: string): void;
-
-/**
- * Test utility for reportIfNameIsTruncated_.
- */
-declare function testReportIfNameIsTruncated(): void;

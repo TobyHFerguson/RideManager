@@ -6,6 +6,11 @@ if (typeof require !== 'undefined') {
     var dates = require('./common/dates');
 }
 
+/**
+ * @typedef {import('./Externals').RWGPS} RWGPS
+ * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
+ */
+
 const RideManager = (function () {
     /**
      * @param {string} name
@@ -230,11 +235,6 @@ const RideManager = (function () {
             }
             rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
         }
-        rideEvent.updateRiderCount(rwgps.getRSVPCounts([row.RideURL], [row.RideLeaders]), names);
-        // DEBUG ISSUE 22
-        if (rideEvent.name.trim().endsWith(']')) {
-            throw new Error(`updateRow_: row ${row.rowNum}: Event name from updateRiderCount ends with a square bracket: ${rideEvent.name}. Original name: ${row.RideName}`);
-        }
 
         row.setRideLink(rideEvent.name, row.RideURL);
         rwgps.edit_event(row.RideURL, rideEvent);
@@ -439,50 +439,7 @@ const RideManager = (function () {
                 }
             }
         },
-        /**
-         * Update the ride counts in the given rows (ignoring rows that arent' scheduled), using the given RWGPS connector
-         * @param {Row![]} rows to be updated
-         * @param {RWGPS} rwgps connector
-         */
-        updateRiderCounts: function (rows, rwgps) {
-            // This works on all rows at once as a performance measure. Its more complicated,
-            // but helps keep the execution time down.
-            console.time('updateRiderCounts');
-            /** @type {any[]} */
-            const scheduledRows = rows.filter((/** @type {any} */ row) => rowCheck.scheduled(row));
-            scheduledRows.forEach((/** @type {any} */ row) => reportIfNameIsTruncated_(row.RouteName, row.RideName))
-            const scheduledRowURLs = scheduledRows.map((/** @type {any} */ row) => row.RideURL);
-            const scheduledRowLeaders = scheduledRows.map((/** @type {any} */ row) => row.RideLeaders);
-            const rwgpsEvents = rwgps.get_events(scheduledRowURLs);
-            const scheduledEvents = rwgpsEvents.map((/** @type {any} */ e) => e ? EventFactory.fromRwgpsEvent(e) : e);
-            scheduledEvents.forEach((/** @type {any} */ event, /** @type {number} */ i) => { if (event) reportIfNameIsTruncated_(scheduledRows[i].RouteName, event.name) })
-            const rsvpCounts = rwgps.getRSVPCounts(scheduledRowURLs, scheduledRowLeaders);
-            // updatedEvents is an array of booleans indicating whether the event was updated
-            // or not. If it was updated, the event's name will be changed to reflect the new rider count.
-            // If it wasn't updated, it will be false.
-            // This is used to determine which rows need to be updated in the spreadsheet.
-            // Note that this is a side-effect of the updateRiderCount() method in the Event class.
-            // This is done to avoid updating the spreadsheet unnecessarily, which can be slow.
-            const updatedEvents = scheduledEvents.map((/** @type {any} */ event, /** @type {number} */ i) => event ? event.updateRiderCount(rsvpCounts[i], getGroupNames()) : false);
-            scheduledEvents.forEach((/** @type {any} */ event, /** @type {number} */ i) => { if (event) fixTruncatedName(event, scheduledRows[i].RouteName) });
-            const edits = updatedEvents.reduce((/** @type {any[]} */ p, /** @type {any} */ e, /** @type {number} */ i) => { if (e) { p.push({ row: scheduledRows[i], event: scheduledEvents[i] }) }; return p; }, []);
 
-            rwgps.edit_events(edits.map((/** @type {{row: any, event: any}} */ { row, event }) => {
-                console.log('RideManager.updateRiderCounts', `Row ${row.rowNum} Updating count for: ${event.name}`);
-                return { url: row.RideURL, event };
-            }));
-
-            edits.forEach((/** @type {{row: any, event: any}} */ { row, event }) => {
-                row.setRideLink(event.name, row.RideURL);
-                const description = `<a href="${row.RideURL}">${event.name}</a>`;
-                GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, event.name, new Date(event.start_time), new Date(row.EndTime), getLatLong(row), description);
-
-            });
-
-            const updatedRows = edits.map((/** @type {{row: any, _: any}} */ { row, _ }) => row.rowNum);
-            if (updatedRows.length) _log(`UpdateRiderCounts`, `row #s updated: ${updatedRows.join(', ')}`);
-            console.timeEnd('updateRiderCounts');
-        },
         /**
          * @param {any[]} rows
          * @param {any} rwgps
@@ -493,35 +450,3 @@ const RideManager = (function () {
     }
 })()
 
-/**
- * @param {any} routeName
- * @param {any} rideName
- */
-function reportIfNameIsTruncated_(routeName, rideName) {
-    if (!rideName.trim().endsWith(routeName.trim())) {
-        console.error(`Ride Name '${rideName}' doesnt end in route name '${routeName}'`)
-    }
-}
-
-/**
- * @param {any} event
- * @param {any} routeName
- */
-function fixTruncatedName(event, routeName) {
-    if (!event.name.trim().endsWith(routeName.trim())) {
-        const oldName = event.name.trim();
-        const newName = event.name.trim() + ' ' + routeName.trim();
-        event.name = newName;
-        console.error('Fixed event name from: ', oldName, ' to: ', newName);
-    }
-    return event;
-}
-function testReportIfNameIsTruncated() {
-    const routeName = "AV - Freedom Via Pioneers, Green Vly, Freedom"
-    const rideName = "Tue C (8/5 09:30) [7] "
-    try { reportIfNameIsTruncated_(routeName, rideName) }
-    catch (e) {
-        const err = e instanceof Error ? e : new Error(String(e));
-        console.error(err.message)
-    }
-}

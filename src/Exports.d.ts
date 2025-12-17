@@ -17,10 +17,11 @@ import HyperlinkUtils from './HyperlinkUtils';
 import UIManager from './UIManager';
 import RideManager from './RideManager';
 import UserLogger from './UserLogger';
-import SCCCCEvent from './Event';
+import SCCCCEvent from './SCCCCEvent';
 import EventFactory from './EventFactory';
 import RetryQueue from './RetryQueue';
 import RetryQueueCore from './RetryQueueCore';
+import AnnouncementCore from './AnnouncementCore';
 import GoogleCalendarManager from './GoogleCalendarManager';
 import Groups from './Groups';
 import Globals from './Globals';
@@ -64,13 +65,15 @@ interface ExportsNamespace {
     /** UserLogger module */
     readonly UserLogger: typeof UserLogger;
     /** SCCCCEvent class */
-    readonly Event: typeof SCCCCEvent;
+    readonly SCCCCEvent: typeof SCCCCEvent;
     /** EventFactory module */
     readonly EventFactory: typeof EventFactory;
     /** RetryQueue class */
     readonly RetryQueue: typeof RetryQueue;
     /** RetryQueueCore class */
     readonly RetryQueueCore: typeof RetryQueueCore;
+    /** AnnouncementCore module */
+    readonly AnnouncementCore: typeof AnnouncementCore;
     /** GoogleCalendarManager class */
     readonly GoogleCalendarManager: typeof GoogleCalendarManager;
     /** Groups module */
