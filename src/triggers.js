@@ -680,6 +680,30 @@ function installTriggers_() {
   }
 }
 
+/**
+ * Fetch and update RWGPS club members (called by daily trigger)
+ * This function is designed to run at 2am daily via a time-based trigger
+ * configured in the Apps Script project settings.
+ * 
+ * The trigger should be set up as:
+ * - Trigger type: Time-driven
+ * - Type of time based trigger: Day timer
+ * - Time of day: 2am to 3am
+ * 
+ * Creates/updates the "RWGPS Members" sheet with current club member names.
+ */
+function getRWGPSMembers() {
+  try {
+    const adapter = new RWGPSMembersAdapter();
+    const result = adapter.updateMembers();
+    
+    console.log(`getRWGPSMembers: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total)`);
+  } catch (error) {
+    console.error('getRWGPSMembers error:', error);
+    // Don't throw - let the trigger continue on next scheduled run
+  }
+}
+
 
 
 

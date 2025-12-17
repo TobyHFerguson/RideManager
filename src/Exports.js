@@ -94,6 +94,12 @@ var Exports = {
     },
     get dates() {
         return dates;
+    },
+    get RWGPSMembersCore() {
+        return RWGPSMembersCore;
+    },
+    get RWGPSMembersAdapter() {
+        return RWGPSMembersAdapter;
     }
 };
 
