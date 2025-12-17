@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * AnnouncementManager - GAS adapter for AnnouncementCore
  * 

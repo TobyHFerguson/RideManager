@@ -17,16 +17,18 @@ import HyperlinkUtils from './HyperlinkUtils';
 import UIManager from './UIManager';
 import RideManager from './RideManager';
 import UserLogger from './UserLogger';
-import Event from './Event';
+import SCCCCEvent from './SCCCCEvent';
 import EventFactory from './EventFactory';
 import RetryQueue from './RetryQueue';
 import RetryQueueCore from './RetryQueueCore';
+import AnnouncementCore from './AnnouncementCore';
 import GoogleCalendarManager from './GoogleCalendarManager';
 import Groups from './Groups';
 import Globals from './Globals';
 import CacheManager from './CacheManager';
 import TriggerManager from './TriggerManager';
 import TriggerManagerCore from './TriggerManagerCore';
+import * as dates from './common/dates';
 
 /**
  * Centralized exports object
@@ -62,14 +64,16 @@ interface ExportsNamespace {
     readonly RideManager: typeof RideManager;
     /** UserLogger module */
     readonly UserLogger: typeof UserLogger;
-    /** Event class */
-    readonly Event: typeof Event;
+    /** SCCCCEvent class */
+    readonly SCCCCEvent: typeof SCCCCEvent;
     /** EventFactory module */
     readonly EventFactory: typeof EventFactory;
     /** RetryQueue class */
     readonly RetryQueue: typeof RetryQueue;
     /** RetryQueueCore class */
     readonly RetryQueueCore: typeof RetryQueueCore;
+    /** AnnouncementCore module */
+    readonly AnnouncementCore: typeof AnnouncementCore;
     /** GoogleCalendarManager class */
     readonly GoogleCalendarManager: typeof GoogleCalendarManager;
     /** Groups module */
@@ -82,6 +86,8 @@ interface ExportsNamespace {
     readonly TriggerManager: typeof TriggerManager;
     /** TriggerManagerCore class */
     readonly TriggerManagerCore: typeof TriggerManagerCore;
+    /** dates utility module */
+    readonly dates: typeof dates;
 }
 
 declare const Exports: ExportsNamespace;

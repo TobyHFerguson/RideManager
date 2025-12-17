@@ -25,7 +25,6 @@ function createMenu_() {
     .addItem('Unschedule Selected Rides', unscheduleSelectedRides_.name)
     .addSeparator()
     .addItem('Import Selected Routes', importSelectedRoutes_.name)
-    .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
     .addItem('Test Selected Announcements', testSendAnnouncement_.name)
     .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
@@ -92,9 +91,6 @@ function scheduleSelectedRides_() {
 }
 function unscheduleSelectedRides_() {
   MenuFunctions.unscheduleSelectedRides();
-}
-function updateRiderCount() {
-  MenuFunctions.updateRiderCount();
 }
 function updateSelectedRides_() {
   MenuFunctions.updateSelectedRides();

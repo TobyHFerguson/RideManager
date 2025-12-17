@@ -9,7 +9,7 @@ This is a Google Apps Script (GAS) project that manages ride scheduling through 
 The codebase strictly separates GAS-specific code from pure JavaScript to maximize testability:
 
 - **Pure JavaScript modules** (can run in Node.js/Jest, MUST have 100% test coverage):
-  - `Event.js` - Event data model
+  - `SCCCC.js` - SCCCC event data model
   - `EventFactory.js` - Event creation logic
   - `Groups.js` - Group specifications
   - `Globals.js` - Global configuration
@@ -179,8 +179,9 @@ if (typeof module !== 'undefined') {
 ```
 
 **Critical Naming Convention**: The variable name MUST match the class/module name:
-- ✅ `var Event = (function() { class Event { ... } return Event; })()`
+- ✅ `var SCCCCEvent = (function() { class SCCCCEvent { ... } return SCCCCEvent; })()`
 - ✅ `var Row = (function() { class Row { ... } return Row; })()`
+- ✅ `var dates = { convert, weekday, MMDD, ... };` (for namespace modules)
 - ❌ `const Event = ...` (causes redeclaration errors)
 - ❌ `var Event = Event;` (syntax error - already declared by the class)
 
@@ -216,6 +217,16 @@ const command = Exports.Commands.someCommand;
 // ❌ Wrong - function call (old pattern)
 const commands = Exports.getCommands();
 ```
+
+**CRITICAL: Property Names MUST Match Variable Names**:
+- The property name in `Exports.js` MUST match the actual variable name being returned
+- File names can differ, but variable names must match
+- This allows `npm run validate-exports` to verify all modules are defined
+- Examples:
+  - ✅ `get SCCCCEvent() { return SCCCCEvent; }` - matches variable name
+  - ✅ `get dates() { return dates; }` - matches variable name in `common/dates.js`
+  - ❌ `get Event() { return SCCCCEvent; }` - property name doesn't match variable (validation fails)
+- **Rule**: When adding a new module to Exports.js, the property name MUST be the same as the `var`/`const` name in the source file
 
 ### Key Components
 
@@ -509,14 +520,448 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
    }
    ```
 
-10. **Deployment Checklist**
+10. **VS Code TypeScript Error Checking (CRITICAL)**
+   
+   **MANDATORY: VS Code TypeScript server is MORE STRICT than `tsc --noEmit`**
+   
+   The VS Code TypeScript language server catches implicit type errors that the command-line TypeScript compiler (`tsc --noEmit`) does NOT catch. This means:
+   
+   - ✅ **ALWAYS check VS Code errors** using the `get_errors` tool
+   - ❌ **NEVER assume `npm run typecheck` passing means no type errors**
+   - 🔍 **VS Code catches**: Implicit `any` types, generic types without parameters, implicit `any[]` arrays
+   - ⚠️ **tsc --noEmit allows**: Many implicit types that VS Code flags as errors
+   
+   **How to Find VS Code Errors:**
+   ```bash
+   # Use get_errors tool to see VS Code's TypeScript server errors
+   # This shows the SAME errors VS Code displays in the editor
+   get_errors(['src/'])
+   ```
+   
+   **Common VS Code-Only Errors:**
+   
+   1. **Generic Array Type Without Parameter**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      /**
+       * @param {Array} items - Array of items
+       */
+      function process(items) { }
+      
+      // ✅ CORRECT - Use any[] or specific type
+      /**
+       * @param {any[]} items - Array of items
+       */
+      function process(items) { }
+      ```
+   
+   2. **Implicit any[] Type on Variables**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      const results = items.filter(x => x.valid);
+      
+      // ✅ CORRECT - Explicit type annotation
+      /** @type {any[]} */
+      const results = items.filter(x => x.valid);
+      
+      // ✅ BETTER - Specific type
+      /** @type {string[]} */
+      const names = items.map(x => x.name);
+      ```
+   
+   3. **Implicit any on Function Parameters**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      function expandTemplate(template, rowData) {
+          return template.replace(/\{(\w+)\}/g, (match, field) => {
+              return rowData[field] || '';
+          });
+      }
+      
+      // ✅ CORRECT - Full JSDoc with parameter types
+      /**
+       * Expand template placeholders with row data
+       * 
+       * @param {string} template - Template text with {FieldName} placeholders
+       * @param {any} rowData - Row data object
+       * @returns {string} Expanded text
+       */
+      function expandTemplate(template, rowData) {
+          return template.replace(/\{(\w+)\}/g, 
+              (/** @type {string} */ match, /** @type {string} */ field) => {
+                  return rowData[field] || '';
+              }
+          );
+      }
+      ```
+   
+   4. **Implicit any[] in Lambda/Callback Parameters**
+      ```javascript
+      // ❌ ERROR in VS Code (but passes tsc --noEmit)
+      const names = items.map(item => item.name);
+      
+      // ✅ CORRECT - Inline type annotation
+      const names = items.map((/** @type {any} */ item) => item.name);
+      
+      // ✅ BETTER - Type the array first
+      /** @type {Array<{name: string}>} */
+      const items = getItems();
+      const names = items.map(item => item.name); // Type inferred
+      ```
+   
+   **Type Annotation Patterns (VS Code Compliance):**
+   
+   ```javascript
+   // Pattern 1: Variable declarations
+   /** @type {any[]} */
+   const items = [];
+   
+   /** @type {string[]} */
+   const names = ['Alice', 'Bob'];
+   
+   /** @type {{id: string, name: string}[]} */
+   const users = [];
+   
+   // Pattern 2: Function JSDoc
+   /**
+    * Process items with validation
+    * 
+    * @param {any[]} items - Array of items to process
+    * @param {string} mode - Processing mode
+    * @returns {{success: boolean, errors: string[]}} Result object
+    */
+   function processItems(items, mode) {
+       /** @type {string[]} */
+       const errors = [];
+       // ... implementation
+       return { success: errors.length === 0, errors };
+   }
+   
+   // Pattern 3: Lambda parameters in callbacks
+   items.forEach((/** @type {any} */ item, /** @type {number} */ index) => {
+       console.log(`Item ${index}: ${item.name}`);
+   });
+   
+   // Pattern 4: Replace callback with multiple parameters
+   text.replace(/pattern/g, (/** @type {string} */ match, /** @type {string} */ group) => {
+       return transform(match, group);
+   });
+   ```
+   
+   **VS Code Error Checking Workflow:**
+   
+   1. **After ANY code change:**
+      ```bash
+      # Check VS Code errors (more strict)
+      get_errors(['src/'])
+      
+      # Also check CLI (should still pass)
+      npm run typecheck
+      ```
+   
+   2. **Fixing implicit type errors:**
+      - Look at the error message for the expected type
+      - Add `/** @type {T} */` annotation BEFORE the declaration
+      - For function parameters, add full JSDoc block with `@param {T}`
+      - For lambda parameters, use inline `(/** @type {T} */ param) =>`
+   
+   3. **Common patterns to fix:**
+      - `{Array}` → `{any[]}` or `{T[]}` in JSDoc
+      - Implicit `any[]` variable → `/** @type {any[]} */ const x = ...`
+      - Missing function JSDoc → Add `@param {T}` for all parameters
+      - Lambda without types → `(/** @type {T} */ x) => ...`
+   
+   **Real-World Example (AnnouncementCore.js):**
+   
+   ```javascript
+   // BEFORE: 11 VS Code errors (but tsc --noEmit passed!)
+   
+   /**
+    * Get items due for sending/reminder
+    * @param {Array} rows - All announcement rows
+    * @returns {Object} Due items
+    */
+   static getDueItems(rows, currentTime) {
+       const dueToSend = rows.filter(/* ... */);
+       const dueForReminder = rows.filter(/* ... */);
+       return { dueToSend, dueForReminder };
+   }
+   
+   static expandTemplate(template, rowData, route) {
+       const missingFields = [];
+       const expandedText = template.replace(/\{(\w+)\}/g, (match, fieldName) => {
+           // ...
+       });
+       return { expandedText, missingFields };
+   }
+   
+   // AFTER: 0 VS Code errors (explicit types everywhere)
+   
+   /**
+    * Get items due for sending/reminder
+    * @param {any[]} rows - All announcement rows (FIXED: Array → any[])
+    * @param {number} currentTime - Current timestamp
+    * @returns {Object} Due items
+    */
+   static getDueItems(rows, currentTime) {
+       /** @type {any[]} */  // ADDED: Explicit type
+       const dueToSend = rows.filter(/* ... */);
+       /** @type {any[]} */  // ADDED: Explicit type
+       const dueForReminder = rows.filter(/* ... */);
+       return { dueToSend, dueForReminder };
+   }
+   
+   /**
+    * Expand template placeholders with row data
+    * 
+    * @param {string} template - Template text with {FieldName} placeholders
+    * @param {any} rowData - Row data object
+    * @param {any} [route] - Optional route object
+    * @returns {Object} Object with expandedText and missingFields
+    */
+   static expandTemplate(template, rowData, route) {
+       /** @type {string[]} */  // ADDED: Explicit type
+       const missingFields = [];
+       const expandedText = template.replace(/\{(\w+)\}/g, 
+           (/** @type {string} */ match, /** @type {string} */ fieldName) => {
+               // ADDED: Lambda parameter types
+               // ...
+           }
+       );
+       return { expandedText, missingFields };
+   }
+   ```
+
+11. **TypeScript Import Types in JSDoc**
+   
+   **Pattern**: Use `@typedef` with `import()` to reference types from `.d.ts` files in JSDoc comments.
+   
+   When a JavaScript file needs to reference a type from another module's `.d.ts` file:
+   
+   ```javascript
+   // At top of file, after triple-slash references
+   /**
+    * @typedef {import('./Externals').Organizer} Organizer
+    */
+   
+   // Now you can use Organizer in JSDoc
+   /**
+    * @param {Organizer[]} organizers - Array of organizer objects
+    */
+   function processOrganizers(organizers) {
+       // ...
+   }
+   ```
+   
+   **Why this matters**:
+   - Allows JavaScript files to reference TypeScript types without converting to TypeScript
+   - Provides full type checking and IntelliSense in VS Code
+   - Keeps type definitions centralized in `.d.ts` files
+   - Enables cross-module type references
+   
+   **Common pattern for instance types**:
+   ```javascript
+   /**
+    * @param {InstanceType<typeof Row>} row - Instance of Row class
+    * @param {InstanceType<typeof SCCCCEvent>} event - Instance of SCCCCEvent class
+    * @returns {InstanceType<typeof SCCCCEvent>} - New event instance
+    */
+   function transform(row, event) {
+       // TypeScript knows row and event are instances, not classes
+   }
+   ```
+   
+   **CRITICAL: Never Use TypeScript Syntax in JavaScript Files**
+   
+   ❌ **WRONG - TypeScript-style inline type annotations**:
+   ```javascript
+   // BAD: Type annotations in destructuring (TypeScript syntax)
+   .filter(({ data }: { data: any }) => {
+       return data.value > 0;
+   })
+   ```
+   
+   ✅ **CORRECT - JSDoc inline type annotations**:
+   ```javascript
+   // GOOD: JSDoc type annotation for the parameter
+   .filter((/** @type {{ data: any, rowNum: number }} */ item) => {
+       return item.data.value > 0;
+   })
+   ```
+   
+   **Key Rules**:
+   - ❌ Never use `: Type` syntax in JavaScript (that's TypeScript only)
+   - ✅ Always use `/** @type {Type} */` or `(/** @type {Type} */ param)` in JavaScript
+   - ✅ For destructured parameters, annotate the whole parameter, not the destructuring
+   - ✅ Use `InstanceType<typeof ClassName>` when referring to class instances (not the class itself)
+   
+   **External type definitions**:
+   - `Externals.d.ts` contains shared types used across modules:
+     * `RWGPS` interface - Complete RWGPS API surface
+     * `Organizer` interface - Ride leader/organizer data structure
+     * `dates` namespace - Date utility functions
+   - These types are imported where needed using `@typedef {import('./Externals').TypeName}`
+   
+   **Best practices**:
+   - ✅ Define shared types in `Externals.d.ts` once
+   - ✅ Import types using `@typedef {import(...)}` pattern
+   - ✅ Use `InstanceType<typeof ClassName>` for class instances
+   - ✅ Keep type definitions synchronized with actual implementations
+   - ❌ Don't duplicate type definitions across files
+   - ❌ Don't mix constructor types and instance types
+
+12. **Comprehensive Type Definitions for External Dependencies**
+   
+   **CRITICAL**: All external library APIs MUST have complete type definitions in `Externals.d.ts`.
+   
+   When working with external libraries like RWGPSLib:
+   
+   1. **Document ALL methods used in codebase**:
+      ```typescript
+      interface RWGPS {
+          // Single event operations
+          get_event(eventUrl: string): any;
+          edit_event(eventUrl: string, event: any): void;
+          
+          // Batch operations
+          get_events(scheduledRowURLs: string[]): any[];
+          edit_events(edits: { url: string; event: any }[]): Promise<any>;
+          
+          // Route operations
+          importRoute(route: { url: string; expiry: string; tags: string[]; name?: string }): string;
+          copy_template_(templateUrl: string): string;
+          setRouteExpiration(routeUrl: string, expiryDate: Date, forceUpdate: boolean): void;
+          
+          // Organizer and RSVP operations
+          getOrganizers(rideLeaders: string[] | string): Organizer[];
+          getRSVPCounts(scheduledRowURLs: string[], scheduledRowLeaders: string[][]): number[];
+          
+          // Tag operations
+          unTagEvents(eventUrls: string[], tags: string[]): void;
+      }
+      ```
+   
+   2. **Find all usages with grep**:
+      ```bash
+      # Search for all method calls on the object
+      grep -r "rwgps\." src/ | grep -v "\.d\.ts"
+      ```
+   
+   3. **Document parameters and return types**:
+      - Use actual types when known (string, number, Date, etc.)
+      - Use `any` as fallback when type is complex/unknown
+      - Document object shapes with inline types `{ url: string; event: any }`
+      - Add JSDoc comments explaining each method's purpose
+   
+   4. **Import types in consuming modules**:
+      ```javascript
+      // EventFactory.js
+      /**
+       * @typedef {import('./Externals').RWGPS} RWGPS
+       * @typedef {import('./Externals').Organizer} Organizer
+       */
+      
+      /**
+       * @param {InstanceType<typeof Row>} row
+       * @param {Organizer[]} organizers
+       * @param {string | number} event_id
+       */
+      function newEvent(row, organizers, event_id) {
+          // Full type checking with IntelliSense
+      }
+      ```
+   
+   **Benefits of complete external type definitions**:
+   - ✅ Catch API usage errors at development time
+   - ✅ IntelliSense shows available methods and parameters
+   - ✅ Refactoring tools understand the API surface
+   - ✅ Type checking validates all API calls
+   - ✅ Documentation serves as API reference
+   
+   **Process for adding new external APIs**:
+   1. Search codebase for all usages: `grep -r "object\." src/`
+   2. Document each method in `Externals.d.ts`
+   3. Add JSDoc comments with parameter descriptions
+   4. Import type where used: `@typedef {import('./Externals').TypeName}`
+   5. Verify no type errors: `get_errors(['src/'])` and `npm run typecheck`
+
+13. **Ambient Declarations and Type Exports (CRITICAL)**
+   
+   **Pattern for GAS Global Functions**: When declaring global functions in `gas-globals.d.ts`, always export explicit types from module `.d.ts` files rather than using `typeof` on function imports.
+   
+   **Problem**: Using `typeof FunctionImport` as a return type
+   ```typescript
+   // ❌ BAD - typeof gives function type, not return type
+   // Globals.d.ts
+   declare function getGlobals(): Record<string, any>;
+   
+   // gas-globals.d.ts
+   import type GlobalsType from './Globals';
+   declare global {
+       function getGlobals(): typeof GlobalsType; // Wrong: function type, not return type
+   }
+   ```
+   
+   **Solution**: Export explicit type and use directly
+   ```typescript
+   // ✅ GOOD - Export explicit type
+   // Globals.d.ts
+   export type GlobalsObject = Record<string, any>;
+   
+   declare function getGlobals(): GlobalsObject;
+   
+   // gas-globals.d.ts
+   import type { GlobalsObject } from './Globals';
+   declare global {
+       function getGlobals(): GlobalsObject; // Correct: explicit type
+   }
+   ```
+   
+   **Alternative**: Use `ReturnType` utility type (less clear)
+   ```typescript
+   // ⚠️ ACCEPTABLE but less clear
+   // gas-globals.d.ts
+   import type GlobalsType from './Globals';
+   declare global {
+       function getGlobals(): ReturnType<typeof GlobalsType>;
+   }
+   ```
+   
+   **Key Rules**:
+   - ✅ Export explicit types from module `.d.ts` files when they represent return values
+   - ✅ Import and use the explicit type in ambient declarations
+   - ✅ Use descriptive type names (e.g., `GlobalsObject` not just `Globals`)
+   - ⚠️ Only use `ReturnType<typeof Function>` when explicit type export is not possible
+   - ❌ Never use `typeof FunctionImport` directly as a return type (gives function type)
+   - ❌ Don't rely on implicit type inference for ambient declarations
+   
+   **Benefits**:
+   - Clarity: Explicit type shows what the function returns
+   - Maintainability: Type can be reused and extended
+   - Documentation: Type name provides semantic meaning
+   - IntelliSense: Better autocomplete and type hints
+   
+   **Real-World Example from this codebase**:
+   The `getGlobals()` function was declared with `typeof GlobalsType` (the function itself) instead of `GlobalsObject` (the return type). Fixed by:
+   1. Added `export type GlobalsObject = Record<string, any>` to [Globals.d.ts](../src/Globals.d.ts)
+   2. Changed import in [gas-globals.d.ts](../src/gas-globals.d.ts): `import type { GlobalsObject } from './Globals'`
+   3. Updated function signature: `function getGlobals(): GlobalsObject`
+
+14. **Deployment Checklist**
    - ✅ All tests pass: `npm test`
+   - ✅ **VS Code errors checked: `get_errors(['src/'])`** (MANDATORY)
    - ✅ Type check passes: `npm run typecheck`
    - ✅ No new type errors introduced
-   - ✅ All `.d.ts` files updated
+   - ✅ All `.d.ts` files updated (including `Externals.d.ts` for external APIs)
+   - ✅ Type imports added where needed (`@typedef {import(...)}`)
    - ✅ Type escapes minimized and documented
 
-**REMEMBER**: Type errors are bugs waiting to happen. Zero tolerance for type errors in `src/`.
+**REMEMBER**: 
+- **VS Code TypeScript server is MORE STRICT than tsc --noEmit**
+- **ALWAYS use `get_errors` tool to check VS Code errors**
+- **Complete type definitions for ALL external APIs in Externals.d.ts**
+- **Use @typedef {import(...)} pattern to reference types across modules**
+- **Type errors are bugs waiting to happen. Zero tolerance for type errors in `src/`**
 
 ## Fiddler Library (MANDATORY)
 This repository uses the [bmPreFiddler](https://github.com/brucemcpherson/bmPreFiddler) to manage [Fiddler](https://github.com/brucemcpherson/bmFiddler) GAS spreadsheet access.
@@ -707,7 +1152,7 @@ When modifying ANY code file, you MUST update all related artifacts:
 - ❌ NEVER leave documentation inconsistent with code
 
 ### 4. Deployment Verification (MANDATORY)
-- ✅ Run full validation: `npm run dev:push` (includes validate-exports, typecheck)
+- ✅ Run full validation: `npm run typecheck; npm run validate-exports; clasp-wrapper.sh push`
 - ✅ Verify deployment success
 - ✅ Test in GAS environment (manual testing of critical paths)
 - ❌ NEVER assume deployment worked without verification

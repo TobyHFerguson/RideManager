@@ -1,3 +1,5 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
 if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
@@ -9,7 +11,6 @@ const head = (PropertiesService.getScriptProperties().getProperty('head') || 'he
  * Execute the given command with the given credentials.
  * 
  * If no credentials are found then collect them from the user and try again.
- * @param {Function} command command to execute
  */
 
 function getRWGPSLib_() {
@@ -28,6 +29,10 @@ function getRWGPSService_() {
 }
 
 const MenuFunctions = (() => {
+  /**
+   * @param {(rows: InstanceType<typeof Row>[], rwgps: any, force?: boolean) => void} command
+   * @param {boolean} [force]
+   */
   function executeCommand(command, force = false) {
     const g2 = getGroupSpecs();
     const globals = getGlobals();
@@ -45,10 +50,11 @@ const MenuFunctions = (() => {
       // User logging executed after they've agreed to any warnings in UIManager
       command(rows, rwgps, force);
     } catch (e) {
+      const error = e instanceof Error ? e : new Error(String(e));
       // Log errors too
-      UserLogger.log(`${command.name}_ERROR`, e.message, { 
+      UserLogger.log(`${command.name}_ERROR`, error.message, { 
         rowNumbers, 
-        error: e.stack 
+        error: error.stack 
       });
       
       if (e instanceof AggregateError) {
@@ -70,32 +76,27 @@ const MenuFunctions = (() => {
   
   return Object.freeze({
     cancelSelectedRides(force = false) {
-      let command = Exports.Commands.cancelSelectedRidesWithCreds;
+      let command = Commands.cancelSelectedRidesWithCreds;
       executeCommand(command, force);
     },
-    importSelectedRoutes(autoconfirm = false, force = false) {
-      let command = Exports.Commands.importSelectedRoutesWithCredentials;
-      executeCommand(command, autoconfirm, force);
+    importSelectedRoutes(force = false) {
+      let command = Commands.importSelectedRoutesWithCredentials;
+      executeCommand(command, force);
     },
     reinstateSelectedRides(force = false) {
-      let command = Exports.Commands.reinstateSelectedRidesWithCreds;
+      let command = Commands.reinstateSelectedRidesWithCreds;
       executeCommand(command, force);
     },
     scheduleSelectedRides(force = false) {
-      let command = Exports.Commands.scheduleSelectedRidesWithCredentials;
+      let command = Commands.scheduleSelectedRidesWithCredentials;
       executeCommand(command, force);
     },
     unscheduleSelectedRides(force = false) {
-      let command = Exports.Commands.unscheduleSelectedRidesWithCreds;
-      executeCommand(command, force);
-    },
-
-    updateRiderCount(force = false) {
-      let command = Exports.Commands.updateRiderCountWithCreds;
+      let command = Commands.unscheduleSelectedRidesWithCreds;
       executeCommand(command, force);
     },
     updateSelectedRides(force = false) {
-      let command = Exports.Commands.updateSelectedRidesWithCredentials;
+      let command = Commands.updateSelectedRidesWithCredentials;
       executeCommand(command, force);
     },
     
@@ -108,19 +109,19 @@ const MenuFunctions = (() => {
         const status = retryQueue.getStatus();
         
         let message = `Retry Queue Status\n\n`;
-        message += `Total items in queue: ${status.totalItems}\n`;
-        message += `Items due for retry now: ${status.dueNow}\n\n`;
+        message += `Total items in queue: ${status.itemCount}\n`;
+        message += `Items due for retry now: ${status.statistics.dueNow}\n\n`;
         
-        if (status.totalItems > 0) {
+        if (status.itemCount > 0) {
           message += `Age distribution:\n`;
-          message += `  < 1 hour: ${status.byAge.lessThan1Hour}\n`;
-          message += `  < 24 hours: ${status.byAge.lessThan24Hours}\n`;
-          message += `  > 24 hours: ${status.byAge.moreThan24Hours}\n\n`;
+          message += `  < 1 hour: ${status.statistics.byAge.lessThan1Hour}\n`;
+          message += `  < 24 hours: ${status.statistics.byAge.lessThan24Hours}\n`;
+          message += `  > 24 hours: ${status.statistics.byAge.moreThan24Hours}\n\n`;
           
           message += `Queue items:\n`;
-          status.items.forEach(item => {
+          status.items.forEach((/** @type {any} */ item) => {
             message += `\n"${item.rideTitle}" - Row ${item.rowNum}\n`;
-            message += `  Age: ${item.ageMinutes} minutes\n`;
+            message += `  Age: ${item.age} minutes\n`;
             message += `  Attempts: ${item.attemptCount}\n`;
             message += `  Next retry: ${item.nextRetryAt}\n`;
             message += `  User email: ${item.userEmail}\n`;
@@ -131,7 +132,8 @@ const MenuFunctions = (() => {
         
         SpreadsheetApp.getUi().alert('Retry Queue Status', message, SpreadsheetApp.getUi().ButtonSet.OK);
       } catch (error) {
-        SpreadsheetApp.getUi().alert('Error', `Failed to get retry queue status: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+        const err = error instanceof Error ? error : new Error(String(error));
+        SpreadsheetApp.getUi().alert('Error', `Failed to get retry queue status: ${err.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
       }
     },
     
@@ -151,7 +153,8 @@ const MenuFunctions = (() => {
         
         SpreadsheetApp.getUi().alert('Queue Processed', message, SpreadsheetApp.getUi().ButtonSet.OK);
       } catch (error) {
-        SpreadsheetApp.getUi().alert('Error', `Failed to process retry queue: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+        const err = error instanceof Error ? error : new Error(String(error));
+        SpreadsheetApp.getUi().alert('Error', `Failed to process retry queue: ${err.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
       }
     },
     
@@ -199,10 +202,13 @@ const MenuFunctions = (() => {
         const manager = new AnnouncementManager();
         const now = new Date().getTime();
         let sent = 0;
+        /** @type {Array<{rowNum: number, error: string}>} */
         const failedRows = [];
         
         pendingRows.forEach(row => {
           try {
+            // @ts-expect-error - sendAnnouncement expects AnnouncementQueueItem but this passes Row directly
+            // TODO: This should be refactored to properly convert Row to AnnouncementQueueItem or use a Row-based API
             const result = manager.sendAnnouncement(row);
             
             if (result.success) {
@@ -210,12 +216,12 @@ const MenuFunctions = (() => {
               row.LastAttemptAt = new Date(now);
               sent++;
             } else {
-              failedRows.push({ rowNum: row.rowNum, error: result.error });
+              failedRows.push({ rowNum: row.rowNum, error: result.error || 'Unknown error' });
               
               // Update failure info
-              const sendTime = row.SendAt.getTime();
+              const sendTime = row.SendAt ? row.SendAt.getTime() : now;
               const attempts = row.Attempts + 1;
-              const failureUpdate = Exports.AnnouncementCore.calculateFailureUpdate(attempts, sendTime, result.error, now);
+              const failureUpdate = AnnouncementCore.calculateFailureUpdate(attempts, sendTime, result.error || 'Unknown error', now);
               
               row.Status = failureUpdate.status;
               row.Attempts = failureUpdate.attempts;
@@ -223,7 +229,8 @@ const MenuFunctions = (() => {
               row.LastAttemptAt = new Date(now);
             }
           } catch (error) {
-            failedRows.push({ rowNum: row.rowNum, error: error.message });
+            const err = error instanceof Error ? error : new Error(String(error));
+            failedRows.push({ rowNum: row.rowNum, error: err.message });
           }
         });
         
@@ -246,7 +253,8 @@ const MenuFunctions = (() => {
         ui.alert(title, message, ui.ButtonSet.OK);
         
       } catch (error) {
-        SpreadsheetApp.getUi().alert('Error', `Failed to send announcements: ${error.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
+        const err = error instanceof Error ? error : new Error(String(error));
+        SpreadsheetApp.getUi().alert('Error', `Failed to send announcements: ${err.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
       }
     },
   })

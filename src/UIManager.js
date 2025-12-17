@@ -1,3 +1,5 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
 const UIManager = {
     processRows: function (rows, errors, warnings, rwgps, fun = () => { }, force = false) {
         evalRows(rows, rwgps, errors, warnings);

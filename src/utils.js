@@ -1,3 +1,4 @@
+// @ts-check
 function myFunction() {
   let errors = ["e1",];
   let warnings = ["w1", "w2"];
