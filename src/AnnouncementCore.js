@@ -362,50 +362,6 @@ var AnnouncementCore = (function() {
         return { subject: null, body: template };
     }
 
-    /**
-     * Determine if cancellation email should be sent
-     * Email is sent if the scheduled send time has already passed
-     * 
-     * @param {string} status - Current announcement status ('pending', 'cancelled', 'sent', 'abandoned', 'failed')
-     * @param {Date|string|number} sendAt - Scheduled send time
-     * @param {number} currentTime - Current timestamp in milliseconds
-     * @returns {boolean} True if cancellation email should be sent
-     */
-    function shouldSendCancellationEmail(status, sendAt, currentTime) {
-        // Only applies to announcements with pending or failed status
-        if (status !== 'pending' && status !== 'failed') {
-            return false;
-        }
-        
-        // Convert sendAt to timestamp
-        const sendTime = typeof sendAt === 'number' ? sendAt : new Date(sendAt).getTime();
-        
-        // Send email if we're past the scheduled send time
-        return currentTime >= sendTime;
-    }
-
-    /**
-     * Determine if reinstatement email should be sent
-     * Email is sent if the scheduled send time has already passed
-     * 
-     * @param {string} status - Current announcement status ('pending', 'cancelled', 'sent', 'abandoned', 'failed')
-     * @param {Date|string|number} sendAt - Scheduled send time
-     * @param {number} currentTime - Current timestamp in milliseconds
-     * @returns {boolean} True if reinstatement email should be sent
-     */
-    function shouldSendReinstatementEmail(status, sendAt, currentTime) {
-        // Only applies to cancelled announcements
-        if (status !== 'cancelled') {
-            return false;
-        }
-        
-        // Convert sendAt to timestamp
-        const sendTime = typeof sendAt === 'number' ? sendAt : new Date(sendAt).getTime();
-        
-        // Send email if we're past the scheduled send time
-        return currentTime >= sendTime;
-    }
-
     // Public API
     return {
         calculateSendTime,
@@ -416,9 +372,7 @@ var AnnouncementCore = (function() {
         getStatistics,
         enrichRowData,
         expandTemplate,
-        extractSubject,
-        shouldSendCancellationEmail,
-        shouldSendReinstatementEmail
+        extractSubject
     };
 })();
 

@@ -93,19 +93,21 @@ declare class AnnouncementManager {
      * Handle ride cancellation with announcement
      * 
      * @param row - Row object from ScheduleAdapter
+     * @param sendEmail - Whether to send cancellation email
      * @param reason - Optional cancellation reason
      * @returns Result with announcementSent flag and optional error
      */
-    handleCancellation(row: RowData, reason?: string): {announcementSent: boolean, error?: string};
+    handleCancellation(row: RowData, sendEmail: boolean, reason?: string): {announcementSent: boolean, error?: string};
 
     /**
      * Handle ride reinstatement with announcement
      * 
      * @param row - Row object from ScheduleAdapter
+     * @param sendEmail - Whether to send reinstatement email
      * @param reason - Optional reinstatement reason
      * @returns Result with announcementSent flag and optional error
      */
-    handleReinstatement(row: RowData, reason?: string): {announcementSent: boolean, error?: string};
+    handleReinstatement(row: RowData, sendEmail: boolean, reason?: string): {announcementSent: boolean, error?: string};
 
     /**
      * Remove announcements by ride URLs

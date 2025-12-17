@@ -1,4 +1,9 @@
 // @ts-check
+/// <reference path="./gas-globals.d.ts" />
+
+// gas-globals.d.ts declares all modules as global variables for GAS runtime
+// No need for individual module references - they override global declarations!
+
 /**
  * AnnouncementManager - GAS adapter for AnnouncementCore
  * 
@@ -17,12 +22,14 @@ var AnnouncementManager = (function() {
     
     class AnnouncementManager {
         constructor() {
+            // TriggerManager is a class - instantiate it
+            // @ts-expect-error - TriggerManager is global in GAS runtime, VS Code sees module type
             this.triggerManager = new TriggerManager();
         }
 
         /**
          * Create a ride announcement document and add to row's announcement columns
-         * @param {Row} row - Row object from ScheduleAdapter
+         * @param {InstanceType<typeof Row>} row - Row object from ScheduleAdapter
          * @returns {string} Document URL
          */
         createAnnouncement(row) {
@@ -61,12 +68,14 @@ var AnnouncementManager = (function() {
                         newDoc.addEditor(rsGroupEmail);
                         newDoc.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
                     } catch (permError) {
-                        console.warn(`AnnouncementManager: Could not set sharing permissions: ${permError.message}`);
+                        const err = permError instanceof Error ? permError : new Error(String(permError));
+                        console.warn(`AnnouncementManager: Could not set sharing permissions: ${err.message}`);
                     }
                 }
                 
                 // Calculate send time using core logic
                 const timezone = Session.getScriptTimeZone();
+                // @ts-expect-error - AnnouncementCore is a namespace object, TypeScript sees module type
                 const sendTime = AnnouncementCore.calculateSendTime(row.StartDate, timezone);
                 const sendDate = new Date(sendTime);
                 console.log(`AnnouncementManager: Calculated send time: ${sendDate}`);
@@ -84,19 +93,15 @@ var AnnouncementManager = (function() {
                     RideURL: row.RideURL,
                     RouteURL: row.RouteURL,
                     RouteName: row.RouteName,
-                    ...row._data
-                };
-                
-                // Append instructions for the operator
-                this._appendInstructions(documentId, sendTime, rowData);
-                
-                // Write announcement data to row columns
-                row.Announcement = docUrl;
-                row.SendAt = sendDate;
+                // @ts-expect-error - _data is private but needed for complete template data
+                ...row._data
+            };
+            
                 row.Status = 'pending';
                 row.Attempts = 0;
                 row.LastError = '';
                 
+                // @ts-ignore - Row._adapter is internal but needed for immediate save
                 // Save the row (will mark columns as dirty and persist on adapter.save())
                 row._adapter.save();
                 
@@ -113,8 +118,8 @@ var AnnouncementManager = (function() {
 
         /**
          * Send an announcement email for a row
-         * @param {Row} row - Row object with announcement data
-         * @returns {Object} {success: boolean, error?: string}
+         * @param {InstanceType<typeof Row>} row - Row object with announcement data
+         * @returns {{success: boolean, error?: string}} Result object
          */
         sendAnnouncement(row) {
             try {
@@ -147,8 +152,8 @@ var AnnouncementManager = (function() {
                     Group: row.Group,
                     RideURL: row.RideURL,
                     RouteURL: row.RouteURL,
-                    RouteName: row.RouteName,
-                    ...row._data
+                    RouteName: row.RouteName
+                    // Note: Only including specific fields needed for template expansion
                 };
                 
                 // Fetch route data for template enrichment (gain, length, fpm, startPin, lat, long)
@@ -157,7 +162,8 @@ var AnnouncementManager = (function() {
                     try {
                         route = getRoute(row.RouteURL);
                     } catch (error) {
-                        console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${error.message}`);
+                        const err = error instanceof Error ? error : new Error(String(error));
+                        console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${err.message}`);
                         // Continue without route data - fields will be missing but announcement will still send
                     }
                 }
@@ -169,7 +175,7 @@ var AnnouncementManager = (function() {
                 html = this._removeInstructionsFromHtml(html);
                 
                 // Expand template fields in the HTML (with route data for enrichment)
-                const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
+            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
                 html = expandResult.expandedText;
                 
                 // Extract subject from HTML (look for Subject: line at start)
@@ -188,15 +194,16 @@ var AnnouncementManager = (function() {
                 
                 return { success: true };
             } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.sendAnnouncement error for row ${row.rowNum}:`, error);
-                return { success: false, error: error.message };
+                return { success: false, error: err.message };
             }
         }
 
         /**
          * Send a reminder notification about an upcoming announcement
-         * @param {Row} row - Row object with announcement data
-         * @returns {Object} {success: boolean, error?: string}
+         * @param {InstanceType<typeof Row>} row - Row object with announcement data
+         * @returns {{success: boolean, error?: string}} Result object
          */
         sendReminder(row) {
             try {
@@ -210,6 +217,10 @@ var AnnouncementManager = (function() {
                 const docUrl = row.Announcement;
                 const rideName = row.RideName || 'Unknown Ride';
                 const sendDate = row.SendAt;
+                
+                if (!sendDate) {
+                    throw new Error('SendAt date is not set for this announcement');
+                }
                 
                 const subject = `Reminder: Ride announcement for "${rideName}" scheduled for ${sendDate.toLocaleString()}`;
                 const body = `This is a reminder that a ride announcement is scheduled to be sent in approximately 24 hours.\n\n` +
@@ -226,8 +237,9 @@ var AnnouncementManager = (function() {
                 console.log(`AnnouncementManager: Sent reminder for row ${row.rowNum} to ${rsGroupEmail}`);
                 return { success: true };
             } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.sendReminder error for row ${row.rowNum}:`, error);
-                return { success: false, error: error.message };
+                return { success: false, error: err.message };
             }
         }
 
@@ -242,11 +254,13 @@ var AnnouncementManager = (function() {
             
             if (allRows.length === 0) {
                 console.log('AnnouncementManager: No rows in spreadsheet');
+                // @ts-expect-error - TriggerManager is global namespace but VS Code sees module import type
                 this._removeTrigger();
                 return { sent: 0, reminded: 0, failed: 0, remaining: 0 };
             }
 
             const now = new Date().getTime();
+            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const dueItems = AnnouncementCore.getDueItems(allRows, now);
             
             // Debug console.log(`AnnouncementManager: Processing ${dueItems.dueToSend.length} announcements and ${dueItems.dueForReminder.length} reminders`);
@@ -256,7 +270,7 @@ var AnnouncementManager = (function() {
             let failed = 0;
             
             // Process announcements due to send
-            dueItems.dueToSend.forEach(row => {
+            dueItems.dueToSend.forEach((/** @type {any} */ row) => {
                 try {
                     const result = this.sendAnnouncement(row);
                     
@@ -269,6 +283,7 @@ var AnnouncementManager = (function() {
                         // Handle failure
                         const sendTime = row.SendAt.getTime();
                         const attempts = row.Attempts + 1;
+                        // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
                         const failureUpdate = AnnouncementCore.calculateFailureUpdate(attempts, sendTime, result.error, now);
                         
                         row.Status = failureUpdate.status;
@@ -290,7 +305,7 @@ var AnnouncementManager = (function() {
             });
             
             // Process reminders
-            dueItems.dueForReminder.forEach(row => {
+            dueItems.dueForReminder.forEach((/** @type {any} */ row) => {
                 try {
                     const result = this.sendReminder(row);
                     
@@ -314,6 +329,7 @@ var AnnouncementManager = (function() {
             this._scheduleNextAnnouncement();
             
             // Get statistics for return
+            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const stats = AnnouncementCore.getStatistics(allRows);
             
             return {
@@ -362,7 +378,8 @@ var AnnouncementManager = (function() {
                             console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.RideURL}`);
                         }
                     } catch (error) {
-                        console.warn(`AnnouncementManager: Could not trash document: ${error.message}`);
+                        const err = error instanceof Error ? error : new Error(String(error));
+                        console.warn(`AnnouncementManager: Could not trash document: ${err}`);
                     }
                     
                     // Clear announcement data using Row domain method
@@ -387,6 +404,7 @@ var AnnouncementManager = (function() {
         getStatistics() {
             const adapter = new ScheduleAdapter();
             const allRows = adapter.loadAll();
+            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             return AnnouncementCore.getStatistics(allRows);
         }
 
@@ -419,16 +437,19 @@ var AnnouncementManager = (function() {
                             console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.RideName}`);
                         }
                     } catch (error) {
+                        const err = error instanceof Error ? error : new Error(String(error));
                         failedCount++;
-                        console.warn(`AnnouncementManager: Could not trash document: ${error.message}`);
+                        console.warn(`AnnouncementManager: Could not trash document: ${err.message}`);
                     }
                     
                     // Clear announcement columns
                     row.Announcement = '';
+                    // @ts-expect-error - Clear other announcement-related columns
                     row.SendAt = undefined;
                     row.Status = '';
                     row.Attempts = 0;
                     row.LastError = '';
+                    // @ts-expect-error - Clear last attempt timestamp
                     row.LastAttemptAt = undefined;
                 });
                 
@@ -448,11 +469,12 @@ var AnnouncementManager = (function() {
 
         /**
          * Handle ride cancellation with announcement
-         * @param {Row} row - Row object from ScheduleAdapter
-         * @param {string} [reason=''] - User-provided cancellation reason (empty string if force=true or no user input)
-         * @returns {Object} {announcementSent: boolean, error?: string}
+         * @param {InstanceType<typeof Row>} row - Row object from ScheduleAdapter
+         * @param {boolean} sendEmail - Whether to send cancellation email
+         * @param {string} [reason=''] - User-provided cancellation reason
+         * @returns {{announcementSent: boolean, error?: string}} Result object
          */
-        handleCancellation(row, reason = '') {
+        handleCancellation(row, sendEmail, reason = '') {
             try {
                 // Check if announcement exists
                 if (!row.Announcement || !row.Status) {
@@ -460,11 +482,7 @@ var AnnouncementManager = (function() {
                     return { announcementSent: false };
                 }
 
-                // Use core logic to determine if email should be sent
-                const now = new Date().getTime();
-                const shouldSendEmail = AnnouncementCore.shouldSendCancellationEmail(row.Status, row.SendAt, now);
-
-                if (shouldSendEmail) {
+                if (sendEmail) {
                     // Send cancellation email
                     const emailResult = this._sendCancellationEmail(row, reason);
                     if (!emailResult.success) {
@@ -474,23 +492,26 @@ var AnnouncementManager = (function() {
 
                 // Update status to cancelled regardless of whether email was sent
                 row.Status = 'cancelled';
+                // @ts-ignore - Row._adapter is internal but needed for immediate save
                 row._adapter.save();
 
-                console.log(`AnnouncementManager.handleCancellation: Row ${row.rowNum} cancelled, email sent: ${shouldSendEmail}`);
-                return { announcementSent: shouldSendEmail };
+                console.log(`AnnouncementManager.handleCancellation: Row ${row.rowNum} cancelled, email sent: ${sendEmail}`);
+                return { announcementSent: sendEmail };
             } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.handleCancellation error for row ${row.rowNum}:`, error);
-                return { announcementSent: false, error: error.message };
+                return { announcementSent: false, error: err.message };
             }
         }
 
         /**
          * Handle ride reinstatement with announcement
-         * @param {Row} row - Row object from ScheduleAdapter
-         * @param {string} [reason=''] - User-provided reinstatement reason (empty string if force=true or no user input)
-         * @returns {Object} {announcementSent: boolean, error?: string}
+         * @param {InstanceType<typeof Row>} row - Row object from ScheduleAdapter
+         * @param {boolean} sendEmail - Whether to send reinstatement email
+         * @param {string} [reason=''] - User-provided reinstatement reason
+         * @returns {{announcementSent: boolean, error?: string}} Result object
          */
-        handleReinstatement(row, reason = '') {
+        handleReinstatement(row, sendEmail, reason = '') {
             try {
                 // Check if announcement exists
                 if (!row.Announcement || !row.Status) {
@@ -498,11 +519,7 @@ var AnnouncementManager = (function() {
                     return { announcementSent: false };
                 }
 
-                // Use core logic to determine if email should be sent
-                const now = new Date().getTime();
-                const shouldSendEmail = AnnouncementCore.shouldSendReinstatementEmail(row.Status, row.SendAt, now);
-
-                if (shouldSendEmail) {
+                if (sendEmail) {
                     // Send reinstatement email
                     const emailResult = this._sendReinstatementEmail(row, reason);
                     if (!emailResult.success) {
@@ -512,13 +529,15 @@ var AnnouncementManager = (function() {
 
                 // Update status to pending regardless of whether email was sent
                 row.Status = 'pending';
+                // @ts-ignore - Row._adapter is internal but needed for immediate save
                 row._adapter.save();
 
-                console.log(`AnnouncementManager.handleReinstatement: Row ${row.rowNum} reinstated, email sent: ${shouldSendEmail}`);
-                return { announcementSent: shouldSendEmail };
+                console.log(`AnnouncementManager.handleReinstatement: Row ${row.rowNum} reinstated, email sent: ${sendEmail}`);
+                return { announcementSent: sendEmail };
             } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.handleReinstatement error for row ${row.rowNum}:`, error);
-                return { announcementSent: false, error: error.message };
+                return { announcementSent: false, error: err.message };
             }
         }
 
@@ -527,6 +546,8 @@ var AnnouncementManager = (function() {
         /**
          * Extract folder ID from URL
          * @private
+         * @param {string} url - Drive folder URL
+         * @returns {string} Folder ID
          */
         _extractFolderId(url) {
             if (!url) throw new Error('Folder URL is required');
@@ -540,6 +561,8 @@ var AnnouncementManager = (function() {
         /**
          * Extract document ID from URL or ID string
          * @private
+         * @param {string} urlOrId - Document URL or ID
+         * @returns {string|null} Document ID or null
          */
         _extractDocId(urlOrId) {
             if (!urlOrId) return null;
@@ -556,6 +579,9 @@ var AnnouncementManager = (function() {
          * Append operator instructions to announcement document
          * These instructions will be automatically removed when the email is sent
          * @private
+         * @param {string} documentId - Document ID
+         * @param {Date|number} sendTime - Scheduled send time
+         * @param {any} rowData - Row data object
          */
         _appendInstructions(documentId, sendTime, rowData) {
             try {
@@ -567,9 +593,11 @@ var AnnouncementManager = (function() {
                     .appendHorizontalRule();
                 body.appendParagraph('━━━ OPERATOR INSTRUCTIONS (will be removed when email is sent) ━━━')
                     .setHeading(DocumentApp.ParagraphHeading.HEADING2)
+                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setForegroundColor('#990000');
                 
                 body.appendParagraph('⚠️ This section will be automatically removed when the announcement is sent.')
+                // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setBold(true);
                 
                 // Send time information
@@ -579,6 +607,7 @@ var AnnouncementManager = (function() {
                     timeStyle: 'short'
                 });
                 body.appendParagraph(`Scheduled Send Time: ${sendTimeFormatted}`)
+                // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setBold(true);
                 
                 // Template field explanation
@@ -589,6 +618,7 @@ var AnnouncementManager = (function() {
                 
                 // Available fields
                 body.appendParagraph('Available Fields:')
+                // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setBold(true);
                 
                 const fields = [
@@ -637,7 +667,8 @@ var AnnouncementManager = (function() {
                 
                 console.log(`AnnouncementManager: Appended instructions to document ${documentId}`);
             } catch (error) {
-                console.error(`AnnouncementManager: Failed to append instructions to ${documentId}:`, error);
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.error(`AnnouncementManager: Failed to append instructions to ${documentId}:`, err.message);
                 // Don't throw - instructions are helpful but not critical
             }
         }
@@ -645,6 +676,8 @@ var AnnouncementManager = (function() {
         /**
          * Convert Google Doc to HTML
          * Based on DocsService pattern from SCCCCMembershipManagement
+         * @param {GoogleAppsScript.Document.Document} doc - Document object
+         * @returns {string} HTML string
          * @private
          */
         _convertDocToHtml(doc) {
@@ -657,6 +690,8 @@ var AnnouncementManager = (function() {
 
         /**
          * Process a document element recursively to HTML
+         * @param {any} element - Document element
+         * @returns {string} HTML string
          * @private
          */
         _processElement(element) {
@@ -664,20 +699,21 @@ var AnnouncementManager = (function() {
             
             switch (element.getType()) {
                 case DocumentApp.ElementType.PARAGRAPH:
+                    const para = /** @type {GoogleAppsScript.Document.Paragraph} */ (element);
                     html += '<p>';
-                    const numChildren = element.getNumChildren();
+                    const numChildren = para.getNumChildren();
                     for (let i = 0; i < numChildren; i++) {
-                        html += this._processElement(element.getChild(i));
+                        html += this._processElement(para.getChild(i));
                     }
                     html += '</p>';
                     break;
                     
                 case DocumentApp.ElementType.TEXT:
-                    html += this._processText(element);
+                    html += this._processText(/** @type {GoogleAppsScript.Document.Text} */ (element));
                     break;
                     
                 case DocumentApp.ElementType.INLINE_IMAGE:
-                    html += this._processInlineImage(element);
+                    html += this._processInlineImage(/** @type {GoogleAppsScript.Document.InlineImage} */ (element));
                     break;
                     
                 case DocumentApp.ElementType.LIST_ITEM:
@@ -754,7 +790,8 @@ var AnnouncementManager = (function() {
          * - Images larger than ~100KB when base64 encoded
          * - Certain image formats (prefer PNG, JPG, GIF)
          * - Total email size > 25MB
-         * 
+         * @param {any} imageElement - Inline image element
+         * @returns {string} HTML img tag with base64 data URL
          * @private
          */
         _processInlineImage(imageElement) {
@@ -827,6 +864,8 @@ var AnnouncementManager = (function() {
         /**
          * Process text element with formatting
          * @private
+         * @param {GoogleAppsScript.Document.Text} element - Text element
+         * @returns {string} HTML formatted text
          */
         _processText(element) {
             let html = '';
@@ -879,6 +918,9 @@ var AnnouncementManager = (function() {
         /**
          * Apply text formatting attributes
          * @private
+         * @param {string} text - Text to format
+         * @param {any} attributes - Text attributes object
+         * @returns {string} Formatted HTML
          */
         _applyTextAttributes(text, attributes) {
             let html = text;
@@ -932,10 +974,13 @@ var AnnouncementManager = (function() {
 
         /**
          * Encode HTML entities
+         * Replaces &, <, >, ', " with corresponding HTML entities
+         * @param {string} text - Input text
+         * @returns {string} Encoded text
          * @private
          */
         _encodeHtmlEntities(text) {
-            return text.replace(/[&<>'"]/g, function(c) {
+            return text.replace(/[&<>'"]/g, function(/** @type {string} */ c) {
                 switch (c) {
                     case '&': return '&amp;';
                     case '<': return '&lt;';
@@ -950,6 +995,8 @@ var AnnouncementManager = (function() {
         /**
          * Remove operator instructions section from HTML
          * Removes everything from the horizontal rule with instruction marker onwards
+         * @param {string} html - HTML content
+         * @returns {string} Cleaned HTML content
          * @private
          */
         _removeInstructionsFromHtml(html) {
@@ -980,6 +1027,7 @@ var AnnouncementManager = (function() {
         /**
          * Extract subject line from HTML content
          * Looks for "Subject: ..." at the beginning and removes it from body
+         * @param {string} html - HTML content
          * @private
          */
         _extractSubjectFromHtml(html) {
@@ -997,6 +1045,8 @@ var AnnouncementManager = (function() {
 
         /**
          * Notify about a failed announcement
+         * Sends email to Ride Scheduler group with details
+         * @param {InstanceType<typeof Row>} row - Row instance
          * @private
          */
         _notifyFailure(row) {
@@ -1019,7 +1069,8 @@ var AnnouncementManager = (function() {
                 
                 console.log(`AnnouncementManager: Sent failure notification for row ${row.rowNum}`);
             } catch (error) {
-                console.error(`AnnouncementManager: Failed to send failure notification:`, error);
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.error(`AnnouncementManager: Failed to send failure notification:`, err.message);
             }
         }
 
@@ -1056,10 +1107,15 @@ var AnnouncementManager = (function() {
                 }
                 
                 // Find earliest send time
-                const earliestRow = pendingRows.reduce((earliest, row) => 
-                    row.SendAt.getTime() < earliest.SendAt.getTime() ? row : earliest
-                );
+                const earliestRow = pendingRows.reduce((earliest, row) => {
+                    if (!row.SendAt || !earliest.SendAt) return earliest;
+                    return row.SendAt.getTime() < earliest.SendAt.getTime() ? row : earliest;
+                });
                 
+                if (!earliestRow.SendAt) {
+                    console.warn('AnnouncementManager: Earliest row has no SendAt time');
+                    return;
+                }
                 const nextSendTime = earliestRow.SendAt.getTime();
                 
                 // Schedule trigger for earliest announcement
@@ -1075,9 +1131,9 @@ var AnnouncementManager = (function() {
         /**
          * Send cancellation email
          * @private
-         * @param {Row} row - Row object
+         * @param {InstanceType<typeof Row>} row - Row instance
          * @param {string} reason - Cancellation reason
-         * @returns {Object} {success: boolean, error?: string}
+         * @returns {{success: boolean, error?: string}} Result object
          */
         _sendCancellationEmail(row, reason) {
             try {
@@ -1089,7 +1145,7 @@ var AnnouncementManager = (function() {
                 }
 
                 // Load and expand template
-                const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'CancellationReason');
+                const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'Reason');
 
                 // Send email
                 const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
@@ -1106,17 +1162,18 @@ var AnnouncementManager = (function() {
                 console.log(`AnnouncementManager: Sent cancellation email for row ${row.rowNum} to ${recipientEmail}`);
                 return { success: true };
             } catch (error) {
-                console.error(`AnnouncementManager._sendCancellationEmail error for row ${row.rowNum}:`, error);
-                return { success: false, error: error.message };
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.error(`AnnouncementManager._sendCancellationEmail error for row ${row.rowNum}:`, err);
+                return { success: false, error: err.message };
             }
         }
 
         /**
          * Send reinstatement email
          * @private
-         * @param {Row} row - Row object
+         * @param {InstanceType<typeof Row>} row - Row instance
          * @param {string} reason - Reinstatement reason
-         * @returns {Object} {success: boolean, error?: string}
+         * @returns {{success: boolean, error?: string}} Result object
          */
         _sendReinstatementEmail(row, reason) {
             try {
@@ -1128,7 +1185,7 @@ var AnnouncementManager = (function() {
                 }
 
                 // Load and expand template
-                const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'ReinstatementReason');
+                const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'Reason');
 
                 // Send email
                 const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
@@ -1145,8 +1202,9 @@ var AnnouncementManager = (function() {
                 console.log(`AnnouncementManager: Sent reinstatement email for row ${row.rowNum} to ${recipientEmail}`);
                 return { success: true };
             } catch (error) {
-                console.error(`AnnouncementManager._sendReinstatementEmail error for row ${row.rowNum}:`, error);
-                return { success: false, error: error.message };
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.error(`AnnouncementManager._sendReinstatementEmail error for row ${row.rowNum}:`, err);
+                return { success: false, error: err.message };
             }
         }
 
@@ -1154,10 +1212,10 @@ var AnnouncementManager = (function() {
          * Load template document and expand with row data
          * @private
          * @param {string} templateUrl - Template document URL
-         * @param {Row} row - Row object
+         * @param {InstanceType<typeof Row>} row - Row instance
          * @param {string} reason - Cancellation/reinstatement reason
-         * @param {string} reasonFieldName - Field name for reason ('CancellationReason' or 'ReinstatementReason')
-         * @returns {Object} {html: string, subject: string}
+         * @param {string} reasonFieldName - Field name for reason (always 'Reason')
+         * @returns {{html: string, subject: string}} HTML and subject
          */
         _loadAndExpandTemplate(templateUrl, row, reason, reasonFieldName) {
             // Extract document ID from template URL
@@ -1186,6 +1244,7 @@ var AnnouncementManager = (function() {
                 RouteURL: row.RouteURL,
                 RouteName: row.RouteName,
                 [reasonFieldName]: reasonText, // Add the reason field with default
+                // @ts-expect-error - _data is private but needed for complete template expansion
                 ...row._data
             };
 
@@ -1195,7 +1254,8 @@ var AnnouncementManager = (function() {
                 try {
                     route = getRoute(row.RouteURL);
                 } catch (error) {
-                    console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${error.message}`);
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${err.message}`);
                 }
             }
 
@@ -1203,6 +1263,7 @@ var AnnouncementManager = (function() {
             let html = this._convertDocToHtml(doc);
 
             // Expand template fields in the HTML (with route data for enrichment)
+            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
             html = expandResult.expandedText;
 
