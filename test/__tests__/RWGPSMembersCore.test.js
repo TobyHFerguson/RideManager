@@ -129,7 +129,7 @@ describe('RWGPSMembersCore', () => {
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            // Trim() removes leading/trailing spaces from the full name concatenation
+            // trim() removes leading/trailing spaces but preserves internal spaces
             expect(result).toEqual([{ Name: 'John     Doe' }]);
         });
 
