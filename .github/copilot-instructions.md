@@ -943,8 +943,8 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
    
    **Real-World Example from this codebase**:
    The `getGlobals()` function was declared with `typeof GlobalsType` (the function itself) instead of `GlobalsObject` (the return type). Fixed by:
-   1. Added `export type GlobalsObject = Record<string, any>` to [Globals.d.ts](../src/Globals.d.ts)
-   2. Changed import in [gas-globals.d.ts](../src/gas-globals.d.ts): `import type { GlobalsObject } from './Globals'`
+   1. Added `export type GlobalsObject = Record<string, any>` to `Globals.d.ts`
+   2. Changed import in `gas-globals.d.ts`: `import type { GlobalsObject } from './Globals'`
    3. Updated function signature: `function getGlobals(): GlobalsObject`
 
 14. **Deployment Checklist**
