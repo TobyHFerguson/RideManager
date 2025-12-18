@@ -753,7 +753,6 @@ var AnnouncementManager = (function() {
                     break;
                     
                 case DocumentApp.ElementType.BODY_SECTION:
-                case DocumentApp.ElementType.BODY:
                     const bodyChildren = element.getNumChildren();
                     for (let i = 0; i < bodyChildren; i++) {
                         html += this._processElement(element.getChild(i));
@@ -958,6 +957,7 @@ var AnnouncementManager = (function() {
             const userEmail = Session.getActiveUser().getEmail().toLowerCase();
             
             // Try personal templates first
+            // @ts-expect-error - getPersonalTemplates is global but VS Code sees module import type
             const personalTemplates = getPersonalTemplates();
             console.log('Personal templates loaded:', personalTemplates);
             if (personalTemplates[userEmail]) {
@@ -969,7 +969,9 @@ var AnnouncementManager = (function() {
             
             // Fall back to master template
             console.log(`AnnouncementManager: Using master template`);
-            return this._extractDocId(globals.RIDE_ANNOUNCEMENT_MASTER_TEMPLATE);
+            const docId = this._extractDocId(globals.RIDE_ANNOUNCEMENT_MASTER_TEMPLATE);
+            if (docId) return docId;
+            throw new Error('AnnouncementManager: Invalid master template URL');
         }
 
         /**

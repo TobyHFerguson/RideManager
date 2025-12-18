@@ -23,7 +23,8 @@ var TriggerManagerCore = (function() {
         DAILY_ANNOUNCEMENT: 'dailyAnnouncement',
         ANNOUNCEMENT_SCHEDULED: 'announcementScheduled',
         DAILY_RETRY: 'dailyRetry',
-        RETRY_SCHEDULED: 'retryScheduled'
+        RETRY_SCHEDULED: 'retryScheduled',
+        DAILY_RWGPS_MEMBERS: 'dailyRWGPSMembersDownload'
     };
     
     const HANDLER_FUNCTIONS = {
@@ -32,7 +33,8 @@ var TriggerManagerCore = (function() {
         [TRIGGER_TYPES.DAILY_ANNOUNCEMENT]: 'dailyAnnouncementCheck',
         [TRIGGER_TYPES.ANNOUNCEMENT_SCHEDULED]: 'announcementTrigger',
         [TRIGGER_TYPES.DAILY_RETRY]: 'dailyRetryCheck',
-        [TRIGGER_TYPES.RETRY_SCHEDULED]: 'retryQueueTrigger'
+        [TRIGGER_TYPES.RETRY_SCHEDULED]: 'retryQueueTrigger',
+        [TRIGGER_TYPES.DAILY_RWGPS_MEMBERS]: 'dailyRWGPSMembersDownload'
     };
     
     const PROPERTY_KEYS = {
@@ -42,6 +44,7 @@ var TriggerManagerCore = (function() {
         RETRY_TRIGGER_ID: 'RETRY_TRIGGER_ID',
         DAILY_ANNOUNCEMENT_TRIGGER_ID: 'DAILY_ANNOUNCEMENT_TRIGGER_ID',
         DAILY_RETRY_TRIGGER_ID: 'DAILY_RETRY_TRIGGER_ID',
+        DAILY_RWGPS_MEMBERS_TRIGGER_ID: 'DAILY_RWGPS_MEMBERS_TRIGGER_ID',
         ON_OPEN_TRIGGER_ID: 'ON_OPEN_TRIGGER_ID',
         ON_EDIT_TRIGGER_ID: 'ON_EDIT_TRIGGER_ID'
     };
@@ -100,6 +103,12 @@ var TriggerManagerCore = (function() {
                     config.timePropertyKey = PROPERTY_KEYS.RETRY_NEXT_TRIGGER_TIME;
                     config.schedule = { type: 'at', time: null }; // Set at runtime
                     break;
+                    
+                case TRIGGER_TYPES.DAILY_RWGPS_MEMBERS:
+                    config.isInstallable = true;
+                    config.propertyKey = PROPERTY_KEYS.DAILY_RWGPS_MEMBERS_TRIGGER_ID;
+                    config.schedule = { type: 'daily', hour: 2 };
+                    break;
             }
             
             return config;
@@ -112,7 +121,8 @@ var TriggerManagerCore = (function() {
         static getBackstopTriggers() {
             return [
                 TRIGGER_TYPES.DAILY_ANNOUNCEMENT,
-                TRIGGER_TYPES.DAILY_RETRY
+                TRIGGER_TYPES.DAILY_RETRY,
+                TRIGGER_TYPES.DAILY_RWGPS_MEMBERS
             ];
         }
         
@@ -125,7 +135,8 @@ var TriggerManagerCore = (function() {
                 TRIGGER_TYPES.ON_OPEN,
                 TRIGGER_TYPES.ON_EDIT,
                 TRIGGER_TYPES.DAILY_ANNOUNCEMENT,
-                TRIGGER_TYPES.DAILY_RETRY
+                TRIGGER_TYPES.DAILY_RETRY,
+                TRIGGER_TYPES.DAILY_RWGPS_MEMBERS
             ];
         }
         

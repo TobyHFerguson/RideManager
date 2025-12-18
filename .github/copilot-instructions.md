@@ -373,13 +373,15 @@ const commands = Exports.getCommands();
 2. **onEdit** - Installable trigger (runs as owner)
 3. **Daily Announcement Check** - Backstop (runs 2 AM daily)
 4. **Daily Retry Check** - Backstop (runs 2 AM daily)
-5. **Announcement Scheduled** - Dynamic (fires at announcement send time)
-6. **Retry Scheduled** - Dynamic (fires at retry due time)
+5. **Daily RWGPS Members Sync** - Backstop (runs 2 AM daily)
+6. **Announcement Scheduled** - Dynamic (fires at announcement send time)
+7. **Retry Scheduled** - Dynamic (fires at retry due time)
 
 **Installation**:
 - Owner-only via menu: "Ride Schedulers > Install Triggers"
 - Idempotent: Safe to run multiple times
 - All operations logged to User Activity Log
+- **CRITICAL**: ALL triggers MUST be installed via `TriggerManager.installAllTriggers()` unless there is a clear architectural or operational reason they cannot be (e.g., external system requirements, user-specific triggers)
 
 **Pattern**: "Backstop + Scheduled"
 - Daily backstops provide self-healing (catch missed operations)

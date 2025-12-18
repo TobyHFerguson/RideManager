@@ -1,3 +1,6 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
+
 /**
  * RWGPSMembersAdapter - GAS adapter for RWGPS club members data
  * 
@@ -17,6 +20,7 @@
  */
 
 // Node.js compatibility
+// @ts-ignore - Node.js compatibility check for Jest tests
 if (typeof require !== 'undefined') {
     var RWGPSMembersCore = require('./RWGPSMembersCore');
 }
@@ -27,11 +31,14 @@ var RWGPSMembersAdapter = (function() {
     class RWGPSMembersAdapter {
         /**
          * Creates a new RWGPSMembersAdapter
-         * @param {number} [clubId=47] - RWGPS club ID (default is SCCCC)
+         * @param {import('./Externals').RWGPS} rwgps Object from RWGPSLib
          * @param {string} [sheetName='RWGPS Members'] - Name of the sheet to manage
          */
-        constructor(clubId = 47, sheetName = 'RWGPS Members') {
-            this.clubId = clubId;
+        constructor(rwgps, sheetName = 'RWGPS Members') {
+            if (!rwgps) {
+                throw new Error('RWGPSMembersAdapter requires a valid RWGPS instance');
+            }
+            this.rwgps = rwgps;
             this.sheetName = sheetName;
             this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
         }
@@ -47,8 +54,8 @@ var RWGPSMembersAdapter = (function() {
         updateMembers() {
             try {
                 // Fetch raw data from RWGPS API (GAS operation)
-                const apiUrl = RWGPSMembersCore.getApiUrl(this.clubId);
-                const rawData = this._fetchFromApi(apiUrl);
+                // @ts-expect-error - get_club_members is defined in RWGPSLib
+                const rawData = this.rwgps.get_club_members();
                 
                 // Validate API response (Core logic)
                 RWGPSMembersCore.validateApiResponse(rawData);
@@ -69,8 +76,9 @@ var RWGPSMembersAdapter = (function() {
                     filteredOut: rawData.length - validMembers.length
                 };
             } catch (error) {
-                console.error('RWGPSMembersAdapter.updateMembers error:', error);
-                throw new Error(`Failed to update RWGPS members: ${error.message}`);
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.error('RWGPSMembersAdapter.updateMembers error:', err);
+                throw new Error(`Failed to update RWGPS members: ${err.message}`);
             }
         }
 
@@ -95,10 +103,11 @@ var RWGPSMembersAdapter = (function() {
                 
                 return data;
             } catch (error) {
-                if (error.message.includes('API returned status code')) {
-                    throw error;
+                const err = error instanceof Error ? error : new Error(String(error));
+                if (err.message.includes('API returned status code')) {
+                    throw err;
                 }
-                throw new Error(`Failed to fetch from RWGPS API: ${error.message}`);
+                throw new Error(`Failed to fetch from RWGPS API: ${err.message}`);
             }
         }
 
@@ -118,7 +127,7 @@ var RWGPSMembersAdapter = (function() {
             // Write data using Fiddler
             // setData() expects array of objects matching column headers
             // dump() writes to spreadsheet and returns the fiddler for chaining
-            fiddler.setData(members).dump();
+            fiddler.setData(members).dumpValues();
             
             console.log(`RWGPSMembersAdapter: Wrote ${members.length} members to sheet "${this.sheetName}"`);
         }

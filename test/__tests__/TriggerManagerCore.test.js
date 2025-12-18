@@ -82,6 +82,14 @@ describe('TriggerManagerCore', () => {
             expect(config.schedule).toEqual({ type: 'at', time: null });
         });
         
+        it('should return config for daily RWGPS members trigger', () => {
+            const config = TriggerManagerCore.getTriggerConfig('dailyRWGPSMembersDownload');
+            expect(config.handlerFunction).toBe('dailyRWGPSMembersDownload');
+            expect(config.isInstallable).toBe(true);
+            expect(config.propertyKey).toBe('DAILY_RWGPS_MEMBERS_TRIGGER_ID');
+            expect(config.schedule).toEqual({ type: 'daily', hour: 2 });
+        });
+        
         it('should throw error for unknown trigger type', () => {
             expect(() => {
                 TriggerManagerCore.getTriggerConfig('unknownTrigger');
@@ -95,7 +103,8 @@ describe('TriggerManagerCore', () => {
             expect(Array.isArray(backstops)).toBe(true);
             expect(backstops).toContain('dailyAnnouncement');
             expect(backstops).toContain('dailyRetry');
-            expect(backstops.length).toBe(2);
+            expect(backstops).toContain('dailyRWGPSMembersDownload');
+            expect(backstops.length).toBe(3);
         });
     });
     
@@ -107,7 +116,8 @@ describe('TriggerManagerCore', () => {
             expect(installable).toContain('onEdit');
             expect(installable).toContain('dailyAnnouncement');
             expect(installable).toContain('dailyRetry');
-            expect(installable.length).toBe(4);
+            expect(installable).toContain('dailyRWGPSMembersDownload');
+            expect(installable.length).toBe(5);
         });
     });
     

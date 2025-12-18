@@ -39,7 +39,7 @@ describe('RWGPSMembersCore', () => {
                 { Name: 'John Doe' },
                 { Name: 'Jane Smith' },
                 { Name: 'Bob Johnson' }
-            ]);
+            ].sort((a, b) => a.Name.localeCompare(b.Name)));
         });
 
         it('should handle member with only first name', () => {
@@ -282,51 +282,6 @@ describe('RWGPSMembersCore', () => {
             expect(() => {
                 RWGPSMembersCore.validateApiResponse([{ user: 'string' }]);
             }).toThrow('API response member missing user object');
-        });
-    });
-
-    describe('getApiUrl', () => {
-        it('should construct correct URL for club ID', () => {
-            const url = RWGPSMembersCore.getApiUrl(47);
-            expect(url).toBe('https://ridewithgps.com/clubs/47/table_members.json');
-        });
-
-        it('should handle different club IDs', () => {
-            expect(RWGPSMembersCore.getApiUrl(1)).toBe('https://ridewithgps.com/clubs/1/table_members.json');
-            expect(RWGPSMembersCore.getApiUrl(999)).toBe('https://ridewithgps.com/clubs/999/table_members.json');
-            expect(RWGPSMembersCore.getApiUrl(12345)).toBe('https://ridewithgps.com/clubs/12345/table_members.json');
-        });
-
-        it('should throw error for invalid club ID types', () => {
-            expect(() => {
-                RWGPSMembersCore.getApiUrl('47');
-            }).toThrow('Club ID must be a number');
-
-            expect(() => {
-                RWGPSMembersCore.getApiUrl(null);
-            }).toThrow('Club ID must be a number');
-
-            expect(() => {
-                RWGPSMembersCore.getApiUrl(undefined);
-            }).toThrow('Club ID must be a number');
-
-            expect(() => {
-                RWGPSMembersCore.getApiUrl({ id: 47 });
-            }).toThrow('Club ID must be a number');
-        });
-
-        it('should throw error for non-positive club IDs', () => {
-            expect(() => {
-                RWGPSMembersCore.getApiUrl(0);
-            }).toThrow('Club ID must be positive');
-
-            expect(() => {
-                RWGPSMembersCore.getApiUrl(-1);
-            }).toThrow('Club ID must be positive');
-
-            expect(() => {
-                RWGPSMembersCore.getApiUrl(-999);
-            }).toThrow('Club ID must be positive');
         });
     });
 

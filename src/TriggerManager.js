@@ -18,7 +18,6 @@
  */
 
 // Node.js compatibility
-// @ts-ignore - require is only available in Node.js test environment, not in GAS runtime
 if (typeof require !== 'undefined') {
     var TriggerManagerCore = require('./TriggerManagerCore');
 }

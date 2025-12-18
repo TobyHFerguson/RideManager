@@ -27,6 +27,8 @@ import type rowCheckNamespace from './rowCheck';
 import type RideManagerNamespace from './RideManager';
 import type UIManagerNamespace from './UIManager';
 import type AnnouncementCoreNamespace from './AnnouncementCore';
+import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
+import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
@@ -41,6 +43,7 @@ declare global {
     const TriggerManager: typeof TriggerManagerClass;
     const Row: typeof RowClass;
     const SCCCCEvent: typeof SCCCCEventClass;
+    const RWGPSMembersAdapter: typeof RWGPSMembersAdapterClass;
     
     // Objects/Namespaces - singleton instances or frozen objects
     const MenuFunctions: MenuFunctionsType;
@@ -51,10 +54,12 @@ declare global {
     const RideManager: typeof RideManagerNamespace;
     const UIManager: typeof UIManagerNamespace;
     const AnnouncementCore: typeof AnnouncementCoreNamespace;
+    const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;
     const RWGPSLib12: typeof import('./Externals').RWGPSLib;
+    const RWGPSLib13: typeof import('./Externals').RWGPSLib;
     const bmPreFiddler: any; // Third-party library
     const dates: typeof import('./common/dates');
     

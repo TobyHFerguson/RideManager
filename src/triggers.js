@@ -638,7 +638,8 @@ function installTriggers_() {
       `• onOpen (runs when spreadsheet opens)\n` +
       `• onEdit (runs when cells are edited)\n` +
       `• Daily Announcement Check (runs at 2 AM daily)\n` +
-      `• Daily Retry Queue Check (runs at 2 AM daily)\n\n` +
+      `• Daily Retry Queue Check (runs at 2 AM daily)\n` +
+      `• Daily RWGPS Members Sync (runs at 2 AM daily)\n\n` +
       `Scheduled triggers for specific announcements or retries\n` +
       `will be created automatically as needed.\n\n` +
       `This operation is safe to run multiple times (idempotent).\n\n` +
@@ -692,14 +693,15 @@ function installTriggers_() {
  * 
  * Creates/updates the "RWGPS Members" sheet with current club member names.
  */
-function getRWGPSMembers() {
+function dailyRWGPSMembersDownload() {
   try {
-    const adapter = new RWGPSMembersAdapter();
+    // @ts-expect-error - getRWGPS is defined in RWGPSFunctions.js
+    const adapter = new RWGPSMembersAdapter(getRWGPS());
     const result = adapter.updateMembers();
     
-    console.log(`getRWGPSMembers: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total)`);
+    console.log(`dailyRWGPSMembersDownload: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total)`);
   } catch (error) {
-    console.error('getRWGPSMembers error:', error);
+    console.error('dailyRWGPSMembersDownload error:', error);
     // Don't throw - let the trigger continue on next scheduled run
   }
 }

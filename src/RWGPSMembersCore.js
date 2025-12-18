@@ -16,8 +16,8 @@ var RWGPSMembersCore = (function() {
          * Transform RWGPS API member data to spreadsheet format
          * Extracts first_name and last_name from user object, concatenates with space
          * 
-         * @param {Array<Object>} membersData - Raw JSON array from RWGPS API
-         * @returns {Array<Object>} Array of objects with Name field: [{Name: "First Last"}, ...]
+         * @param {any[]} membersData - Raw JSON array from RWGPS API
+         * @returns {Array<{Name: string}>} Array of objects with Name field: [{Name: "First Last"}, ...]
          * 
          * @example
          * const input = [{
@@ -31,7 +31,7 @@ var RWGPSMembersCore = (function() {
                 throw new Error('Members data must be an array');
             }
 
-            return membersData.map(member => {
+            return membersData.map((/** @type {any} */ member) => {
                 // Validate member structure
                 if (!member || typeof member !== 'object') {
                     throw new Error('Invalid member object');
@@ -51,7 +51,7 @@ var RWGPSMembersCore = (function() {
                 const fullName = `${firstName} ${lastName}`.trim();
 
                 return { Name: fullName };
-            });
+            }).sort((a, b) => a.Name.localeCompare(b.Name));
         }
 
         /**
@@ -89,36 +89,18 @@ var RWGPSMembersCore = (function() {
         }
 
         /**
-         * Get the API URL for club members
-         * 
-         * @param {number} clubId - RWGPS club ID
-         * @returns {string} Full API URL
-         */
-        static getApiUrl(clubId) {
-            if (typeof clubId !== 'number') {
-                throw new Error('Club ID must be a number');
-            }
-
-            if (clubId <= 0) {
-                throw new Error('Club ID must be positive');
-            }
-
-            return `https://ridewithgps.com/clubs/${clubId}/table_members.json`;
-        }
-
-        /**
          * Filter out members with empty names
          * Useful for cleaning up data where both first and last names are missing
          * 
-         * @param {Array<Object>} members - Array of {Name: string} objects
-         * @returns {Array<Object>} Filtered array excluding empty names
+         * @param {Array<{Name: string}>} members - Array of {Name: string} objects
+         * @returns {Array<{Name: string}>} Filtered array excluding empty names
          */
         static filterEmptyNames(members) {
             if (!Array.isArray(members)) {
                 throw new Error('Members must be an array');
             }
 
-            return members.filter(member => {
+            return members.filter((/** @type {any} */ member) => {
                 if (!member || typeof member !== 'object') {
                     return false;
                 }

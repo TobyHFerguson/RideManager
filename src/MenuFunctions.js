@@ -3,7 +3,7 @@
 if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
-const head = (PropertiesService.getScriptProperties().getProperty('head') || 'head').toLowerCase() === 'true';
+const head = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERSION') || ' ');
 
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
@@ -14,7 +14,18 @@ const head = (PropertiesService.getScriptProperties().getProperty('head') || 'he
  */
 
 function getRWGPSLib_() {
-  return head ? RWGPSLib : RWGPSLib12;
+  let lib;
+  switch (head.trim()) {
+    case '12':
+      lib = RWGPSLib12;
+      break;
+    case '13':
+      lib = RWGPSLib13;
+      break;
+    default:
+      lib = RWGPSLib;
+  }
+  return lib;
 }
 
 function getGlobals_() {
@@ -26,6 +37,11 @@ function getGlobals_() {
 function getRWGPSService_() {
   const credentialManager = getRWGPSLib_().newCredentialManager(PropertiesService.getScriptProperties())
   return getRWGPSLib_().newRWGPSService(getGlobals_(), credentialManager);
+}
+
+function getRWGPS() {
+  const rwgpsService = getRWGPSService_();
+  return getRWGPSLib_().newRWGPS(rwgpsService); 
 }
 
 const MenuFunctions = (() => {
