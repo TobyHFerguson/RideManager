@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * RetryQueueAdapterCore - Pure JavaScript retry queue spreadsheet adapter logic
  * 

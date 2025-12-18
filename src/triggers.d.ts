@@ -94,10 +94,6 @@ declare function importSelectedRoutes_(): void;
  */
 declare function linkSelectedRouteUrls_(): void;
 
-/**
- * Update rider count (menu function)
- */
-declare function updateRiderCount(): void;
 
 /**
  * View retry queue status (menu function)
@@ -131,7 +127,6 @@ declare function initializeGroupCache(): void;
 
 export {
     onOpen,
-    updateRiderCount,
     initializeGlobals,
     initializeGroupCache
 };

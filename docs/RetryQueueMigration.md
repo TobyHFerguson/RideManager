@@ -215,7 +215,8 @@ adapter.save([]);  // Force sheet creation
 
 **Solution**:
 - Refresh spreadsheet (F5)
-- Check `processRetryQueue()` trigger is running
+- Check triggers are installed (Ride Schedulers → Install Triggers)
+- Verify `dailyRetryCheck` trigger exists in Apps Script → Triggers
 - Verify no errors in execution log
 
 ## Performance

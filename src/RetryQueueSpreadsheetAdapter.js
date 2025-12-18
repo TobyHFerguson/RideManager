@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * RetryQueueSpreadsheetAdapter - GAS adapter for retry queue spreadsheet I/O
  * 

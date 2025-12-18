@@ -16,45 +16,127 @@
    */
   interface RWGPS {
     /**
-     * Retrieves events based on scheduled row URLs.
-     * @param scheduledRowURLs An array of URLs for scheduled rows.
+     * Retrieves a single event from RWGPS.
+     * @param eventUrl The URL of the event to retrieve.
+     * @returns {RWGPSEvent} The RWGPS event object.
      */
-    get_events(scheduledRowURLs: string[]): Event[];
+    get_event(eventUrl: string): RWGPSEvent;
+
+    /**
+     * Retrieves multiple events based on scheduled row URLs.
+     * @param scheduledRowURLs An array of URLs for scheduled rows.
+     * @returns Array of RWGPS event objects.
+     */
+    get_events(scheduledRowURLs: string[]): RWGPSEvent[];
+
+    /**
+     * Edits a single event on RWGPS.
+     * @param eventUrl The URL of the event to edit.
+     * @param event The event object with updated data.
+     */
+    edit_event(eventUrl: string, event: RWGPSEvent): void;
+
+    /**
+     * Edits multiple events on RWGPS.
+     * @param edits An array of edits to be applied.
+     */
+    edit_events(edits: { url: string; event: RWGPSEvent }[]): Promise<any>;
 
     /**
      * Retrieves RSVP counts for events.
      * @param scheduledRowURLs An array of URLs for scheduled rows.
      * @param scheduledRowLeaders An array of leaders associated with the rows.
+     * @returns Array of RSVP counts.
      */
-    getRSVPCounts(scheduledRowURLs: string[], scheduledRowLeaders: string[][]): number[]; // Update 'any' with the specific return type
+    getRSVPCounts(scheduledRowURLs: string[], scheduledRowLeaders: string[][]): number[];
 
     /**
-     * Edits events.
-     * @param edits An array of edits to be applied.
+     * Imports a route to the club's RWGPS account.
+     * @param route Route object with url, expiry, tags, and optional name.
+     * @returns The URL of the imported route.
      */
-    edit_events(edits: { url: string; event: Event }[]): Promise<any>; // Update 'any' with the specific return type
+    importRoute(route: { url: string; expiry: string; tags: string[]; name?: string }): string;
+
+    /**
+     * Copies a template event to create a new event.
+     * @param templateUrl The URL of the template event.
+     * @returns The URL of the newly created event.
+     */
+    copy_template_(templateUrl: string): string;
+
+    /**
+     * Gets organizer objects for the given ride leader names.
+     * @param rideLeaders Array of ride leader names or comma-separated string.
+     * @returns Array of Organizer objects with id and text properties.
+     */
+    getOrganizers(rideLeaders: string[] | string): Organizer[];
+
+    /**
+     * Sets the expiration date for a route.
+     * @param routeUrl The URL of the route.
+     * @param expiryDate The expiration date.
+     * @param forceUpdate Whether to force the update.
+     */
+    setRouteExpiration(routeUrl: string, expiryDate: Date, forceUpdate: boolean): void;
+
+    /**
+     * Removes tags from events.
+     * @param eventUrls Array of event URLs.
+     * @param tags Array of tag names to remove.
+     */
+    unTagEvents(eventUrls: string[], tags: string[]): void;
   }
+
+/**
+ * Represents a RWGPS event object as returned by the RWGPS API.
+ * This is the raw event structure from RideWithGPS.
+ */
+interface RWGPSEvent {
+  /** Whether the event is an all-day event */
+  all_day?: boolean | number;
+  
+  /** Event description text */
+  desc?: string;
+  
+  /** Location name */
+  location?: string;
+  
+  /** Event name/title */
+  name?: string;
+  
+  /** Array of organizer IDs */
+  organizer_ids?: (string | number)[];
+  
+  /** Array of route objects associated with the event */
+  routes?: Array<{ id: string | number; [key: string]: any }>;
+  
+  /** ISO date string when the event starts */
+  starts_at?: string;
+  
+  /** Visibility setting for the event */
+  visibility?: number;
+  
+  /** Additional properties that may be present */
+  [key: string]: any;
+}
+
 /**
  * Represents an organizer entry with an identifier and display text.
- *
- * @typedef {Object} Organizer
- *
- * @property {number} id - Unique numeric identifier for the organizer. Typically a non-negative integer.
- *   This value is used for lookups and comparisons and should remain stable for the lifetime of the organizer.
- *
- * @property {string} text - Human-readable label or name for the organizer.
- *   Intended for display in UI lists, dropdowns, and other text-based contexts.
- *
- * @example
- * // Example usage (TypeScript):
- * // const organizer: Organizer = { id: 1, text: "Conference Host" };
- *
+ * 
  * @remarks
  * - Keep `text` concise (a short name or title).
  * - `id` is recommended to be immutable once assigned.
- *
- * @public
+ * 
+ * @example
+ * // const organizer: Organizer = { id: 302732, text: "Toby Ferguson" };
  */
+interface Organizer {
+  /** Unique numeric identifier for the organizer */
+  id: number;
+  
+  /** Human-readable label or name for the organizer */
+  text: string;
+}
 
 
 /*---------------------- dates --------------------------*/
@@ -106,3 +188,6 @@ declare namespace dates {
    */
   function T24(date: Date): string;
 }
+
+// Export types for use in other modules
+export { RWGPS, RWGPSEvent, Organizer, dates };

@@ -33,7 +33,7 @@ By default, all announcements use the club's [master template](https://docs.goog
      - Copying another Template
      - Copying an announcement that is ready to be sent
    - Make sure you:
-     *  Share it with toby.h.ferguson@gmail.com (that's the account that currently runs the code) 
+     *  Share it with `toby.h.ferguson@gmail.com` as `Viewer`
      *  Name it so its clear to you and others just what it is!
    - Customize it with your preferred formatting, emojis, layout
    - Keep the `{FieldName}` placeholders where you want ride data

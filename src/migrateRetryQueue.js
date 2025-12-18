@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Migration utility for transitioning retry queue from PropertiesService to Spreadsheet
  * 

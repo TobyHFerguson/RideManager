@@ -55,7 +55,7 @@ describe("Event Factory Tests", () => {
                 expect(e1).not.toBe(e2);
             })
             test("should use the given ride name for unmanaged events", () => {
-                const expected = { ...managedEvent, name: 'Tobys Ride [1]' }
+                const expected = { ...managedEvent, name: 'Tobys Ride' }
                 const actual = EventFactory.newEvent(unmanagedRow, organizers, 1234);
                 expect(actual).toMatchObject(expected);
             })
@@ -63,7 +63,7 @@ describe("Event Factory Tests", () => {
                 const start = new Date("2023-06-01T18:00:00.000Z");
                 const hour = dates.T24(start)
                 const expected = { ...managedEvent, 
-                    name: `Thu A (6/1 ${hour}) [1] SCP - Seascape/Corralitos`,
+                    name: `Thu A (6/1 ${hour}) SCP - Seascape/Corralitos`,
                     "start_date": start.toISOString(),
                     "start_time": start.toISOString(),
                 }
@@ -80,7 +80,6 @@ describe("Event Factory Tests", () => {
             test("should return an event even if organizers is missing", () => {
                 const expected = { ...managedEvent };
                 expected.desc = expected.desc.replace("Toby Ferguson", "To Be Determined")
-                expected.name = expected.name.replace("[1]", "[0]");
                 expected.organizer_tokens = [getGlobals().RIDE_LEADER_TBD_ID + ""];
 
                 const actual = EventFactory.newEvent(managedRow, [], 1234)

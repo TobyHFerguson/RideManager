@@ -1,3 +1,4 @@
+// @ts-check
 // This file is used to store global variables that are used across the project
 
 /**
@@ -9,7 +10,7 @@ function initializeGlobals() {
     sheetName: 'Globals',
     createIfMissing: false
   }).getData();
-  const globals = globalData.reduce((acc, global) => {
+  const globals = globalData.reduce((/** @type {Object.<string, string | number>} */acc, /** @type {{ Key: string, Value: string | number }} */ global) => {
     const key = global.Key;
     const value = global.Value;
     acc[key] = value;
@@ -18,18 +19,25 @@ function initializeGlobals() {
 
   const globalsString = JSON.stringify(globals);
   const cache = CacheService.getDocumentCache();
+  if (!cache) {
+    throw new Error('CacheService.getDocumentCache() returned null or undefined');
+  }
   cache.put('Globals', globalsString, 21600); // 21600 seconds = 6 hours
   return globals;
 }
 
 /**
  * Retrieves global variables from cache, or initializes them if not present.
- * @returns {Object.<string, any>|undefined} An object containing global key-value pairs, or undefined if an error occurs.
+ * @returns {Object.<string, string | number>|undefined} An object containing global key-value pairs, or undefined if an error occurs.
  */
 function getGlobals() {
   // console.log('Entering getGlobals function');
   try {
     const cache = CacheService.getDocumentCache();
+    if (!cache) {
+      console.error('CacheService.getDocumentCache() returned null or undefined');
+      return undefined;
+    }
     const globals = cache.get('Globals');
     if (globals) {
       // console.log('Globals object from cache:', globals);
@@ -56,7 +64,7 @@ function initializePersonalTemplates() {
     }).getData();
 
     console.log('Personal Templates data from sheet:', templateData);
-    const templates = templateData.reduce((acc, row) => {
+    const templates = templateData.reduce((/** @type {Object.<string, string>} */ acc, /** @type {{ Email: string, TemplateURL: string, Active: boolean | string }} */ row) => {
       const email = row.Email;
       const templateURL = row.TemplateURL;
       const active = row.Active;
@@ -71,10 +79,14 @@ function initializePersonalTemplates() {
     console.log('Personal templates loaded:', templates);
     const templatesString = JSON.stringify(templates);
     const cache = CacheService.getDocumentCache();
+    if (!cache) {
+      throw new Error('CacheService.getDocumentCache() returned null or undefined');
+    }
     cache.put('PersonalTemplates', templatesString, 3600); // 1 hour cache
     return templates;
   } catch (error) {
-    console.warn('Personal Templates sheet not found or error reading it:', error.message);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.warn('Personal Templates sheet not found or error reading it:', err.message);
     return {};
   }
 }
@@ -87,6 +99,10 @@ function initializePersonalTemplates() {
 function getPersonalTemplates() {
   try {
     const cache = CacheService.getDocumentCache();
+    if (!cache) {
+      console.error('CacheService.getDocumentCache() returned null or undefined');
+      return {};
+    }
     const templates = cache.get('PersonalTemplates');
     if (templates) {
       console.log('Personal templates from cache:', templates);

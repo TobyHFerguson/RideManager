@@ -47,7 +47,7 @@ A new optional sheet allows ride schedulers to use their own announcement templa
 - `Active` column must be `TRUE` for template to be used
 - Email matching is case-insensitive
 - System checks personal templates first, falls back to master template if:
-  - Personal Templates sheet doesn't exist
+  - Personal Templates sheet doesn't exist or doesn't have correct permissions
   - User has no entry in sheet
   - User's entry has `Active = FALSE`
   - Template URL is invalid
@@ -104,19 +104,33 @@ The announcement system supports rich content:
 - Tables are converted to HTML tables
 - Horizontal rules become `<hr>` tags
 
-## Automated Trigger
+## Automated Triggers
 
-A time-based trigger is automatically installed to check for pending announcements.
+The system uses a **"Backstop + Scheduled"** pattern for reliable, precise announcement delivery:
 
-**Trigger Name:** `processAnnouncementQueue`  
-**Schedule:** Every 1 hour  
-**Function:** Checks for announcements due to send and sends 24-hour reminders
+### Backstop Trigger
+**Function:** `dailyAnnouncementCheck`  
+**Schedule:** Daily at 2:00 AM  
+**Purpose:** Safety net that catches any missed announcements
 
-**Automatic Installation:**
-- Trigger is automatically created when the **first announcement is created**
-- No manual setup required - just create an announcement via the menu
-- Only one trigger exists per spreadsheet (managed via Script Properties)
-- Trigger ID is stored in Script Properties with key `announcementTriggerId`
+### Scheduled Triggers
+**Function:** `announcementTrigger`  
+**Schedule:** Dynamically created at exact send time (e.g., 6:00 PM)  
+**Purpose:** Precise delivery at scheduled time
+
+**Installation (Owner-Only):**
+- Triggers must be installed by the **spreadsheet owner**
+- Use menu: **Ride Schedulers → Install Triggers**
+- Installs 4 core triggers (onOpen, onEdit, 2 daily backstops)
+- Scheduled triggers created automatically when announcements are pending
+- Trigger coordination via Document Properties (shared across users)
+- All operations logged to "User Activity Log" sheet
+
+**Architecture Benefits:**
+- **Reliability:** Daily backstop ensures no announcements are lost
+- **Precision:** Scheduled triggers fire at exact time
+- **Self-healing:** Backstop recovers from missed scheduled triggers
+- **Owner-controlled:** Single source of trigger management
 
 **How It Works:**
 1. Ride scheduler creates first announcement (Extensions → RLC Functions → Create Announcement)

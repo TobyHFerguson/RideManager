@@ -1,8 +1,25 @@
+// @ts-check
+/// <reference path="./gas-globals.d.ts" />
+
 /**
  * EXAMPLE: How to use the new ScheduleAdapter + Row architecture
  * 
  * This demonstrates the new pattern that separates GAS from pure JavaScript
  */
+
+// Example-only declarations for type checking
+/** @type {any} */
+// @ts-ignore - console is available in GAS runtime
+var console;
+
+/**
+ * Example function (implementation not shown)
+ * @param {InstanceType<typeof Row>} row
+ * @returns {string}
+ */
+function createCalendarEvent(row) {
+    return 'example-event-id';
+}
 
 // =============================================================================
 // EXAMPLE 1: Loading and processing selected rows
@@ -41,27 +58,28 @@ function processSelectedRides() {
 // EXAMPLE 2: Loading younger rows (like the current getYoungerRows)
 // =============================================================================
 
-function processUpcomingRides() {
-    const adapter = new ScheduleAdapter();
+// loadYoungerRows is deprecated - use processSelectedRides instead
+// function processUpcomingRides() {
+//     const adapter = new ScheduleAdapter();
     
-    // Load rows after yesterday
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+//     // Load rows after yesterday
+//     const yesterday = new Date();
+//     yesterday.setDate(yesterday.getDate() - 1);
     
-    const upcomingRows = adapter.loadYoungerRows(yesterday);
+//     const upcomingRows = adapter.loadYoungerRows(yesterday);
     
-    // Process rows
-    upcomingRows.forEach(row => {
-        if (row.isPlanned() && !row.isScheduled()) {
-            // Create ride on RWGPS
-            const rideId = createRWGPSRide(row);
-            row.setRideLink(row.RouteName, `https://ridewithgps.com/rides/${rideId}`);
-        }
-    });
+//     // Process rows
+//     upcomingRows.forEach(row => {
+//         if (row.isPlanned() && !row.isScheduled()) {
+//             // Create ride on RWGPS
+//             const rideId = createRWGPSRide(row);
+//             row.setRideLink(row.RouteName, `https://ridewithgps.com/rides/${rideId}`);
+//         }
+//     });
     
-    // Save changes
-    adapter.save();
-}
+//     // Save changes
+//     adapter.save();
+// }
 
 // =============================================================================
 // EXAMPLE 3: Working with a single row

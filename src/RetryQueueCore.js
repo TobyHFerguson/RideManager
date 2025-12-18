@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * RetryQueueCore - Pure JavaScript retry logic with no GAS dependencies
  * 
