@@ -60,7 +60,6 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `Globals.js` - Global configuration
   - `Commands.js` - Business logic commands
   - `rowCheck.js` - Validation logic
-  - `ActionSelector.js` - DTRT (Do The Right Thing) logic for automatic scheduling
   - `RouteColumnEditor.js` - Route URL/formula parsing and manipulation
   - `RetryQueueCore.js` - Retry logic (exponential backoff, queue management)
   - `RetryQueueMarshallingCore.js` - Queue data marshalling (items ↔ 2D arrays)
