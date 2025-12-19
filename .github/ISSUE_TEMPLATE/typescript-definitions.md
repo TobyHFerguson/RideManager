@@ -36,7 +36,6 @@ During RetryQueue testing, we encountered **14+ runtime errors** caused by API m
 - ❌ ProcessingManager.js
 - ❌ rowCheck.js
 - ❌ HyperlinkUtils.js
-- ❌ ActionSelector.js
 - ❌ RouteColumnEditor.js
 - ❌ UserLogger.js
 - ❌ And many more...
@@ -94,8 +93,7 @@ Create `.d.ts` files for modules with complex APIs or frequent usage:
 6. **ProcessingManager.d.ts**
 7. **rowCheck.d.ts** - Validation functions
 8. **HyperlinkUtils.d.ts**
-9. **ActionSelector.d.ts**
-10. **RouteColumnEditor.d.ts**
+9.  **RouteColumnEditor.d.ts**
 
 ### Phase 3: Supporting Modules (Priority: LOW)
 11. **UserLogger.d.ts**

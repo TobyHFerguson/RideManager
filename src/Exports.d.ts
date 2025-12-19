@@ -12,7 +12,6 @@ import Commands from './Commands';
 import ScheduleAdapter from './ScheduleAdapter';
 import Row from './Row';
 import RouteColumnEditor from './RouteColumnEditor';
-import ActionSelector from './ActionSelector';
 import HyperlinkUtils from './HyperlinkUtils';
 import UIManager from './UIManager';
 import RideManager from './RideManager';
@@ -40,7 +39,6 @@ import * as dates from './common/dates';
  * ```javascript
  * const command = Exports.Commands.scheduleSelectedRidesWithCredentials;
  * const adapter = new Exports.ScheduleAdapter();
- * const result = Exports.ActionSelector.determineNextAction(state, true);
  * ```
  */
 interface ExportsNamespace {
@@ -54,8 +52,6 @@ interface ExportsNamespace {
     readonly Row: typeof Row;
     /** RouteColumnEditor module */
     readonly RouteColumnEditor: typeof RouteColumnEditor;
-    /** ActionSelector module */
-    readonly ActionSelector: typeof ActionSelector;
     /** HyperlinkUtils module */
     readonly HyperlinkUtils: typeof HyperlinkUtils;
     /** UIManager module */

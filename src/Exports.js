@@ -29,9 +29,6 @@ var Exports = {
     get RouteColumnEditor() {
         return RouteColumnEditor;
     },
-    get ActionSelector() {
-        return ActionSelector;
-    },
     get HyperlinkUtils() {
         return HyperlinkUtils;
     },

@@ -12,7 +12,6 @@
 import type ScheduleAdapterClass from './ScheduleAdapter';
 import type { MenuFunctions as MenuFunctionsType } from './MenuFunctions';
 import type RouteColumnEditorClass from './RouteColumnEditor';
-import type ActionSelectorClass from './ActionSelector';
 import type AnnouncementManagerClass from './AnnouncementManager';
 import type RetryQueueClass from './RetryQueue';
 import type TriggerManagerClass from './TriggerManager';
@@ -37,7 +36,6 @@ declare global {
     // Classes - use 'typeof' to get the constructor type (can use 'new')
     const ScheduleAdapter: typeof ScheduleAdapterClass;
     const RouteColumnEditor: typeof RouteColumnEditorClass;
-    const ActionSelector: typeof ActionSelectorClass;
     const AnnouncementManager: typeof AnnouncementManagerClass;
     const RetryQueue: typeof RetryQueueClass;
     const TriggerManager: typeof TriggerManagerClass;

@@ -3,6 +3,7 @@
 
 // @ts-check
 
+
 const _DTRT_KEY = 'DTRT_ENABLED_FOR_'
 function onOpen() {
   createMenu_();
@@ -34,37 +35,9 @@ function createMenu_() {
     .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
     .addSeparator()
     .addItem('Install Triggers', installTriggers_.name)
-    .addItem(getDTRTMenuText_(), toggleDTRT_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addToUi();
 }
-
-function getDTRTMenuText_() {
-  return (dtrtIsEnabled_() ? "Disable" : "Enable") + " DTRT";
-}
-
-function dtrtIsEnabled_() {
-  const userEmail = Session.getActiveUser().getEmail();
-  const props = PropertiesService.getScriptProperties();
-  const currentStatus = props.getProperty(_DTRT_KEY + userEmail);
-  return currentStatus === 'true';
-}
-
-function toggleDTRT_() {
-  const userEmail = Session.getActiveUser().getEmail();
-  if (!userEmail) {
-    alert_("Authorization required to identify user.");
-    return;
-  }
-
-  const newStatus = dtrtIsEnabled_() ? 'false' : 'true';
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty(_DTRT_KEY + userEmail, newStatus);
-  alert_('DTRT setting has been ' + (dtrtIsEnabled_() ? 'enabled' : 'disabled'));
-  createMenu_();
-}
-
-
 
 /**
  * Shows the application version in an alert box.
@@ -108,7 +81,6 @@ function updateSelectedRides_() {
 function editEventReport_(event) {
   const activeUser = Session.getActiveUser();
   const userEmail = activeUser ? activeUser.getEmail() : 'Unknown User';
-  console.log(`User ${userEmail} edited the spreadsheet. DTRT is ${dtrtIsEnabled_() ? 'enabled' : 'disabled'}`);
   console.log(`editHandler called with event: ${JSON.stringify(event)}`);
   console.log(`event.oldValue: ${event.oldValue}`);
   console.log(`event.value: ${event.value}`);
@@ -203,7 +175,6 @@ function handleCRSheetEdit_(event, adapter) {
         return;
       }
     }
-    return next_(adapter)
   } catch (e) {
     const error = e instanceof Error ? e : new Error(String(e));
     alert_(error.message)
@@ -215,6 +186,7 @@ function handleCRSheetEdit_(event, adapter) {
  * Edit the route column - handles GAS interactions and delegates logic to RouteColumnEditor
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
  * @param {*} adapter - ScheduleAdapter instance
+ * @param {boolean} scheduled - Whether the ride is currently scheduled
  */
 function editRouteColumn_(event, adapter, scheduled) {
   // Get raw input from various possible sources
@@ -282,49 +254,7 @@ function alert_(message) {
   SpreadsheetApp.getUi().alert(message);
 }
 
-/**
- * Take the next action based on the current state.
- * 
- * Uses ActionSelector to determine action, then executes via MenuFunctions.
- * Only active if DTRT system is enabled.
- * 
- * @param {*} adapter - ScheduleAdapter instance
- * @returns undefined
- */
-function next_(adapter) {
-  const dtrtEnabled = dtrtIsEnabled_();
 
-  if (!dtrtEnabled) {
-    return;
-  }
-
-  const row = adapter.loadSelected()[0];
-
-  // Determine what action to take (pure logic)
-  const { action, message } = ActionSelector.determineNextAction({
-    isScheduled: row.isScheduled(),
-    isPlanned: row.isPlanned()
-  }, dtrtEnabled);
-
-  // Execute the action (GAS operations)
-  const force = true;
-  switch (action) {
-    case 'update':
-      MenuFunctions.updateSelectedRides(force);
-      if (message) alert_(message);
-      break;
-
-    case 'schedule':
-      MenuFunctions.scheduleSelectedRides(force);
-      if (message) alert_(message);
-      break;
-
-    case 'none':
-    default:
-      // No action needed
-      break;
-  }
-}
 
 function viewRetryQueueStatus_() {
   MenuFunctions.viewRetryQueueStatus();
