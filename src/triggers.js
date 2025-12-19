@@ -195,7 +195,7 @@ function handleCRSheetEdit_(event, adapter) {
     }
     if (adapter.isColumn(getGlobals().ROUTECOLUMNNAME, colNum)) {
       try {
-        editRouteColumn_(event, adapter);
+        editRouteColumn_(event, adapter, row.isScheduled());
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e));
         alert_(`Error: ${error.message} - the route cell will be reverted to its previous value.`);
@@ -216,7 +216,7 @@ function handleCRSheetEdit_(event, adapter) {
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
  * @param {*} adapter - ScheduleAdapter instance
  */
-function editRouteColumn_(event, adapter) {
+function editRouteColumn_(event, adapter, scheduled) {
   // Get raw input from various possible sources
   const inputValue = event.value ||
     event.range.getRichTextValue()?.getLinkUrl() ||
@@ -228,10 +228,14 @@ function editRouteColumn_(event, adapter) {
 
   // Handle empty/cleared route
   if (!url) {
-    event.range.setValue('');
-    SpreadsheetApp.flush();
-    adapter.storeRouteFormulas();
-    return;
+    if (scheduled) {
+      throw new Error('When there\'s a ride the route URL cannot be empty.');
+    } else {
+      event.range.setValue('');
+      SpreadsheetApp.flush();
+      adapter.storeRouteFormulas();
+      return;
+    }
   }
 
   // Fetch route data from RWGPS (GAS operation), skipping the local cache
