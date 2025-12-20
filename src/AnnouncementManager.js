@@ -86,7 +86,7 @@ var AnnouncementManager = (function () {
                     // @ts-expect-error - _data is private but needed for complete template data
                     ...row._data
                 };
-
+                row.SendAt = sendDate;
                 row.Status = 'pending';
                 row.Attempts = 0;
                 row.LastError = '';
