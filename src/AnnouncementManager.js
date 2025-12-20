@@ -533,13 +533,12 @@ var AnnouncementManager = (function () {
 
         /**
          * Update announcement when ride is updated
-         * Handles document renaming, sendAt updates, and user prompts
+         * Automatically updates document name and sendAt based on new ride data
          * 
          * @param {InstanceType<typeof Row>} row - Row object with updated ride data
-         * @param {Date} oldRideDate - Original ride date (before update)
-         * @returns {{success: boolean, userCancelled?: boolean, error?: string}} Result object
+         * @returns {{success: boolean, error?: string}} Result object
          */
-        updateAnnouncement(row, oldRideDate) {
+        updateAnnouncement(row) {
             try {
                 // Check if row has announcement
                 if (!row.Announcement || !row.Status) {
@@ -561,12 +560,7 @@ var AnnouncementManager = (function () {
                 // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
                 const updates = AnnouncementCore.calculateAnnouncementUpdates(
                     {
-                        documentName: currentDocName,
-                        sendAt: row.SendAt,
-                        status: row.Status
-                    },
-                    {
-                        rideDate: oldRideDate
+                        documentName: currentDocName
                     },
                     {
                         rideName: row.RideName,
@@ -577,27 +571,13 @@ var AnnouncementManager = (function () {
 
                 console.log(`AnnouncementManager.updateAnnouncement: Updates needed for row ${row.rowNum}:`, {
                     needsDocumentRename: updates.needsDocumentRename,
-                    needsSendAtUpdate: updates.needsSendAtUpdate,
-                    shouldPromptUser: updates.shouldPromptUser
+                    needsSendAtUpdate: updates.needsSendAtUpdate
                 });
 
-                // Handle sendAt update with user prompt if needed
-                if (updates.shouldPromptUser) {
-                    const userDecision = this._promptUserForSendAtUpdate(row, updates);
-                    
-                    if (userDecision === 'cancel') {
-                        console.log(`AnnouncementManager.updateAnnouncement: User cancelled update for row ${row.rowNum}`);
-                        return { success: false, userCancelled: true };
-                    } else if (userDecision === 'update') {
-                        // User chose to update to new time
-                        row.SendAt = updates.calculatedSendAt;
-                        console.log(`AnnouncementManager.updateAnnouncement: Updated sendAt to ${updates.calculatedSendAt} for row ${row.rowNum}`);
-                    }
-                    // If 'keep', don't change sendAt
-                } else if (updates.needsSendAtUpdate) {
-                    // Auto-update sendAt (not modified by user)
+                // Always update sendAt to calculated time
+                if (updates.needsSendAtUpdate && updates.calculatedSendAt) {
                     row.SendAt = updates.calculatedSendAt;
-                    console.log(`AnnouncementManager.updateAnnouncement: Auto-updated sendAt to ${updates.calculatedSendAt} for row ${row.rowNum}`);
+                    console.log(`AnnouncementManager.updateAnnouncement: Updated sendAt to ${updates.calculatedSendAt} for row ${row.rowNum}`);
                 }
 
                 // Rename document if needed
@@ -1284,54 +1264,6 @@ var AnnouncementManager = (function () {
             } catch (error) {
                 console.error('AnnouncementManager._scheduleNextAnnouncement error:', error);
                 // Don't throw - trigger scheduling failures shouldn't break announcement creation
-            }
-        }
-
-        /**
-         * Prompt user for sendAt update decision
-         * Shows dialog with current vs calculated send time
-         * @private
-         * @param {InstanceType<typeof Row>} row - Row instance
-         * @param {Object} updates - Update decision object from calculateAnnouncementUpdates
-         * @returns {string} User decision: 'keep', 'update', or 'cancel'
-         */
-        _promptUserForSendAtUpdate(row, updates) {
-            const timezone = Session.getScriptTimeZone();
-            const currentSendAtStr = updates.currentSendAt.toLocaleString('en-US', {
-                timeZone: timezone,
-                dateStyle: 'full',
-                timeStyle: 'short'
-            });
-            const calculatedSendAtStr = updates.calculatedSendAt.toLocaleString('en-US', {
-                timeZone: timezone,
-                dateStyle: 'full',
-                timeStyle: 'short'
-            });
-
-            const message = `The ride date has changed for:\n\n` +
-                `"${row.RideName}"\n\n` +
-                `You previously customized the announcement send time.\n\n` +
-                `Current send time: ${currentSendAtStr}\n` +
-                `New calculated send time: ${calculatedSendAtStr}\n\n` +
-                `What would you like to do?`;
-
-            const ui = SpreadsheetApp.getUi();
-            const response = ui.alert(
-                'Announcement Send Time Update',
-                message,
-                ui.ButtonSet.YES_NO_CANCEL
-            );
-
-            // Map button responses to decisions
-            // YES = Update to new time
-            // NO = Keep my custom time
-            // CANCEL = Cancel entire update
-            if (response === ui.Button.YES) {
-                return 'update';
-            } else if (response === ui.Button.NO) {
-                return 'keep';
-            } else {
-                return 'cancel';
             }
         }
 

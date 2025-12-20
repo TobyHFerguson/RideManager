@@ -286,7 +286,7 @@ describe('AnnouncementCore', () => {
     describe('enrichRowData', () => {
         it('should create DateTime, Date, Day, Time from Date field', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'), // Saturday 10:00 AM Pacific (18:00 UTC)
+                Date: new Date('2024-12-07T18:00:00'), // Saturday 6:00 AM Pacific 
                 RideURL: 'https://ridewithgps.com/events/123',
                 RideName: 'Great Ride',
                 RideLeader: 'John Doe'
@@ -294,10 +294,10 @@ describe('AnnouncementCore', () => {
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
 
-            expect(enriched.DateTime).toBe('Saturday, December 7, 2024 at 10:00 AM');
+            expect(enriched.DateTime).toBe('Saturday, December 7, 2024 at 6:00 PM');
             expect(enriched.Date).toBe('December 7, 2024');
             expect(enriched.Day).toBe('Saturday');
-            expect(enriched.Time).toBe('10:00 AM');
+            expect(enriched.Time).toBe('6:00 PM');
             expect(enriched.RideLink).toBe('<a href="https://ridewithgps.com/events/123">Great Ride</a>');
             expect(enriched.RideLeader).toBe('John Doe');
         });
@@ -514,7 +514,7 @@ describe('AnnouncementCore', () => {
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Ride: <a href="https://ridewithgps.com/events/123">Saturday Ride</a> on Saturday, December 7, 2024 at 10:00 AM at Seascape Park');
+            expect(result.expandedText).toBe('Ride: <a href="https://ridewithgps.com/events/123">Saturday Ride</a> on Saturday, December 7, 2024 at 6:00 PM at Seascape Park');
             expect(result.missingFields).toHaveLength(0);
         });
 
@@ -526,7 +526,7 @@ describe('AnnouncementCore', () => {
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Saturday, December 7, 2024 at 10:00 AM');
+            expect(result.expandedText).toBe('Saturday, December 7, 2024 at 6:00 PM');
             expect(result.missingFields).toHaveLength(0);
         });
 
@@ -717,85 +717,6 @@ describe('AnnouncementCore', () => {
         });
     });
 
-    describe('isSendAtModifiedByUser', () => {
-        it('should return false when sendAt matches calculated time', () => {
-            // Use local time (no Z) to match calculateSendTime behavior
-            const rideDate = new Date('2025-12-07T10:00:00'); // Sunday ride
-            const calculatedSendAt = AnnouncementCore.calculateSendTime(rideDate); // Friday 6 PM
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(calculatedSendAt, rideDate, 'pending');
-            
-            expect(result).toBe(false);
-        });
-
-        it('should return true when sendAt differs from calculated time', () => {
-            const rideDate = new Date('2025-12-07T10:00:00'); // Sunday
-            const sendAt = new Date('2025-12-05T20:00:00'); // Friday 8 PM (user modified)
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
-            
-            expect(result).toBe(true);
-        });
-
-        it('should return false for sent announcements even if time differs', () => {
-            const rideDate = new Date('2025-12-07T10:00:00');
-            const sendAt = new Date('2025-12-05T20:00:00'); // Different time
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'sent');
-            
-            expect(result).toBe(false);
-        });
-
-        it('should return false for failed announcements even if time differs', () => {
-            const rideDate = new Date('2025-12-07T10:00:00');
-            const sendAt = new Date('2025-12-05T20:00:00'); // Different time
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'failed');
-            
-            expect(result).toBe(false);
-        });
-
-        it('should return false for abandoned announcements even if time differs', () => {
-            const rideDate = new Date('2025-12-07T10:00:00');
-            const sendAt = new Date('2025-12-05T20:00:00'); // Different time
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'abandoned');
-            
-            expect(result).toBe(false);
-        });
-
-        it('should handle string date inputs', () => {
-            const rideDate = '2025-12-07T10:00:00';
-            const sendAt = '2025-12-05T20:00:00';
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
-            
-            expect(result).toBe(true);
-        });
-
-        it('should tolerate small differences (within 1 minute)', () => {
-            const rideDate = new Date('2025-12-07T10:00:00');
-            const calculatedSendAt = AnnouncementCore.calculateSendTime(rideDate);
-            // Create a time 30 seconds after calculated
-            const sendAt = new Date(calculatedSendAt.getTime() + 30 * 1000);
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
-            
-            expect(result).toBe(false);
-        });
-
-        it('should detect differences beyond 1 minute', () => {
-            const rideDate = new Date('2025-12-07T10:00:00');
-            const calculatedSendAt = AnnouncementCore.calculateSendTime(rideDate);
-            // Create a time 2 minutes after calculated
-            const sendAt = new Date(calculatedSendAt.getTime() + 2 * 60 * 1000);
-            
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
-            
-            expect(result).toBe(true);
-        });
-    });
-
     describe('calculateAnnouncementDocName', () => {
         it('should format document name with RA- prefix', () => {
             const result = AnnouncementCore.calculateAnnouncementDocName('Sat A (12/7 10:00) [3] Route Name');
@@ -817,187 +738,81 @@ describe('AnnouncementCore', () => {
     });
 
     describe('calculateAnnouncementUpdates', () => {
-        it('should detect no updates needed when nothing changed', () => {
+        it('should always update sendAt and detect document rename when name unchanged', () => {
             const currentAnnouncement = {
-                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00'),
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00')
+                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name'
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
                 rideDate: new Date('2025-12-07T18:00:00')
             };
 
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
 
             expect(updates.needsDocumentRename).toBe(false);
             expect(updates.newDocumentName).toBeNull();
-            expect(updates.needsSendAtUpdate).toBe(false);
-            expect(updates.shouldPromptUser).toBe(false);
-            expect(updates.sendAtWasModified).toBe(false);
+            expect(updates.needsSendAtUpdate).toBe(true);
+            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-05T18:00:00')); // Friday 6 PM, 2 days before
         });
 
         it('should detect document rename needed when ride name changes', () => {
             const currentAnnouncement = {
-                documentName: 'RA-Old Ride Name',
-                sendAt: new Date('2025-12-05T18:00:00'),
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00')
+                documentName: 'RA-Old Ride Name'
             };
             const newRideData = {
                 rideName: 'New Ride Name',
                 rideDate: new Date('2025-12-07T18:00:00')
             };
 
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
 
             expect(updates.needsDocumentRename).toBe(true);
             expect(updates.newDocumentName).toBe('RA-New Ride Name');
+            expect(updates.needsSendAtUpdate).toBe(true);
         });
 
-        it('should detect sendAt update needed when ride date changes', () => {
+        it('should calculate sendAt correctly when ride date changes', () => {
             const currentAnnouncement = {
-                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00'), // Friday 6 PM
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00') // Old Sunday
+                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name'
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00') // Next Sunday (new date)
+                rideDate: new Date('2025-12-14T18:00:00Z') // Next Sunday
             };
 
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
 
             expect(updates.needsSendAtUpdate).toBe(true);
             expect(updates.calculatedSendAt).toEqual(new Date('2025-12-12T18:00:00')); // Friday before new date
         });
 
-        it('should prompt user when sendAt was modified and needs update', () => {
-            const currentAnnouncement = {
-                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T20:00:00'), // 8 PM (user modified from 6 PM)
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00') // Original date
-            };
-            const newRideData = {
-                rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00') // New date
-            };
-
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
-
-            expect(updates.sendAtWasModified).toBe(true);
-            expect(updates.needsSendAtUpdate).toBe(true);
-            expect(updates.shouldPromptUser).toBe(true);
-        });
-
-        it('should not prompt user when sendAt was not modified', () => {
-            const currentAnnouncement = {
-                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00'), // 6 PM (calculated, not modified)
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00') // Original date
-            };
-            const newRideData = {
-                rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00') // New date
-            };
-
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
-
-            expect(updates.sendAtWasModified).toBe(false);
-            expect(updates.needsSendAtUpdate).toBe(true);
-            expect(updates.shouldPromptUser).toBe(false);
-        });
 
         it('should handle both name and date changes', () => {
             const currentAnnouncement = {
-                documentName: 'RA-Old Ride Name',
-                sendAt: new Date('2025-12-05T18:00:00'),
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00')
+                documentName: 'RA-Old Ride Name'
             };
             const newRideData = {
                 rideName: 'New Ride Name',
                 rideDate: new Date('2025-12-14T18:00:00')
             };
 
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
 
             expect(updates.needsDocumentRename).toBe(true);
             expect(updates.newDocumentName).toBe('RA-New Ride Name');
             expect(updates.needsSendAtUpdate).toBe(true);
         });
 
-        it('should not prompt for sent announcements even if modified', () => {
-            const currentAnnouncement = {
-                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T20:00:00'), // Modified time
-                status: 'sent'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00')
-            };
-            const newRideData = {
-                rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00')
-            };
-
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
-
-            expect(updates.sendAtWasModified).toBe(false); // Sent announcements not considered modified
-            expect(updates.shouldPromptUser).toBe(false);
-        });
-
-        it('should store current and calculated sendAt for comparison', () => {
-            const currentAnnouncement = {
-                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00'),
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00')
-            };
-            const newRideData = {
-                rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00')
-            };
-
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
-
-            expect(updates.currentSendAt).toEqual(new Date('2025-12-05T18:00:00'));
-            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-12T18:00:00'));
-        });
-
         it('should handle edge case of ride date moved earlier', () => {
             const currentAnnouncement = {
-                documentName: 'RA-Sat A (12/14 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-12T18:00:00'), // Friday before 12/14
-                status: 'pending'
-            };
-            const oldRideData = {
-                rideDate: new Date('2025-12-14T18:00:00') // Original date
+                documentName: 'RA-Sat A (12/14 10:00) [3] Route Name'
             };
             const newRideData = {
                 rideName: 'Sat A (12/14 10:00) [3] Route Name',
                 rideDate: new Date('2025-12-07T18:00:00') // Moved earlier to 12/7
             };
 
-            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
 
             expect(updates.needsSendAtUpdate).toBe(true);
             expect(updates.calculatedSendAt).toEqual(new Date('2025-12-05T18:00:00')); // Friday before 12/7

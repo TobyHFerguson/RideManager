@@ -111,13 +111,12 @@ declare class AnnouncementManager {
 
     /**
      * Update announcement when ride is updated
-     * Handles document renaming, sendAt updates, and user prompts
+     * Automatically updates document name and sendAt based on new ride data
      * 
      * @param row - Row object with updated ride data
-     * @param oldRideDate - Original ride date (before update)
-     * @returns Result with success flag, userCancelled flag, and optional error
+     * @returns Result with success flag and optional error
      */
-    updateAnnouncement(row: RowData, oldRideDate: Date): {success: boolean, userCancelled?: boolean, error?: string};
+    updateAnnouncement(row: RowData): {success: boolean, error?: string};
 
     /**
      * Remove announcements by ride URLs
