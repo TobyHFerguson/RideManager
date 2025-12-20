@@ -273,6 +273,21 @@ const RideManager = (function () {
                 row.GoogleEventId = null; // Clear old event ID since we're creating in new calendar
             }
         }
+
+        // Update announcement (will create one if it doesn't exist)
+        try {
+            const manager = new AnnouncementManager();
+            const result = manager.updateAnnouncement(row);
+            
+            if (!result.success && result.error) {
+                console.error(`RideManager.updateRow_: Error updating announcement for row ${row.rowNum}: ${result.error}`);
+                // Don't throw - announcement update failure shouldn't block ride update
+            }
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error(`RideManager.updateRow_: Error updating announcement for row ${row.rowNum}: ${err.message}`);
+            // Errors don't block ride update
+        }
     }
 
     /**
