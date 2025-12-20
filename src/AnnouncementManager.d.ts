@@ -112,6 +112,7 @@ declare class AnnouncementManager {
     /**
      * Update announcement when ride is updated
      * Automatically updates document name and sendAt based on new ride data
+     * If no announcement exists, creates one
      * 
      * @param row - Row object with updated ride data
      * @returns Result with success flag and optional error
