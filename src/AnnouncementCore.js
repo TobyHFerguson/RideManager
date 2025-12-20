@@ -362,6 +362,113 @@ var AnnouncementCore = (function() {
         return { subject: null, body: template };
     }
 
+    /**
+     * Check if sendAt time was modified by user
+     * A sendAt is considered "modified" if:
+     * - It differs from the calculated send time (6 PM, 2 days before ride)
+     * - AND the announcement status is 'pending' (not sent/failed/abandoned)
+     * 
+     * @param {Date|string} currentSendAt - Current scheduled send time
+     * @param {Date|string} rideDate - The date/time of the ride
+     * @param {string} status - Announcement status ('pending', 'sent', 'failed', 'abandoned')
+     * @param {string} [timezone='America/Los_Angeles'] - Timezone for calculation
+     * @returns {boolean} True if sendAt was modified by user
+     */
+    function isSendAtModifiedByUser(currentSendAt, rideDate, status, timezone = 'America/Los_Angeles') {
+        // Only pending announcements can be considered "modified by user"
+        // Sent/failed/abandoned announcements should not prompt user
+        if (status !== 'pending') {
+            return false;
+        }
+
+        const current = new Date(currentSendAt);
+        const calculated = calculateSendTime(rideDate, timezone);
+        
+        // Compare timestamps (allow 1 minute tolerance for rounding)
+        const diffMs = Math.abs(current.getTime() - calculated.getTime());
+        const oneMinute = 60 * 1000;
+        
+        return diffMs > oneMinute;
+    }
+
+    /**
+     * Calculate new announcement document name based on ride name
+     * Format: "RA-{RideName}"
+     * 
+     * @param {string} rideName - New ride name
+     * @returns {string} New document name
+     */
+    function calculateAnnouncementDocName(rideName) {
+        return `RA-${rideName}`;
+    }
+
+    /**
+     * Determine what updates are needed for an announcement when ride is updated
+     * Returns an object describing what needs to be updated
+     * 
+     * @param {Object} currentAnnouncement - Current announcement data
+     * @param {string} currentAnnouncement.documentName - Current document name
+     * @param {Date|string} currentAnnouncement.sendAt - Current sendAt time
+     * @param {string} currentAnnouncement.status - Current status
+     * @param {Object} oldRideData - Old ride data (before update)
+     * @param {Date|string} oldRideData.rideDate - Old ride date
+     * @param {Object} newRideData - New ride data
+     * @param {string} newRideData.rideName - New ride name
+     * @param {Date|string} newRideData.rideDate - New ride date
+     * @param {string} [timezone='America/Los_Angeles'] - Timezone for calculation
+     * @returns {Object} Update decision object
+     */
+    function calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData, timezone = 'America/Los_Angeles') {
+        const updates = {
+            needsDocumentRename: false,
+            newDocumentName: null,
+            needsSendAtUpdate: false,
+            sendAtWasModified: false,
+            currentSendAt: null,
+            calculatedSendAt: null,
+            shouldPromptUser: false
+        };
+
+        // Check if document name needs update
+        const newDocName = calculateAnnouncementDocName(newRideData.rideName);
+        if (currentAnnouncement.documentName !== newDocName) {
+            updates.needsDocumentRename = true;
+            updates.newDocumentName = newDocName;
+        }
+
+        // Check if sendAt needs update
+        const calculatedSendAt = calculateSendTime(newRideData.rideDate, timezone);
+        const currentSendAt = new Date(currentAnnouncement.sendAt);
+        
+        // Store both for comparison/prompting
+        updates.currentSendAt = currentSendAt;
+        updates.calculatedSendAt = calculatedSendAt;
+        
+        // Check if sendAt was modified by user BASED ON OLD RIDE DATE
+        // This tells us if the user customized the time from the original calculated value
+        updates.sendAtWasModified = isSendAtModifiedByUser(
+            currentAnnouncement.sendAt,
+            oldRideData.rideDate,
+            currentAnnouncement.status,
+            timezone
+        );
+
+        // Determine if sendAt needs updating (compare with NEW calculated time)
+        const sendAtDiffMs = Math.abs(currentSendAt.getTime() - calculatedSendAt.getTime());
+        const oneMinute = 60 * 1000;
+        
+        if (sendAtDiffMs > oneMinute) {
+            updates.needsSendAtUpdate = true;
+            
+            // If sendAt was modified by user, prompt them
+            if (updates.sendAtWasModified) {
+                updates.shouldPromptUser = true;
+            }
+        }
+
+        return updates;
+    }
+
     // Public API
     return {
         calculateSendTime,
@@ -372,7 +479,10 @@ var AnnouncementCore = (function() {
         getStatistics,
         enrichRowData,
         expandTemplate,
-        extractSubject
+        extractSubject,
+        isSendAtModifiedByUser,
+        calculateAnnouncementDocName,
+        calculateAnnouncementUpdates
     };
 })();
 

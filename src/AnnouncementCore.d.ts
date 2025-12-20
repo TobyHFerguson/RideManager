@@ -195,6 +195,63 @@ declare namespace AnnouncementCore {
      * @returns Subject and body (body is template with subject removed)
      */
     function extractSubject(template: string): EmailContent;
+
+    /**
+     * Check if sendAt time was modified by user
+     * A sendAt is considered "modified" if:
+     * - It differs from the calculated send time (6 PM, 2 days before ride)
+     * - AND the announcement status is 'pending' (not sent/failed/abandoned)
+     * 
+     * @param currentSendAt - Current scheduled send time
+     * @param rideDate - The date/time of the ride
+     * @param status - Announcement status ('pending', 'sent', 'failed', 'abandoned')
+     * @param timezone - IANA timezone identifier (e.g., 'America/Los_Angeles')
+     * @returns True if sendAt was modified by user
+     */
+    function isSendAtModifiedByUser(currentSendAt: Date | string, rideDate: Date | string, status: string, timezone?: string): boolean;
+
+    /**
+     * Calculate new announcement document name based on ride name
+     * Format: "RA-{RideName}"
+     * 
+     * @param rideName - New ride name
+     * @returns New document name
+     */
+    function calculateAnnouncementDocName(rideName: string): string;
+
+    /**
+     * Determine what updates are needed for an announcement when ride is updated
+     * Returns an object describing what needs to be updated
+     * 
+     * @param currentAnnouncement - Current announcement data
+     * @param oldRideData - Old ride data (before update)
+     * @param newRideData - New ride data
+     * @param timezone - IANA timezone identifier (e.g., 'America/Los_Angeles')
+     * @returns Update decision object
+     */
+    function calculateAnnouncementUpdates(
+        currentAnnouncement: {
+            documentName: string;
+            sendAt: Date | string;
+            status: string;
+        },
+        oldRideData: {
+            rideDate: Date | string;
+        },
+        newRideData: {
+            rideName: string;
+            rideDate: Date | string;
+        },
+        timezone?: string
+    ): {
+        needsDocumentRename: boolean;
+        newDocumentName: string | null;
+        needsSendAtUpdate: boolean;
+        sendAtWasModified: boolean;
+        currentSendAt: Date | null;
+        calculatedSendAt: Date | null;
+        shouldPromptUser: boolean;
+    };
 }
 
 export default AnnouncementCore;
