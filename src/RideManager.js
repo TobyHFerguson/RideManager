@@ -220,14 +220,6 @@ const RideManager = (function () {
     function updateRow_(row, rwgps) {
         const names = getGroupNames();
 
-        // Store old ride date for announcement update (calculate from current SendAt if available)
-        let oldRideDate = null;
-        if (row.Announcement && row.SendAt) {
-            // SendAt is 2 days before ride at 6 PM, so add 2 days to get original ride date
-            oldRideDate = new Date(row.SendAt);
-            oldRideDate.setDate(oldRideDate.getDate() + 2);
-        }
-
         let rideEvent
         const originalGroup = SCCCCEvent.getGroupName(row.RideName, names);
         if (!SCCCCEvent.managedEventName(row.RideName, names)) {
@@ -283,15 +275,10 @@ const RideManager = (function () {
         }
 
         // Update announcement if present
-        if (row.Announcement && row.Status && oldRideDate) {
+        if (row.Announcement && row.Status) {
             try {
                 const manager = new AnnouncementManager();
-                const result = manager.updateAnnouncement(row, oldRideDate);
-                
-                if (result.userCancelled) {
-                    // User cancelled the update - we need to abort
-                    throw new Error(`User cancelled ride update for row ${row.rowNum} due to announcement send time prompt`);
-                }
+                const result = manager.updateAnnouncement(row);
                 
                 if (!result.success && result.error) {
                     console.error(`RideManager.updateRow_: Error updating announcement for row ${row.rowNum}: ${result.error}`);
@@ -299,12 +286,8 @@ const RideManager = (function () {
                 }
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
-                // If error message contains "User cancelled", rethrow to abort the update
-                if (err.message.includes('User cancelled')) {
-                    throw err;
-                }
                 console.error(`RideManager.updateRow_: Error updating announcement for row ${row.rowNum}: ${err.message}`);
-                // Other errors don't block ride update
+                // Errors don't block ride update
             }
         }
     }
