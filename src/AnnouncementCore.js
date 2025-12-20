@@ -17,9 +17,13 @@ var AnnouncementCore = (function() {
      * Calculate the send time for a ride announcement
      * Send at 6:00 PM, 2 calendar days before the ride date
      * 
-     * @param {Date|string} rideDate - The date/time of the ride
-     * @param {string} [timezone='America/Los_Angeles'] - Timezone for calculation
-     * @returns {Date} The scheduled send time
+     * Note: This function works in the LOCAL timezone of the execution environment.
+     * In Google Apps Script, this will be the script's timezone (Session.getScriptTimeZone()).
+     * In tests, this will be the system's local timezone.
+     * 
+     * @param {Date|string} rideDate - The date/time of the ride (in local timezone)
+     * @param {string} [timezone='America/Los_Angeles'] - Timezone parameter (currently unused, for future enhancement)
+     * @returns {Date} The scheduled send time (6 PM local time, 2 days before ride)
      */
     function calculateSendTime(rideDate, timezone = 'America/Los_Angeles') {
         const ride = new Date(rideDate);
@@ -28,9 +32,15 @@ var AnnouncementCore = (function() {
         const sendDate = new Date(ride);
         sendDate.setDate(sendDate.getDate() - 2);
         
-        // Set time to 6:00 PM (18:00) in the specified timezone
-        // Note: This creates a date object with 18:00 in local time
-        // The GAS adapter will handle timezone conversion using Session.getScriptTimeZone()
+        // Set time to 6:00 PM (18:00) in local time
+        // NOTE: timezone parameter is currently unused because JavaScript's Date object
+        // doesn't natively support timezone-aware operations without external libraries.
+        // This would require either:
+        //   1. Using Intl.DateTimeFormat (complex, browser-dependent)
+        //   2. Using a library like moment-timezone (adds dependency)
+        //   3. Manual UTC offset calculations (error-prone)
+        // 
+        // For now, we rely on the execution environment (GAS) having the correct timezone set.
         sendDate.setHours(18, 0, 0, 0);
         
         return sendDate;

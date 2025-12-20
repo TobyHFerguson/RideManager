@@ -3,20 +3,36 @@ const AnnouncementCore = require('../../src/AnnouncementCore');
 describe('AnnouncementCore', () => {
     describe('calculateSendTime', () => {
         it('should calculate send time as 6 PM, 2 days before ride', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z'); // Sunday ride at 10 AM Pacific (6 PM UTC)
+            // Use local time (no Z suffix) to match calculateSendTime behavior
+            const rideDate = new Date('2025-12-07T10:00:00'); // Sunday ride at 10 AM local time
             const sendTime = AnnouncementCore.calculateSendTime(rideDate);
             
-            expect(sendTime.getDate()).toBe(5); // Friday
-            expect(sendTime.getHours()).toBe(18); // 6 PM
+            expect(sendTime.getDate()).toBe(5); // Friday (2 days before Sunday)
+            expect(sendTime.getHours()).toBe(18); // 6 PM local time
             expect(sendTime.getMinutes()).toBe(0);
+            expect(sendTime.getSeconds()).toBe(0);
         });
 
         it('should handle string date input', () => {
-            const rideDate = '2025-12-07T18:00:00Z';
+            const rideDate = '2025-12-07T10:00:00'; // Local time
             const sendTime = AnnouncementCore.calculateSendTime(rideDate);
             
             expect(sendTime.getDate()).toBe(5);
             expect(sendTime.getHours()).toBe(18);
+        });
+
+        it('should work consistently regardless of ride time', () => {
+            // Ride at 7 AM should still send 2 days before at 6 PM
+            const morningRide = new Date('2025-12-07T07:00:00');
+            const eveningRide = new Date('2025-12-07T17:00:00');
+            
+            const morningSend = AnnouncementCore.calculateSendTime(morningRide);
+            const eveningSend = AnnouncementCore.calculateSendTime(eveningRide);
+            
+            // Both should send on same day at 6 PM
+            expect(morningSend.getDate()).toBe(eveningSend.getDate());
+            expect(morningSend.getHours()).toBe(18);
+            expect(eveningSend.getHours()).toBe(18);
         });
     });
 
@@ -703,17 +719,18 @@ describe('AnnouncementCore', () => {
 
     describe('isSendAtModifiedByUser', () => {
         it('should return false when sendAt matches calculated time', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z'); // Sunday
-            const sendAt = new Date('2025-12-05T18:00:00Z'); // Friday 6 PM (calculated)
+            // Use local time (no Z) to match calculateSendTime behavior
+            const rideDate = new Date('2025-12-07T10:00:00'); // Sunday ride
+            const calculatedSendAt = AnnouncementCore.calculateSendTime(rideDate); // Friday 6 PM
             
-            const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
+            const result = AnnouncementCore.isSendAtModifiedByUser(calculatedSendAt, rideDate, 'pending');
             
             expect(result).toBe(false);
         });
 
         it('should return true when sendAt differs from calculated time', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z'); // Sunday
-            const sendAt = new Date('2025-12-05T20:00:00Z'); // Friday 8 PM (user modified)
+            const rideDate = new Date('2025-12-07T10:00:00'); // Sunday
+            const sendAt = new Date('2025-12-05T20:00:00'); // Friday 8 PM (user modified)
             
             const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
             
@@ -721,8 +738,8 @@ describe('AnnouncementCore', () => {
         });
 
         it('should return false for sent announcements even if time differs', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z');
-            const sendAt = new Date('2025-12-05T20:00:00Z'); // Different time
+            const rideDate = new Date('2025-12-07T10:00:00');
+            const sendAt = new Date('2025-12-05T20:00:00'); // Different time
             
             const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'sent');
             
@@ -730,8 +747,8 @@ describe('AnnouncementCore', () => {
         });
 
         it('should return false for failed announcements even if time differs', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z');
-            const sendAt = new Date('2025-12-05T20:00:00Z'); // Different time
+            const rideDate = new Date('2025-12-07T10:00:00');
+            const sendAt = new Date('2025-12-05T20:00:00'); // Different time
             
             const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'failed');
             
@@ -739,8 +756,8 @@ describe('AnnouncementCore', () => {
         });
 
         it('should return false for abandoned announcements even if time differs', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z');
-            const sendAt = new Date('2025-12-05T20:00:00Z'); // Different time
+            const rideDate = new Date('2025-12-07T10:00:00');
+            const sendAt = new Date('2025-12-05T20:00:00'); // Different time
             
             const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'abandoned');
             
@@ -748,8 +765,8 @@ describe('AnnouncementCore', () => {
         });
 
         it('should handle string date inputs', () => {
-            const rideDate = '2025-12-07T18:00:00Z';
-            const sendAt = '2025-12-05T20:00:00Z';
+            const rideDate = '2025-12-07T10:00:00';
+            const sendAt = '2025-12-05T20:00:00';
             
             const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
             
@@ -757,8 +774,10 @@ describe('AnnouncementCore', () => {
         });
 
         it('should tolerate small differences (within 1 minute)', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z');
-            const sendAt = new Date('2025-12-05T18:00:30Z'); // 30 seconds difference
+            const rideDate = new Date('2025-12-07T10:00:00');
+            const calculatedSendAt = AnnouncementCore.calculateSendTime(rideDate);
+            // Create a time 30 seconds after calculated
+            const sendAt = new Date(calculatedSendAt.getTime() + 30 * 1000);
             
             const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
             
@@ -766,8 +785,10 @@ describe('AnnouncementCore', () => {
         });
 
         it('should detect differences beyond 1 minute', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z');
-            const sendAt = new Date('2025-12-05T18:02:00Z'); // 2 minutes difference
+            const rideDate = new Date('2025-12-07T10:00:00');
+            const calculatedSendAt = AnnouncementCore.calculateSendTime(rideDate);
+            // Create a time 2 minutes after calculated
+            const sendAt = new Date(calculatedSendAt.getTime() + 2 * 60 * 1000);
             
             const result = AnnouncementCore.isSendAtModifiedByUser(sendAt, rideDate, 'pending');
             
