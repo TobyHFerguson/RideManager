@@ -286,7 +286,7 @@ describe('AnnouncementCore', () => {
     describe('enrichRowData', () => {
         it('should create DateTime, Date, Day, Time from Date field', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'), // Saturday 10:00 AM Pacific (18:00 UTC)
+                Date: new Date('2024-12-07T18:00:00'), // Saturday 10:00 AM Pacific (18:00 UTC)
                 RideURL: 'https://ridewithgps.com/events/123',
                 RideName: 'Great Ride',
                 RideLeader: 'John Doe'
@@ -304,7 +304,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle missing RideURL', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Great Ride',
                 RideLeader: 'Jane Smith'
             };
@@ -317,7 +317,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle missing RideName', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideURL: 'https://ridewithgps.com/events/123'
             };
 
@@ -328,7 +328,7 @@ describe('AnnouncementCore', () => {
 
         it('should preserve original rowData fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 Location: 'Seascape Park',
                 Address: '123 Main St',
                 Group: 'Sat A',
@@ -347,7 +347,7 @@ describe('AnnouncementCore', () => {
 
         it('should add route metrics when route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 72420.5,        // meters (45 miles)
@@ -367,7 +367,7 @@ describe('AnnouncementCore', () => {
 
         it('should generate startPin with Apple and Google Maps links', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 72420.5,
@@ -385,7 +385,7 @@ describe('AnnouncementCore', () => {
 
         it('should round route metrics correctly', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 80467.2,        // 50 miles
@@ -403,7 +403,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with zero distance', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 0,
@@ -420,7 +420,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with missing fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 50000,
@@ -441,7 +441,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle null route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Test Ride'
             };
 
@@ -458,7 +458,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle omitted route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 Location: 'Test Location'
             };
 
@@ -475,7 +475,7 @@ describe('AnnouncementCore', () => {
 
         it('should preserve route fields when both rowData and route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Test Ride',
                 Location: 'Test Location'
             };
@@ -506,7 +506,7 @@ describe('AnnouncementCore', () => {
         it('should expand all fields including enriched fields', () => {
             const template = 'Ride: {RideLink} on {DateTime} at {Location}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'), // Saturday 10:00 AM Pacific
+                Date: new Date('2024-12-07T18:00:00'), // Saturday 10:00 AM Pacific
                 RideURL: 'https://ridewithgps.com/events/123',
                 RideName: 'Saturday Ride',
                 Location: 'Seascape Park'
@@ -521,7 +521,7 @@ describe('AnnouncementCore', () => {
         it('should expand date/time fields separately', () => {
             const template = '{Day}, {Date} at {Time}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
@@ -582,7 +582,7 @@ describe('AnnouncementCore', () => {
         it('should expand route-based fields when route provided', () => {
             const template = 'Distance: {Length} miles, Elevation: {Gain} feet, Difficulty: {FPM} fpm';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 72420.5,        // 45 miles
@@ -600,7 +600,7 @@ describe('AnnouncementCore', () => {
         it('should expand lat/long fields when route provided', () => {
             const template = 'Start: {Lat}, {Long}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 50000,
@@ -618,7 +618,7 @@ describe('AnnouncementCore', () => {
         it('should expand startPin field with map links', () => {
             const template = 'Map: {StartPin}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 50000,
@@ -639,7 +639,7 @@ describe('AnnouncementCore', () => {
         it('should mark route fields as missing when route not provided', () => {
             const template = 'Distance: {Length}, Elevation: {Gain}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
@@ -651,7 +651,7 @@ describe('AnnouncementCore', () => {
         it('should expand mix of standard and route fields', () => {
             const template = '{RideName} - {Length} miles with {Gain} feet on {Day}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Saturday Ride'
             };
             const route = {
@@ -670,7 +670,7 @@ describe('AnnouncementCore', () => {
         it('should handle route with null parameter', () => {
             const template = '{Length} miles';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData, null);
@@ -820,15 +820,15 @@ describe('AnnouncementCore', () => {
         it('should detect no updates needed when nothing changed', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00Z'),
+                sendAt: new Date('2025-12-05T18:00:00'),
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z')
+                rideDate: new Date('2025-12-07T18:00:00')
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-07T18:00:00Z')
+                rideDate: new Date('2025-12-07T18:00:00')
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
@@ -843,15 +843,15 @@ describe('AnnouncementCore', () => {
         it('should detect document rename needed when ride name changes', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Old Ride Name',
-                sendAt: new Date('2025-12-05T18:00:00Z'),
+                sendAt: new Date('2025-12-05T18:00:00'),
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z')
+                rideDate: new Date('2025-12-07T18:00:00')
             };
             const newRideData = {
                 rideName: 'New Ride Name',
-                rideDate: new Date('2025-12-07T18:00:00Z')
+                rideDate: new Date('2025-12-07T18:00:00')
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
@@ -863,35 +863,35 @@ describe('AnnouncementCore', () => {
         it('should detect sendAt update needed when ride date changes', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00Z'), // Friday 6 PM
+                sendAt: new Date('2025-12-05T18:00:00'), // Friday 6 PM
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z') // Old Sunday
+                rideDate: new Date('2025-12-07T18:00:00') // Old Sunday
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00Z') // Next Sunday (new date)
+                rideDate: new Date('2025-12-14T18:00:00') // Next Sunday (new date)
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
 
             expect(updates.needsSendAtUpdate).toBe(true);
-            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-12T18:00:00Z')); // Friday before new date
+            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-12T18:00:00')); // Friday before new date
         });
 
         it('should prompt user when sendAt was modified and needs update', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T20:00:00Z'), // 8 PM (user modified from 6 PM)
+                sendAt: new Date('2025-12-05T20:00:00'), // 8 PM (user modified from 6 PM)
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z') // Original date
+                rideDate: new Date('2025-12-07T18:00:00') // Original date
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00Z') // New date
+                rideDate: new Date('2025-12-14T18:00:00') // New date
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
@@ -904,15 +904,15 @@ describe('AnnouncementCore', () => {
         it('should not prompt user when sendAt was not modified', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00Z'), // 6 PM (calculated, not modified)
+                sendAt: new Date('2025-12-05T18:00:00'), // 6 PM (calculated, not modified)
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z') // Original date
+                rideDate: new Date('2025-12-07T18:00:00') // Original date
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00Z') // New date
+                rideDate: new Date('2025-12-14T18:00:00') // New date
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
@@ -925,15 +925,15 @@ describe('AnnouncementCore', () => {
         it('should handle both name and date changes', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Old Ride Name',
-                sendAt: new Date('2025-12-05T18:00:00Z'),
+                sendAt: new Date('2025-12-05T18:00:00'),
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z')
+                rideDate: new Date('2025-12-07T18:00:00')
             };
             const newRideData = {
                 rideName: 'New Ride Name',
-                rideDate: new Date('2025-12-14T18:00:00Z')
+                rideDate: new Date('2025-12-14T18:00:00')
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
@@ -946,15 +946,15 @@ describe('AnnouncementCore', () => {
         it('should not prompt for sent announcements even if modified', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T20:00:00Z'), // Modified time
+                sendAt: new Date('2025-12-05T20:00:00'), // Modified time
                 status: 'sent'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z')
+                rideDate: new Date('2025-12-07T18:00:00')
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00Z')
+                rideDate: new Date('2025-12-14T18:00:00')
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
@@ -966,41 +966,41 @@ describe('AnnouncementCore', () => {
         it('should store current and calculated sendAt for comparison', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Sat A (12/7 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-05T18:00:00Z'),
+                sendAt: new Date('2025-12-05T18:00:00'),
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-07T18:00:00Z')
+                rideDate: new Date('2025-12-07T18:00:00')
             };
             const newRideData = {
                 rideName: 'Sat A (12/7 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-14T18:00:00Z')
+                rideDate: new Date('2025-12-14T18:00:00')
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
 
-            expect(updates.currentSendAt).toEqual(new Date('2025-12-05T18:00:00Z'));
-            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-12T18:00:00Z'));
+            expect(updates.currentSendAt).toEqual(new Date('2025-12-05T18:00:00'));
+            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-12T18:00:00'));
         });
 
         it('should handle edge case of ride date moved earlier', () => {
             const currentAnnouncement = {
                 documentName: 'RA-Sat A (12/14 10:00) [3] Route Name',
-                sendAt: new Date('2025-12-12T18:00:00Z'), // Friday before 12/14
+                sendAt: new Date('2025-12-12T18:00:00'), // Friday before 12/14
                 status: 'pending'
             };
             const oldRideData = {
-                rideDate: new Date('2025-12-14T18:00:00Z') // Original date
+                rideDate: new Date('2025-12-14T18:00:00') // Original date
             };
             const newRideData = {
                 rideName: 'Sat A (12/14 10:00) [3] Route Name',
-                rideDate: new Date('2025-12-07T18:00:00Z') // Moved earlier to 12/7
+                rideDate: new Date('2025-12-07T18:00:00') // Moved earlier to 12/7
             };
 
             const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, oldRideData, newRideData);
 
             expect(updates.needsSendAtUpdate).toBe(true);
-            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-05T18:00:00Z')); // Friday before 12/7
+            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-05T18:00:00')); // Friday before 12/7
         });
     });
 });
