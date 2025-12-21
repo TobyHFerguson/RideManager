@@ -110,6 +110,16 @@ declare class AnnouncementManager {
     handleReinstatement(row: RowData, sendEmail: boolean, reason?: string): {announcementSent: boolean, error?: string};
 
     /**
+     * Update announcement when ride is updated
+     * Automatically updates document name and sendAt based on new ride data
+     * If no announcement exists, creates one
+     * 
+     * @param row - Row object with updated ride data
+     * @returns Result with success flag and optional error
+     */
+    updateAnnouncement(row: RowData): {success: boolean, error?: string};
+
+    /**
      * Remove announcements by ride URLs
      * 
      * @param rideUrls - Array of ride URLs

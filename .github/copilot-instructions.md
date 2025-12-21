@@ -317,6 +317,19 @@ const commands = Exports.getCommands();
 - Status transitions and validation
 - Statistics calculations
 
+**CRITICAL: Timezone Handling**:
+- **Implementation uses LOCAL timezone**: All date calculations in `AnnouncementCore.js` use JavaScript's native Date object, which operates in the local timezone of the execution environment
+- **In Google Apps Script**: Local timezone = `Session.getScriptTimeZone()` (configured in GAS project settings, typically 'America/Los_Angeles')
+- **In Jest tests**: Local timezone = system timezone where tests run (e.g., developer's machine timezone)
+- **Test Date Format**: Tests MUST use local time format (no 'Z' suffix) to match implementation behavior:
+  - ✅ CORRECT: `new Date('2025-12-05T18:00:00')` - Local 6 PM
+  - ❌ WRONG: `new Date('2025-12-05T18:00:00Z')` - UTC 6 PM (may be different local time depending on timezone)
+- **Why this matters**: Using UTC dates in tests (with 'Z') causes timezone-dependent failures. A UTC date `2025-12-05T18:00:00Z` is interpreted as `2025-12-05 10:00 PST` in Pacific timezone, causing 8-hour offset in assertions.
+- **Future enhancement**: The `timezone` parameter exists in function signatures but is currently unused. Full timezone support would require either:
+  1. External library (e.g., moment-timezone) - adds dependency
+  2. Manual UTC offset calculations - error-prone
+  3. Intl.DateTimeFormat API - complex, browser-dependent
+
 **AnnouncementManager.js** (GAS adapter):
 - Gmail integration for sending announcements
 - Google Doc template rendering
@@ -419,6 +432,14 @@ describe('ModuleName', () => {
     });
 });
 ```
+
+**CRITICAL: Date and Timezone Handling in Tests**:
+- **Use LOCAL time format in test dates** (no 'Z' suffix for UTC)
+- Implementation uses JavaScript Date in local timezone (not UTC)
+- ✅ CORRECT: `new Date('2025-12-05T18:00:00')` - Interpreted as 6 PM in local timezone
+- ❌ WRONG: `new Date('2025-12-05T18:00:00Z')` - Interpreted as UTC, creates timezone-dependent failures
+- **Why**: A UTC date like '2025-12-05T18:00:00Z' becomes '2025-12-05 10:00' in PST (8-hour offset), causing test failures when comparing to local 6 PM
+- **Applies to**: AnnouncementCore tests, TriggerManager tests, any date/time calculations
 
 #### GAS-Specific Testing
 - GAS modules tested manually or via `testEvent.js` style functions

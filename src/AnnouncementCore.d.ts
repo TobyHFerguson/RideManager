@@ -195,6 +195,40 @@ declare namespace AnnouncementCore {
      * @returns Subject and body (body is template with subject removed)
      */
     function extractSubject(template: string): EmailContent;
+
+    /**
+     * Calculate new announcement document name based on ride name
+     * Format: "RA-{RideName}"
+     * 
+     * @param rideName - New ride name
+     * @returns New document name
+     */
+    function calculateAnnouncementDocName(rideName: string): string;
+
+    /**
+     * Determine what updates are needed for an announcement when ride is updated
+     * Returns an object describing what needs to be updated
+     * 
+     * @param currentAnnouncement - Current announcement data
+     * @param newRideData - New ride data
+     * @param timezone - IANA timezone identifier (e.g., 'America/Los_Angeles')
+     * @returns Update decision object
+     */
+    function calculateAnnouncementUpdates(
+        currentAnnouncement: {
+            documentName: string;
+        },
+        newRideData: {
+            rideName: string;
+            rideDate: Date | string;
+        },
+        timezone?: string
+    ): {
+        needsDocumentRename: boolean;
+        newDocumentName: string | null;
+        needsSendAtUpdate: boolean;
+        calculatedSendAt: Date | null;
+    };
 }
 
 export default AnnouncementCore;

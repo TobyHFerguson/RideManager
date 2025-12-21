@@ -3,20 +3,36 @@ const AnnouncementCore = require('../../src/AnnouncementCore');
 describe('AnnouncementCore', () => {
     describe('calculateSendTime', () => {
         it('should calculate send time as 6 PM, 2 days before ride', () => {
-            const rideDate = new Date('2025-12-07T18:00:00Z'); // Sunday ride at 10 AM Pacific (6 PM UTC)
+            // Use local time (no Z suffix) to match calculateSendTime behavior
+            const rideDate = new Date('2025-12-07T10:00:00'); // Sunday ride at 10 AM local time
             const sendTime = AnnouncementCore.calculateSendTime(rideDate);
             
-            expect(sendTime.getDate()).toBe(5); // Friday
-            expect(sendTime.getHours()).toBe(18); // 6 PM
+            expect(sendTime.getDate()).toBe(5); // Friday (2 days before Sunday)
+            expect(sendTime.getHours()).toBe(18); // 6 PM local time
             expect(sendTime.getMinutes()).toBe(0);
+            expect(sendTime.getSeconds()).toBe(0);
         });
 
         it('should handle string date input', () => {
-            const rideDate = '2025-12-07T18:00:00Z';
+            const rideDate = '2025-12-07T10:00:00'; // Local time
             const sendTime = AnnouncementCore.calculateSendTime(rideDate);
             
             expect(sendTime.getDate()).toBe(5);
             expect(sendTime.getHours()).toBe(18);
+        });
+
+        it('should work consistently regardless of ride time', () => {
+            // Ride at 7 AM should still send 2 days before at 6 PM
+            const morningRide = new Date('2025-12-07T07:00:00');
+            const eveningRide = new Date('2025-12-07T17:00:00');
+            
+            const morningSend = AnnouncementCore.calculateSendTime(morningRide);
+            const eveningSend = AnnouncementCore.calculateSendTime(eveningRide);
+            
+            // Both should send on same day at 6 PM
+            expect(morningSend.getDate()).toBe(eveningSend.getDate());
+            expect(morningSend.getHours()).toBe(18);
+            expect(eveningSend.getHours()).toBe(18);
         });
     });
 
@@ -270,7 +286,7 @@ describe('AnnouncementCore', () => {
     describe('enrichRowData', () => {
         it('should create DateTime, Date, Day, Time from Date field', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'), // Saturday 10:00 AM Pacific (18:00 UTC)
+                Date: new Date('2024-12-07T18:00:00'), // Saturday 6:00 AM Pacific 
                 RideURL: 'https://ridewithgps.com/events/123',
                 RideName: 'Great Ride',
                 RideLeader: 'John Doe'
@@ -278,17 +294,17 @@ describe('AnnouncementCore', () => {
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
 
-            expect(enriched.DateTime).toBe('Saturday, December 7, 2024 at 10:00 AM');
+            expect(enriched.DateTime).toBe('Saturday, December 7, 2024 at 6:00 PM');
             expect(enriched.Date).toBe('December 7, 2024');
             expect(enriched.Day).toBe('Saturday');
-            expect(enriched.Time).toBe('10:00 AM');
+            expect(enriched.Time).toBe('6:00 PM');
             expect(enriched.RideLink).toBe('<a href="https://ridewithgps.com/events/123">Great Ride</a>');
             expect(enriched.RideLeader).toBe('John Doe');
         });
 
         it('should handle missing RideURL', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Great Ride',
                 RideLeader: 'Jane Smith'
             };
@@ -301,7 +317,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle missing RideName', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideURL: 'https://ridewithgps.com/events/123'
             };
 
@@ -312,7 +328,7 @@ describe('AnnouncementCore', () => {
 
         it('should preserve original rowData fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 Location: 'Seascape Park',
                 Address: '123 Main St',
                 Group: 'Sat A',
@@ -331,7 +347,7 @@ describe('AnnouncementCore', () => {
 
         it('should add route metrics when route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 72420.5,        // meters (45 miles)
@@ -351,7 +367,7 @@ describe('AnnouncementCore', () => {
 
         it('should generate startPin with Apple and Google Maps links', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 72420.5,
@@ -369,7 +385,7 @@ describe('AnnouncementCore', () => {
 
         it('should round route metrics correctly', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 80467.2,        // 50 miles
@@ -387,7 +403,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with zero distance', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 0,
@@ -404,7 +420,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with missing fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 50000,
@@ -425,7 +441,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle null route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Test Ride'
             };
 
@@ -442,7 +458,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle omitted route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 Location: 'Test Location'
             };
 
@@ -459,7 +475,7 @@ describe('AnnouncementCore', () => {
 
         it('should preserve route fields when both rowData and route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Test Ride',
                 Location: 'Test Location'
             };
@@ -490,7 +506,7 @@ describe('AnnouncementCore', () => {
         it('should expand all fields including enriched fields', () => {
             const template = 'Ride: {RideLink} on {DateTime} at {Location}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'), // Saturday 10:00 AM Pacific
+                Date: new Date('2024-12-07T18:00:00'), // Saturday 10:00 AM Pacific
                 RideURL: 'https://ridewithgps.com/events/123',
                 RideName: 'Saturday Ride',
                 Location: 'Seascape Park'
@@ -498,19 +514,19 @@ describe('AnnouncementCore', () => {
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Ride: <a href="https://ridewithgps.com/events/123">Saturday Ride</a> on Saturday, December 7, 2024 at 10:00 AM at Seascape Park');
+            expect(result.expandedText).toBe('Ride: <a href="https://ridewithgps.com/events/123">Saturday Ride</a> on Saturday, December 7, 2024 at 6:00 PM at Seascape Park');
             expect(result.missingFields).toHaveLength(0);
         });
 
         it('should expand date/time fields separately', () => {
             const template = '{Day}, {Date} at {Time}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Saturday, December 7, 2024 at 10:00 AM');
+            expect(result.expandedText).toBe('Saturday, December 7, 2024 at 6:00 PM');
             expect(result.missingFields).toHaveLength(0);
         });
 
@@ -566,7 +582,7 @@ describe('AnnouncementCore', () => {
         it('should expand route-based fields when route provided', () => {
             const template = 'Distance: {Length} miles, Elevation: {Gain} feet, Difficulty: {FPM} fpm';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 72420.5,        // 45 miles
@@ -584,7 +600,7 @@ describe('AnnouncementCore', () => {
         it('should expand lat/long fields when route provided', () => {
             const template = 'Start: {Lat}, {Long}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 50000,
@@ -602,7 +618,7 @@ describe('AnnouncementCore', () => {
         it('should expand startPin field with map links', () => {
             const template = 'Map: {StartPin}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
             const route = {
                 distance: 50000,
@@ -623,7 +639,7 @@ describe('AnnouncementCore', () => {
         it('should mark route fields as missing when route not provided', () => {
             const template = 'Distance: {Length}, Elevation: {Gain}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
@@ -635,7 +651,7 @@ describe('AnnouncementCore', () => {
         it('should expand mix of standard and route fields', () => {
             const template = '{RideName} - {Length} miles with {Gain} feet on {Day}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z'),
+                Date: new Date('2024-12-07T18:00:00'),
                 RideName: 'Saturday Ride'
             };
             const route = {
@@ -654,7 +670,7 @@ describe('AnnouncementCore', () => {
         it('should handle route with null parameter', () => {
             const template = '{Length} miles';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00Z')
+                Date: new Date('2024-12-07T18:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData, null);
@@ -698,6 +714,108 @@ describe('AnnouncementCore', () => {
             
             expect(result.subject).toBe('Only Subject');
             expect(result.body).toBe('');
+        });
+    });
+
+    describe('calculateAnnouncementDocName', () => {
+        it('should format document name with RA- prefix', () => {
+            const result = AnnouncementCore.calculateAnnouncementDocName('Sat A (12/7 10:00) [3] Route Name');
+            
+            expect(result).toBe('RA-Sat A (12/7 10:00) [3] Route Name');
+        });
+
+        it('should handle empty ride name', () => {
+            const result = AnnouncementCore.calculateAnnouncementDocName('');
+            
+            expect(result).toBe('RA-');
+        });
+
+        it('should handle ride name with special characters', () => {
+            const result = AnnouncementCore.calculateAnnouncementDocName('Ride & Tour: "Special" Event');
+            
+            expect(result).toBe('RA-Ride & Tour: "Special" Event');
+        });
+    });
+
+    describe('calculateAnnouncementUpdates', () => {
+        it('should always update sendAt and detect document rename when name unchanged', () => {
+            const currentAnnouncement = {
+                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name'
+            };
+            const newRideData = {
+                rideName: 'Sat A (12/7 10:00) [3] Route Name',
+                rideDate: new Date('2025-12-07T18:00:00')
+            };
+
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
+
+            expect(updates.needsDocumentRename).toBe(false);
+            expect(updates.newDocumentName).toBeNull();
+            expect(updates.needsSendAtUpdate).toBe(true);
+            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-05T18:00:00')); // Friday 6 PM, 2 days before
+        });
+
+        it('should detect document rename needed when ride name changes', () => {
+            const currentAnnouncement = {
+                documentName: 'RA-Old Ride Name'
+            };
+            const newRideData = {
+                rideName: 'New Ride Name',
+                rideDate: new Date('2025-12-07T18:00:00')
+            };
+
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
+
+            expect(updates.needsDocumentRename).toBe(true);
+            expect(updates.newDocumentName).toBe('RA-New Ride Name');
+            expect(updates.needsSendAtUpdate).toBe(true);
+        });
+
+        it('should calculate sendAt correctly when ride date changes', () => {
+            const currentAnnouncement = {
+                documentName: 'RA-Sat A (12/7 10:00) [3] Route Name'
+            };
+            const newRideData = {
+                rideName: 'Sat A (12/7 10:00) [3] Route Name',
+                rideDate: new Date('2025-12-14T18:00:00Z') // Next Sunday
+            };
+
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
+
+            expect(updates.needsSendAtUpdate).toBe(true);
+            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-12T18:00:00')); // Friday before new date
+        });
+
+
+        it('should handle both name and date changes', () => {
+            const currentAnnouncement = {
+                documentName: 'RA-Old Ride Name'
+            };
+            const newRideData = {
+                rideName: 'New Ride Name',
+                rideDate: new Date('2025-12-14T18:00:00')
+            };
+
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
+
+            expect(updates.needsDocumentRename).toBe(true);
+            expect(updates.newDocumentName).toBe('RA-New Ride Name');
+            expect(updates.needsSendAtUpdate).toBe(true);
+        });
+
+        it('should handle edge case of ride date moved earlier', () => {
+            const currentAnnouncement = {
+                documentName: 'RA-Sat A (12/14 10:00) [3] Route Name'
+            };
+            const newRideData = {
+                rideName: 'Sat A (12/14 10:00) [3] Route Name',
+                rideDate: new Date('2025-12-07T18:00:00') // Moved earlier to 12/7
+            };
+
+            const updates = AnnouncementCore.calculateAnnouncementUpdates(currentAnnouncement, newRideData);
+
+            expect(updates.needsSendAtUpdate).toBe(true);
+            expect(updates.calculatedSendAt).toEqual(new Date('2025-12-05T18:00:00')); // Friday before 12/7
         });
     });
 });

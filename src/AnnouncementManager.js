@@ -86,7 +86,7 @@ var AnnouncementManager = (function () {
                     // @ts-expect-error - _data is private but needed for complete template data
                     ...row._data
                 };
-
+                row.SendAt = sendDate;
                 row.Status = 'pending';
                 row.Attempts = 0;
                 row.LastError = '';
@@ -528,6 +528,93 @@ var AnnouncementManager = (function () {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.handleReinstatement error for row ${row.rowNum}:`, error);
                 return { announcementSent: false, error: err.message };
+            }
+        }
+
+        /**
+         * Update announcement when ride is updated
+         * Automatically updates document name and sendAt based on new ride data
+         * If no announcement exists, creates one
+         * 
+         * @param {InstanceType<typeof Row>} row - Row object with updated ride data
+         * @returns {{success: boolean, error?: string}} Result object
+         */
+        updateAnnouncement(row) {
+            try {
+                // Check if row has announcement - if not, create one
+                if (!row.Announcement || !row.Status) {
+                    console.log(`AnnouncementManager.updateAnnouncement: No announcement for row ${row.rowNum}, creating one`);
+                    try {
+                        this.createAnnouncement(row);
+                        console.log(`AnnouncementManager.updateAnnouncement: Created announcement for row ${row.rowNum}`);
+                        return { success: true };
+                    } catch (createError) {
+                        const err = createError instanceof Error ? createError : new Error(String(createError));
+                        console.error(`AnnouncementManager.updateAnnouncement: Failed to create announcement for row ${row.rowNum}:`, err);
+                        return { success: false, error: `Failed to create announcement: ${err.message}` };
+                    }
+                }
+
+                // Get current announcement document name
+                const documentId = this._extractDocId(row.Announcement);
+                if (!documentId) {
+                    throw new Error(`Invalid announcement URL: ${row.Announcement}`);
+                }
+
+                const doc = DriveApp.getFileById(documentId);
+                const currentDocName = doc.getName();
+
+                // Calculate what updates are needed
+                const timezone = Session.getScriptTimeZone();
+                // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
+                const updates = AnnouncementCore.calculateAnnouncementUpdates(
+                    {
+                        documentName: currentDocName
+                    },
+                    {
+                        rideName: row.RideName,
+                        rideDate: row.StartDate
+                    },
+                    timezone
+                );
+
+                console.log(`AnnouncementManager.updateAnnouncement: Updates needed for row ${row.rowNum}:`, {
+                    needsDocumentRename: updates.needsDocumentRename,
+                    needsSendAtUpdate: updates.needsSendAtUpdate
+                });
+
+                // Always update sendAt to calculated time
+                if (updates.needsSendAtUpdate && updates.calculatedSendAt) {
+                    row.SendAt = updates.calculatedSendAt;
+                    console.log(`AnnouncementManager.updateAnnouncement: Updated sendAt to ${updates.calculatedSendAt} for row ${row.rowNum}`);
+                }
+
+                // Rename document if needed
+                if (updates.needsDocumentRename && updates.newDocumentName) {
+                    try {
+                        doc.setName(updates.newDocumentName);
+                        console.log(`AnnouncementManager.updateAnnouncement: Renamed document to ${updates.newDocumentName} for row ${row.rowNum}`);
+                    } catch (renameError) {
+                        const err = renameError instanceof Error ? renameError : new Error(String(renameError));
+                        console.error(`AnnouncementManager.updateAnnouncement: Failed to rename document for row ${row.rowNum}:`, err);
+                        // Add to retry queue for document rename (future enhancement)
+                        // For now, just log and continue - the announcement will still work
+                    }
+                }
+
+                // Reschedule trigger if sendAt changed
+                if (updates.needsSendAtUpdate) {
+                    this._scheduleNextAnnouncement();
+                }
+
+                // @ts-ignore - Row._adapter is internal but needed for immediate save
+                row._adapter.save();
+
+                return { success: true };
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.error(`AnnouncementManager.updateAnnouncement error for row ${row.rowNum}:`, error);
+                return { success: false, error: err.message };
             }
         }
 
