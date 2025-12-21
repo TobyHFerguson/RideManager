@@ -7,7 +7,7 @@
 
 ## Quick Start
 
-### Creating a Ride Announcement
+### Scheduling a Ride
 
 1. **In the spreadsheet**, select the row(s) for your ride(s)
 2. **Click:** Ride Schedulers → Schedule Selected Rides
@@ -16,6 +16,20 @@
 4. **Edit the document** - add details, photos, emojis, formatting
 5. **(Optional) Test it** - send a test announcement to yourself to check what it'll look like
 6. **That's it!** The email will be sent automatically 2 days before the ride at 6:00 PM
+
+
+### Updating a Ride
+
+When a ride is updated the announcement system will:
+- Update the Announcement document title to match the new ride title
+- Update the SendAt date to 2 days before the ride at 6:00 PM
+
+If a ride doesn't have an Announcement (or the doc can't be read) then a new Announcement will be created and scheduled.
+
+
+### Canceling/Reinstating a Ride
+
+When a ride is cancelled/reinstated if an announcement has been sent then you'll be asked if you want to send an announcement and will be given the opportunity to supply a short reason. 
 
 ---
 
