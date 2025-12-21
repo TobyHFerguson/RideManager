@@ -18,7 +18,7 @@
     "validate-exports": "node scripts/validate-exports.js",
     "prepare-debug-version": "node -e 'const { execSync } = require(\"child_process\"); const fs = require(\"fs\"); const commitHash = execSync(\"git rev-parse --short HEAD\").toString().trim(); const versionContent = `// This file is auto-generated for debugging purposes.\\n// It contains the Git commit hash of the last local state when \"npm run prepare-debug-version\" was run.\\nfunction getAppVersion() {\\n  return \"DEBUG_VERSION: ${commitHash}\";\\n}\\n`; fs.writeFileSync(\"src/Version.js\", versionContent); console.log(\"src/Version.js updated with debug version info.\");'",
     "prepare-prod-version": "node -e 'const { execSync } = require(\"child_process\"); const fs = require(\"fs\"); const commitHash = execSync(\"git rev-parse --short HEAD\").toString().trim(); const versionContent = `// This file is auto-generated for production deployment.\\n// It contains the Git commit hash of the committed version.\\nfunction getAppVersion() {\\n  return \"PRODUCTION_VERSION: ${commitHash}\";\\n}\\n`; fs.writeFileSync(\"src/Version.js\", versionContent); console.log(\"src/Version.js updated with production version info.\");'",
-    "test": "jest",
+    "test": "TZ=America/Los_Angeles jest",
     "typecheck": "tsc --noEmit",
     "clasp:push": "bash clasp-wrapper.sh push",
     "clasp:pull": "bash clasp-wrapper.sh pull",
