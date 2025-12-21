@@ -10,9 +10,9 @@
  * [1] Operation
  * [2] Params (JSON string)
  * [3] RideURL
- * [4] EnqueuedAt (ISO string)
+ * [4] EnqueuedAt (Date)
  * [5] AttemptCount (number)
- * [6] NextRetryAt (ISO string)
+ * [6] NextRetryAt (Date)
  */
 
 var RetryQueueMarshallingCore = (function() {
@@ -30,9 +30,9 @@ var RetryQueueMarshallingCore = (function() {
                 item.operation || '',
                 item.params ? JSON.stringify(item.params) : '',
                 item.rideUrl || '',
-                item.enqueuedAt ? new Date(item.enqueuedAt).toISOString() : '',
+                item.enqueuedAt ? new Date(item.enqueuedAt) : '',
                 item.attemptCount !== undefined ? item.attemptCount : 0,
-                item.nextRetryAt ? new Date(item.nextRetryAt).toISOString() : ''
+                item.nextRetryAt ? new Date(item.nextRetryAt) : ''
             ];
         }
 

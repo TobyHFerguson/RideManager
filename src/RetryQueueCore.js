@@ -166,8 +166,8 @@ var RetryQueueCore = (function() {
                 rowNum: item.rowNum || 'Unknown',
                 userEmail: item.userEmail,
                 attemptCount: item.attemptCount,
-                enqueuedAt: new Date(item.enqueuedAt).toISOString(),
-                nextRetryAt: new Date(item.nextRetryAt).toISOString(),
+                enqueuedAt: new Date(item.enqueuedAt),
+                nextRetryAt: new Date(item.nextRetryAt),
                 ageMinutes: Math.floor((currentTime - item.enqueuedAt) / 60000)
             }));
         }

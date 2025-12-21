@@ -21,9 +21,9 @@ describe('RetryQueueMarshallingCore', () => {
             expect(row[1]).toBe('createEvent');
             expect(row[2]).toBe('{"calendarId":"cal-123","eventData":{"title":"Test"}}');
             expect(row[3]).toBe('https://ridewithgps.com/events/12345');
-            expect(row[4]).toBe(new Date(enqueuedAtTimestamp).toISOString());
+            expect(row[4]).toEqual(new Date(enqueuedAtTimestamp));
             expect(row[5]).toBe(2);
-            expect(row[6]).toBe(new Date(nextRetryAtTimestamp).toISOString());
+            expect(row[6]).toEqual(new Date(nextRetryAtTimestamp));
         });
 
         it('should handle missing optional fields with defaults', () => {
@@ -220,8 +220,8 @@ describe('RetryQueueMarshallingCore', () => {
 
         it('should maintain data integrity through rows -> items -> rows conversion', () => {
             const originalRows = [
-                ['id1', 'op1', '{"key":"value"}', 'url1', '2023-12-11T14:13:20.000Z', 2, '2023-12-12T18:00:00.000Z'],
-                ['id2', 'op2', '{}', 'url2', '2023-12-11T15:00:00.000Z', 0, '']
+                ['id1', 'op1', '{"key":"value"}', 'url1', (new Date('2023-12-11T14:13:20.000Z')), 2, (new Date('2023-12-12T18:00:00.000Z'))],
+                ['id2', 'op2', '{}', 'url2', (new Date('2023-12-11T15:00:00.000Z')), 0, '']
             ];
 
             const items = RetryQueueMarshallingCore.rowsToItems(originalRows);
