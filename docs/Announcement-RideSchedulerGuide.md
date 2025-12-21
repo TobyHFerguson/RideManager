@@ -29,7 +29,9 @@ If a ride doesn't have an Announcement (or the doc can't be read) then a new Ann
 
 ### Canceling/Reinstating a Ride
 
-When a ride is cancelled/reinstated if an announcement has been sent then you'll be asked if you want to send an announcement and will be given the opportunity to supply a short reason. 
+When a ride is cancelled/reinstated if an announcement has been sent then you'll be asked if you want to send an announcement and will be given the opportunity to supply a short reason. The announcement will be sent immediately. 
+
+The [Cancelation](https://docs.google.com/document/d/1XMPrkE5G2yXuu5zf1ZwuIFApYpPqxH8I8IUKfiW5ZQw/edit?tab=t.0) & [Reinstatement](https://docs.google.com/document/d/18s6kr4B3Ofu8rZUYCGeKNZWyEvnMRHOWuPXC_Tskl5s/edit?tab=t.0) Templates are short - you don't get the chance to edit it!
 
 ---
 
