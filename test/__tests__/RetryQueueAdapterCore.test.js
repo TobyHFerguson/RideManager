@@ -63,8 +63,8 @@ describe('RetryQueueAdapterCore', () => {
             expect(row['RideName']).toBe('Morning Ride');
             expect(row['RowNum']).toBe(42);
             expect(row['UserEmail']).toBe('user@example.com');
-            expect(row['EnqueuedAt']).toBe(new Date(baseTime).toISOString());
-            expect(row['NextRetryAt']).toBe(new Date(baseTime + (5 * 60 * 1000)).toISOString());
+            expect(row['EnqueuedAt']).toEqual(new Date(baseTime));
+            expect(row['NextRetryAt']).toEqual(new Date(baseTime + (5 * 60 * 1000)));
             expect(row['AttemptCount']).toBe(0);
             expect(row['LastError']).toBe('');
             expect(row['Status']).toBe('pending');
@@ -136,8 +136,8 @@ describe('RetryQueueAdapterCore', () => {
                 'RideName': 'Evening Ride',
                 'RowNum': 24,
                 'UserEmail': 'admin@example.com',
-                'EnqueuedAt': new Date(baseTime).toISOString(),
-                'NextRetryAt': new Date(baseTime + 10000).toISOString(),
+                'EnqueuedAt': new Date(baseTime),
+                'NextRetryAt': new Date(baseTime + 10000),
                 'AttemptCount': 5,
                 'LastError': 'Network timeout',
                 'Status': 'retrying',
@@ -194,8 +194,8 @@ describe('RetryQueueAdapterCore', () => {
                 'CalendarID': 'cal',
                 'RideURL': 'url',
                 'AttemptCount': '15',
-                'EnqueuedAt': new Date(baseTime).toISOString(),
-                'NextRetryAt': new Date(baseTime).toISOString(),
+                'EnqueuedAt': new Date(baseTime),
+                'NextRetryAt': new Date(baseTime),
                 'Params': '{}'
             };
             
@@ -211,8 +211,8 @@ describe('RetryQueueAdapterCore', () => {
                 'CalendarID': 'cal',
                 'RideURL': 'url',
                 'AttemptCount': '0',
-                'EnqueuedAt': new Date(baseTime).toISOString(),
-                'NextRetryAt': new Date(baseTime).toISOString(),
+                'EnqueuedAt': new Date(baseTime),
+                'NextRetryAt': new Date(baseTime),
                 'Params': 'invalid json'
             };
             
@@ -485,9 +485,9 @@ describe('RetryQueueAdapterCore', () => {
     describe('sortByNextRetry', () => {
         it('should sort rows by next retry time', () => {
             const rows = [
-                { 'QueueID': 'id-1', 'NextRetryAt': new Date(baseTime + 10000).toISOString() },
-                { 'QueueID': 'id-2', 'NextRetryAt': new Date(baseTime + 5000).toISOString() },
-                { 'QueueID': 'id-3', 'NextRetryAt': new Date(baseTime + 15000).toISOString() }
+                { 'QueueID': 'id-1', 'NextRetryAt': new Date(baseTime + 10000) },
+                { 'QueueID': 'id-2', 'NextRetryAt': new Date(baseTime + 5000) },
+                { 'QueueID': 'id-3', 'NextRetryAt': new Date(baseTime + 15000) }
             ];
             
             const sorted = RetryQueueAdapterCore.sortByNextRetry(rows);
@@ -499,8 +499,8 @@ describe('RetryQueueAdapterCore', () => {
 
         it('should not mutate original array', () => {
             const rows = [
-                { 'QueueID': 'id-1', 'NextRetryAt': new Date(baseTime + 10000).toISOString() },
-                { 'QueueID': 'id-2', 'NextRetryAt': new Date(baseTime + 5000).toISOString() }
+                { 'QueueID': 'id-1', 'NextRetryAt': new Date(baseTime + 10000) },
+                { 'QueueID': 'id-2', 'NextRetryAt': new Date(baseTime + 5000) }
             ];
             
             RetryQueueAdapterCore.sortByNextRetry(rows);

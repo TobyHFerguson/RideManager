@@ -371,8 +371,8 @@ describe('RetryQueueCore', () => {
                 rowNum: 42,
                 userEmail: 'user@example.com',
                 attemptCount: 3,
-                enqueuedAt: new Date(baseTime - (15 * 60 * 1000)).toISOString(),
-                nextRetryAt: new Date(baseTime + (5 * 60 * 1000)).toISOString(),
+                enqueuedAt: new Date(baseTime - (15 * 60 * 1000)),
+                nextRetryAt: new Date(baseTime + (5 * 60 * 1000)),
                 ageMinutes: 15
             });
         });

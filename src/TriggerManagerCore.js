@@ -187,7 +187,7 @@ var TriggerManagerCore = (function() {
             // Different time - need to reschedule
             return {
                 shouldSchedule: true,
-                reason: `Time changed from ${new Date(scheduledTime).toISOString()} to ${new Date(newTime).toISOString()}`
+                reason: `Time changed from ${new Date(scheduledTime)} to ${new Date(newTime)}`
             };
         }
         

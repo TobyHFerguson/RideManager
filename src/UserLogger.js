@@ -48,7 +48,7 @@ const UserLogger = (() => {
   function logToFile(action, details = '', additionalData = {}) {
     try {
       const fileName = 'RLC_User_Activity_Log.txt';
-      const timestamp = new Date().toISOString();
+      const timestamp = new Date();
       const user = Session.getActiveUser()?.getEmail() || 'Unknown User';
       const dtrtStatus = PropertiesService.getUserProperties().getProperty('DTRT') === 'true' ? 'Enabled' : 'Disabled';
       

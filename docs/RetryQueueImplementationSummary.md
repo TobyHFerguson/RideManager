@@ -120,8 +120,8 @@ The "Retry Queue" spreadsheet contains 13 columns:
 | Ride Title | String | Human-readable name |
 | Row Num | Number | Source row in Consolidated Rides |
 | User Email | String | User who initiated operation |
-| Enqueued At | ISO Date | When added to queue |
-| Next Retry At | ISO Date | Next scheduled retry |
+| Enqueued At | locale DateTime | When added to queue |
+| Next Retry At | locale DateTime | Next scheduled retry |
 | Attempt Count | Number | Number of attempts so far |
 | Last Error | String | Most recent error message |
 | Status | String | pending / retrying / failed |

@@ -13,8 +13,8 @@
  * - RideURL: Stable identifier (RWGPS URL)
  * - RowNum: Source row in Consolidated Rides sheet
  * - CalendarID: Target calendar
- * - EnqueuedAt: ISO timestamp when added to queue
- * - NextRetryAt: ISO timestamp for next retry attempt
+ * - EnqueuedAt: locale date-time for when the item was enqueued
+ * - NextRetryAt: locale date-time for next retry attempt
  * - AttemptCount: Number of retry attempts so far
  * - LastError: Most recent error message
  * - UserEmail: Who initiated the operation
@@ -65,8 +65,8 @@ var RetryQueueAdapterCore = (function() {
                 'RideURL': item.rideUrl || '',
                 'RowNum': item.rowNum !== undefined ? item.rowNum : '',
                 'CalendarID': item.calendarId || '',
-                'EnqueuedAt': item.enqueuedAt ? new Date(item.enqueuedAt).toISOString() : '',
-                'NextRetryAt': item.nextRetryAt ? new Date(item.nextRetryAt).toISOString() : '',
+                'EnqueuedAt': item.enqueuedAt ? new Date(item.enqueuedAt) : '',
+                'NextRetryAt': item.nextRetryAt ? new Date(item.nextRetryAt) : '',
                 'AttemptCount': item.attemptCount !== undefined ? item.attemptCount : 0,
                 'LastError': item.lastError || '',
                 'UserEmail': item.userEmail || '',

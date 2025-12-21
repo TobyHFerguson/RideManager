@@ -51,8 +51,8 @@ The "Calendar Retry Queue" spreadsheet contains these columns:
 | **Ride Title** | Human-readable ride name |
 | **Row Num** | Source row in Consolidated Rides sheet |
 | **User Email** | User who initiated the operation |
-| **Enqueued At** | ISO timestamp when added to queue |
-| **Next Retry At** | ISO timestamp for next retry attempt |
+| **Enqueued At** | locale DateTime when added to queue |
+| **Next Retry At** | locale DateTime for next retry attempt |
 | **Attempt Count** | Number of retry attempts so far |
 | **Last Error** | Most recent error message |
 | **Status** | Current status: pending, retrying, or failed |
