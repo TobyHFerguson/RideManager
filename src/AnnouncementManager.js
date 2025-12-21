@@ -114,10 +114,11 @@ var AnnouncementManager = (function () {
         sendAnnouncement(row) {
             try {
                 const globals = getGlobals();
-                const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
+                const key = `${row.Group}_GROUP_ANNOUNCEMENT_ADDRESS`;
+                const recipientEmail = globals[key];
 
                 if (!recipientEmail) {
-                    throw new Error('RIDE_ANNOUNCEMENT_EMAIL not configured in Globals');
+                    throw new Error(`${key} not configured in Globals`);
                 }
 
                 // Extract document ID from announcement URL
@@ -166,6 +167,7 @@ var AnnouncementManager = (function () {
 
                 // Expand template fields in the HTML (with route data for enrichment)
                 // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
+                const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
                 html = expandResult.expandedText;
 
                 // Extract subject from HTML (look for Subject: line at start)
@@ -713,8 +715,8 @@ var AnnouncementManager = (function () {
 
             const folder = this._getRideAnnouncementFolder();
             const docName = `RA-${rideName}`;
-            try { 
-                return templateFile.makeCopy(docName, folder); 
+            try {
+                return templateFile.makeCopy(docName, folder);
             } catch (error) {
                 const folderUrl = getGlobals().RIDE_ANNOUNCEMENT_FOLDER_URL;
                 const err = error instanceof Error ? error : new Error(String(error));

@@ -54,14 +54,14 @@ A new optional sheet allows ride schedulers to use their own announcement templa
 
 ## Global Properties Added
 
-The following entries must be added to the **Globals** sheet:
+The following entries must be added to the **Globals** sheet.
 
 | Key | Value | Description |
 |-----|-------|-------------|
 | `RIDE_ANNOUNCEMENT_MASTER_TEMPLATE` | Document URL or ID | URL or ID of the Google Doc template used for announcements |
 | `RIDE_ANNOUNCEMENT_FOLDER_URL` | Folder URL | Google Drive folder where announcement docs are created |
 | `RIDE_ANNOUNCEMENT_FROM_EMAIL` | Email address | "From" email for announcements (defaults to active user if not set) |
-| `RIDE_ANNOUNCEMENT_RECIPIENTS_EMAIL` | Email address | Distribution list email (e.g., `ride_announcements@sc3.club`) |
+| `${row.Group}_GROUP_ANNOUNCEMENT_ADDRESS` | Email address | Distribution list email for each row group (e.g., `a_group_ride_announcements@sc3.club`) |
 | `RIDE_SCHEDULER_GROUP_EMAIL` | Email address | Group email that gets edit access to announcements |
 
 ### Template Field Enhancements
