@@ -35,69 +35,23 @@ class GoogleCalendarManager {
     }
 
     /**
-     * Create a calendar event with immediate retry and background fallback
+     * Create a calendar event
+     * Throws error on failure - caller must handle and show error dialog to user
+     * 
      * @param {string} calendarId - Calendar ID
      * @param {string} title - Event title
      * @param {Date} startTime - Start time
      * @param {Date} endTime - End time
      * @param {string} location - Event location
      * @param {string} description - Event description
-     * @param {string} rideUrl - Ride URL (stable identifier for background retry)
-     * @param {number} rowNum - Row number for retry queue identification
-     * @returns {Object} { success: boolean, eventId?: string, queued?: boolean }
+     * @returns {Object} { success: boolean, eventId?: string, error?: string }
      */
-    static createEvent(calendarId, title, startTime, endTime, location, description, rideUrl = null, rowNum = null) {
-        // Check for test mode - force failure if requested
-        const isTestMode = PropertiesService.getScriptProperties().getProperty('RETRY_QUEUE_TEST_MODE') === 'true';
-        const shouldForceFailure = PropertiesService.getScriptProperties().getProperty('RETRY_QUEUE_FORCE_FAILURE') === 'true';
-        
-        if (isTestMode && shouldForceFailure) {
-            console.log('GoogleCalendarManager [TEST MODE]: Forcing failure, queueing operation');
-            
-            // Queue for background retry with the forced failure
-            if (rideUrl !== null) {
-                return GoogleCalendarManager._queueForRetry({
-                    type: 'create',
-                    calendarId,
-                    rideUrl,
-                    rideTitle: title,
-                    rowNum,
-                    params: {
-                        title,
-                        startTime: startTime.getTime(),
-                        endTime: endTime.getTime(),
-                        location,
-                        description
-                    }
-                });
-            }
-            
-            return { success: false, error: 'Forced test failure - RETRY_QUEUE_FORCE_FAILURE enabled' };
-        }
-        
+    static createEvent(calendarId, title, startTime, endTime, location, description) {
         const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
         if (!calendar) {
-            console.error('GoogleCalendarManager.createEvent() - Calendar not found after retries. ', calendarId);
-
-            // Queue for background retry if rideUrl provided
-            if (rideUrl !== null) {
-                return GoogleCalendarManager._queueForRetry({
-                    type: 'create',
-                    calendarId,
-                    rideUrl,
-                    rideTitle: title,
-                    rowNum,
-                    params: {
-                        title,
-                        startTime: startTime.getTime(),
-                        endTime: endTime.getTime(),
-                        location,
-                        description
-                    }
-                });
-            }
-            
-            return { success: false, error: 'Calendar not found' };
+            const error = `Calendar not found: ${calendarId}`;
+            console.error('GoogleCalendarManager.createEvent() - ' + error);
+            return { success: false, error };
         }
         
         console.log('Calendar found: ', calendar.getName());
@@ -113,89 +67,89 @@ class GoogleCalendarManager {
             console.log("GoogleCalendarEvent created:", eventId);
             return { success: true, eventId };
         } catch (error) {
-            console.error('GoogleCalendarManager.createEvent() - Error creating event:', error);
-            
-            // Queue for background retry if rideUrl provided
-            if (rideUrl !== null) {
-                return GoogleCalendarManager._queueForRetry({
-                    type: 'create',
-                    calendarId,
-                    rideUrl,
-                    rideTitle: title,
-                    rowNum,
-                    params: {
-                        title,
-                        startTime: startTime.getTime(),
-                        endTime: endTime.getTime(),
-                        location,
-                        description
-                    }
-                });
-            }
-            
-            return { success: false, error: error.message };
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error('GoogleCalendarManager.createEvent() - Error creating event:', err);
+            return { success: false, error: err.message };
         }
     }
     
     /**
-     * Queue a failed operation for background retry
-     * @private
+     * Delete a calendar event
+     * Throws error on failure - caller must handle and show error dialog to user
+     * 
+     * @param {string} calendarId - Calendar ID
+     * @param {string} eventId - Event ID
+     * @returns {Object} { success: boolean, error?: string }
      */
-    static _queueForRetry(operation) {
-        try {
-            const retryQueue = new RetryQueue();
-            const userEmail = Session.getActiveUser().getEmail();
-            const queueId = retryQueue.enqueue({
-                ...operation,
-                userEmail
-            });
-            
-            console.log(`GoogleCalendarManager: Operation queued for background retry (ID: ${queueId})`);
-            return { 
-                success: false, 
-                queued: true, 
-                queueId,
-                message: 'Operation queued for background retry'
-            };
-        } catch (error) {
-            console.error('GoogleCalendarManager: Failed to queue operation for retry:', error);
-            return { 
-                success: false, 
-                queued: false,
-                error: `Failed to queue for retry: ${error.message}` 
-            };
-        }
-    }
-    
     static deleteEvent(calendarId, eventId) {
         const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
         if (!calendar) {
-            console.error(`GoogleCalendarManager.deleteEvent(${calendarId}, ${eventId}): No Calendar for the given ID found for user ${Session.getActiveUser()}.`);
-            return;
+            const error = `Calendar not found: ${calendarId}`;
+            console.error(`GoogleCalendarManager.deleteEvent(${calendarId}, ${eventId}): ${error}`);
+            return { success: false, error };
         }
-        const event = calendar.getEventById(eventId);
+        
         try {
-            if (event) event.deleteEvent();
-
-        } catch (error) {
-            if (!error.message.includes('The calendar event does not exist, or it has already been deleted.')) {
-                throw error
+            const event = calendar.getEventById(eventId);
+            if (event) {
+                event.deleteEvent();
+                console.log(`GoogleCalendarManager: Deleted event ${eventId}`);
+                return { success: true };
+            } else {
+                console.warn(`GoogleCalendarManager: Event ${eventId} not found`);
+                return { success: true }; // Already deleted
             }
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            // Ignore "already deleted" errors
+            if (err.message.includes('The calendar event does not exist, or it has already been deleted.')) {
+                console.log(`GoogleCalendarManager: Event ${eventId} already deleted`);
+                return { success: true };
+            }
+            console.error(`GoogleCalendarManager.deleteEvent() error:`, err);
+            return { success: false, error: err.message };
         }
     }
     
+    /**
+     * Update a calendar event
+     * Throws error on failure - caller must handle and show error dialog to user
+     * 
+     * @param {string} calendarId - Calendar ID
+     * @param {string} eventId - Event ID
+     * @param {string} title - Event title
+     * @param {Date} startTime - Start time
+     * @param {Date} endTime - End time
+     * @param {string} location - Event location
+     * @param {string} description - Event description
+     * @returns {Object} { success: boolean, error?: string }
+     */
     static updateEvent(calendarId, eventId, title, startTime, endTime, location, description) {
         const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
         if (!calendar) {
-            console.error('GoogleCalendarManager.updateEvent() - Calendar not found after retries. ', calendarId);
-            return;
+            const error = `Calendar not found: ${calendarId}`;
+            console.error('GoogleCalendarManager.updateEvent() - ' + error);
+            return { success: false, error };
         }
-        const event = calendar.getEventById(eventId);
-        if (event) {
-            event.setTitle(title);
-            event.setTime(startTime, endTime);
-            event.setLocation(location);
-            event.setDescription(description);
+        
+        try {
+            const event = calendar.getEventById(eventId);
+            if (event) {
+                event.setTitle(title);
+                event.setTime(startTime, endTime);
+                event.setLocation(location);
+                event.setDescription(description);
+                console.log(`GoogleCalendarManager: Updated event ${eventId}`);
+                return { success: true };
+            } else {
+                const error = `Event not found: ${eventId}`;
+                console.error('GoogleCalendarManager.updateEvent() - ' + error);
+                return { success: false, error };
+            }
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error('GoogleCalendarManager.updateEvent() error:', err);
+            return { success: false, error: err.message };
         }
     }
 }
