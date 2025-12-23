@@ -86,6 +86,10 @@ var AnnouncementManager = (function () {
                     // @ts-expect-error - _data is private but needed for complete template data
                     ...row._data
                 };
+                
+                // Append instructions for the operator
+                this._appendInstructions(newDoc.getId(), sendTime, rowData);
+                
                 row.SendAt = sendDate;
                 row.Status = 'pending';
                 row.Attempts = 0;
