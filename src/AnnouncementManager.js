@@ -272,24 +272,16 @@ var AnnouncementManager = (function () {
                         row.LastAttemptAt = new Date(now);
                         sent++;
                     } else {
-                        // Handle failure
-                        const sendTime = row.SendAt.getTime();
-                        const attempts = row.Attempts + 1;
-                        // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
-                        const failureUpdate = AnnouncementCore.calculateFailureUpdate(attempts, sendTime, result.error, now);
-
-                        row.Status = failureUpdate.status;
-                        row.Attempts = failureUpdate.attempts;
-                        row.LastError = failureUpdate.lastError;
+                        // Handle failure - set status to failed immediately
+                        row.Status = 'failed';
+                        row.LastError = result.error || 'Unknown error';
                         row.LastAttemptAt = new Date(now);
-
-                        if (failureUpdate.status === 'abandoned') {
-                            failed++;
-                            console.error(`AnnouncementManager: Announcement for row ${row.rowNum} abandoned after ${attempts} attempts`);
-                            this._notifyFailure(row);
-                        } else {
-                            console.log(`AnnouncementManager: Announcement for row ${row.rowNum} failed, will retry (attempt ${attempts})`);
-                        }
+                        failed++;
+                        
+                        console.error(`AnnouncementManager: Announcement for row ${row.rowNum} failed: ${row.LastError}`);
+                        
+                        // Send immediate failure notification to Ride Schedulers
+                        this._notifyFailureImmediately(row, result.error || 'Unknown error');
                     }
                 } catch (error) {
                     console.error(`AnnouncementManager: Unexpected error processing announcement for row ${row.rowNum}:`, error);
@@ -599,8 +591,6 @@ var AnnouncementManager = (function () {
                     } catch (renameError) {
                         const err = renameError instanceof Error ? renameError : new Error(String(renameError));
                         console.error(`AnnouncementManager.updateAnnouncement: Failed to rename document for row ${row.rowNum}:`, err);
-                        // Add to retry queue for document rename (future enhancement)
-                        // For now, just log and continue - the announcement will still work
                     }
                 }
 
@@ -1194,22 +1184,26 @@ var AnnouncementManager = (function () {
         }
 
         /**
-         * Notify about a failed announcement
-         * Sends email to Ride Scheduler group with details
-         * @param {InstanceType<typeof Row>} row - Row instance
+         * Notify immediately about a failed announcement
+         * Sends email to Ride Scheduler group with failure details
+         * @param {InstanceType<typeof Row>} row - Row instance with failed announcement
+         * @param {string} error - Error message
          * @private
          */
-        _notifyFailure(row) {
+        _notifyFailureImmediately(row, error) {
             try {
                 const globals = getGlobals();
                 const rsGroupEmail = globals.RIDE_SCHEDULER_GROUP_EMAIL;
 
-                if (!rsGroupEmail) return;
+                if (!rsGroupEmail) {
+                    console.warn('AnnouncementManager: Cannot send failure notification - RIDE_SCHEDULER_GROUP_EMAIL not configured');
+                    return;
+                }
 
-                const subject = `Failed: Ride announcement for "${row.RideName}" could not be sent`;
-                const body = `The scheduled announcement for ride "${row.RideName}" (Row ${row.rowNum}) failed after ${row.Attempts} attempts.\n\n` +
-                    `Last error: ${row.LastError}\n\n` +
-                    `Please review and manually send if needed.\n` +
+                const subject = `FAILED: Ride announcement for "${row.RideName}" could not be sent`;
+                const body = `The scheduled announcement for ride "${row.RideName}" (Row ${row.rowNum}) failed to send.\n\n` +
+                    `Error: ${error}\n\n` +
+                    `Please review the announcement and manually retry by updating the ride in the spreadsheet.\n` +
                     `Document: ${row.Announcement}`;
 
                 GmailApp.sendEmail(rsGroupEmail, subject, body, {
@@ -1217,9 +1211,9 @@ var AnnouncementManager = (function () {
                     replyTo: rsGroupEmail
                 });
 
-                console.log(`AnnouncementManager: Sent failure notification for row ${row.rowNum}`);
-            } catch (error) {
-                const err = error instanceof Error ? error : new Error(String(error));
+                console.log(`AnnouncementManager: Sent immediate failure notification for row ${row.rowNum} to ${rsGroupEmail}`);
+            } catch (notifyError) {
+                const err = notifyError instanceof Error ? notifyError : new Error(String(notifyError));
                 console.error(`AnnouncementManager: Failed to send failure notification:`, err.message);
             }
         }

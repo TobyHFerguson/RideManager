@@ -7,7 +7,6 @@
  * - Queue management for pending announcements
  * - Template expansion calculations
  * - Send time calculations
- * - Retry logic with exponential backoff
  * - Statistics and formatting
  */
 var AnnouncementCore = (function() {
@@ -79,41 +78,7 @@ var AnnouncementCore = (function() {
         };
     }
 
-    /**
-     * Calculate next retry time using exponential backoff
-     * Retry intervals: 5min, 15min, 30min, 1hr, 2hr, 4hr, 8hr
-     * Max retry window: 24 hours from scheduled send time
-     * 
-     * @param {number} attemptCount - Number of failed attempts
-     * @param {number} sendTime - Scheduled send time timestamp
-     * @param {number} lastAttemptTime - Last attempt time timestamp
-     * @returns {number|null} Next retry time in ms, or null if should stop retrying
-     */
-    function calculateNextRetry(attemptCount, sendTime, lastAttemptTime) {
-        const timeSinceSend = lastAttemptTime - sendTime;
-        const hoursSinceSend = timeSinceSend / (60 * 60 * 1000);
-        
-        // Stop retrying after 24 hours from scheduled send time
-        if (hoursSinceSend >= 24) {
-            return null;
-        }
-        
-        // Exponential backoff intervals in milliseconds
-        const intervals = [
-            5 * 60 * 1000,      // 5 minutes
-            15 * 60 * 1000,     // 15 minutes
-            30 * 60 * 1000,     // 30 minutes
-            60 * 60 * 1000,     // 1 hour
-            2 * 60 * 60 * 1000, // 2 hours
-            4 * 60 * 60 * 1000, // 4 hours
-            8 * 60 * 60 * 1000  // 8 hours
-        ];
-        
-        const intervalIndex = Math.min(attemptCount, intervals.length - 1);
-        const retryInterval = intervals[intervalIndex];
-        
-        return lastAttemptTime + retryInterval;
-    }
+
 
     /**
      * Get rows from spreadsheet that are due for sending or reminder
@@ -137,7 +102,6 @@ var AnnouncementCore = (function() {
             
             const sendTime = new Date(row.SendAt).getTime();
             const status = row.Status || 'pending';
-            const attempts = row.Attempts || 0;
             
             if (status === 'pending') {
                 const timeDiff = sendTime - currentTime;
@@ -152,39 +116,14 @@ var AnnouncementCore = (function() {
                     dueForReminder.push(row);
                 }
             }
-            // Failed items that are ready for retry
-            else if (status === 'failed') {
-                const lastAttemptAt = row.LastAttemptAt ? row.LastAttemptAt.getTime() : sendTime;
-                const nextRetry = calculateNextRetry(attempts, sendTime, lastAttemptAt);
-                if (nextRetry && nextRetry <= currentTime) {
-                    dueToSend.push(row);
-                }
-            }
+            // Note: 'failed' status announcements are NOT retried automatically
+            // User must manually retry by updating the ride
         });
         
         return { dueToSend, dueForReminder };
     }
 
-    /**
-     * Calculate updated values after a failure
-     * Returns an object with status, attempts, and lastError to update on the row
-     * 
-     * @param {number} attempts - Current attempt count
-     * @param {number} sendTime - Scheduled send time
-     * @param {string} error - Error message
-     * @param {number} currentTime - Current timestamp
-     * @returns {Object} Object with status, attempts, lastError
-     */
-    function calculateFailureUpdate(attempts, sendTime, error, currentTime) {
-        const newAttemptCount = attempts + 1;
-        const nextRetry = calculateNextRetry(newAttemptCount, sendTime, currentTime);
-        
-        return {
-            status: nextRetry ? 'failed' : 'abandoned',
-            attempts: newAttemptCount,
-            lastError: error
-        };
-    }
+
 
     /**
      * Get statistics about announcements from rows
@@ -197,8 +136,7 @@ var AnnouncementCore = (function() {
             total: 0,
             pending: 0,
             failed: 0,
-            sent: 0,
-            abandoned: 0
+            sent: 0
         };
         
         rows.forEach(row => {
@@ -407,10 +345,12 @@ var AnnouncementCore = (function() {
         const newDocName = calculateAnnouncementDocName(newRideData.rideName);
         if (currentAnnouncement.documentName !== newDocName) {
             updates.needsDocumentRename = true;
+            // @ts-expect-error
             updates.newDocumentName = newDocName;
         }
 
         // Calculate new sendAt based on updated ride date
+        // @ts-expect-error
         updates.calculatedSendAt = calculateSendTime(newRideData.rideDate, timezone);
 
         return updates;
@@ -420,9 +360,7 @@ var AnnouncementCore = (function() {
     return {
         calculateSendTime,
         createQueueItem,
-        calculateNextRetry,
         getDueItems,
-        calculateFailureUpdate,
         getStatistics,
         enrichRowData,
         expandTemplate,

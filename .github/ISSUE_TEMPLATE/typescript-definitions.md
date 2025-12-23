@@ -28,8 +28,6 @@ During RetryQueue testing, we encountered **14+ runtime errors** caused by API m
 - ✅ UIManager.d.ts
 
 **Missing Coverage**: ~30+ modules lack TypeScript definitions, including critical infrastructure:
-- ❌ RetryQueue.js
-- ❌ RetryQueueCore.js
 - ❌ ScheduleAdapter.js
 - ❌ Row.js
 - ❌ Commands.js
@@ -63,31 +61,9 @@ This cycle repeats for each error, wasting significant time.
 ### Phase 1: Critical Infrastructure (Priority: HIGH)
 Create `.d.ts` files for modules with complex APIs or frequent usage:
 
-1. **RetryQueueCore.d.ts** - Pure JavaScript with complex interfaces
-   ```typescript
-   interface QueueItem {
-       id: string;
-       type: 'create' | 'update' | 'delete';
-       calendarId: string;
-       rideUrl: string;
-       params: any;
-       userEmail: string;
-       enqueuedAt: number;
-       nextRetryAt: number;
-       attemptCount: number;
-       lastError: string | null;
-   }
-   
-   interface RetryResult {
-       shouldRetry: boolean;
-       updatedItem: QueueItem;
-   }
-   ```
-
-2. **RetryQueue.d.ts** - GAS adapter class
-3. **ScheduleAdapter.d.ts** - Complex spreadsheet I/O
-4. **Row.d.ts** - Data model with many properties
-5. **Commands.d.ts** - Command pattern interface
+1. **ScheduleAdapter.d.ts** - Complex spreadsheet I/O
+2. **Row.d.ts** - Data model with many properties
+3. **Commands.d.ts** - Command pattern interface
 
 ### Phase 2: Business Logic (Priority: MEDIUM)
 6. **ProcessingManager.d.ts**
@@ -99,8 +75,7 @@ Create `.d.ts` files for modules with complex APIs or frequent usage:
 11. **UserLogger.d.ts**
 12. **utils.d.ts**
 13. **testEvent.d.ts**
-14. **testRetryQueue.d.ts**
-15. All remaining modules
+14. All remaining modules
 
 ## Architecture Guidelines
 
@@ -166,7 +141,6 @@ export = Commands;
 
 ## Related Issues
 
-- Created after successful RetryQueue testing (#[issue number])
 - Blocked by: None
 - Blocks: Future refactoring work
 

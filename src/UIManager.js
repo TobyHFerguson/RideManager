@@ -77,27 +77,10 @@ const UIManager = {
         }
     },
 
-    /**
-     * Show notification about calendar operations queued for background retry
-     * @param {number} queuedCount - Number of operations queued
-     */
-    notifyQueuedOperations: function (queuedCount) {
-        if (queuedCount === 0) return;
-        
-        const userEmail = Session.getActiveUser().getEmail();
-        const message = `${queuedCount} Google Calendar operation${queuedCount > 1 ? 's' : ''} could not be completed immediately and ${queuedCount > 1 ? 'have' : 'has'} been queued for background retry.\n\n` +
-            `The system will automatically retry:\n` +
-            `• Every 5 minutes for the first hour\n` +
-            `• Every hour for the next 47 hours\n\n` +
-            `You'll receive an email at ${userEmail} when ${queuedCount > 1 ? 'they succeed' : 'it succeeds'} or if ${queuedCount > 1 ? 'they' : 'it'} permanently ${queuedCount > 1 ? 'fail' : 'fails'} after 48 hours.\n\n` +
-            `You can check retry status using:\nExtensions → DTRT → View Retry Queue Status`;
-        
-        SpreadsheetApp.getUi().alert('Background Retry Queued', message, SpreadsheetApp.getUi().ButtonSet.OK);
-    },
 
     /**
      * Process cancellation with announcement handling
-     * @param {Array} rows - Rows to cancel
+     * @param {Row[]} rows - Rows to cancel
      * @param {Object} rwgps - RWGPS connector
      */
     processCancellationWithAnnouncements: function(rows, rwgps) {

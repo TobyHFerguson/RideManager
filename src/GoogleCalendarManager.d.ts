@@ -10,9 +10,8 @@ declare class GoogleCalendarManager {
      * @param {Date} endTime - The end time of the event.
      * @param {string} location - The location of the event.
      * @param {string} description - The description of the event.
-     * @param {string | null} rideUrl - Optional ride URL for retry queue.
-     * @param {number | null} rowNum - Optional row number for retry queue.
-     * @returns {string | {success: boolean, error?: string, queued?: boolean, eventId?: string} | undefined} The event ID if successful, result object if queued/failed, or undefined.
+     * @returns {string } The event ID if successful
+     * @throws Will throw an error if the calendar cannot be found or the event creation failed.
      */
     static createEvent(
         calendarId: string,
@@ -21,17 +20,15 @@ declare class GoogleCalendarManager {
         endTime: Date,
         location: string,
         description: string,
-        rideUrl?: string | null,
-        rowNum?: number | null
-    ): string | {success: boolean, error?: string, queued?: boolean, eventId?: string} | undefined;
+    ): string ;
 
     /**
      * Deletes an event from the specified calendar.
      * @param {string} calendarId - The ID of the calendar.
      * @param {string} eventId - The ID of the event to delete.
+     * @throws Will throw an error if the calendar cannot be found.
      */
     static deleteEvent(calendarId: string, eventId: string): void;
-
     /**
      * Updates an existing event in the specified calendar.
      * @param {string} calendarId - The ID of the calendar.
@@ -41,6 +38,7 @@ declare class GoogleCalendarManager {
      * @param {Date} endTime - The new end time for the event.
      * @param {string} location - The new location for the event.
      * @param {string} description - The new description for the event.
+     * @throws Will throw an error if neither the calendar nor the event can be found.
      */
     static updateEvent(
         calendarId: string,
@@ -51,4 +49,13 @@ declare class GoogleCalendarManager {
         location: string,
         description: string
     ): void;
+
+
+     /**
+     * Gets a calendar by ID 
+     * @param {string} calendarId - The calendar ID
+     * @returns {GoogleAppsScript.Calendar.Calendar} The calendar
+     * @throws Will throw an error if the calendar cannot be retrieved
+     */
+    static getCalendar(calendarId) : GoogleAppsScript.Calendar.Calendar
 }

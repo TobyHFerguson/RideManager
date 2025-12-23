@@ -31,9 +31,6 @@ function createMenu_() {
     .addItem('Test Selected Announcements', testSendAnnouncement_.name)
     .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
     .addSeparator()
-    .addItem('View Retry Queue Status', viewRetryQueueStatus_.name)
-    .addItem('Process Retry Queue Now', processRetryQueueNow_.name)
-    .addSeparator()
     .addItem('Install Triggers', installTriggers_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addToUi();
@@ -254,16 +251,6 @@ function alert_(message) {
   SpreadsheetApp.getUi().alert(message);
 }
 
-
-
-function viewRetryQueueStatus_() {
-  MenuFunctions.viewRetryQueueStatus();
-}
-
-function processRetryQueueNow_() {
-  MenuFunctions.processRetryQueueNow();
-}
-
 /**
  * Send pending announcements for selected rows
  */
@@ -473,71 +460,6 @@ function announcementTrigger() {
   }
 }
 
-/**
- * Daily backstop check for retry queue
- * Runs once per day to catch missed retries and ensure scheduled trigger exists
- * Owner-only (trigger should only be created by owner)
- */
-function dailyRetryCheck() {
-  try {
-    console.log('dailyRetryCheck: Starting daily backstop check');
-    UserLogger.log('DAILY_RETRY_CHECK', 'Starting daily backstop check', {});
-
-    const retryQueue = new RetryQueue();
-
-    // Process any missed or due retries
-    const result = retryQueue.processQueue();
-
-    console.log('dailyRetryCheck: Completed', result);
-    UserLogger.log('DAILY_RETRY_CHECK_COMPLETE', 'Daily backstop check completed', result);
-
-  } catch (e) {
-    const error = /** @type {Error} */ (e);
-    console.error('Daily retry check failed:', error);
-    UserLogger.log('DAILY_RETRY_CHECK_ERROR', 'Daily backstop check failed', {
-      error: error.message,
-      stack: error.stack
-    });
-  }
-}
-
-/**
- * Scheduled retry queue trigger
- * Fires at specific time to process due retry operations
- * Owner-only (trigger created by owner via TriggerManager)
- */
-function retryQueueTrigger() {
-  try {
-    console.log('retryQueueTrigger: Processing due retries');
-    UserLogger.log('RETRY_QUEUE_TRIGGER', 'Processing due retries', {});
-
-    const retryQueue = new RetryQueue();
-
-    // Process due retries
-    const result = retryQueue.processQueue();
-
-    console.log('retryQueueTrigger: Completed', result);
-    UserLogger.log('RETRY_QUEUE_TRIGGER_COMPLETE', 'Due retries processed', result);
-
-    // Clean up this trigger since it has fired
-    try {
-      const triggerManager = new TriggerManager();
-      triggerManager.removeRetryTrigger();
-      console.log('retryQueueTrigger: Cleaned up trigger');
-    } catch (cleanupError) {
-      console.warn('retryQueueTrigger: Failed to cleanup trigger:', cleanupError);
-      // Non-fatal - daily backstop will handle cleanup
-    }
-
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    console.error('retryQueueTrigger error:', err);
-    UserLogger.log('RETRY_QUEUE_TRIGGER_ERROR', 'Retry queue processing failed', {
-      error: err.message,
-      stack: err.stack
-    });
-  }
-}
 
 /**
  * Install all required triggers (owner-only)
@@ -575,7 +497,6 @@ function installTriggers_() {
       `• onOpen (runs when spreadsheet opens)\n` +
       `• onEdit (runs when cells are edited)\n` +
       `• Daily Announcement Check (runs at 2 AM daily)\n` +
-      `• Daily Retry Queue Check (runs at 2 AM daily)\n` +
       `• Daily RWGPS Members Sync (runs at 2 AM daily)\n\n` +
       `Scheduled triggers for specific announcements or retries\n` +
       `will be created automatically as needed.\n\n` +

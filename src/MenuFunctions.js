@@ -117,64 +117,6 @@ const MenuFunctions = (() => {
     },
     
     /**
-     * View retry queue status
-     */
-    viewRetryQueueStatus() {
-      try {
-        const retryQueue = new RetryQueue();
-        const status = retryQueue.getStatus();
-        
-        let message = `Retry Queue Status\n\n`;
-        message += `Total items in queue: ${status.itemCount}\n`;
-        message += `Items due for retry now: ${status.statistics.dueNow}\n\n`;
-        
-        if (status.itemCount > 0) {
-          message += `Age distribution:\n`;
-          message += `  < 1 hour: ${status.statistics.byAge.lessThan1Hour}\n`;
-          message += `  < 24 hours: ${status.statistics.byAge.lessThan24Hours}\n`;
-          message += `  > 24 hours: ${status.statistics.byAge.moreThan24Hours}\n\n`;
-          
-          message += `Queue items:\n`;
-          status.items.forEach((/** @type {any} */ item) => {
-            message += `\n"${item.rideTitle}" - Row ${item.rowNum}\n`;
-            message += `  Age: ${item.age} minutes\n`;
-            message += `  Attempts: ${item.attemptCount}\n`;
-            message += `  Next retry: ${item.nextRetryAt}\n`;
-            message += `  User email: ${item.userEmail}\n`;
-          });
-        } else {
-          message += `Queue is empty.`;
-        }
-        
-        SpreadsheetApp.getUi().alert('Retry Queue Status', message, SpreadsheetApp.getUi().ButtonSet.OK);
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        SpreadsheetApp.getUi().alert('Error', `Failed to get retry queue status: ${err.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
-      }
-    },
-    
-    /**
-     * Manually trigger retry queue processing
-     */
-    processRetryQueueNow() {
-      try {
-        const retryQueue = new RetryQueue();
-        const result = retryQueue.processQueue();
-        
-        let message = `Retry Queue Processing Complete\n\n`;
-        message += `Processed: ${result.processed}\n`;
-        message += `Succeeded: ${result.succeeded}\n`;
-        message += `Failed: ${result.failed}\n`;
-        message += `Remaining in queue: ${result.remaining}`;
-        
-        SpreadsheetApp.getUi().alert('Queue Processed', message, SpreadsheetApp.getUi().ButtonSet.OK);
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        SpreadsheetApp.getUi().alert('Error', `Failed to process retry queue: ${err.message}`, SpreadsheetApp.getUi().ButtonSet.OK);
-      }
-    },
-    
-    /**
      * Send pending announcements for selected rows
      * Immediately sends announcements that are pending (ignoring SendAt time)
      */

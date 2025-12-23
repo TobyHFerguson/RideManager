@@ -18,8 +18,7 @@ import RideManager from './RideManager';
 import UserLogger from './UserLogger';
 import SCCCCEvent from './SCCCCEvent';
 import EventFactory from './EventFactory';
-import RetryQueue from './RetryQueue';
-import RetryQueueCore from './RetryQueueCore';
+import AnnouncementManager from './AnnouncementManager';
 import AnnouncementCore from './AnnouncementCore';
 import GoogleCalendarManager from './GoogleCalendarManager';
 import Groups from './Groups';
@@ -64,10 +63,8 @@ interface ExportsNamespace {
     readonly SCCCCEvent: typeof SCCCCEvent;
     /** EventFactory module */
     readonly EventFactory: typeof EventFactory;
-    /** RetryQueue class */
-    readonly RetryQueue: typeof RetryQueue;
-    /** RetryQueueCore class */
-    readonly RetryQueueCore: typeof RetryQueueCore;
+    /** AnnouncementManager class */
+    readonly AnnouncementManager: typeof AnnouncementManager;
     /** AnnouncementCore module */
     readonly AnnouncementCore: typeof AnnouncementCore;
     /** GoogleCalendarManager class */

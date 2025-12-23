@@ -79,7 +79,7 @@ const Commands = (() => {
          */
         updateSelectedRidesWithCredentials(rows, rwgps, force = false) {
           const errorFuns = 
-                [rowCheck.cancelled, rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute, rowCheck.foreignRoute]
+                [rowCheck.unscheduled, rowCheck.unmanagedRide, rowCheck.noStartDate, rowCheck.noStartTime, rowCheck.noGroup, rowCheck.badRoute, rowCheck.foreignRoute]
           const warningFuns = [rowCheck.noRideLeader, rowCheck.noLocation, rowCheck.noAddress, rowCheck.inappropiateGroup]
             UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.updateRows, force);
         },

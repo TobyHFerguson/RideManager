@@ -114,16 +114,6 @@ export class TriggerManager {
      */
     scheduleAnnouncementTrigger(sendTime: Date | number): ScheduleTriggerResult;
     
-    /**
-     * Schedule the next retry queue trigger for a specific time
-     * Idempotent: If trigger already exists for same time, does nothing
-     * Owner-only operation
-     * 
-     * @param retryTime - When the retry should be processed (Date or timestamp)
-     * @returns Scheduling result with created flag and trigger ID
-     * @throws Error if user is not owner
-     */
-    scheduleRetryTrigger(retryTime: Date | number): ScheduleTriggerResult;
     
     /**
      * Remove the scheduled announcement trigger
@@ -133,15 +123,7 @@ export class TriggerManager {
      * @throws Error if user is not owner
      */
     removeAnnouncementTrigger(): void;
-    
-    /**
-     * Remove the scheduled retry trigger
-     * Idempotent: Safe to call even if trigger doesn't exist
-     * Owner-only operation
-     * 
-     * @throws Error if user is not owner
-     */
-    removeRetryTrigger(): void;
+
     
     /**
      * Generic method to schedule a timed trigger
