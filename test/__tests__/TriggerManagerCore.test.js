@@ -15,8 +15,6 @@ describe('TriggerManagerCore', () => {
             expect(TriggerManagerCore.TRIGGER_TYPES.ON_EDIT).toBe('onEdit');
             expect(TriggerManagerCore.TRIGGER_TYPES.DAILY_ANNOUNCEMENT).toBe('dailyAnnouncement');
             expect(TriggerManagerCore.TRIGGER_TYPES.ANNOUNCEMENT_SCHEDULED).toBe('announcementScheduled');
-            expect(TriggerManagerCore.TRIGGER_TYPES.DAILY_RETRY).toBe('dailyRetry');
-            expect(TriggerManagerCore.TRIGGER_TYPES.RETRY_SCHEDULED).toBe('retryScheduled');
         });
         
         it('should export HANDLER_FUNCTIONS', () => {
@@ -65,23 +63,6 @@ describe('TriggerManagerCore', () => {
             expect(config.schedule).toEqual({ type: 'at', time: null });
         });
         
-        it('should return config for daily retry trigger', () => {
-            const config = TriggerManagerCore.getTriggerConfig('dailyRetry');
-            expect(config.handlerFunction).toBe('dailyRetryCheck');
-            expect(config.isInstallable).toBe(true);
-            expect(config.propertyKey).toBe('DAILY_RETRY_TRIGGER_ID');
-            expect(config.schedule).toEqual({ type: 'daily', hour: 2 });
-        });
-        
-        it('should return config for scheduled retry trigger', () => {
-            const config = TriggerManagerCore.getTriggerConfig('retryScheduled');
-            expect(config.handlerFunction).toBe('retryQueueTrigger');
-            expect(config.isInstallable).toBe(true);
-            expect(config.propertyKey).toBe('RETRY_TRIGGER_ID');
-            expect(config.timePropertyKey).toBe('RETRY_NEXT_TRIGGER_TIME');
-            expect(config.schedule).toEqual({ type: 'at', time: null });
-        });
-        
         it('should return config for daily RWGPS members trigger', () => {
             const config = TriggerManagerCore.getTriggerConfig('dailyRWGPSMembersDownload');
             expect(config.handlerFunction).toBe('dailyRWGPSMembersDownload');
@@ -102,9 +83,8 @@ describe('TriggerManagerCore', () => {
             const backstops = TriggerManagerCore.getBackstopTriggers();
             expect(Array.isArray(backstops)).toBe(true);
             expect(backstops).toContain('dailyAnnouncement');
-            expect(backstops).toContain('dailyRetry');
             expect(backstops).toContain('dailyRWGPSMembersDownload');
-            expect(backstops.length).toBe(3);
+            expect(backstops.length).toBe(2);
         });
     });
     
@@ -115,9 +95,10 @@ describe('TriggerManagerCore', () => {
             expect(installable).toContain('onOpen');
             expect(installable).toContain('onEdit');
             expect(installable).toContain('dailyAnnouncement');
-            expect(installable).toContain('dailyRetry');
             expect(installable).toContain('dailyRWGPSMembersDownload');
-            expect(installable.length).toBe(5);
+            // announcementScheduled is NOT installable - it's scheduled dynamically
+            expect(installable).not.toContain('announcementScheduled'); 
+            expect(installable.length).toBe(4);
         });
     });
     
@@ -126,8 +107,7 @@ describe('TriggerManagerCore', () => {
             const scheduled = TriggerManagerCore.getScheduledTriggers();
             expect(Array.isArray(scheduled)).toBe(true);
             expect(scheduled).toContain('announcementScheduled');
-            expect(scheduled).toContain('retryScheduled');
-            expect(scheduled.length).toBe(2);
+            expect(scheduled.length).toBe(1);
         });
     });
     
@@ -139,7 +119,7 @@ describe('TriggerManagerCore', () => {
                 Date.now()
             );
             expect(result.shouldSchedule).toBe(true);
-            expect(result.reason).toBe('No trigger currently scheduled');
+            expect(result.reason).toBe('No trigger currently exists');
         });
         
         it('should schedule when scheduledTime is undefined', () => {
@@ -149,7 +129,7 @@ describe('TriggerManagerCore', () => {
                 Date.now()
             );
             expect(result.shouldSchedule).toBe(true);
-            expect(result.reason).toBe('No trigger currently scheduled');
+            expect(result.reason).toBe('No trigger currently exists');
         });
         
         it('should not schedule when time unchanged (idempotent)', () => {

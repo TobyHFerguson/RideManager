@@ -13,7 +13,6 @@ import type ScheduleAdapterClass from './ScheduleAdapter';
 import type { MenuFunctions as MenuFunctionsType } from './MenuFunctions';
 import type RouteColumnEditorClass from './RouteColumnEditor';
 import type AnnouncementManagerClass from './AnnouncementManager';
-import type RetryQueueClass from './RetryQueue';
 import type TriggerManagerClass from './TriggerManager';
 import type ExportsType from './Exports';
 import type { GlobalsObject } from './Globals';
@@ -37,7 +36,6 @@ declare global {
     const ScheduleAdapter: typeof ScheduleAdapterClass;
     const RouteColumnEditor: typeof RouteColumnEditorClass;
     const AnnouncementManager: typeof AnnouncementManagerClass;
-    const RetryQueue: typeof RetryQueueClass;
     const TriggerManager: typeof TriggerManagerClass;
     const Row: typeof RowClass;
     const SCCCCEvent: typeof SCCCCEventClass;

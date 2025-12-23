@@ -194,7 +194,6 @@ Before deploying to production:
 - [ ] Test template field expansion
 - [ ] Test email sending
 - [ ] Test 24-hour reminder functionality
-- [ ] Test retry logic with intentional failures
 - [ ] Verify trigger installation
 - [ ] Test with emoji and image content
 
@@ -203,8 +202,7 @@ Before deploying to production:
 1. **Email Size:** Total email size should stay under 25MB (Gmail limit)
 2. **Image Encoding:** Images >100KB may not display in some email clients
 3. **Send Window:** Announcements are checked every 15 minutes (±15 min precision)
-4. **Retry Window:** Failed sends retry for 24 hours, then mark as permanently failed
-5. **Permissions:** Announcement documents require shared drive or proper permissions
+4. **Permissions:** Announcement documents require shared drive or proper permissions
 
 ---
 
@@ -277,11 +275,6 @@ All cancellation and reinstatement operations are logged to the User Activity Lo
 - Row number and ride name
 - Cancellation/reinstatement reason
 - Whether announcement email was sent
-
-### Integration with Calendar Retry Queue
-
-- **Cancellation**: If a calendar event creation is pending in the retry queue, it is automatically removed when the ride is cancelled
-- **Reinstatement**: Pending retry operations are left in the queue to continue (ride needs the calendar event)
 
 ### Backward Compatibility
 

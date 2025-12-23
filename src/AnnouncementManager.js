@@ -591,8 +591,6 @@ var AnnouncementManager = (function () {
                     } catch (renameError) {
                         const err = renameError instanceof Error ? renameError : new Error(String(renameError));
                         console.error(`AnnouncementManager.updateAnnouncement: Failed to rename document for row ${row.rowNum}:`, err);
-                        // Add to retry queue for document rename (future enhancement)
-                        // For now, just log and continue - the announcement will still work
                     }
                 }
 

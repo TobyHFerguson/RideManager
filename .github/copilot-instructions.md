@@ -61,9 +61,6 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `Commands.js` - Business logic commands
   - `rowCheck.js` - Validation logic
   - `RouteColumnEditor.js` - Route URL/formula parsing and manipulation
-  - `RetryQueueCore.js` - Retry logic (exponential backoff, queue management)
-  - `RetryQueueMarshallingCore.js` - Queue data marshalling (items ↔ 2D arrays)
-  - `RetryQueueAdapterCore.js` - Spreadsheet row conversion logic
   - `AnnouncementCore.js` - Announcement scheduling and template expansion
   - `TriggerManagerCore.js` - Trigger management logic (configuration, validation, scheduling decisions)
   - `HyperlinkUtils.js` - Hyperlink formula parsing
@@ -76,8 +73,6 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - `MenuFunctions.js` - Menu handlers
   - `triggers.js` - GAS event handlers (onOpen, onEdit, scheduled triggers)
   - `TriggerManager.js` - GAS orchestrator for TriggerManagerCore (ScriptApp operations)
-  - `RetryQueue.js` - GAS orchestrator for RetryQueueCore
-  - `RetryQueueSpreadsheetAdapter.js` - SpreadsheetApp I/O for retry queue (uses RetryQueueMarshallingCore)
   - `AnnouncementManager.js` - GAS adapter for AnnouncementCore (Gmail, SpreadsheetApp)
   - `GoogleCalendarManager.js` - Calendar API wrapper
 
@@ -101,7 +96,6 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
   - Handle GAS-specific errors
   - Convert between GAS types and plain JavaScript types
 - **Goal**: Every code path should be verifiable through automated tests
-- **Example**: `RetryQueueMarshallingCore.js` (pure JS data conversion, 100% tested) vs `RetryQueueSpreadsheetAdapter.js` (thin GAS wrapper)
 
 **Rule 2: 100% Test Coverage Required**
 - ALL pure JavaScript modules MUST have Jest tests with 100% code coverage
@@ -114,7 +108,7 @@ The codebase strictly separates GAS-specific code from pure JavaScript to maximi
 **Rule 3: Testability First - Extract Before You Code**
 When creating new functionality:
 1. **Identify what can be tested**: Separate pure logic from GAS API calls
-2. **Write pure JavaScript core logic** in `*Core.js` module (e.g., `RetryQueueCore.js`, `RetryQueueMarshallingCore.js`)
+2. **Write pure JavaScript core logic** in `*Core.js` module (e.g., `RWGPSMembersCore.js`)
 3. **Write comprehensive Jest tests** achieving 100% coverage BEFORE writing the adapter
 4. **Create thin GAS adapter** in `*.js` that only handles GAS APIs
 5. **Document the separation** in code comments
@@ -335,7 +329,6 @@ const commands = Exports.getCommands();
 - Google Doc template rendering
 - Spreadsheet persistence for announcement queue
 - Trigger scheduling for timed sends
-- Error handling and retry queue integration
 
 **Key Concepts**:
 - **Announcement Queue**: Spreadsheet-based (not PropertiesService) for operator visibility
@@ -348,24 +341,6 @@ const commands = Exports.getCommands();
 - Operator Manual: `docs/Announcement-OperatorManual.md`
 - Ride Scheduler Guide: `docs/Announcement-RideSchedulerGuide.md`
 - Release Notes: `docs/Announcement-ReleaseNotes.md`
-
-#### Retry Queue System
-**RetryQueueCore.js** (Pure JavaScript, 100% tested):
-- Exponential backoff calculation (5min → 48hr cutoff)
-- Queue state management (pending, retrying, succeeded, failed, abandoned)
-- Due time calculations
-
-**RetryQueueSpreadsheetAdapter.js** (GAS adapter):
-- Spreadsheet-based persistence (moved from PropertiesService for visibility)
-- Uses `RetryQueueMarshallingCore` for data conversion (also 100% tested)
-- Row-level operations with metadata tracking
-
-**Purpose**: Automatically retry failed Calendar API operations with exponential backoff
-- Initial retry: 5 minutes (for transient API failures)
-- Max retry: After 48 hours from enqueue time
-- Visibility: Operators can view queue status in "Retry Queue" spreadsheet
-
-**Documentation**: `docs/RetryQueue.md`, `docs/RetryQueueMigration.md`
 
 #### Trigger Management
 **TriggerManagerCore.js** (Pure JavaScript, 100% tested):
@@ -384,10 +359,8 @@ const commands = Exports.getCommands();
 1. **onOpen** - Installable trigger (runs as owner)
 2. **onEdit** - Installable trigger (runs as owner)
 3. **Daily Announcement Check** - Backstop (runs 2 AM daily)
-4. **Daily Retry Check** - Backstop (runs 2 AM daily)
 5. **Daily RWGPS Members Sync** - Backstop (runs 2 AM daily)
 6. **Announcement Scheduled** - Dynamic (fires at announcement send time)
-7. **Retry Scheduled** - Dynamic (fires at retry due time)
 
 **Installation**:
 - Owner-only via menu: "Ride Schedulers > Install Triggers"

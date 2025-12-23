@@ -94,19 +94,6 @@ declare function importSelectedRoutes_(): void;
  */
 declare function linkSelectedRouteUrls_(): void;
 
-
-/**
- * View retry queue status (menu function)
- * @private
- */
-declare function viewRetryQueueStatus_(): void;
-
-/**
- * Process retry queue immediately (menu function)
- * @private
- */
-declare function processRetryQueueNow_(): void;
-
 /**
  * Show app version (menu function)
  * @private

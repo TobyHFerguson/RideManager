@@ -35,8 +35,6 @@ export interface AnnouncementQueueItem {
     lastError: string | null;
     /** Whether 24-hour reminder has been sent */
     reminderSent: boolean;
-    /** Next retry time (only present if retrying) */
-    nextRetry?: number;
 }
 
 /**

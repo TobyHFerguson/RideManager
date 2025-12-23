@@ -7,7 +7,6 @@
  * - Queue management for pending announcements
  * - Template expansion calculations
  * - Send time calculations
- * - Retry logic with exponential backoff
  * - Statistics and formatting
  */
 var AnnouncementCore = (function() {
@@ -346,10 +345,12 @@ var AnnouncementCore = (function() {
         const newDocName = calculateAnnouncementDocName(newRideData.rideName);
         if (currentAnnouncement.documentName !== newDocName) {
             updates.needsDocumentRename = true;
+            // @ts-expect-error
             updates.newDocumentName = newDocName;
         }
 
         // Calculate new sendAt based on updated ride date
+        // @ts-expect-error
         updates.calculatedSendAt = calculateSendTime(newRideData.rideDate, timezone);
 
         return updates;

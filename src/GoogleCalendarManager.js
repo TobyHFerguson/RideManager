@@ -1,37 +1,18 @@
 // @ts-check
+// @ts-expect-error
 class GoogleCalendarManager {
     /**
      * Gets a calendar by ID with retry logic to handle temporary unavailability
      * @param {string} calendarId - The calendar ID
-     * @param {number} maxRetries - Maximum number of retries (default: 3)
-     * @param {number} delayMs - Delay between retries in milliseconds (default: 1000)
-     * @returns {GoogleAppsScript.Calendar.Calendar|null} The calendar or null if not found
+     * @returns {GoogleAppsScript.Calendar.Calendar} The calendar
+     * @throws Will throw an error if the calendar cannot be retrieved
      */
-    static getCalendarWithRetry(calendarId, maxRetries = 3, delayMs = 1000) {
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                const calendar = CalendarApp.getCalendarById(calendarId);
-                if (calendar) {
-                    return calendar;
-                }
-                
-                if (attempt < maxRetries) {
-                    console.log(`Calendar ${calendarId} not found, attempt ${attempt + 1}/${maxRetries + 1}, retrying in ${delayMs}ms...`);
-                    Utilities.sleep(delayMs);
-                    // Exponential backoff: increase delay for next attempt
-                    delayMs *= 1.5;
-                }
-            } catch (error) {
-                console.error(`Error getting calendar ${calendarId} on attempt ${attempt + 1}:`, error);
-                if (attempt < maxRetries) {
-                    Utilities.sleep(delayMs);
-                    delayMs *= 1.5;
-                } else {
-                    throw error;
-                }
-            }
+    static getCalendar(calendarId) {
+        const calendar = CalendarApp.getCalendarById(calendarId);
+        if (!calendar) {
+            throw new Error(`Calendar not found: ${calendarId}\n\nYou must subscribe to the calendar.`);
         }
-        return null;
+        return calendar;    
     }
 
     /**
@@ -44,33 +25,19 @@ class GoogleCalendarManager {
      * @param {Date} endTime - End time
      * @param {string} location - Event location
      * @param {string} description - Event description
-     * @returns {Object} { success: boolean, eventId?: string, error?: string }
+     * @returns {string} eventId
+     * @throws Will throw an error if the calendar cannot be found or the event creation failed.
      */
     static createEvent(calendarId, title, startTime, endTime, location, description) {
-        const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
-        if (!calendar) {
-            const error = `Calendar not found: ${calendarId}`;
-            console.error('GoogleCalendarManager.createEvent() - ' + error);
-            return { success: false, error };
-        }
-        
-        console.log('Calendar found: ', calendar.getName());
-        console.log(`Creating event: ${title}, ${startTime} - ${endTime}, location: ${location}`);
-        
-        try {
-            const event = calendar.createEvent(title, startTime, endTime, {
-                description: description,
-                location: location
-            });
+        const calendar = GoogleCalendarManager.getCalendar(calendarId);
+        const event = calendar.createEvent(title, startTime, endTime, {
+            description: description,
+            location: location
+        });
 
-            const eventId = event.getId();
-            console.log("GoogleCalendarEvent created:", eventId);
-            return { success: true, eventId };
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            console.error('GoogleCalendarManager.createEvent() - Error creating event:', err);
-            return { success: false, error: err.message };
-        }
+        const eventId = event.getId();
+        console.log("GoogleCalendarEvent created:", eventId);
+        return eventId;
     }
     
     /**
@@ -79,35 +46,15 @@ class GoogleCalendarManager {
      * 
      * @param {string} calendarId - Calendar ID
      * @param {string} eventId - Event ID
-     * @returns {Object} { success: boolean, error?: string }
+     * @returns {void} 
+     * @throws Will throw an error if the calendar cannot be found
      */
     static deleteEvent(calendarId, eventId) {
-        const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
-        if (!calendar) {
-            const error = `Calendar not found: ${calendarId}`;
-            console.error(`GoogleCalendarManager.deleteEvent(${calendarId}, ${eventId}): ${error}`);
-            return { success: false, error };
-        }
-        
-        try {
-            const event = calendar.getEventById(eventId);
-            if (event) {
-                event.deleteEvent();
-                console.log(`GoogleCalendarManager: Deleted event ${eventId}`);
-                return { success: true };
-            } else {
-                console.warn(`GoogleCalendarManager: Event ${eventId} not found`);
-                return { success: true }; // Already deleted
-            }
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            // Ignore "already deleted" errors
-            if (err.message.includes('The calendar event does not exist, or it has already been deleted.')) {
-                console.log(`GoogleCalendarManager: Event ${eventId} already deleted`);
-                return { success: true };
-            }
-            console.error(`GoogleCalendarManager.deleteEvent() error:`, err);
-            return { success: false, error: err.message };
+        const calendar = GoogleCalendarManager.getCalendar(calendarId);
+        const event = calendar.getEventById(eventId);
+        if (event) {
+            event.deleteEvent();
+            console.log(`GoogleCalendarManager: Deleted event ${eventId}`);
         }
     }
     
@@ -122,34 +69,20 @@ class GoogleCalendarManager {
      * @param {Date} endTime - End time
      * @param {string} location - Event location
      * @param {string} description - Event description
-     * @returns {Object} { success: boolean, error?: string }
+     * @return {void}
+     * @throws Will throw an error if neither the calendar nor the event can be found
      */
     static updateEvent(calendarId, eventId, title, startTime, endTime, location, description) {
-        const calendar = GoogleCalendarManager.getCalendarWithRetry(calendarId);
-        if (!calendar) {
-            const error = `Calendar not found: ${calendarId}`;
-            console.error('GoogleCalendarManager.updateEvent() - ' + error);
-            return { success: false, error };
-        }
-        
-        try {
-            const event = calendar.getEventById(eventId);
-            if (event) {
-                event.setTitle(title);
-                event.setTime(startTime, endTime);
-                event.setLocation(location);
-                event.setDescription(description);
-                console.log(`GoogleCalendarManager: Updated event ${eventId}`);
-                return { success: true };
-            } else {
-                const error = `Event not found: ${eventId}`;
-                console.error('GoogleCalendarManager.updateEvent() - ' + error);
-                return { success: false, error };
-            }
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            console.error('GoogleCalendarManager.updateEvent() error:', err);
-            return { success: false, error: err.message };
+        const calendar = GoogleCalendarManager.getCalendar(calendarId);
+        const event = calendar.getEventById(eventId);
+        if (event) {
+            event.setTitle(title)
+            .setTime(startTime, endTime)
+            .setLocation(location)
+            .setDescription(description);
+            console.log(`GoogleCalendarManager: Updated event ${eventId}`);
+        } else {
+            throw new Error(`Event not found: ${eventId} in calendar ${calendarId}`);
         }
     }
 }
