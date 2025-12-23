@@ -345,7 +345,7 @@ function testSendAnnouncement_() {
         this.getGlobals = /** @type {function(): any} */ (function () { return tempGlobals; });
 
         // Send the announcement
-        const result = manager.sendAnnouncement(row);
+        const result = manager.sendAnnouncement(row, testEmail);
 
         // Restore original getGlobals
         this.getGlobals = originalGetGlobals;

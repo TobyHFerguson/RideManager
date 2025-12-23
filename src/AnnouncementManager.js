@@ -86,10 +86,10 @@ var AnnouncementManager = (function () {
                     // @ts-expect-error - _data is private but needed for complete template data
                     ...row._data
                 };
-                
+
                 // Append instructions for the operator
                 this._appendInstructions(newDoc.getId(), sendTime, rowData);
-                
+
                 row.SendAt = sendDate;
                 row.Status = 'pending';
                 row.Attempts = 0;
@@ -115,12 +115,16 @@ var AnnouncementManager = (function () {
          * @param {InstanceType<typeof Row>} row - Row object with announcement data
          * @returns {{success: boolean, error?: string}} Result object
          */
-        sendAnnouncement(row) {
+        sendAnnouncement(row, email = null) {
             try {
                 const globals = getGlobals();
                 const key = `${row.Group}_GROUP_ANNOUNCEMENT_ADDRESS`;
-                const recipientEmail = globals[key];
 
+                let recipientEmail = '';
+                if (email) {
+                    recipientEmail = email;
+                } else
+                    recipientEmail = globals[key];
                 if (!recipientEmail) {
                     throw new Error(`${key} not configured in Globals`);
                 }
@@ -281,9 +285,9 @@ var AnnouncementManager = (function () {
                         row.LastError = result.error || 'Unknown error';
                         row.LastAttemptAt = new Date(now);
                         failed++;
-                        
+
                         console.error(`AnnouncementManager: Announcement for row ${row.rowNum} failed: ${row.LastError}`);
-                        
+
                         // Send immediate failure notification to Ride Schedulers
                         this._notifyFailureImmediately(row, result.error || 'Unknown error');
                     }
@@ -667,10 +671,10 @@ var AnnouncementManager = (function () {
         }
 
         /**
- * get Ride Announcement Folder
- * @private
- * @returns {GoogleAppsScript.Drive.Folder} Folder object
- */
+    * get Ride Announcement Folder
+    * @private
+    * @returns {GoogleAppsScript.Drive.Folder} Folder object
+    */
         _getRideAnnouncementFolder() {
             const folderUrl = getGlobals().RIDE_ANNOUNCEMENT_FOLDER_URL;
             if (!folderUrl) {
