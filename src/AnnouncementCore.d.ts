@@ -1,8 +1,10 @@
 /**
  * AnnouncementCore - Pure JavaScript announcement logic with no GAS dependencies
  * 
- * Type definitions for announcement queue operations, template expansion, and retry logic.
+ * Type definitions for announcement queue operations and template expansion.
  * All functions are exported as static methods in the AnnouncementCore module.
+ * 
+ * Note: Retry logic removed - failures are reported immediately to users
  */
 
 /**
@@ -33,8 +35,6 @@ export interface AnnouncementQueueItem {
     lastError: string | null;
     /** Whether 24-hour reminder has been sent */
     reminderSent: boolean;
-    /** Next retry time (only present if retrying) */
-    nextRetry?: number;
 }
 
 /**
@@ -77,10 +77,8 @@ export interface AnnouncementStatistics {
     pending: number;
     /** Items successfully sent */
     sent: number;
-    /** Items that failed and are retrying */
-    retrying: number;
-    /** Items abandoned after 24 hours */
-    abandoned: number;
+    /** Items that failed (no retries) */
+    failed: number;
 }
 
 /**
@@ -132,18 +130,6 @@ declare namespace AnnouncementCore {
     ): AnnouncementQueueItem;
 
     /**
-     * Calculate next retry time using exponential backoff
-     * Intervals: 5min, 15min, 30min, 1hr, 2hr, 4hr, 8hr
-     * Max retry window: 24 hours from scheduled send time
-     * 
-     * @param attemptCount - Number of failed attempts
-     * @param sendTime - Scheduled send time timestamp
-     * @param lastAttemptTime - Last attempt time timestamp
-     * @returns Next retry time in ms, or null if should stop retrying
-     */
-    function calculateNextRetry(attemptCount: number, sendTime: number, lastAttemptTime: number): number | null;
-
-    /**
      * Get rows due for sending or reminder
      * 
      * @param rows - Array of Row objects from spreadsheet
@@ -151,22 +137,6 @@ declare namespace AnnouncementCore {
      * @returns Rows due to send and rows due for reminder
      */
     function getDueItems(rows: any[], currentTime: number): { dueToSend: any[], dueForReminder: any[] };
-
-    /**
-     * Calculate updated values after send failure
-     * Returns object with status, attempts, and lastError to update on the row
-     * 
-     * @param attempts - Current attempt count
-     * @param sendTime - Scheduled send time
-     * @param error - Error message
-     * @param currentTime - Current timestamp
-     * @returns Object with status, attempts, lastError fields
-     */
-    function calculateFailureUpdate(attempts: number, sendTime: number, error: string, currentTime: number): {
-        status: string;
-        attempts: number;
-        lastError: string;
-    };
 
     /**
      * Get announcement statistics from rows

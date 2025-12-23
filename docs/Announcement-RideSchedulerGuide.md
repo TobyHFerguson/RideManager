@@ -233,7 +233,7 @@ Look at the `Status` column in your ride row:
 |--------|---------------|-------------------|
 | `pending` | Waiting to send at scheduled time | Nothing - it will send automatically |
 | `sent` | Email was successfully sent | Nothing - you're done! |
-| `failed` | Send failed (system is retrying) | Check with operator if it doesn't resolve |
+| `failed` | Send failed | Check with operator if it doesn't resolve |
 | *(empty)* | No announcement created yet | Create announcement if you want one |
 
 ### Other Helpful Columns
@@ -285,24 +285,8 @@ No problem!
 
 ### "The announcement hasn't sent yet and it's past the scheduled time"
 
-**Don't panic!** The system has automatic retry logic:
-
-1. **Check `Status` column:**
-   - If `pending` → May send within 15 minutes (system checks every 15 min)
-   - If `failed` → System is automatically retrying (see retry schedule below)
-   - If `sent` → It was sent! Check spam folder
-
-2. **If status is `failed`:**
-   - System retries automatically with these intervals:
-     - 1st retry: 5 minutes later
-     - 2nd retry: 15 minutes later
-     - 3rd retry: 30 minutes later
-     - Then: 1hr, 2hr, 4hr, 8hr intervals
-   - Retries continue for 24 hours
-   - If still failing, contact an operator
-
-3. **If you need it sent urgently:**
-   - Contact an operator - they can manually trigger a send
+1. Ensure the announcement status is `pending`
+2. Select the ride and then run `Send Pending Announcements`
 
 ### "Can I use my own announcement template style?"
 

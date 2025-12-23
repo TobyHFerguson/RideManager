@@ -22,8 +22,6 @@ var TriggerManagerCore = (function() {
         ON_EDIT: 'onEdit',
         DAILY_ANNOUNCEMENT: 'dailyAnnouncement',
         ANNOUNCEMENT_SCHEDULED: 'announcementScheduled',
-        DAILY_RETRY: 'dailyRetry',
-        RETRY_SCHEDULED: 'retryScheduled',
         DAILY_RWGPS_MEMBERS: 'dailyRWGPSMembersDownload'
     };
     
@@ -32,18 +30,13 @@ var TriggerManagerCore = (function() {
         [TRIGGER_TYPES.ON_EDIT]: 'editHandler',
         [TRIGGER_TYPES.DAILY_ANNOUNCEMENT]: 'dailyAnnouncementCheck',
         [TRIGGER_TYPES.ANNOUNCEMENT_SCHEDULED]: 'announcementTrigger',
-        [TRIGGER_TYPES.DAILY_RETRY]: 'dailyRetryCheck',
-        [TRIGGER_TYPES.RETRY_SCHEDULED]: 'retryQueueTrigger',
         [TRIGGER_TYPES.DAILY_RWGPS_MEMBERS]: 'dailyRWGPSMembersDownload'
     };
     
     const PROPERTY_KEYS = {
         ANNOUNCEMENT_NEXT_TRIGGER_TIME: 'ANNOUNCEMENT_NEXT_TRIGGER_TIME',
         ANNOUNCEMENT_TRIGGER_ID: 'ANNOUNCEMENT_TRIGGER_ID',
-        RETRY_NEXT_TRIGGER_TIME: 'RETRY_NEXT_TRIGGER_TIME',
-        RETRY_TRIGGER_ID: 'RETRY_TRIGGER_ID',
         DAILY_ANNOUNCEMENT_TRIGGER_ID: 'DAILY_ANNOUNCEMENT_TRIGGER_ID',
-        DAILY_RETRY_TRIGGER_ID: 'DAILY_RETRY_TRIGGER_ID',
         DAILY_RWGPS_MEMBERS_TRIGGER_ID: 'DAILY_RWGPS_MEMBERS_TRIGGER_ID',
         ON_OPEN_TRIGGER_ID: 'ON_OPEN_TRIGGER_ID',
         ON_EDIT_TRIGGER_ID: 'ON_EDIT_TRIGGER_ID'
@@ -91,19 +84,6 @@ var TriggerManagerCore = (function() {
                     config.schedule = { type: 'at', time: null }; // Set at runtime
                     break;
                     
-                case TRIGGER_TYPES.DAILY_RETRY:
-                    config.isInstallable = true;
-                    config.propertyKey = PROPERTY_KEYS.DAILY_RETRY_TRIGGER_ID;
-                    config.schedule = { type: 'daily', hour: 2 };
-                    break;
-                    
-                case TRIGGER_TYPES.RETRY_SCHEDULED:
-                    config.isInstallable = true;
-                    config.propertyKey = PROPERTY_KEYS.RETRY_TRIGGER_ID;
-                    config.timePropertyKey = PROPERTY_KEYS.RETRY_NEXT_TRIGGER_TIME;
-                    config.schedule = { type: 'at', time: null }; // Set at runtime
-                    break;
-                    
                 case TRIGGER_TYPES.DAILY_RWGPS_MEMBERS:
                     config.isInstallable = true;
                     config.propertyKey = PROPERTY_KEYS.DAILY_RWGPS_MEMBERS_TRIGGER_ID;
@@ -121,13 +101,13 @@ var TriggerManagerCore = (function() {
         static getBackstopTriggers() {
             return [
                 TRIGGER_TYPES.DAILY_ANNOUNCEMENT,
-                TRIGGER_TYPES.DAILY_RETRY,
                 TRIGGER_TYPES.DAILY_RWGPS_MEMBERS
             ];
         }
         
         /**
          * Get all installable (non-simple) trigger types
+         * Note: ANNOUNCEMENT_SCHEDULED is excluded - it's scheduled dynamically via scheduleAnnouncementTrigger()
          * @returns {string[]} Array of trigger type constants
          */
         static getAllInstallableTriggers() {
@@ -135,7 +115,6 @@ var TriggerManagerCore = (function() {
                 TRIGGER_TYPES.ON_OPEN,
                 TRIGGER_TYPES.ON_EDIT,
                 TRIGGER_TYPES.DAILY_ANNOUNCEMENT,
-                TRIGGER_TYPES.DAILY_RETRY,
                 TRIGGER_TYPES.DAILY_RWGPS_MEMBERS
             ];
         }
@@ -147,58 +126,57 @@ var TriggerManagerCore = (function() {
         static getScheduledTriggers() {
             return [
                 TRIGGER_TYPES.ANNOUNCEMENT_SCHEDULED,
-                TRIGGER_TYPES.RETRY_SCHEDULED
             ];
         }
         
         /**
-         * Check if a trigger should be scheduled based on its current time
-         * @param {string} triggerType - Trigger type constant
-         * @param {number|null} scheduledTime - Currently scheduled timestamp (or null)
-         * @param {number} newTime - New desired timestamp
-         * @returns {Object} {shouldSchedule: boolean, reason: string}
-         */
-        static shouldScheduleTrigger(triggerType, scheduledTime, newTime) {
-            const config = this.getTriggerConfig(triggerType);
-            
-            if (!config.timePropertyKey) {
-                return {
-                    shouldSchedule: false,
-                    reason: 'Trigger type does not support scheduling'
-                };
-            }
-            
-            // If no time scheduled, schedule it
-            if (scheduledTime === null || scheduledTime === undefined) {
-                return {
-                    shouldSchedule: true,
-                    reason: 'No trigger currently scheduled'
-                };
-            }
-            
-            // If same time, don't reschedule (idempotent)
-            if (scheduledTime === newTime) {
-                return {
-                    shouldSchedule: false,
-                    reason: 'Trigger already scheduled for this time'
-                };
-            }
-            
-            // Different time - need to reschedule
+     * Check if a trigger should be scheduled (or rescheduled)
+     * @param {string} triggerType - Trigger type constant
+     * @param {number|null|undefined} existingTriggerTime - Time from existing trigger (queried from ScriptApp), or null/undefined if no trigger exists
+     * @param {number} newTime - New time to schedule for
+     * @returns {Object} {shouldSchedule: boolean, reason: string}
+     */
+    static shouldScheduleTrigger(triggerType, existingTriggerTime, newTime) {
+        const config = this.getTriggerConfig(triggerType);
+        
+        if (!config.timePropertyKey) {
             return {
-                shouldSchedule: true,
-                reason: `Time changed from ${new Date(scheduledTime)} to ${new Date(newTime)}`
+                shouldSchedule: false,
+                reason: 'Trigger type does not support scheduling'
             };
         }
         
-        /**
-         * Check if a trigger should be removed
-         * @param {string} triggerType - Trigger type constant
-         * @param {boolean} hasWork - Whether there is work pending for this trigger
-         * @returns {Object} {shouldRemove: boolean, reason: string}
-         */
-        static shouldRemoveTrigger(triggerType, hasWork) {
-            const config = this.getTriggerConfig(triggerType);
+        // If no trigger exists, schedule it
+        if (existingTriggerTime === null || existingTriggerTime === undefined) {
+            return {
+                shouldSchedule: true,
+                reason: 'No trigger currently exists'
+            };
+        }
+        
+        // If same time, don't reschedule (idempotent)
+        if (existingTriggerTime === newTime) {
+            return {
+                shouldSchedule: false,
+                reason: 'Trigger already scheduled for this time'
+            };
+        }
+        
+        // Different time - need to reschedule
+        return {
+            shouldSchedule: true,
+            reason: `Time changed from ${new Date(existingTriggerTime)} to ${new Date(newTime)}`
+        };
+    }
+    
+    /**
+     * Check if a trigger should be removed
+     * @param {string} triggerType - Trigger type constant
+     * @param {boolean} hasWork - Whether there is work pending for this trigger
+     * @returns {Object} {shouldRemove: boolean, reason: string}
+     */
+    static shouldRemoveTrigger(triggerType, hasWork) {
+        const config = this.getTriggerConfig(triggerType);
             
             // Scheduled triggers should be removed when no work pending
             if (config.schedule && config.schedule.type === 'at') {

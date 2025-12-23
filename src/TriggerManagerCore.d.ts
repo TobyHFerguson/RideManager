@@ -11,20 +11,16 @@ export interface TriggerTypes {
     readonly ON_EDIT: 'onEdit';
     readonly DAILY_ANNOUNCEMENT: 'dailyAnnouncement';
     readonly ANNOUNCEMENT_SCHEDULED: 'announcementScheduled';
-    readonly DAILY_RETRY: 'dailyRetry';
-    readonly RETRY_SCHEDULED: 'retryScheduled';
 }
 
 /**
  * Handler function name mapping
- */
+    */
 export interface HandlerFunctions {
     readonly onOpen: 'onOpen';
     readonly onEdit: 'editHandler';
     readonly dailyAnnouncement: 'dailyAnnouncementCheck';
     readonly announcementScheduled: 'announcementTrigger';
-    readonly dailyRetry: 'dailyRetryCheck';
-    readonly retryScheduled: 'retryQueueTrigger';
 }
 
 /**
@@ -33,10 +29,7 @@ export interface HandlerFunctions {
 export interface PropertyKeys {
     readonly ANNOUNCEMENT_NEXT_TRIGGER_TIME: 'ANNOUNCEMENT_NEXT_TRIGGER_TIME';
     readonly ANNOUNCEMENT_TRIGGER_ID: 'ANNOUNCEMENT_TRIGGER_ID';
-    readonly RETRY_NEXT_TRIGGER_TIME: 'RETRY_NEXT_TRIGGER_TIME';
-    readonly RETRY_TRIGGER_ID: 'RETRY_TRIGGER_ID';
     readonly DAILY_ANNOUNCEMENT_TRIGGER_ID: 'DAILY_ANNOUNCEMENT_TRIGGER_ID';
-    readonly DAILY_RETRY_TRIGGER_ID: 'DAILY_RETRY_TRIGGER_ID';
     readonly ON_OPEN_TRIGGER_ID: 'ON_OPEN_TRIGGER_ID';
     readonly ON_EDIT_TRIGGER_ID: 'ON_EDIT_TRIGGER_ID';
 }
@@ -135,15 +128,15 @@ export class TriggerManagerCore {
     static getScheduledTriggers(): string[];
     
     /**
-     * Check if a trigger should be scheduled based on its current time
+     * Check if a trigger should be scheduled based on actual trigger existence
      * @param triggerType - Trigger type constant
-     * @param scheduledTime - Currently scheduled timestamp (or null)
+     * @param existingTriggerTime - Timestamp from actual trigger query (null if no trigger, -1 if time unavailable)
      * @param newTime - New desired timestamp
      * @returns Object with shouldSchedule boolean and reason string
      */
     static shouldScheduleTrigger(
         triggerType: string, 
-        scheduledTime: number | null, 
+        existingTriggerTime: number | null, 
         newTime: number
     ): ShouldScheduleResult;
     

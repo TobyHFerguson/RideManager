@@ -47,21 +47,6 @@ var Exports = {
     get EventFactory() {
         return EventFactory;
     },
-    get RetryQueue() {
-        return RetryQueue;
-    },
-    get RetryQueueCore() {
-        return RetryQueueCore;
-    },
-    get RetryQueueAdapterCore() {
-        return RetryQueueAdapterCore;
-    },
-    get RetryQueueMarshallingCore() {
-        return RetryQueueMarshallingCore;
-    },
-    get RetryQueueSpreadsheetAdapter() {
-        return RetryQueueSpreadsheetAdapter;
-    },
     get AnnouncementManager() {
         return AnnouncementManager;
     },

@@ -67,75 +67,14 @@ describe('AnnouncementCore', () => {
         });
     });
 
-    describe('calculateNextRetry', () => {
-        const now = 1700000000000;
-        const sendTime = now; // Send time same as current for simplicity
-
-        it('should return 5 minutes for first retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, now);
-            expect(nextRetry).toBe(now + 5 * 60 * 1000);
-        });
-
-        it('should return 15 minutes for second retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(1, sendTime, now);
-            expect(nextRetry).toBe(now + 15 * 60 * 1000);
-        });
-
-        it('should return 30 minutes for third retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(2, sendTime, now);
-            expect(nextRetry).toBe(now + 30 * 60 * 1000);
-        });
-
-        it('should return 1 hour for fourth retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(3, sendTime, now);
-            expect(nextRetry).toBe(now + 60 * 60 * 1000);
-        });
-
-        it('should return 2 hours for fifth retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(4, sendTime, now);
-            expect(nextRetry).toBe(now + 2 * 60 * 60 * 1000);
-        });
-
-        it('should return 4 hours for sixth retry', () => {
-            const nextRetry = AnnouncementCore.calculateNextRetry(5, sendTime, now);
-            expect(nextRetry).toBe(now + 4 * 60 * 60 * 1000);
-        });
-
-        it('should return 8 hours for seventh and beyond retries', () => {
-            expect(AnnouncementCore.calculateNextRetry(6, sendTime, now)).toBe(now + 8 * 60 * 60 * 1000);
-            expect(AnnouncementCore.calculateNextRetry(10, sendTime, now)).toBe(now + 8 * 60 * 60 * 1000);
-        });
-
-        it('should return null after 24 hours from send time', () => {
-            const twentyFourHoursAfterSend = sendTime + 24 * 60 * 60 * 1000;
-            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, twentyFourHoursAfterSend);
-            expect(nextRetry).toBeNull();
-        });
-
-        it('should return null for items more than 24 hours past send time', () => {
-            const moreThan24HoursAfterSend = sendTime + 25 * 60 * 60 * 1000;
-            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, moreThan24HoursAfterSend);
-            expect(nextRetry).toBeNull();
-        });
-
-        it('should still retry within 24 hour window from send time', () => {
-            const twentyThreeHoursAfterSend = sendTime + 23 * 60 * 60 * 1000;
-            const nextRetry = AnnouncementCore.calculateNextRetry(0, sendTime, twentyThreeHoursAfterSend);
-            expect(nextRetry).not.toBeNull();
-            expect(nextRetry).toBe(twentyThreeHoursAfterSend + 5 * 60 * 1000);
-        });
-    });
-
     describe('getDueItems', () => {
         const now = new Date('2025-12-05T18:00:00').getTime();
         
         // Mock Row objects
-        const createMockRow = (announcement, sendAt, status = 'pending', attempts = 0, lastAttemptAt = undefined) => ({
+        const createMockRow = (announcement, sendAt, status = 'pending') => ({
             Announcement: announcement,
             SendAt: sendAt ? new Date(sendAt) : undefined,
             Status: status,
-            Attempts: attempts,
-            LastAttemptAt: lastAttemptAt ? new Date(lastAttemptAt) : undefined,
             RideName: 'Test Ride',
             rowNum: 1
         });
@@ -167,23 +106,16 @@ describe('AnnouncementCore', () => {
             expect(dueForReminder[1].Announcement).toBe('http://doc2');
         });
 
-        it('should return failed rows ready for retry', () => {
-            // For retry logic: lastAttemptAt + interval must be <= now
-            // First attempt (0): wait 5 minutes after last attempt
-            // Second attempt (1): wait 15 minutes after last attempt
+        it('should NOT retry failed announcements automatically', () => {
+            // Failed announcements are NOT retried - user must manually retry
             const rows = [
-                createMockRow('http://doc1', now - 10 * 60 * 1000, 'failed', 0, now - 6 * 60 * 1000), // Last attempt 6min ago, due for retry
-                createMockRow('http://doc2', now - 20 * 60 * 1000, 'failed', 1, now - 16 * 60 * 1000), // Last attempt 16min ago, due for retry
-                createMockRow('http://doc3', now - 5 * 60 * 1000, 'failed', 0, now - 2 * 60 * 1000), // Last attempt 2min ago, not ready (needs 5min)
-                createMockRow('http://doc4', now - 25 * 60 * 60 * 1000, 'failed', 5, now - 25 * 60 * 60 * 1000), // Too old (>24h from sendTime)
+                createMockRow('http://doc1', now - 10 * 60 * 1000, 'failed'),
+                createMockRow('http://doc2', now - 20 * 60 * 1000, 'failed'),
             ];
 
             const { dueToSend } = AnnouncementCore.getDueItems(rows, now);
-            // First two should be ready for retry
-            expect(dueToSend.length).toBeGreaterThanOrEqual(2);
-            const docUrls = dueToSend.map(r => r.Announcement);
-            expect(docUrls).toContain('http://doc1');
-            expect(docUrls).toContain('http://doc2');
+            // Failed items should NOT be in dueToSend
+            expect(dueToSend.length).toBe(0);
         });
 
         it('should skip rows without announcement data', () => {
@@ -204,50 +136,6 @@ describe('AnnouncementCore', () => {
             expect(dueToSend).toHaveLength(0);
             expect(dueForReminder).toHaveLength(0);
         });
-
-        it('should ignore abandoned status', () => {
-            const rows = [
-                createMockRow('http://doc1', now + 1000, 'abandoned', 10),
-                createMockRow('http://doc2', now + 1000, 'sent', 0),
-            ];
-
-            const { dueToSend } = AnnouncementCore.getDueItems(rows, now);
-            expect(dueToSend).toHaveLength(0);
-        });
-    });
-
-    describe('calculateFailureUpdate', () => {
-        const now = 1700000000000;
-        const sendTime = now - 1000; // Just failed
-
-        it('should increment attempts and set error for first failure', () => {
-            const update = AnnouncementCore.calculateFailureUpdate(0, sendTime, 'Network error', now);
-            
-            expect(update.status).toBe('failed');
-            expect(update.attempts).toBe(1);
-            expect(update.lastError).toBe('Network error');
-        });
-
-        it('should continue with failed status within 24h window', () => {
-            const update = AnnouncementCore.calculateFailureUpdate(3, sendTime, 'Still failing', now);
-            
-            expect(update.status).toBe('failed');
-            expect(update.attempts).toBe(4);
-        });
-
-        it('should mark as abandoned after 24 hours from send time', () => {
-            const oldSendTime = now - 24 * 60 * 60 * 1000 - 1000; // Just over 24h ago
-            const update = AnnouncementCore.calculateFailureUpdate(5, oldSendTime, 'Timeout', now);
-            
-            expect(update.status).toBe('abandoned');
-            expect(update.attempts).toBe(6);
-            expect(update.lastError).toBe('Timeout');
-        });
-
-        it('should preserve error message', () => {
-            const update = AnnouncementCore.calculateFailureUpdate(1, sendTime, 'Custom error message', now);
-            expect(update.lastError).toBe('Custom error message');
-        });
     });
 
     describe('getStatistics', () => {
@@ -262,17 +150,15 @@ describe('AnnouncementCore', () => {
                 createMockRow('http://doc2', 'pending'),
                 createMockRow('http://doc3', 'sent'),
                 createMockRow('http://doc4', 'failed'),
-                createMockRow('http://doc5', 'abandoned'),
                 createMockRow(''), // No announcement - should not count
             ];
 
             const stats = AnnouncementCore.getStatistics(rows);
             
-            expect(stats.total).toBe(5);
+            expect(stats.total).toBe(4);
             expect(stats.pending).toBe(2);
             expect(stats.sent).toBe(1);
             expect(stats.failed).toBe(1);
-            expect(stats.abandoned).toBe(1);
         });
 
         it('should handle empty queue', () => {
@@ -286,7 +172,7 @@ describe('AnnouncementCore', () => {
     describe('enrichRowData', () => {
         it('should create DateTime, Date, Day, Time from Date field', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'), // Saturday 6:00 AM Pacific 
+                Date: new Date('2024-12-07T10:00:00'), // Saturday 10:00 AM
                 RideURL: 'https://ridewithgps.com/events/123',
                 RideName: 'Great Ride',
                 RideLeader: 'John Doe'
@@ -294,17 +180,17 @@ describe('AnnouncementCore', () => {
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
 
-            expect(enriched.DateTime).toBe('Saturday, December 7, 2024 at 6:00 PM');
+            expect(enriched.DateTime).toBe('Saturday, December 7, 2024 at 10:00 AM');
             expect(enriched.Date).toBe('December 7, 2024');
             expect(enriched.Day).toBe('Saturday');
-            expect(enriched.Time).toBe('6:00 PM');
+            expect(enriched.Time).toBe('10:00 AM');
             expect(enriched.RideLink).toBe('<a href="https://ridewithgps.com/events/123">Great Ride</a>');
             expect(enriched.RideLeader).toBe('John Doe');
         });
 
         it('should handle missing RideURL', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'),
+                Date: new Date('2024-12-07T10:00:00'),
                 RideName: 'Great Ride',
                 RideLeader: 'Jane Smith'
             };
@@ -317,7 +203,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle missing RideName', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'),
+                Date: new Date('2024-12-07T10:00:00'),
                 RideURL: 'https://ridewithgps.com/events/123'
             };
 
@@ -328,7 +214,7 @@ describe('AnnouncementCore', () => {
 
         it('should preserve original rowData fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'),
+                Date: new Date('2024-12-07T10:00:00'),
                 Location: 'Seascape Park',
                 Address: '123 Main St',
                 Group: 'Sat A',
@@ -347,7 +233,7 @@ describe('AnnouncementCore', () => {
 
         it('should add route metrics when route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 72420.5,        // meters (45 miles)
@@ -367,7 +253,7 @@ describe('AnnouncementCore', () => {
 
         it('should generate startPin with Apple and Google Maps links', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 72420.5,
@@ -385,7 +271,7 @@ describe('AnnouncementCore', () => {
 
         it('should round route metrics correctly', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 80467.2,        // 50 miles
@@ -403,7 +289,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with zero distance', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 0,
@@ -420,7 +306,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with missing fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 50000,
@@ -441,7 +327,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle null route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'),
+                Date: new Date('2024-12-07T10:00:00'),
                 RideName: 'Test Ride'
             };
 
@@ -458,7 +344,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle omitted route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'),
+                Date: new Date('2024-12-07T10:00:00'),
                 Location: 'Test Location'
             };
 
@@ -475,7 +361,7 @@ describe('AnnouncementCore', () => {
 
         it('should preserve route fields when both rowData and route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'),
+                Date: new Date('2024-12-07T10:00:00'),
                 RideName: 'Test Ride',
                 Location: 'Test Location'
             };
@@ -506,7 +392,7 @@ describe('AnnouncementCore', () => {
         it('should expand all fields including enriched fields', () => {
             const template = 'Ride: {RideLink} on {DateTime} at {Location}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'), // Saturday 10:00 AM Pacific
+                Date: new Date('2024-12-07T10:00:00'), // Saturday 10:00 AM
                 RideURL: 'https://ridewithgps.com/events/123',
                 RideName: 'Saturday Ride',
                 Location: 'Seascape Park'
@@ -514,19 +400,19 @@ describe('AnnouncementCore', () => {
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Ride: <a href="https://ridewithgps.com/events/123">Saturday Ride</a> on Saturday, December 7, 2024 at 6:00 PM at Seascape Park');
+            expect(result.expandedText).toBe('Ride: <a href="https://ridewithgps.com/events/123">Saturday Ride</a> on Saturday, December 7, 2024 at 10:00 AM at Seascape Park');
             expect(result.missingFields).toHaveLength(0);
         });
 
         it('should expand date/time fields separately', () => {
-            const template = '{Day}, {Date} at {Time}';
+            const template = '{DateTime}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
             
-            expect(result.expandedText).toBe('Saturday, December 7, 2024 at 6:00 PM');
+            expect(result.expandedText).toBe('Saturday, December 7, 2024 at 10:00 AM');
             expect(result.missingFields).toHaveLength(0);
         });
 
@@ -582,7 +468,7 @@ describe('AnnouncementCore', () => {
         it('should expand route-based fields when route provided', () => {
             const template = 'Distance: {Length} miles, Elevation: {Gain} feet, Difficulty: {FPM} fpm';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 72420.5,        // 45 miles
@@ -600,7 +486,7 @@ describe('AnnouncementCore', () => {
         it('should expand lat/long fields when route provided', () => {
             const template = 'Start: {Lat}, {Long}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 50000,
@@ -618,7 +504,7 @@ describe('AnnouncementCore', () => {
         it('should expand startPin field with map links', () => {
             const template = 'Map: {StartPin}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 50000,
@@ -639,7 +525,7 @@ describe('AnnouncementCore', () => {
         it('should mark route fields as missing when route not provided', () => {
             const template = 'Distance: {Length}, Elevation: {Gain}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
@@ -651,7 +537,7 @@ describe('AnnouncementCore', () => {
         it('should expand mix of standard and route fields', () => {
             const template = '{RideName} - {Length} miles with {Gain} feet on {Day}';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00'),
+                Date: new Date('2024-12-07T10:00:00'),
                 RideName: 'Saturday Ride'
             };
             const route = {
@@ -670,7 +556,7 @@ describe('AnnouncementCore', () => {
         it('should handle route with null parameter', () => {
             const template = '{Length} miles';
             const rowData = {
-                Date: new Date('2024-12-07T18:00:00')
+                Date: new Date('2024-12-07T10:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData, null);

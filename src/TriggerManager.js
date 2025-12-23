@@ -10,8 +10,8 @@
  * Manages:
  * - onOpen trigger (installable, runs as owner)
  * - onEdit trigger (installable, runs as owner)
- * - Daily backstop triggers (announcements, retry queue)
- * - Scheduled triggers (specific announcement/retry times)
+ * - Daily backstop triggers (announcements)
+ * - Scheduled triggers (specific announcement times)
  * 
  * All operations are idempotent and log to User Activity Log.
  * Uses document properties for coordination between triggers.
@@ -93,6 +93,27 @@ var TriggerManager = (function() {
                 );
                 
                 console.log('TriggerManager: Installation complete', summary);
+                
+                // Run daily backstop functions immediately to process any pending work
+                try {
+                    console.log('TriggerManager: Running daily backstop functions immediately');
+                    
+                    // Run announcement check
+                    if (typeof dailyAnnouncementCheck === 'function') {
+                        dailyAnnouncementCheck();
+                        console.log('TriggerManager: Completed dailyAnnouncementCheck');
+                    }
+                    
+                    // Run RWGPS members sync
+                    if (typeof dailyRWGPSMembersDownload === 'function') {
+                        dailyRWGPSMembersDownload();
+                        console.log('TriggerManager: Completed dailyRWGPSMembersDownload');
+                    }
+                } catch (backstopError) {
+                    // Log but don't fail installation if backstop functions error
+                    console.warn('TriggerManager: Error running backstop functions:', backstopError);
+                }
+                
                 return summary;
                 
             } catch (error) {
@@ -183,24 +204,10 @@ var TriggerManager = (function() {
             );
         }
         
-        /**
-         * Schedule the next retry queue trigger for a specific time
-         * Idempotent: If trigger already exists for same time, does nothing
-         * Owner-only operation
-         * 
-         * @param {Date|number} retryTime - When the retry should be processed (Date or timestamp)
-         * @returns {Object} {created: boolean, triggerId: string}
-         */
-        scheduleRetryTrigger(retryTime) {
-            return this._scheduleTimedTrigger(
-                this.core.TRIGGER_TYPES.RETRY_SCHEDULED,
-                retryTime,
-                'SCHEDULE_RETRY_TRIGGER'
-            );
-        }
         
         /**
          * Generic method to schedule a timed trigger
+         * Queries actual triggers from ScriptApp (no caching)
          * @private
          */
         _scheduleTimedTrigger(triggerType, time, logAction) {
@@ -208,23 +215,36 @@ var TriggerManager = (function() {
             
             const config = this.core.getTriggerConfig(triggerType);
             const timestamp = time instanceof Date ? time.getTime() : time;
-            const currentScheduled = this.docProps.getProperty(config.timePropertyKey);
+            
+            // Query actual trigger from ScriptApp (no cache)
+            const existingTrigger = this._findTriggerByFunction(config.handlerFunction);
+            const existingTime = existingTrigger ? this._getTriggerTime(existingTrigger) : null;
             
             // Use core logic to determine if scheduling needed
+            // Note: existingTime will be -1 if trigger exists but time can't be queried
+            // We treat this as "trigger exists for unknown time" and check if it's the same
             const decision = this.core.shouldScheduleTrigger(
                 triggerType,
-                currentScheduled ? Number(currentScheduled) : null,
+                existingTime === -1 ? timestamp : existingTime, // If marker, assume same time
                 timestamp
             );
             
             if (!decision.shouldSchedule) {
-                const triggerId = this.docProps.getProperty(config.propertyKey);
+                const triggerId = existingTrigger ? existingTrigger.getUniqueId() : null;
                 console.log(`TriggerManager: ${triggerType} - ${decision.reason}`);
                 return { created: false, triggerId };
             }
             
             // Delete old trigger if exists
-            this._deleteScheduledTrigger(config.propertyKey, config.handlerFunction);
+            if (existingTrigger) {
+                try {
+                    ScriptApp.deleteTrigger(existingTrigger);
+                    console.log(`TriggerManager: Deleted old ${config.handlerFunction} trigger`);
+                } catch (error) {
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    console.warn(`TriggerManager: Could not delete old trigger: ${err.message}`);
+                }
+            }
             
             // Create new trigger
             const trigger = ScriptApp.newTrigger(config.handlerFunction)
@@ -233,10 +253,6 @@ var TriggerManager = (function() {
                 .create();
             
             const triggerId = trigger.getUniqueId();
-            
-            // Store in document properties
-            this.docProps.setProperty(config.timePropertyKey, String(timestamp));
-            this.docProps.setProperty(config.propertyKey, triggerId);
             
             UserLogger.log(
                 logAction,
@@ -261,47 +277,80 @@ var TriggerManager = (function() {
         }
         
         /**
-         * Remove the scheduled retry trigger
-         * Idempotent: Safe to call even if trigger doesn't exist
-         * Owner-only operation
-         */
-        removeRetryTrigger() {
-            return this._removeScheduledTrigger(
-                this.core.TRIGGER_TYPES.RETRY_SCHEDULED,
-                'REMOVE_RETRY_TRIGGER'
-            );
-        }
-        
-        /**
          * Generic method to remove a scheduled trigger
+         * Queries and deletes actual trigger (no cache management)
          * @private
          */
         _removeScheduledTrigger(triggerType, logAction) {
             this.requireOwner();
             
             const config = this.core.getTriggerConfig(triggerType);
-            const deleted = this._deleteScheduledTrigger(
-                config.propertyKey,
-                config.handlerFunction
-            );
+            const existingTrigger = this._findTriggerByFunction(config.handlerFunction);
             
-            if (deleted) {
-                if (config.timePropertyKey) {
-                    this.docProps.deleteProperty(config.timePropertyKey);
+            if (existingTrigger) {
+                try {
+                    ScriptApp.deleteTrigger(existingTrigger);
+                    
+                    UserLogger.log(
+                        logAction,
+                        `Removed ${triggerType} trigger`,
+                        { triggerType }
+                    );
+                    
+                    console.log(`TriggerManager: Removed ${triggerType} trigger`);
+                } catch (error) {
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    console.error(`TriggerManager: Error removing ${triggerType} trigger: ${err.message}`);
+                    throw err;
                 }
-                this.docProps.deleteProperty(config.propertyKey);
-                
-                UserLogger.log(
-                    logAction,
-                    `Removed ${triggerType} trigger`,
-                    { triggerType }
-                );
-                
-                console.log(`TriggerManager: Removed ${triggerType} trigger`);
+            } else {
+                console.log(`TriggerManager: No ${triggerType} trigger to remove`);
             }
         }
         
         // ========== PRIVATE HELPER METHODS ==========
+        
+        /**
+         * Find an existing trigger by handler function name
+         * Queries actual triggers from ScriptApp (no caching)
+         * @private
+         * @param {string} handlerFunction - Function name (e.g., 'announcementTrigger')
+         * @returns {GoogleAppsScript.Script.Trigger|null} The trigger or null if not found
+         */
+        _findTriggerByFunction(handlerFunction) {
+            const allTriggers = ScriptApp.getProjectTriggers();
+            return allTriggers.find(t => t.getHandlerFunction() === handlerFunction) || null;
+        }
+        
+        /**
+         * Get the trigger time from a time-based trigger
+         * @private
+         * @param {GoogleAppsScript.Script.Trigger} trigger - The trigger
+         * @returns {number|null} Timestamp in milliseconds, or null if not a time-based trigger
+         */
+        _getTriggerTime(trigger) {
+            try {
+                const triggerSource = trigger.getTriggerSource();
+                if (triggerSource !== ScriptApp.TriggerSource.CLOCK) {
+                    return null;
+                }
+                
+                // For time-based triggers, we need to check the event type
+                const eventType = trigger.getEventType();
+                if (eventType === ScriptApp.EventType.CLOCK) {
+                    // Unfortunately, GAS doesn't provide a direct way to get the scheduled time
+                    // We can only get it when the trigger fires (from the event object)
+                    // For now, we'll have to work around this limitation
+                    // The trigger exists, so we return a marker value
+                    return -1; // Marker: trigger exists but time unknown
+                }
+                return null;
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.warn(`TriggerManager: Could not get trigger time: ${err.message}`);
+                return null;
+            }
+        }
         
         /**
          * Ensure a trigger exists (universal method for all trigger types)
