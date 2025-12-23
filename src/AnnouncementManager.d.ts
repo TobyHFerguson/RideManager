@@ -131,9 +131,10 @@ declare class AnnouncementManager {
      * Send an announcement email
      * 
      * @param item - Queue item with announcement details
+     * @param {string} [testEmail=null] - Optional email address for testing (overrides actual recipients)
      * @returns Result indicating success or failure
      */
-    sendAnnouncement(item: AnnouncementQueueItem): SendResult;
+    sendAnnouncement(item: AnnouncementQueueItem, testEmail?: string | null): SendResult;
 
     /**
      * Send a reminder notification about an upcoming announcement
