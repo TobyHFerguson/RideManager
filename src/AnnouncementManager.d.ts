@@ -23,11 +23,9 @@ export interface SendResult {
 export interface ProcessResult {
     /** Number of announcements successfully sent */
     sent: number;
-    /** Number of reminders sent */
-    reminded: number;
-    /** Number of announcements that failed permanently */
+    /** Number of failed sends */
     failed: number;
-    /** Number of items remaining in queue */
+    /** Number of remaining pending announcements */
     remaining: number;
 }
 
@@ -137,15 +135,7 @@ declare class AnnouncementManager {
     sendAnnouncement(item: AnnouncementQueueItem, testEmail?: string | null): SendResult;
 
     /**
-     * Send a reminder notification about an upcoming announcement
-     * 
-     * @param item - Queue item with announcement details
-     * @returns Result indicating success or failure
-     */
-    sendReminder(item: AnnouncementQueueItem): SendResult;
-
-    /**
-     * Process all due announcements, reminders, and retries
+     * Process all due announcements
      * Called by time-based trigger
      * 
      * @returns Statistics about processing results

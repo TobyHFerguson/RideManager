@@ -29,12 +29,10 @@ The Ride Announcement System is a fully automated email notification system for 
 - **Spreadsheet:** Spreadsheet columns + Document Properties for trigger coordination
 - **Folders & Files:** Master template and announcements stored in [Ride Announcements](https://drive.google.com/drive/folders/1uwZzbl1SkkAOwA_6-uIj-ZR368_sxJNm?usp=sharing) folder. Share with Ride Scheduler group as `Content Manager`.
 - **Failure Handling:** Immediate notification to Ride Schedulers on failure (manual retry required)
-- **Notifications:** 24-hour reminder emails to ride schedulers
 
 ### Send Schedule
 
 - **Main send:** 6:00 PM, 2 calendar days before ride
-- **Reminder:** 24 hours before main send
 - **Precision:** Scheduled triggers fire at exact send time
 - **Backstop:** Daily check at 2 AM catches any missed sends
 
@@ -179,7 +177,7 @@ The Ride Announcement System is a fully automated email notification system for 
 **Fix:**
 1. If trigger missing: Create new announcement to reinstall trigger
 2. If trigger failing: Check execution logs, fix script errors
-3. If urgent: Manually run `checkAnnouncementsAndReminders()` function
+3. If urgent: Manually run `dailyAnnouncementCheck()` function
 
 ### Problem: Emails Sent But Not Received
 
@@ -420,7 +418,7 @@ Two additional global properties must be configured:
 - Status → `cancelled`
 - No email sent
 - Scheduled announcement blocked
-- Reminders blocked
+- Announcements blocked
 
 **After SendAt:**
 - Status → `cancelled`

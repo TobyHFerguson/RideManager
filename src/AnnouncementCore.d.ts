@@ -33,8 +33,6 @@ export interface AnnouncementQueueItem {
     attemptCount: number;
     /** Last error message (null if no failure yet) */
     lastError: string | null;
-    /** Whether 24-hour reminder has been sent */
-    reminderSent: boolean;
 }
 
 /**
@@ -55,16 +53,6 @@ export interface EmailContent {
     subject: string;
     /** Email body (rest of template after subject line) */
     body: string;
-}
-
-/**
- * Items due for processing
- */
-export interface DueItems {
-    /** Items due to be sent (within 1 hour of sendTime) */
-    dueToSend: AnnouncementQueueItem[];
-    /** Items due for 24-hour reminder (24 hours ±1 hour before sendTime) */
-    dueForReminder: AnnouncementQueueItem[];
 }
 
 /**
@@ -130,13 +118,13 @@ declare namespace AnnouncementCore {
     ): AnnouncementQueueItem;
 
     /**
-     * Get rows due for sending or reminder
+     * Get rows due for sending
      * 
      * @param rows - Array of Row objects from spreadsheet
      * @param currentTime - Current timestamp
-     * @returns Rows due to send and rows due for reminder
+     * @returns Array of rows due to send (within 1 hour window)
      */
-    function getDueItems(rows: any[], currentTime: number): { dueToSend: any[], dueForReminder: any[] };
+    function getDueItems(rows: any[], currentTime: number): any[];
 
     /**
      * Get announcement statistics from rows

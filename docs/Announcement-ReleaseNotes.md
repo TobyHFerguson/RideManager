@@ -193,7 +193,6 @@ Before deploying to production:
 - [ ] **Optional**: Test document creation with personal template
 - [ ] Test template field expansion
 - [ ] Test email sending
-- [ ] Test 24-hour reminder functionality
 - [ ] Verify trigger installation
 - [ ] Test with emoji and image content
 
@@ -201,7 +200,7 @@ Before deploying to production:
 
 1. **Email Size:** Total email size should stay under 25MB (Gmail limit)
 2. **Image Encoding:** Images >100KB may not display in some email clients
-3. **Send Window:** Announcements are checked every 15 minutes (±15 min precision)
+3. **Send Timing:** Announcements fire at precise scheduled times via triggers, with daily backstop at 2 AM
 4. **Permissions:** Announcement documents require shared drive or proper permissions
 
 ---
@@ -221,34 +220,20 @@ This release adds support for automatically handling announcement emails when ri
 #### Ride Cancellation
 
 When a ride is cancelled:
-
-1. **Before SendAt time**: 
    - Announcement status changes to `cancelled`
-   - No cancellation email is sent
-   - Scheduled announcement will not be sent
-   - Reminders will not be sent
-
-2. **After SendAt time**:
-   - Announcement status changes to `cancelled`
-   - Cancellation email is immediately sent to announcement recipients
+   - User is asked whether they want to send a cancellation email
    - Email uses CANCELLATION_TEMPLATE from Globals
    - User activity is logged
+   - No further announcement processing occurs because the status is `cancelled`.
 
 #### Ride Reinstatement
 
 When a cancelled ride is reinstated:
-
-1. **Before SendAt time**:
    - Announcement status returns to `pending`
-   - No reinstatement email is sent
-   - Announcement returns to normal queue (will send at scheduled time)
-
-2. **After SendAt time**:
-   - Announcement status returns to `pending`
-   - Reinstatement email is immediately sent to announcement recipients
+   - User is asked if they want to send an announcement email
    - Email uses REINSTATEMENT_TEMPLATE from Globals
    - User activity is logged
-   - Note: Since SendAt has passed, no future scheduled announcement will be sent
+   - Normal processing commences
 
 ### New Global Configuration
 

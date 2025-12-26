@@ -90,9 +90,6 @@ var AnnouncementCore = (function() {
     function getDueItems(rows, currentTime) {
         /** @type {any[]} */
         const dueToSend = [];
-        /** @type {any[]} */
-        const dueForReminder = [];
-        const reminderWindow = 24 * 60 * 60 * 1000; // 24 hours in ms
         
         rows.forEach(row => {
             // Skip rows without announcement data
@@ -110,17 +107,12 @@ var AnnouncementCore = (function() {
                 if (timeDiff <= 60 * 60 * 1000) {
                     dueToSend.push(row);
                 }
-                // Due for 24-hour reminder (within 1 hour of 24 hours before send)
-                else if (timeDiff >= reminderWindow - (60 * 60 * 1000) && 
-                         timeDiff <= reminderWindow + (60 * 60 * 1000)) {
-                    dueForReminder.push(row);
-                }
             }
             // Note: 'failed' status announcements are NOT retried automatically
             // User must manually retry by updating the ride
         });
         
-        return { dueToSend, dueForReminder };
+        return dueToSend;
     }
 
 

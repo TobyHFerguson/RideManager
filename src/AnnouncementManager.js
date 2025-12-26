@@ -201,50 +201,7 @@ var AnnouncementManager = (function () {
         }
 
         /**
-         * Send a reminder notification about an upcoming announcement
-         * @param {InstanceType<typeof Row>} row - Row object with announcement data
-         * @returns {{success: boolean, error?: string}} Result object
-         */
-        sendReminder(row) {
-            try {
-                const globals = getGlobals();
-                const rsGroupEmail = globals.RIDE_SCHEDULER_GROUP_EMAIL;
-
-                if (!rsGroupEmail) {
-                    throw new Error('RIDE_SCHEDULER_GROUP_EMAIL not configured in Globals');
-                }
-
-                const docUrl = row.Announcement;
-                const rideName = row.RideName || 'Unknown Ride';
-                const sendDate = row.SendAt;
-
-                if (!sendDate) {
-                    throw new Error('SendAt date is not set for this announcement');
-                }
-
-                const subject = `Reminder: Ride announcement for "${rideName}" scheduled for ${sendDate.toLocaleString()}`;
-                const body = `This is a reminder that a ride announcement is scheduled to be sent in approximately 24 hours.\n\n` +
-                    `Ride: ${rideName}\n` +
-                    `Scheduled send time: ${sendDate.toLocaleString()}\n` +
-                    `Document: ${docUrl}\n\n` +
-                    `Please review the announcement document and make any necessary edits before it is sent.`;
-
-                GmailApp.sendEmail(rsGroupEmail, subject, body, {
-                    name: 'Ride Scheduler',
-                    replyTo: rsGroupEmail
-                });
-
-                console.log(`AnnouncementManager: Sent reminder for row ${row.rowNum} to ${rsGroupEmail}`);
-                return { success: true };
-            } catch (error) {
-                const err = error instanceof Error ? error : new Error(String(error));
-                console.error(`AnnouncementManager.sendReminder error for row ${row.rowNum}:`, error);
-                return { success: false, error: err.message };
-            }
-        }
-
-        /**
-         * Process all due announcements, reminders, and retries
+         * Process all due announcements
          * Called by time-based trigger
          */
         processQueue() {
@@ -256,21 +213,18 @@ var AnnouncementManager = (function () {
                 console.log('AnnouncementManager: No rows in spreadsheet');
                 // @ts-expect-error - TriggerManager is global namespace but VS Code sees module import type
                 this._removeTrigger();
-                return { sent: 0, reminded: 0, failed: 0, remaining: 0 };
+                return { sent: 0, failed: 0, remaining: 0 };
             }
 
             const now = new Date().getTime();
             // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
-            const dueItems = AnnouncementCore.getDueItems(allRows, now);
-
-            // Debug console.log(`AnnouncementManager: Processing ${dueItems.dueToSend.length} announcements and ${dueItems.dueForReminder.length} reminders`);
+            const dueToSend = AnnouncementCore.getDueItems(allRows, now);
 
             let sent = 0;
-            let reminded = 0;
             let failed = 0;
 
             // Process announcements due to send
-            dueItems.dueToSend.forEach((/** @type {any} */ row) => {
+            dueToSend.forEach((/** @type {any} */ row) => {
                 try {
                     const result = this.sendAnnouncement(row);
 
@@ -296,24 +250,6 @@ var AnnouncementManager = (function () {
                 }
             });
 
-            // Process reminders
-            dueItems.dueForReminder.forEach((/** @type {any} */ row) => {
-                try {
-                    const result = this.sendReminder(row);
-
-                    if (result.success) {
-                        // Mark reminder sent - we could add a ReminderSent column if needed
-                        // For now, just log it
-                        console.log(`AnnouncementManager: Sent reminder for row ${row.rowNum}`);
-                        reminded++;
-                    } else {
-                        console.warn(`AnnouncementManager: Failed to send reminder for row ${row.rowNum}: ${result.error}`);
-                    }
-                } catch (error) {
-                    console.error(`AnnouncementManager: Unexpected error sending reminder for row ${row.rowNum}:`, error);
-                }
-            });
-
             // Save all changes back to spreadsheet
             adapter.save();
 
@@ -326,7 +262,6 @@ var AnnouncementManager = (function () {
 
             return {
                 sent: sent,
-                reminded: reminded,
                 failed: failed,
                 remaining: stats.total
             };
