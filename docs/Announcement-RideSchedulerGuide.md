@@ -101,8 +101,6 @@ Document created from template; `sendAt` column date is 2 days before ride start
     ↓
 Edit document (add custom content, photos, details)
     ↓
-24 hours before send: You receive reminder email
-    ↓
 `sendAt` date & time (default - 6:00 PM, 2 days before ride): Email sent automatically
     ↓
 Done!
@@ -116,13 +114,6 @@ Done!
 - Your ride: Saturday 12/7 at 9:00 AM → Email sends: Thursday 12/5 at 6:00 PM
 - Your ride: Monday 12/9 at 5:00 PM → Email sends: Saturday 12/7 at 6:00 PM
 - Your ride: Sunday 12/8 at 8:00 AM → Email sends: Friday 12/6 at 6:00 PM
-
-### You'll Get a Reminder
-
-**24 hours before the email sends**, you'll receive a reminder email:
-- Confirms the announcement will send soon
-- Gives you time for last-minute edits
-- Includes link to the announcement document
 
 ---
 
@@ -503,7 +494,6 @@ When you reinstate a previously cancelled ride:
 ### Important Times
 
 - **Announcement sends:** 6 PM, 2 days before ride
-- **Reminder to you:** 24 hours before send
 - **System checks:** Every 15 minutes
 - **Edit deadline:** Anytime before send
 
@@ -511,8 +501,6 @@ When you reinstate a previously cancelled ride:
 
 - ✅ Edit anytime before send
 - ✅ Add images, emojis, formatting
-- ✅ System retries automatically if failed
-- ✅ You get 24-hour reminder
 - ✅ Cancel before send = no email, after send = cancellation notice
 - ✅ Reinstate before send = normal announcement, after send = reinstatement notice
 - ❌ Can't recall after sent

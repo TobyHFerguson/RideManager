@@ -86,24 +86,10 @@ describe('AnnouncementCore', () => {
                 createMockRow('http://doc3', now - 1000), // Past due (within window)
             ];
 
-            const { dueToSend } = AnnouncementCore.getDueItems(rows, now);
+            const dueToSend = AnnouncementCore.getDueItems(rows, now);
             expect(dueToSend).toHaveLength(2);
             expect(dueToSend[0].Announcement).toBe('http://doc1');
             expect(dueToSend[1].Announcement).toBe('http://doc3');
-        });
-
-        it('should return rows due for 24-hour reminder', () => {
-            const rows = [
-                createMockRow('http://doc1', now + 24 * 60 * 60 * 1000), // Exactly 24h
-                createMockRow('http://doc2', now + 23.5 * 60 * 60 * 1000), // Within window
-                createMockRow('http://doc3', now + 48 * 60 * 60 * 1000), // Too far out
-                createMockRow('http://doc4', now + 1 * 60 * 60 * 1000), // Too soon
-            ];
-
-            const { dueForReminder } = AnnouncementCore.getDueItems(rows, now);
-            expect(dueForReminder).toHaveLength(2);
-            expect(dueForReminder[0].Announcement).toBe('http://doc1');
-            expect(dueForReminder[1].Announcement).toBe('http://doc2');
         });
 
         it('should NOT retry failed announcements automatically', () => {
@@ -113,7 +99,7 @@ describe('AnnouncementCore', () => {
                 createMockRow('http://doc2', now - 20 * 60 * 1000, 'failed'),
             ];
 
-            const { dueToSend } = AnnouncementCore.getDueItems(rows, now);
+            const dueToSend = AnnouncementCore.getDueItems(rows, now);
             // Failed items should NOT be in dueToSend
             expect(dueToSend.length).toBe(0);
         });
@@ -126,15 +112,14 @@ describe('AnnouncementCore', () => {
                 createMockRow('http://doc2', now + 1000), // Valid
             ];
 
-            const { dueToSend, dueForReminder } = AnnouncementCore.getDueItems(rows, now);
+            const dueToSend = AnnouncementCore.getDueItems(rows, now);
             expect(dueToSend).toHaveLength(1);
             expect(dueToSend[0].Announcement).toBe('http://doc2');
         });
 
         it('should handle empty rows array', () => {
-            const { dueToSend, dueForReminder } = AnnouncementCore.getDueItems([], now);
+            const dueToSend = AnnouncementCore.getDueItems([], now);
             expect(dueToSend).toHaveLength(0);
-            expect(dueForReminder).toHaveLength(0);
         });
     });
 
