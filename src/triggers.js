@@ -7,14 +7,48 @@
 const _DTRT_KEY = 'DTRT_ENABLED_FOR_'
 function onOpen() {
   createMenu_();
+  protectGeneratedColumns_();
+}
 
-
-  // We store the original formulas here so that we can restore them if the user
-  // accidentally overwrites them. They need to be stored outside of the spreadsheet 
-  // because the onEdit trigger will overwrite them if they are stored in the spreadsheet itself
-  // and onEdit only has access to old values, not formulas.
-  const adapter = new ScheduleAdapter();
-  adapter.storeFormulas();
+/**
+ * Protect column C and columns G onwards with warning-only protection.
+ * This allows scripts to write but warns users about manual edits.
+ * @private
+ */
+function protectGeneratedColumns_() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
+    if (!sheet) return;
+    
+    // Remove existing protections
+    const protections = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+    protections.forEach(protection => {
+      const range = protection.getRange();
+      const col = range.getColumn();
+      // Remove if it covers column C or column G or beyond
+      if (col === 3 || col >= 7) {
+        protection.remove();
+      }
+    });
+    
+    const lastRow = sheet.getMaxRows();
+    
+    // Protect column C (start from row 2, skip header)
+    const colCRange = sheet.getRange(2, 3, lastRow - 1, 1);
+    const colCProtection = colCRange.protect();
+    colCProtection.setDescription('Groups should not be changed');
+    colCProtection.setWarningOnly(true);
+    
+    // Protect from column G to the last column
+    const lastCol = sheet.getMaxColumns();
+    const range = sheet.getRange(2, 7, lastRow - 1, lastCol - 6); // Start from row 2 (skip header)
+    const protection = range.protect();
+    protection.setDescription('NO Edits of generated columns - you cannot recover lost data!');
+    protection.setWarningOnly(true);
+  } catch (e) {
+    // Silently fail - don't block onOpen if protection fails
+    console.error('Failed to protect columns:', e);
+  }
 }
 
 function createMenu_() {
@@ -136,30 +170,15 @@ function editHandler(event) {
 function handleCRSheetEdit_(event, adapter) {
   try {
     if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
-      alert_('Attempt to edit multiple route or ride cells. Only single cells can be edited.\n reverting back to previous values');
-      for (let i = 0; i < event.range.getNumRows(); i++) {
-        adapter.restoreFormula(event.range.getRow() + i, 'Ride');
-        adapter.restoreFormula(event.range.getRow() + i, 'Route');
-      }
+      alert_('Attempt to edit multiple route or ride cells. Only single cells can be edited.');
       return;
     }
     const row = adapter.loadSelected()[0];
     const colNum = event.range.getColumn();
-    if (adapter.isColumn(getGlobals().RIDECOLUMNNAME, colNum)) {
-      alert_('No edits of Ride Column allowed.');
-      event.range.setValue(event.oldValue);
-      adapter.restoreFormula(event.range.getRow(), 'Ride');
-      return;
-    }
+    
     // When copying a date it appears that this value is in event.range.getValue(), not in event.value!
     if ((event.value === event.oldValue) && !(event.range.getValue() || event.range.getFormula())) {
       console.log('No change to value, accepting edit');
-      return;
-    }
-    // Don't allow group changes once scheduled
-    if (row.isScheduled() && adapter.isColumn(getGlobals().GROUPCOLUMNNAME, colNum)) {
-      alert_('Group changes are not allowed once the ride is scheduled.');
-      event.range.setValue(event.oldValue);
       return;
     }
     if (adapter.isColumn(getGlobals().ROUTECOLUMNNAME, colNum)) {
@@ -167,8 +186,7 @@ function handleCRSheetEdit_(event, adapter) {
         editRouteColumn_(event, adapter, row.isScheduled());
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e));
-        alert_(`Error: ${error.message} - the route cell will be reverted to its previous value.`);
-        adapter.restoreFormula(event.range.getRow(), 'Route');
+        alert_(`Error processing route: ${error.message}\nIf you deleted the route accidentally, use Ctrl+Z (Cmd+Z) to undo.`);
         return;
       }
     }
@@ -201,8 +219,6 @@ function editRouteColumn_(event, adapter, scheduled) {
       throw new Error('When there\'s a ride the route URL cannot be empty.');
     } else {
       event.range.setValue('');
-      SpreadsheetApp.flush();
-      adapter.storeRouteFormulas();
       return;
     }
   }
@@ -235,8 +251,6 @@ function editRouteColumn_(event, adapter, scheduled) {
 
   // Write the formula (GAS operation)
   event.range.setValue(formula);
-  SpreadsheetApp.flush();
-  adapter.storeRouteFormulas();
 
   // Import foreign routes (GAS operation)
   if (isForeign) {

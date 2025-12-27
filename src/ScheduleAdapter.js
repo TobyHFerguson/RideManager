@@ -4,11 +4,11 @@
 /**
  * ScheduleAdapter - GAS-specific adapter for reading/writing schedule data
  * 
- * This adapter separates GAS dependencies (SpreadsheetApp, bmPreFiddler, PropertiesService)
+ * This adapter separates GAS dependencies (SpreadsheetApp, bmPreFiddler, DeveloperMetadata)
  * from pure JavaScript business logic. It handles:
  * - Reading spreadsheet data via Fiddler
  * - Converting to/from Row domain objects
- * - Formula preservation (Route and Ride columns)
+ * - Formula preservation (Route and Ride columns) via DeveloperMetadata UUIDs
  * - Selection handling
  * - Spreadsheet-specific operations (highlighting, etc.)
  * - Tracking dirty rows for batch saves
@@ -44,6 +44,7 @@
 if (typeof require !== 'undefined') {
     var HyperlinkUtils = require('./HyperlinkUtils.js');
     var Row = require('./Row.js');
+    var RowIdCore = require('./RowIdCore.js');
 }
 
 const ScheduleAdapter = (function() {
@@ -165,7 +166,7 @@ const ScheduleAdapter = (function() {
          * 
          * CRITICAL: Formulas in Route/Ride columns are handled specially:
          * - If a formula column is dirty, we write the formula (not the value)
-         * - After write, formulas are stored in PropertiesService for next load
+         * - After write, formulas are stored in DeveloperMetadata by row UUID for next load
          */
         save() {
             if (this.dirtyRows.size === 0) {
@@ -199,9 +200,6 @@ const ScheduleAdapter = (function() {
             // Flush to ensure all writes are committed
             SpreadsheetApp.flush();
             
-            // Store formulas for next load (needed for formula overlay)
-            this._storeFormulas();
-            
             // Clear cache to force reload on next operation
             this._cachedData = null;
             this.dirtyRows.clear();
@@ -228,20 +226,7 @@ const ScheduleAdapter = (function() {
             this.sheet.getRange(rowNum, colIndex).clear();
         }
 
-        /**
-         * Store all formulas (Route and Ride columns)
-         * Called on spreadsheet open to preserve formulas
-         */
-        storeFormulas() {
-            this._storeFormulas();
-        }
 
-        /**
-         * Store Route column formulas only
-         */
-        storeRouteFormulas() {
-            this._storeRouteFormulas();
-        }
 
         /**
          * Check if a column number matches a column name
@@ -290,32 +275,30 @@ const ScheduleAdapter = (function() {
          * @private
          */
         _overlayFormulas() {
-            const rideFormulas = this._loadFormulas('rideColumnFormulas');
-            const routeFormulas = this._loadFormulas('routeColumnFormulas');
-            
             const rideColumnName = getGlobals().RIDECOLUMNNAME;
             const routeColumnName = getGlobals().ROUTECOLUMNNAME;
+            const rideColumnIndex = this._getColumnIndex(rideColumnName) + 1;
+            const routeColumnIndex = this._getColumnIndex(routeColumnName) + 1;
             
+            // Get all formulas in batch for both columns
+            const lastRow = this.sheet.getLastRow();
+            if (lastRow < 2) return;
+            
+            const rideFormulas = this.sheet.getRange(2, rideColumnIndex, lastRow - 1, 1).getFormulas();
+            const routeFormulas = this.sheet.getRange(2, routeColumnIndex, lastRow - 1, 1).getFormulas();
+            
+            // Overlay formulas onto cached data
             this._cachedData.forEach((/** @type {any} */ row, /** @type {number} */ index) => {
-                if (rideFormulas && rideFormulas[index] && rideFormulas[index][0]) {
+                if (rideFormulas[index] && rideFormulas[index][0]) {
                     row[rideColumnName] = rideFormulas[index][0];
                 }
-                if (routeFormulas && routeFormulas[index] && routeFormulas[index][0]) {
+                if (routeFormulas[index] && routeFormulas[index][0]) {
                     row[routeColumnName] = routeFormulas[index][0];
                 }
             });
         }
 
-        /**
-         * Load formulas from document properties
-         * @private
-         * @param {string} propertyName - Property name ('rideColumnFormulas' or 'routeColumnFormulas')
-         * @returns {Array<Array<string>>|null} 2D array of formulas or null if not found
-         */
-        _loadFormulas(propertyName) {
-            const formulasJson = PropertiesService.getDocumentProperties().getProperty(propertyName);
-            return formulasJson ? JSON.parse(formulasJson) : null;
-        }
+
 
         /**
          * Create a Row instance from Fiddler data
@@ -375,42 +358,7 @@ const ScheduleAdapter = (function() {
             return rowRangeList.getRanges();
         }
 
-        /**
-         * Store Route and Ride column formulas in document properties
-         * @private
-         */
-        _storeFormulas() {
-            this._storeRideFormulas();
-            this._storeRouteFormulas();
-        }
 
-        /**
-         * Store Ride column formulas
-         * @private
-         */
-        _storeRideFormulas() {
-            const rideFormulas = this._getColumnRange(
-                getGlobals().RIDECOLUMNNAME, 
-                2, 
-                this.sheet.getLastRow() - 1
-            ).getFormulas();
-            PropertiesService.getDocumentProperties()
-                .setProperty('rideColumnFormulas', JSON.stringify(rideFormulas));
-        }
-
-        /**
-         * Store Route column formulas
-         * @private
-         */
-        _storeRouteFormulas() {
-            const routeFormulas = this._getColumnRange(
-                getGlobals().ROUTECOLUMNNAME, 
-                2, 
-                this.sheet.getLastRow() - 1
-            ).getFormulas();
-            PropertiesService.getDocumentProperties()
-                .setProperty('routeColumnFormulas', JSON.stringify(routeFormulas));
-        }
 
         /**
          * Get a range for a specific column
@@ -424,27 +372,6 @@ const ScheduleAdapter = (function() {
             numRows = numRows || this.sheet.getLastRow() - 1;
             const columnIndex = this._getColumnIndex(columnName) + 1;
             return this.sheet.getRange(rowNum, columnIndex, numRows);
-        }
-
-        /**
-         * Restore a formula for a specific row and column
-         * @param {number} rowNum - Spreadsheet row number (1-based)
-         * @param {string} columnName - Either 'Ride' or 'Route'
-         */
-        restoreFormula(rowNum, columnName) {
-            const indexNum = rowNum - 2; // Convert to 0-based formula array index
-            const propertyName = columnName === 'Ride' ? 'rideColumnFormulas' : 'routeColumnFormulas';
-            const formulasJson = PropertiesService.getDocumentProperties().getProperty(propertyName);
-            if (!formulasJson) return;
-            const formulas = JSON.parse(formulasJson);
-            
-            if (formulas && formulas[indexNum]) {
-                const formula = formulas[indexNum];
-                const globalName = columnName === 'Ride' 
-                    ? getGlobals().RIDECOLUMNNAME 
-                    : getGlobals().ROUTECOLUMNNAME;
-                this._getColumnRange(globalName, rowNum, 1).setFormula(formula);
-            }
         }
     }
 
