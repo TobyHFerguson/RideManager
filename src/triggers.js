@@ -7,7 +7,7 @@
 const _DTRT_KEY = 'DTRT_ENABLED_FOR_'
 function onOpen() {
   createMenu_();
-  protectGeneratedColumns_();
+  protectColumns_();
 }
 
 /**
@@ -15,7 +15,7 @@ function onOpen() {
  * This allows scripts to write but warns users about manual edits.
  * @private
  */
-function protectGeneratedColumns_() {
+function protectColumns_() {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
     if (!sheet) return;
@@ -25,8 +25,8 @@ function protectGeneratedColumns_() {
     protections.forEach(protection => {
       const range = protection.getRange();
       const col = range.getColumn();
-      // Remove if it covers column C or column G or beyond
-      if (col === 3 || col >= 7) {
+      // Remove if it covers column C (Group) or columns G-H (Ride-Annoucement) or column K (Attempts) onwards
+      if (col === 3 || col === 7 || col === 8  || 11 <= col) {
         protection.remove();
       }
     });
@@ -39,12 +39,20 @@ function protectGeneratedColumns_() {
     colCProtection.setDescription('Groups should not be changed');
     colCProtection.setWarningOnly(true);
     
-    // Protect from column G to the last column
+    // Protect columns G-H (Ride, Announcement)
+    const ghRange = sheet.getRange(2, 7, lastRow - 1, 2);
+    const ghProtection = ghRange.protect();
+    ghProtection.setDescription('NO Edits of generated columns - you cannot recover lost data!');
+    ghProtection.setWarningOnly(true);
+    
+    // Protect from column K to the last column (skip column I and J)
     const lastCol = sheet.getMaxColumns();
-    const range = sheet.getRange(2, 7, lastRow - 1, lastCol - 6); // Start from row 2 (skip header)
-    const protection = range.protect();
-    protection.setDescription('NO Edits of generated columns - you cannot recover lost data!');
-    protection.setWarningOnly(true);
+    if (lastCol >= 11) {
+      const kPlusRange = sheet.getRange(2, 11, lastRow - 1, lastCol - 10);
+      const kPlusProtection = kPlusRange.protect();
+      kPlusProtection.setDescription('NO Edits of generated columns - you cannot recover lost data!');
+      kPlusProtection.setWarningOnly(true);
+    }
   } catch (e) {
     // Silently fail - don't block onOpen if protection fails
     console.error('Failed to protect columns:', e);
