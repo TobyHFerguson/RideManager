@@ -1,3 +1,4 @@
+// @ts-check
 // HyperlinkUtils.js
 
 /**
@@ -11,7 +12,7 @@ function parseHyperlinkFormula(formula) {
     const regex = /=HYPERLINK\("([^"]+)",\s*"([^"]+)"\)/i;
     const match = formula.match(regex);
     return match ? { url: match[1], name: match[2] } : { url: '', name: '' };
-  }
+}
   
   /**
   * Create a HYPERLINK formula string.
@@ -23,6 +24,7 @@ function parseHyperlinkFormula(formula) {
     return `=HYPERLINK("${url}", "${name}")`;
   }
   
+  /* istanbul ignore next - GAS-only function, cannot be tested in Jest */
   function convertRTVsToHyperlinksByHeaders(headerNames) {
     // Get the active sheet
     var sheet = SpreadsheetApp.getActiveSheet();
@@ -71,7 +73,21 @@ function parseHyperlinkFormula(formula) {
   }
   
   // Example usage:
+  /* istanbul ignore next - GAS-only test function */
   function testConvert() {
     // Call the function with an array of header names
     convertRTVsToHyperlinksByHeaders(["Ride", "Route"]); // Replace with your actual header names
   }
+
+// Export for GAS (global)
+var HyperlinkUtils = {
+    parseHyperlinkFormula: parseHyperlinkFormula,
+    createHyperlinkFormula: createHyperlinkFormula,
+    convertRTVsToHyperlinksByHeaders: convertRTVsToHyperlinksByHeaders,
+    testConvert: testConvert
+};
+
+// Export for testing
+if (typeof module !== 'undefined') {
+    module.exports = HyperlinkUtils;
+}

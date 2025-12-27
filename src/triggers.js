@@ -1,17 +1,62 @@
+/// <reference path="./gas-globals.d.ts" />
 /** @OnlyCurrentDoc */
 
 // @ts-check
+
+
+const _DTRT_KEY = 'DTRT_ENABLED_FOR_'
 function onOpen() {
   createMenu_();
+  protectColumns_();
+}
 
-
-  // We store the original formulas here so that we can restore them if the user
-  // accidentally overwrites them. They need to be stored outside of the spreadsheet 
-  // because the onEdit trigger will overwrite them if they are stored in the spreadsheet itself
-  // and onEdit only has access to old values, not formulas.
-  Schedule.storeFormulas();
-  initializeGlobals();
-  initializeGroupCache();
+/**
+ * Protect column C and columns G onwards with warning-only protection.
+ * This allows scripts to write but warns users about manual edits.
+ * @private
+ */
+function protectColumns_() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
+    if (!sheet) return;
+    
+    // Remove existing protections
+    const protections = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
+    protections.forEach(protection => {
+      const range = protection.getRange();
+      const col = range.getColumn();
+      // Remove if it covers column C (Group) or columns G-H (Ride-Annoucement) or column K (Attempts) onwards
+      if (col === 3 || col === 7 || col === 8  || 11 <= col) {
+        protection.remove();
+      }
+    });
+    
+    const lastRow = sheet.getMaxRows();
+    
+    // Protect column C (start from row 2, skip header)
+    const colCRange = sheet.getRange(2, 3, lastRow - 1, 1);
+    const colCProtection = colCRange.protect();
+    colCProtection.setDescription('Groups should not be changed');
+    colCProtection.setWarningOnly(true);
+    
+    // Protect columns G-H (Ride, Announcement)
+    const ghRange = sheet.getRange(2, 7, lastRow - 1, 2);
+    const ghProtection = ghRange.protect();
+    ghProtection.setDescription('NO Edits of generated columns - you cannot recover lost data!');
+    ghProtection.setWarningOnly(true);
+    
+    // Protect from column K to the last column (skip column I and J)
+    const lastCol = sheet.getMaxColumns();
+    if (lastCol >= 11) {
+      const kPlusRange = sheet.getRange(2, 11, lastRow - 1, lastCol - 10);
+      const kPlusProtection = kPlusRange.protect();
+      kPlusProtection.setDescription('NO Edits of generated columns - you cannot recover lost data!');
+      kPlusProtection.setWarningOnly(true);
+    }
+  } catch (e) {
+    // Silently fail - don't block onOpen if protection fails
+    console.error('Failed to protect columns:', e);
+  }
 }
 
 function createMenu_() {
@@ -24,34 +69,14 @@ function createMenu_() {
     .addItem('Unschedule Selected Rides', unscheduleSelectedRides_.name)
     .addSeparator()
     .addItem('Import Selected Routes', importSelectedRoutes_.name)
-    .addItem('Link Selected Route URLs', linkSelectedRouteUrls_.name)
-    .addItem('Update Rider Count', updateRiderCount.name)
     .addSeparator()
-    .addItem(getDTRTMenuText_(), toggleDTRT_.name)
+    .addItem('Test Selected Announcements', testSendAnnouncement_.name)
+    .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
+    .addSeparator()
+    .addItem('Install Triggers', installTriggers_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addToUi();
 }
-
-function getDTRTMenuText_() {
-  return (dtrtIsEnabled_() ? "Disable" : "Enable") + " DTRT";
-}
-
-function dtrtIsEnabled_() {
-  return PropertiesService.getUserProperties().getProperty('DTRT') === 'true';
-}
-
-function setDTRTSetting_(value) {
-  PropertiesService.getUserProperties().setProperty('DTRT', value);
-  alert_('DTRT setting has been ' + (value ? 'enabled' : 'disabled'));
-}
-
-function toggleDTRT_() {
-  // Toggle the "Do The Right Thing" setting
-  setDTRTSetting_(!dtrtIsEnabled_());
-  createMenu_();
-}
-
-
 
 /**
  * Shows the application version in an alert box.
@@ -74,9 +99,6 @@ function cancelSelectedRides_() {
 function importSelectedRoutes_() {
   MenuFunctions.importSelectedRoutes();
 }
-function linkSelectedRouteUrls_() {
-  MenuFunctions.linkSelectedRouteUrls();
-}
 function reinstateSelectedRides_() {
   MenuFunctions.reinstateSelectedRides();
 }
@@ -85,9 +107,6 @@ function scheduleSelectedRides_() {
 }
 function unscheduleSelectedRides_() {
   MenuFunctions.unscheduleSelectedRides();
-}
-function updateRiderCount() {
-  MenuFunctions.updateRiderCount();
 }
 function updateSelectedRides_() {
   MenuFunctions.updateSelectedRides();
@@ -101,19 +120,19 @@ function updateSelectedRides_() {
 function editEventReport_(event) {
   const activeUser = Session.getActiveUser();
   const userEmail = activeUser ? activeUser.getEmail() : 'Unknown User';
-  console.log(`User ${userEmail} edited the spreadsheet. DTRT is ${dtrtIsEnabled_() ? 'enabled' : 'disabled'}`);
-  console.log(`myEdit called with event: ${JSON.stringify(event)}`);
+  console.log(`editHandler called with event: ${JSON.stringify(event)}`);
   console.log(`event.oldValue: ${event.oldValue}`);
   console.log(`event.value: ${event.value}`);
   console.log(`event.range.getValue(): ${event.range.getValue()}`);
   console.log(`event.range.getFormula(): ${event.range.getFormula()}`);
   if (event.range.getRichTextValue()) {
-    console.log(`event.range.getRichTextValue().getText(): ${event.range.getRichTextValue().getText()}`);
-    console.log(`event.range.getRichTextValue().getLinkUrl(): ${event.range.getRichTextValue().getLinkUrl()}`);
+    const richText = event.range.getRichTextValue();
+    console.log(`event.range.getRichTextValue().getText(): ${richText?.getText()}`);
+    console.log(`event.range.getRichTextValue().getLinkUrl(): ${richText?.getLinkUrl()}`);
   }
-  const row = Schedule.getSelectedRows()[0];
-  console.log(`Row data: ${JSON.stringify(row)}`);
-  console.log(`ride URL: ${row.RideURL}`);
+  const adapter = new ScheduleAdapter();
+  const row = adapter.loadSelected()[0];
+  //  console.log(`ride URL: ${row.RideURL}`);
   console.log(`route URL: ${row.RouteURL}`);
   console.log(`isScheduled: ${row.isScheduled()}`);
 }
@@ -122,11 +141,15 @@ function editEventReport_(event) {
  * 
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event The edit event
  */
-function myEdit(event) {
+function editHandler(event) {
   // event.value is only defined if the edited cell is a single cell
   editEventReport_(event);
-  if (event.range.getSheet().getName() === Schedule.crSheet.getName()) {
-    return handleCRSheetEdit_(event);
+  const adapter = new ScheduleAdapter();
+  if (event.range.getSheet().getName() === adapter.getSheetName()) {
+    return handleCRSheetEdit_(event, adapter);
+  } else { // Assume that the edit was a different sheet
+    console.log('Calling CacheManager.clearCache()');
+    Exports.CacheManager.clearCache();
   }
 }
 
@@ -149,114 +172,427 @@ function myEdit(event) {
  *
  * @private
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
+ * @param {InstanceType<typeof ScheduleAdapter>} adapter - Reusable adapter instance
  * @returns {*|undefined} Returns the value from next() when processing continues, or undefined if the edit was rejected/handled.
  */
-function handleCRSheetEdit_(event) {
+function handleCRSheetEdit_(event, adapter) {
   try {
     if (event.range.getNumRows() > 1 || event.range.getNumColumns() > 1) {
-      alert_('Attempt to edit multipled route or ride cells. Only single cells can be edited.\n reverting back to previous values');
-      for (let i = 0; i < event.range.getNumRows(); i++) {
-        Schedule.restoreFormula(event.range.getRow() + i);
-      }
+      alert_('Attempt to edit multiple route or ride cells. Only single cells can be edited.');
       return;
     }
-    const row = Schedule.getSelectedRows()[0];
+    const row = adapter.loadSelected()[0];
     const colNum = event.range.getColumn();
-    if (Schedule.isColumn(getGlobals().RIDECOLUMNNAME, colNum)) {
-      alert_('No edits of Ride Column allowed.');
-      event.range.setValue(event.oldValue);
-      Schedule.restoreFormula(event.range.getRow());
-      return;
-    }
+    
     // When copying a date it appears that this value is in event.range.getValue(), not in event.value!
     if ((event.value === event.oldValue) && !(event.range.getValue() || event.range.getFormula())) {
       console.log('No change to value, accepting edit');
       return;
     }
-    // Don't allow group changes once scheduled
-    if (row.isScheduled() && Schedule.isColumn(getGlobals().GROUPCOLUMNNAME, colNum)) {
-      alert_('Group changes are not allowed once the ride is scheduled.');
-      event.range.setValue(event.oldValue);
-      return;
-    }
-    if (Schedule.isColumn(getGlobals().ROUTECOLUMNNAME, colNum)) {
+    if (adapter.isColumn(getGlobals().ROUTECOLUMNNAME, colNum)) {
       try {
-        editRouteColumn_(event);
+        editRouteColumn_(event, adapter, row.isScheduled());
       } catch (e) {
-        alert_(`Error: ${e.message} - the route cell will be reverted to its previous value.`);
-        Schedule.restoreRouteFormula(event.range.getRow());
+        const error = e instanceof Error ? e : new Error(String(e));
+        alert_(`Error processing route: ${error.message}\nIf you deleted the route accidentally, use Ctrl+Z (Cmd+Z) to undo.`);
         return;
       }
     }
-    return next_()
   } catch (e) {
-    alert_(e.message)
-    throw e
+    const error = e instanceof Error ? e : new Error(String(e));
+    alert_(error.message)
+    throw error
   }
 }
 
-function editRouteColumn_(event) {
-  // pm.addProgress('Editing route column');
-  let url = event.value || event.range.getRichTextValue().getLinkUrl() || event.range.getRichTextValue().getText() || event.range.getFormula();
-  if (url.toLowerCase().startsWith("=hyperlink")) {
-    ({ url } = parseHyperlinkFormula(url))
-  }
+/**
+ * Edit the route column - handles GAS interactions and delegates logic to RouteColumnEditor
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} event
+ * @param {*} adapter - ScheduleAdapter instance
+ * @param {boolean} scheduled - Whether the ride is currently scheduled
+ */
+function editRouteColumn_(event, adapter, scheduled) {
+  // Get raw input from various possible sources
+  const inputValue = event.value ||
+    event.range.getRichTextValue()?.getLinkUrl() ||
+    event.range.getRichTextValue()?.getText() ||
+    event.range.getFormula();
+
+  // Parse the input
+  const { url } = RouteColumnEditor.parseRouteInput(inputValue);
+
+  // Handle empty/cleared route
   if (!url) {
-    event.range.setValue(url);
-    Schedule.storeRouteFormulas();
-    return;
+    if (scheduled) {
+      throw new Error('When there\'s a ride the route URL cannot be empty.');
+    } else {
+      event.range.setValue('');
+      return;
+    }
   }
-  const route = getRoute(url);
-  let name;
+
+  // Fetch route data from RWGPS (GAS operation), skipping the local cache
+  const route = getRoute(url, true);
+
+  // Prompt for foreign route name if needed (GAS operation)
+  let userProvidedName;
   if (route.user_id !== getGlobals().SCCCC_USER_ID) {
     const ui = SpreadsheetApp.getUi();
-    const response = ui.prompt('Foreign Route Detected', 'Please enter a name for the foreign route:', ui.ButtonSet.OK_CANCEL);
+    const response = ui.prompt(
+      'Foreign Route Detected',
+      'Please enter a name for the foreign route:',
+      ui.ButtonSet.OK_CANCEL
+    );
     if (response.getSelectedButton() == ui.Button.OK) {
-      name = response.getResponseText();
-      name = name || getGlobals().FOREIGN_PREFIX + route.name;
-    } else {
-      name = getGlobals().FOREIGN_PREFIX + route.name;
+      userProvidedName = response.getResponseText() || undefined;
     }
-  } else {
-    name = route.name;
   }
-  event.range.setValue(`=hyperlink("${url}", "${name}")`);
-  Schedule.storeRouteFormulas();
-  if (route.user_id !== getGlobals().SCCCC_USER_ID) {
-    // pm.addProgress('Importing foreign route');
+
+  // Process the route edit (pure logic)
+  const { formula, isForeign } = RouteColumnEditor.processRouteEdit({
+    inputValue,
+    route,
+    clubUserId: getGlobals().SCCCC_USER_ID,
+    foreignPrefix: getGlobals().FOREIGN_PREFIX,
+    userProvidedName
+  });
+
+  // Write the formula (GAS operation)
+  event.range.setValue(formula);
+
+  // Import foreign routes (GAS operation)
+  if (isForeign) {
     MenuFunctions.importSelectedRoutes(true);
-    // pm.addProgress('Foreign route imported');
   }
-  // pm.addProgress('Route column edited');
 }
 
+/**
+ * @param {string} message
+ */
 function alert_(message) {
   SpreadsheetApp.getUi().alert(message);
 }
 
 /**
- * Take the next action based on the current state.
- * 
- * Only if the dtrt system is enabled. 
- * 
- * @returns undefined
+ * Send pending announcements for selected rows
  */
-function next_() {
-  if (dtrtIsEnabled_()) {
-    const force = true;
-    const row = Schedule.getSelectedRows()[0];
-    if (row.isScheduled()) {
-      MenuFunctions.updateSelectedRides(force);
-      alert_('Ride updated.');
-      return;
-    }
-    if (row.isPlanned()) {
-      MenuFunctions.scheduleSelectedRides(force);
-      alert_('Ride scheduled.');
-      return
-    }
+function sendPendingAnnouncements_() {
+  MenuFunctions.sendPendingAnnouncements();
+}
+
+/**
+ * Process announcement queue (called by hourly trigger)
+ * This function is registered by AnnouncementManager when items are queued
+ */
+function processAnnouncementQueue() {
+  try {
+    const manager = new AnnouncementManager();
+    const result = manager.processQueue();
+    //Debug console.log(`processAnnouncementQueue: Sent ${result.sent}, reminded ${result.reminded}, failed ${result.failed}, remaining ${result.remaining}`);
+  } catch (error) {
+    console.error('processAnnouncementQueue error:', error);
   }
 }
+
+/**
+ * Test announcement sending (for development/testing)
+ * Sends announcements from selected rows to a test email address
+ * Does NOT update the Status column, so announcements will still be sent at scheduled time
+ */
+function testSendAnnouncement_() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    const adapter = new ScheduleAdapter();
+    const selectedRows = adapter.loadSelected();
+
+    if (selectedRows.length === 0) {
+      ui.alert('No Selection', 'Please select one or more rows with announcements to test.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Filter for rows with announcements
+    const rowsWithAnnouncements = selectedRows.filter(/** @param {any} r */ r => r.Announcement);
+
+    if (rowsWithAnnouncements.length === 0) {
+      ui.alert('No Announcements',
+        `None of the selected rows have announcements.\n\nSelected rows: ${selectedRows.length}`,
+        ui.ButtonSet.OK);
+      return;
+    }
+
+    // Ask for test email address
+    const rowNumbers = rowsWithAnnouncements.map(/** @param {any} r */ r => r.rowNum).join(', ');
+    const emailResponse = ui.prompt(
+      'Test Email Address',
+      `Enter test email address to send ${rowsWithAnnouncements.length} announcement(s) for:\nRows: ${rowNumbers}`,
+      ui.ButtonSet.OK_CANCEL
+    );
+
+    if (emailResponse.getSelectedButton() !== ui.Button.OK) {
+      return;
+    }
+
+    const testEmail = emailResponse.getResponseText().trim();
+    if (!testEmail || !testEmail.includes('@')) {
+      ui.alert('Invalid Email', 'Please enter a valid email address.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Confirm
+    const rideNames = rowsWithAnnouncements.map(/** @param {any} r */ r => r.RideName || 'Unknown').join('\n  • ');
+    const confirmResponse = ui.alert(
+      'Confirm Test Send',
+      `Send ${rowsWithAnnouncements.length} announcement(s) to:\n${testEmail}\n\nRides:\n  • ${rideNames}\n\nThis will NOT update the Status column in the spreadsheet.`,
+      ui.ButtonSet.YES_NO
+    );
+
+    if (confirmResponse !== ui.Button.YES) {
+      return;
+    }
+
+    // Send announcements
+    const manager = new AnnouncementManager();
+    let successCount = 0;
+    /** @type {any[]} */
+    const failedRows = [];
+
+    rowsWithAnnouncements.forEach(/** @param {any} row */(row) => {
+      try {
+        // Temporarily override the recipient email in globals
+        const globals = getGlobals();
+        const tempGlobals = { ...globals, RIDE_ANNOUNCEMENT_EMAIL: testEmail };
+
+        // Mock getGlobals to return test email
+        const originalGetGlobals = /** @type {function(): any} */ (this.getGlobals);
+        this.getGlobals = /** @type {function(): any} */ (function () { return tempGlobals; });
+
+        // Send the announcement
+        const result = manager.sendAnnouncement(row, testEmail);
+
+        // Restore original getGlobals
+        this.getGlobals = originalGetGlobals;
+
+        if (result.success) {
+          successCount++;
+        } else {
+          failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: result.error });
+        }
+
+      } catch (e) {
+        const error = /** @type {Error} */ (e);
+        failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: error.message });
+        console.error(`testSendAnnouncement_ error for row ${row.rowNum}:`, error);
+      }
+    });
+
+    // Report results
+    let message = `Test Send Complete\n\n`;
+    message += `Successfully sent: ${successCount}\n`;
+    message += `Failed: ${failedRows.length}\n\n`;
+
+    if (failedRows.length > 0) {
+      message += `Failed announcements:\n`;
+      failedRows.forEach(/** @param {{rowNum: number, rideName: string, error: string}} f */ f => {
+        message += `  Row ${f.rowNum} (${f.rideName}): ${f.error}\n`;
+      });
+      message += `\n`;
+    }
+
+    if (successCount > 0) {
+      message += `Check your inbox at ${testEmail} (and spam folder).\n\n`;
+    }
+
+    message += `Note: The Status column was NOT updated - announcements will still be sent at the scheduled time to the production email address.`;
+
+    const title = failedRows.length > 0 ? 'Test Send Completed with Errors' : 'Test Send Successful';
+    ui.alert(title, message, ui.ButtonSet.OK);
+
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('testSendAnnouncement_ error:', err);
+    alert_(`Error in test send: ${err.message}`);
+  }
+}
+
+// ========== TRIGGER HANDLERS ==========
+
+/**
+ * Daily backstop check for announcements
+ * Runs once per day to catch missed announcements and ensure scheduled trigger exists
+ * Owner-only (trigger should only be created by owner)
+ */
+function dailyAnnouncementCheck() {
+  try {
+    console.log('dailyAnnouncementCheck: Starting daily backstop check');
+    UserLogger.log('DAILY_ANNOUNCEMENT_CHECK', 'Starting daily backstop check', {});
+
+    const manager = new AnnouncementManager();
+
+    // Process any missed or due announcements
+    const result = manager.processQueue();
+
+    console.log('dailyAnnouncementCheck: Completed', result);
+    UserLogger.log('DAILY_ANNOUNCEMENT_CHECK_COMPLETE', 'Daily backstop check completed', result);
+
+  } catch (e) {
+    const error = /** @type {Error} */ (e);
+    console.error('Daily announcement check failed:', error);
+    UserLogger.log('DAILY_ANNOUNCEMENT_CHECK_ERROR', 'Daily backstop check failed', {
+      error: error.message,
+      stack: error.stack
+    });
+  }
+}
+
+/**
+ * Scheduled announcement trigger
+ * Fires at specific time to send pending announcement(s)
+ * Owner-only (trigger created by owner via TriggerManager)
+ */
+function announcementTrigger() {
+  try {
+    console.log('announcementTrigger: Processing scheduled announcements');
+    UserLogger.log('ANNOUNCEMENT_TRIGGER', 'Processing scheduled announcements', {});
+
+    const manager = new AnnouncementManager();
+
+    // Process due announcements
+    const result = manager.processQueue();
+
+    console.log('announcementTrigger: Completed', result);
+    UserLogger.log('ANNOUNCEMENT_TRIGGER_COMPLETE', 'Scheduled announcements processed', result);
+
+    // Clean up this trigger since it has fired
+    try {
+      const triggerManager = new TriggerManager();
+      triggerManager.removeAnnouncementTrigger();
+      console.log('announcementTrigger: Cleaned up trigger');
+    } catch (cleanupError) {
+      console.warn('announcementTrigger: Failed to cleanup trigger:', cleanupError);
+      // Non-fatal - daily backstop will handle cleanup
+    }
+
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('announcementTrigger error:', err);
+    UserLogger.log('ANNOUNCEMENT_TRIGGER_ERROR', 'Scheduled announcement processing failed', {
+      error: err.message,
+      stack: err.stack
+    });
+  }
+}
+
+
+/**
+ * Install all required triggers (owner-only)
+ * Called from menu item: Ride Schedulers > Install Triggers
+ * Idempotent: Safe to call multiple times
+ */
+function installTriggers_() {
+  const ui = SpreadsheetApp.getUi();
+
+  try {
+    const triggerManager = new TriggerManager();
+
+    // Check if current user is owner
+    if (!triggerManager.isOwner()) {
+      const owner = SpreadsheetApp.getActiveSpreadsheet().getOwner()?.getEmail() || 'unknown';
+      const currentUser = Session.getEffectiveUser().getEmail();
+
+      const message = `Only the spreadsheet owner can install triggers.\n\n` +
+        `Owner: ${owner}\n` +
+        `Current user: ${currentUser}\n\n` +
+        `Please ask the owner to run this menu item.`;
+
+      ui.alert('Owner Permission Required', message, ui.ButtonSet.OK);
+
+      UserLogger.log('INSTALL_TRIGGERS_DENIED', 'Non-owner attempted to install triggers', {
+        owner,
+        currentUser
+      });
+
+      return;
+    }
+
+    // Confirm with owner before installing
+    const confirmMessage = `This will install ALL required triggers:\n\n` +
+      `• onOpen (runs when spreadsheet opens)\n` +
+      `• onEdit (runs when cells are edited)\n` +
+      `• Daily Announcement Check (runs at 2 AM daily)\n` +
+      `• Daily RWGPS Members Sync (runs at 2 AM daily)\n\n` +
+      `Scheduled triggers for specific announcements or retries\n` +
+      `will be created automatically as needed.\n\n` +
+      `This operation is safe to run multiple times (idempotent).\n\n` +
+      `Continue?`;
+
+    const response = ui.alert('Install Triggers', confirmMessage, ui.ButtonSet.YES_NO);
+
+    if (response !== ui.Button.YES) {
+      UserLogger.log('INSTALL_TRIGGERS_CANCELLED', 'User cancelled trigger installation', {});
+      return;
+    }
+
+    // Install triggers
+    const summary = triggerManager.installAllTriggers();
+
+    // Build success message
+    let message = `Trigger Installation Complete\n\n`;
+    message += `Installed: ${summary.installed}\n`;
+    message += `Already existed: ${summary.existed}\n`;
+
+    if (summary.failed > 0) {
+      message += `Failed: ${summary.failed}\n\n`;
+      message += `Check the execution log for details on failures.`;
+    } else {
+      message += `\nAll triggers are now active and running as the spreadsheet owner.`;
+    }
+
+    const title = summary.failed > 0 ? 'Installation Completed with Errors' : 'Installation Successful';
+    ui.alert(title, message, ui.ButtonSet.OK);
+
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('installTriggers_ error:', err);
+
+    const message = `Error installing triggers:\n\n${err.message}\n\n` +
+      `Check the execution log for details.`;
+
+    ui.alert('Installation Failed', message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Fetch and update RWGPS club members (called by daily trigger)
+ * This function is designed to run at 2am daily via a time-based trigger
+ * configured in the Apps Script project settings.
+ * 
+ * The trigger should be set up as:
+ * - Trigger type: Time-driven
+ * - Type of time based trigger: Day timer
+ * - Time of day: 2am to 3am
+ * 
+ * Creates/updates the "RWGPS Members" sheet with current club member names.
+ */
+function dailyRWGPSMembersDownload() {
+  try {
+    // @ts-expect-error - getRWGPS is defined in RWGPSFunctions.js
+    const adapter = new RWGPSMembersAdapter(getRWGPS());
+    const result = adapter.updateMembers();
+
+    console.log(`dailyRWGPSMembersDownload: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total)`);
+  } catch (error) {
+    console.error('dailyRWGPSMembersDownload error:', error);
+    // Don't throw - let the trigger continue on next scheduled run
+  }
+}
+
+
+
+
+
+
+
+
 
 
 

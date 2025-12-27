@@ -2,7 +2,7 @@
  * Returns an array of group names (e.g., ["A", "B", "C", ...]).
  * @returns {string[]} Array of group names.
  */
-declare function getGroupNames(): string[];
+export function getGroupNames(): string[];
 
 /**
  * Returns an object mapping group names to their specifications.

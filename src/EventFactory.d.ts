@@ -1,28 +1,30 @@
 /**
  * The EventFactory provides methods to create and convert event objects for ride scheduling.
  */
+
+import type Row from './Row';
+import type { Organizer } from './Externals';
+
+/**
+ * EventFactory namespace with methods for creating and converting events
+ */
 declare const EventFactory: {
     /**
      * Creates a new event object from a row and organizers.
-     * @param {Row} row - The row object to make event from.
-     * @param {Organizer[]} organizers - The organizers (i.e. ride leaders) for this event.
-     * @param {string|number} event_id - The event ID.
-     * @returns {Event} The created event object.
+     * @param row - The row object to make event from.
+     * @param organizers - The organizers (i.e. ride leaders) for this event.
+     * @param event_id - The event ID (extracted from event URL).
+     * @returns The created event object.
      */
-    newEvent(row: Row, organizers: Organizer[], event_id: string | number): Event;
+    newEvent(row: Row, organizers: Organizer[], event_id: string | number): SCCCCEvent;
 
     /**
-     * Converts a RWGPS event object to an Event.
-     * @param {any} rwgpsEvent - The RWGPS event object.
-     * @returns {Event} The converted event object.
+     * Converts a RWGPS event object to a SCCCCEvent.
+     * @param rwgpsEvent - The RWGPS event object.
+     * @returns The converted event object.
      * @throws {Error} If the event name ends with ']'.
      */
-    fromRwgpsEvent(rwgpsEvent: any): Event;
+    fromRwgpsEvent(rwgpsEvent: any): SCCCCEvent;
 };
 
-/**
- * Organizer type for ride leaders.
- * @typedef {Object} Organizer
- * @property {string|number} id - The organizer's ID.
- * @property {string} text - The organizer's name.
- */
+export default EventFactory;

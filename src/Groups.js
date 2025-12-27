@@ -1,3 +1,4 @@
+// @ts-check
 function getGroupNames() {
   return Object.keys(getGroupSpecs());  // ["A", "B", "C", ...]
 }
@@ -39,6 +40,12 @@ function flatten_(groups) {
   return groups;
 }
 
+// Export for GAS (global)
+var Groups = {
+  getGroupNames: getGroupNames,
+  getGroupSpecs: getGroupSpecs
+};
+
 if(typeof module !== 'undefined') {
-  module.exports = { getGroupNames, getGroupSpecs };
+  module.exports = Groups;
 }

@@ -7,8 +7,10 @@ declare const RideManager: {
      * Cancels the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to cancel.
      * @param {any} rwgps - RWGPS connector/service.
+     * @param {boolean} sendEmail - Whether to send cancellation email.
+     * @param {string} reason - Optional cancellation reason.
      */
-    cancelRows(rows: Row[], rwgps: any): void;
+    cancelRows(rows: Row[], rwgps: any, sendEmail?: boolean, reason?: string): void;
 
     /**
      * Imports the given rows' routes.
@@ -21,8 +23,10 @@ declare const RideManager: {
      * Reinstates the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to reinstate.
      * @param {any} rwgps - RWGPS connector/service.
+     * @param {boolean} sendEmail - Whether to send reinstatement email.
+     * @param {string} reason - Optional reinstatement reason.
      */
-    reinstateRows(rows: Row[], rwgps: any): void;
+    reinstateRows(rows: Row[], rwgps: any, sendEmail?: boolean, reason?: string): void;
 
     /**
      * Schedules the given rows' rides.
@@ -74,14 +78,3 @@ declare function getCalendarId(groupName: string): string | undefined;
  */
 declare function getLocation(row: Row): string;
 
-/**
- * Reports if the ride name is truncated compared to the route name.
- * @param {string} routeName - The route name.
- * @param {string} rideName - The ride name.
- */
-declare function reportIfNameIsTruncated_(routeName: string, rideName: string): void;
-
-/**
- * Test utility for reportIfNameIsTruncated_.
- */
-declare function testReportIfNameIsTruncated(): void;
