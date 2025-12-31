@@ -55,7 +55,18 @@ var AnnouncementManager = (function () {
                 const rsGroupEmail = getGlobals().RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail();
                 if (rsGroupEmail !== Session.getActiveUser().getEmail()) {
                     try {
-                        newDoc.addEditor(rsGroupEmail);
+                        var fileId = newDoc.getId();
+                        var resource = {
+                            'type': 'group',
+                            'role': 'writer',
+                            'emailAddress': rsGroupEmail
+                        };
+
+                        // The third argument is the 'optionalArgs' where we suppress the email and ensure it works for shared drives
+                        Drive.Permissions.create(resource, fileId, {
+                            sendNotificationEmail: false,
+                            supportsAllDrives: true
+                        });
                         newDoc.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
                     } catch (permError) {
                         const err = permError instanceof Error ? permError : new Error(String(permError));
