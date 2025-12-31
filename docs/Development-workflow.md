@@ -44,11 +44,11 @@ npm test && npm run typecheck && npm run validate-exports
 
 # Merge to master
 git checkout master
-git merge --no-ff feature/my-feature-name
+git merge --no-ff feature/my-feature-name -m "Fixes #123 - description of feature"
 
-# Tag the release
-git tag -a v2025.01.02 -m "Add my feature"
-git push origin master v2025.01.02
+# Tag the release (date0, optional disambiguation letter if same day), feature description from git:
+git tag -a v$(date +%Y.%m.%d) -m "$(git log -1 --pretty=%B)"
+git push origin master v$(date +%Y.%m.%d)
 
 # Deploy to production
 npm run prod:push
