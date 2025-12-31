@@ -17,14 +17,14 @@ master (production trunk)
 
 
 ## Development Workflow
-Starting a New Feature
+### Starting a New Feature
 
 ````
 git checkout master
 git pull
 git checkout -b feature/my-feature-name
 ````
-Working on Feature
+### Working on Feature
 
 ````
 # Make changes
@@ -57,11 +57,14 @@ npm run prod:push
 git branch -d feature/my-feature-name
 ````
 ## Production Deployment Checklist
-### MANDATORY before every production deployment:
 
-````
+**MANDATORY before every production deployment:**
+
+```bash
 # 1. Check VS Code errors (CRITICAL)
-get_errors(['src/'])  # Must show ZERO errors
+# Open VS Code and check Problems panel (⇧⌘M)
+# OR use Copilot Chat: @workspace /get_errors(['src/'])
+# Must show ZERO errors
 
 # 2. Run full validation suite
 npm test && npm run typecheck && npm run validate-exports
@@ -77,7 +80,7 @@ git push origin master v2025.01.02
 
 # 6. Deploy
 npm run prod:push
-````
+```
 ### Tag Convention
 **Date-based tags**: `vYYYY.MM.DD`
 ````
@@ -93,6 +96,30 @@ git tag -a v$(date +%Y.%m.%d) -m "$(git log -1 --pretty=%B)"
 * ✅ Chronological sorting
 * ✅ Simple rollback to specific date
 * ✅ No version number debates
+### Multiple Deployments Same Day
+
+**Use sequential suffixes for multiple same-day releases**:
+
+```bash
+# Pattern: vYYYY.MM.DD-{a,b,c,...}
+git tag -a v2025.01.02-a -m "First deployment - Fix email bug"
+npm run prod:push
+git push origin v2025.01.02-a
+
+git tag -a v2025.01.02-b -m "Second deployment - Add cancellation"
+npm run prod:push
+git push origin v2025.01.02-b
+```
+
+**When to use**:
+- ✅ Each micro-feature deployed independently
+- ✅ Need rollback granularity between deployments
+- ✅ Production testing between features
+
+**When to batch**:
+- ✅ Related fixes for same issue
+- ✅ All tested together before production
+- ✅ Logical unit of work
 ### Rollback Procedure (Tag-Based Production)
 
 **Scenario**: Production deployment has a bug, need to rollback
