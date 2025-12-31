@@ -71,7 +71,7 @@ function createMenu_() {
     .addItem('Import Selected Routes', importSelectedRoutes_.name)
     .addSeparator()
     .addItem('Test Selected Announcements', testSendAnnouncement_.name)
-    .addItem('Send Pending Announcements', sendPendingAnnouncements_.name)
+    .addItem('Send Selected (Pending) Announcements', sendPendingAnnouncements_.name)
     .addSeparator()
     .addItem('Install Triggers', installTriggers_.name)
     .addItem('Get App Version', showAppVersion_.name)
