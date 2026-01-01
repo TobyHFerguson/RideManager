@@ -26,6 +26,9 @@ var Exports = {
     get Row() {
         return Row;
     },
+    get RowCore() {
+        return RowCore;
+    },
     get RouteColumnEditor() {
         return RouteColumnEditor;
     },
