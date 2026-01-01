@@ -21,6 +21,8 @@
 
 **Phase 1 Total**: 6-9 days (approximately 3 weeks)
 
+**Note**: Row.js wrapper is eliminated. ScheduleAdapter returns RowCore instances directly, and all consuming code uses RowCore with camelCase properties.
+
 ### Phase 2: High Priority
 
 | Issue | Title | Priority | Effort | Dependencies |
@@ -85,6 +87,7 @@ Thin GAS Adapter (minimal logic)
 - Algorithm implementations
 - Template expansion
 - Date calculations
+- **Domain properties** (clean camelCase names, framework-agnostic)
 
 **Adapter Modules** (Thin GAS wrappers):
 - SpreadsheetApp operations
@@ -94,6 +97,8 @@ Thin GAS Adapter (minimal logic)
 - PropertiesService operations
 - UI operations (dialogs, alerts)
 - ScriptApp operations (triggers)
+- **Anti-corruption layer** (mapping persistence ↔ domain)
+- **Configuration loading** (getGlobals())
 
 ## Implementation Guidelines
 

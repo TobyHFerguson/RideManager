@@ -204,19 +204,51 @@ Update these at end of phase:
 
 ### Q: What's the difference between Row and RowCore?
 
-**A**: **Row** = GAS adapter, **RowCore** = Pure domain model
+**A**: After refactoring, **only RowCore exists**. Row wrapper is eliminated as unnecessary complexity.
 
-**RowCore** (Pure JavaScript):
-- Plain object wrapper
+**RowCore** (Pure Domain Model):
+- Uses clean camelCase property names (`rideName`, not `'Ride Name'`)
+- NO knowledge of spreadsheet columns
+- NO getGlobals() calls
 - Business logic (validation, calculations)
 - Dirty field tracking
-- Testable in Jest
+- Testable in Jest with plain objects
 
-**Row** (GAS Adapter):
-- Delegates to RowCore for business logic
+**ScheduleAdapter** (Anti-Corruption Layer):
+- Builds columnMap from getGlobals() spreadsheet configuration
+- Maps spreadsheet columns → RowCore domain properties
+- Maps RowCore properties → spreadsheet columns
 - Handles SpreadsheetApp operations
-- Manages Range references
-- Minimal logic (thin wrapper)
+- Handles formula preservation
+- Returns RowCore instances directly
+
+**Old Row class** (Removed):
+- Was originally a wrapper around RowCore
+- Provided PascalCase API (`RideName`) for backward compatibility
+- Added unnecessary complexity
+- **Eliminated in refactoring** - consuming code uses RowCore directly
+
+**Example**:
+```javascript
+// ScheduleAdapter creates RowCore instances
+const scheduleAdapter = new ScheduleAdapter();
+const rows = scheduleAdapter.load(); // Returns RowCore[]
+
+// Use RowCore directly with camelCase
+rows.forEach(row => {
+    console.log(row.rideName);  // Direct access
+    if (row.isScheduled()) {
+        // Domain logic
+    }
+});
+
+// Modify and save
+row.rideName = 'New Name';
+row.markDirty('rideName');
+scheduleAdapter.saveDirtyFields(row);
+```
+
+**Why Row was removed**: ScheduleAdapter handles all GAS I/O, RowCore has all domain logic. Row wrapper added no value.
 
 ---
 
@@ -304,6 +336,70 @@ Benefits:
 - Check [Refactoring-Quick-Reference.md](Refactoring-Quick-Reference.md) for code patterns
 - Check [copilot-instructions.md](../.github/copilot-instructions.md) for full guidelines
 - Ask your AI assistant for specific help
+
+---
+
+### Q: Why can't RowCore just use spreadsheet column names directly?
+
+**A**: That would be a **leaky abstraction** violating Hexagonal Architecture principles.
+
+**The Problem**:
+```javascript
+// ❌ BAD - Domain depends on persistence
+class RowCore {
+    constructor(data) {
+        this._data = data; // Keys are 'Ride Name', 'Start Date'
+    }
+    get rideName() { return this._data['Ride Name']; } // Spreadsheet column!
+}
+```
+
+**Issues**:
+- RowCore can't be tested without knowing spreadsheet structure
+- Changing spreadsheet columns breaks domain model
+- Can't reuse RowCore with different data sources (database, API)
+- Violates separation of concerns
+
+**The Solution**: Anti-Corruption Layer
+```javascript
+// ✅ GOOD - Pure domain model
+class RowCore {
+    constructor({ rideName, startDate }) {
+        this.rideName = rideName;  // Clean property
+        this.startDate = startDate;
+    }
+}
+
+// ✅ GOOD - Adapter handles mapping
+class ScheduleAdapter {
+    constructor() {
+        const globals = getGlobals();
+        this.columnMap = {
+            [globals.RIDENAMECOLUMNNAME]: 'rideName',
+            [globals.STARTDATETIMECOLUMNNAME]: 'startDate'
+        };
+    }
+    
+    load() {
+        const spreadsheetData = this.fiddler.getData();
+        return spreadsheetData.map(row => {
+            const domainData = {};
+            for (const [col, prop] of Object.entries(this.columnMap)) {
+                domainData[prop] = row[col];
+            }
+            return new RowCore(domainData);
+        });
+    }
+}
+```
+
+**Benefits**:
+- RowCore is 100% testable with plain objects
+- Spreadsheet structure can change without touching RowCore
+- Could swap to database without changing RowCore
+- Proper separation: domain logic vs persistence
+
+**This is Hexagonal Architecture** (Ports & Adapters pattern) - the adapter protects the domain from external concerns.
 
 ---
 

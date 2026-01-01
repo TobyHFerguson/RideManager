@@ -25,23 +25,63 @@ npm test && npm run typecheck && npm run validate-exports
 ```javascript
 // ✅ CORRECT
 
-// ModuleCore.js - Pure JavaScript (100% tested)
+// ModuleCore.js - Pure JavaScript (100% tested, NO GAS dependencies)
 class ModuleCore {
+    constructor({ cleanPropertyName, anotherProperty }) {
+        // Domain properties with clean names (camelCase)
+        this.cleanPropertyName = cleanPropertyName;
+        this.anotherProperty = anotherProperty;
+    }
+    
     static calculateSomething(input, dependencies) {
-        // Pure logic, no GAS
+        // Pure logic, no GAS, no getGlobals()
         return result;
     }
 }
 
-// Module.js - Thin GAS adapter (minimal logic)
+// Module.js - Thin GAS adapter (handles ALL external dependencies)
 class Module {
+    constructor() {
+        // Build mapping from external configuration
+        const globals = getGlobals();
+        this.columnMap = {
+            [globals.SPREADSHEET_COLUMN_NAME]: 'cleanPropertyName',
+            [globals.ANOTHER_COLUMN]: 'anotherProperty'
+        };
+    }
+    
     doSomething() {
-        const input = SpreadsheetApp.getActiveSheet().getValue(); // GAS
-        const result = ModuleCore.calculateSomething(input, config); // Core
-        GmailApp.sendEmail(result); // GAS
+        // GAS: read from spreadsheet
+        const spreadsheetData = SpreadsheetApp.getActiveSheet().getValue();
+        
+        // Transform to domain object
+        const domainData = this._transformToDomain(spreadsheetData);
+        
+        // Use Core for business logic
+        const result = ModuleCore.calculateSomething(domainData, config);
+        
+        // GAS: write result
+        GmailApp.sendEmail(result);
+    }
+    
+    _transformToDomain(spreadsheetData) {
+        // Map spreadsheet structure → domain properties
+        const domainData = {};
+        for (const [column, property] of Object.entries(this.columnMap)) {
+            domainData[property] = spreadsheetData[column];
+        }
+        return domainData;
     }
 }
 ```
+
+### The Anti-Corruption Layer
+
+**Key Principle**: Domain models NEVER depend on persistence structure.
+
+- **Core** uses `rideName` (clean domain property)
+- **Adapter** knows about `globals.RIDENAMECOLUMNNAME` (spreadsheet column)
+- **Adapter** maps between them (anti-corruption layer)
 
 ## 🚫 Anti-Patterns (NEVER DO THIS)
 
@@ -60,6 +100,33 @@ function createItem(operation) {
 // ✅ CORRECT - Dependency injection
 function createItem(operation, generateId) {
     return { id: generateId(), ...operation };
+}
+
+// ❌ WRONG - Domain depends on spreadsheet structure
+class RowCore {
+    constructor(data) {
+        this._data = data;
+    }
+    get rideName() { return this._data[getGlobals().RIDENAMECOLUMNNAME]; } // Leaky!
+}
+
+// ✅ CORRECT - Domain uses clean property names
+class RowCore {
+    constructor({ rideName, startDate }) {
+        this.rideName = rideName;  // Clean domain property
+        this.startDate = startDate;
+    }
+}
+
+// Adapter handles mapping
+class ScheduleAdapter {
+    constructor() {
+        const globals = getGlobals();
+        this.columnMap = {
+            [globals.RIDENAMECOLUMNNAME]: 'rideName',
+            [globals.STARTDATETIMECOLUMNNAME]: 'startDate'
+        };
+    }
 }
 ```
 

@@ -61,6 +61,7 @@ class Module {
 - Template expansion and string processing
 - Date calculations and formatting
 - Configuration processing
+- **Domain properties with clean names** (camelCase, framework-agnostic)
 
 **Adapter Modules (Thin GAS Wrappers)**:
 - SpreadsheetApp operations (read/write cells, get ranges)
@@ -71,6 +72,35 @@ class Module {
 - DriveApp operations (file access)
 - UI operations (dialogs, alerts)
 - ScriptApp operations (triggers)
+- **Mapping between persistence and domain** (spreadsheet columns ↔ domain properties)
+- **Configuration loading** (getGlobals(), etc.)
+
+### CRITICAL: Anti-Corruption Layer Pattern
+
+**The Hexagonal Architecture Principle**:
+
+> **Domain models must NEVER depend on persistence layer structure.**
+> The adapter layer is the anti-corruption boundary that mediates between external systems and the pure domain.
+
+In this codebase:
+- **RowCore** = Pure domain (uses `rideName`, `startDate` - clean property names)
+- **ScheduleAdapter** = Anti-corruption layer (knows about `globals.RIDENAMECOLUMNNAME`, `globals.STARTDATETIMECOLUMNNAME`)
+- **Globals spreadsheet** = External configuration (column names can change without affecting domain)
+
+**Example of proper separation**:
+```javascript
+// ✅ CORRECT: Domain doesn't know about spreadsheet
+const row = new RowCore({
+    rideName: 'Epic Ride',
+    startDate: new Date('2026-02-01')
+});
+
+// ❌ WRONG: Domain depends on spreadsheet structure
+const row = new RowCore(data);
+row.rideName = data[getGlobals().RIDENAMECOLUMNNAME]; // Leaky abstraction!
+```
+
+The mapping from `globals.RIDENAMECOLUMNNAME` → `rideName` happens **only in ScheduleAdapter**, never in RowCore.
 
 ## Refactoring Phases
 
@@ -89,58 +119,157 @@ class Module {
 
 **Target Architecture**:
 ```javascript
-// RowCore.js - Pure domain model
+// RowCore.js - Pure domain model (NO spreadsheet dependencies)
 class RowCore {
-    constructor(data) {
-        this._data = data; // Plain object with column names as keys
-    }
-    
-    // Pure getters/setters
-    get RideName() { return this._data['Ride Name']; }
-    set RideName(value) { 
-        this._data['Ride Name'] = value;
-        this._dirtyFields.add('Ride Name');
+    constructor({
+        startDate,      // Clean camelCase domain properties
+        startTime,
+        rideName,
+        rideURL,
+        routeName,
+        routeURL,
+        group,
+        leaders,
+        rowNum,
+        // ... all domain properties
+    }) {
+        // Domain properties (NO spreadsheet column names)
+        this.startDate = startDate;
+        this.startTime = startTime;
+        this.rideName = rideName;
+        this.rideURL = rideURL;
+        this.routeName = routeName;
+        this.routeURL = routeURL;
+        this.group = group;
+        this.leaders = leaders;
+        this.rowNum = rowNum;
+        
+        this._dirtyFields = new Set();
     }
     
     // Pure validation logic
-    isScheduled() { return !!this._data['Ride URL']; }
+    isScheduled() { return !!this.rideURL; }
     isPastDue(currentDate) { 
-        return this._data['Start Date'] < currentDate;
+        return this.startDate < currentDate;
     }
     
-    // Pure data transformation
-    toPlainObject() { return { ...this._data }; }
+    // Dirty tracking
+    markDirty(field) { this._dirtyFields.add(field); }
+    getDirtyFields() { return this._dirtyFields; }
 }
 
-// Row.js - Thin adapter (keeps cell-level write pattern)
-class Row {
-    constructor(rowCore, adapter) {
-        this._core = rowCore;
-        this._adapter = adapter;
+// ScheduleAdapter.js - Anti-corruption layer
+class ScheduleAdapter {
+    constructor() {
+        this.fiddler = bmPreFiddler.PreFiddler().getFiddler({
+            sheetName: 'Consolidated Rides'
+        });
+        
+        // Build mapping from Globals spreadsheet (spreadsheet → domain)
+        const globals = getGlobals();
+        this.columnMap = {
+            [globals.STARTDATETIMECOLUMNNAME]: 'startDate',
+            [globals.RIDENAMECOLUMNNAME]: 'rideName',
+            [globals.RIDEURLCOLUMNNAME]: 'rideURL',
+            [globals.ROUTENAMECOLUMNNAME]: 'routeName',
+            [globals.ROUTEURLCOLUMNNAME]: 'routeURL',
+            [globals.GROUPCOLUMNNAME]: 'group',
+            [globals.LEADERSCOLUMNNAME]: 'leaders',
+            // ... all column mappings
+        };
+        
+        // Reverse map (domain → spreadsheet)
+        this.domainToColumn = Object.fromEntries(
+            Object.entries(this.columnMap).map(([col, prop]) => [prop, col])
+        );
     }
     
-    // Delegate to core
-    get RideName() { return this._core.RideName; }
-    set RideName(value) { this._core.RideName = value; }
+    load() {
+        const spreadsheetData = this.fiddler.getData();
+        this._overlayFormulas(spreadsheetData);
+        
+        // Transform spreadsheet data to domain objects
+        return spreadsheetData.map(rowData => {
+            const domainData = {};
+            for (const [columnName, domainProp] of Object.entries(this.columnMap)) {
+                domainData[domainProp] = rowData[columnName];
+            }
+            domainData.rowNum = rowData._rowNum;
+            return new RowCore(domainData);
+        });
+    }
     
-    // GAS operations only
-    save() {
-        const dirtyFields = this._core.getDirtyFields();
-        this._adapter.saveDirtyFields(this._core.toPlainObject(), dirtyFields);
+    saveDirtyFields(rowCore) {
+        const dirtyFields = rowCore.getDirtyFields();
+        dirtyFields.forEach(domainProp => {
+            const columnName = this.domainToColumn[domainProp];
+            this._writeCell(rowCore.rowNum, columnName, rowCore[domainProp]);
+        });
+        SpreadsheetApp.flush();
+        this._storeFormulas();
     }
 }
+
+// Consuming code uses RowCore directly
+// MenuFunctions.js, RideManager.js, Commands.js, etc.
+const rows = scheduleAdapter.load(); // Returns RowCore[]
+
+rows.forEach(row => {
+    console.log(row.rideName);  // Direct camelCase access
+    if (row.isScheduled()) {
+        // Domain logic
+    }
+});
+
+// Modify and save
+row.rideName = 'New Name';
+row.markDirty('rideName');
+scheduleAdapter.saveDirtyFields(row);
 ```
 
 **Testing Strategy**:
 - Test all Row business logic in Jest (100% coverage)
-- Test domain model behavior without GAS
+- Test domain model behavior with plain objects (no GAS)
 - Test validation rules with various inputs
 - Keep GAS integration tests separate
 
+**Example Test**:
+```javascript
+// test/__tests__/RowCore.test.js
+const RowCore = require('../../src/RowCore');
+
+describe('RowCore', () => {
+    it('should identify scheduled rides', () => {
+        const row = new RowCore({
+            rideName: 'Test Ride',
+            rideURL: 'https://ridewithgps.com/events/123',
+            startDate: new Date('2026-02-01')
+        });
+        
+        expect(row.isScheduled()).toBe(true);
+    });
+    
+    it('should identify unscheduled rides', () => {
+        const row = new RowCore({
+            rideName: 'Test Ride',
+            rideURL: null,
+            startDate: new Date('2026-02-01')
+        });
+        
+        expect(row.isScheduled()).toBe(false);
+    });
+});
+```
+
 **Success Criteria**:
-- ✅ RowCore has 100% test coverage
-- ✅ All business logic moved to RowCore
-- ✅ Row.js is thin adapter only
+- ✅ RowCore uses clean camelCase property names
+- ✅ RowCore has NO getGlobals() calls
+- ✅ RowCore has 100% test coverage with plain objects
+- ✅ ScheduleAdapter builds columnMap from getGlobals()
+- ✅ ScheduleAdapter returns RowCore instances directly
+- ✅ ScheduleAdapter handles ALL spreadsheet ↔ domain mapping
+- ✅ **ALL consuming code updated to use RowCore directly**
+- ✅ **Row.js class removed** (not needed)
 - ✅ Cell-level write pattern preserved
 - ✅ Zero regression in production behavior
 
@@ -316,57 +445,72 @@ const RideManager = (function () {
 - Formula preservation mechanism
 
 **Improvements Needed**:
+- Build column mapping from getGlobals() at construction
 - Better integration with RowCore dirty field tracking
-- More efficient batch operations
-- Clearer separation between I/O and data manipulation
+- Transform spreadsheet data to domain objects
+- Transform domain objects back to spreadsheet updates
+- More efficient batch operations for dirty cells
+- Clearer separation between I/O and data transformation
 
 **Target Architecture**:
 ```javascript
-// ScheduleAdapter.js - Enhanced
+// ScheduleAdapter.js - Enhanced with mapping layer
 class ScheduleAdapter {
+    constructor() {
+        this.fiddler = bmPreFiddler.PreFiddler().getFiddler({
+            sheetName: 'Consolidated Rides'
+        });
+        
+        // Build mapping from Globals spreadsheet (spreadsheet → domain)
+        const globals = getGlobals();
+        this.columnMap = {
+            [globals.STARTDATETIMECOLUMNNAME]: 'startDate',
+            [globals.RIDENAMECOLUMNNAME]: 'rideName',
+            [globals.RIDEURLCOLUMNNAME]: 'rideURL',
+            [globals.ROUTENAMECOLUMNNAME]: 'routeName',
+            [globals.ROUTEURLCOLUMNNAME]: 'routeURL',
+            [globals.GROUPCOLUMNNAME]: 'group',
+            [globals.LEADERSCOLUMNNAME]: 'leaders',
+            // ... all column mappings
+        };
+        
+        // Reverse map (domain → spreadsheet)
+        this.domainToColumn = Object.fromEntries(
+            Object.entries(this.columnMap).map(([col, prop]) => [prop, col])
+        );
+    }
+    
     load() {
         // Fiddler bulk load
-        const data = this.fiddler.getData();
+        const spreadsheetData = this.fiddler.getData();
         
         // Overlay formulas
-        this._overlayFormulas(data);
+        this._overlayFormulas(spreadsheetData);
         
-        // Convert to RowCore instances
-        return data.map(rowData => new RowCore(rowData));
-    }
-    
-    save(rowCores) {
-        // Collect all dirty cells
-        const dirtyCells = [];
-        
-        rowCores.forEach((rowCore, index) => {
-            const dirtyFields = rowCore.getDirtyFields();
-            dirtyFields.forEach(field => {
-                dirtyCells.push({
-                    row: index + 2, // Account for header row
-                    column: this._getColumnIndex(field),
-                    value: rowCore.get(field)
-                });
-            });
-        });
-        
-        // Batch write only dirty cells
-        this._writeCells(dirtyCells);
-        
-        // Store formulas for next load
-        this._storeFormulas();
-    }
-    
-    _writeCells(cells) {
-        cells.forEach(cell => {
-            const range = this.sheet.getRange(cell.row, cell.column);
-            if (cell.value.startsWith('=')) {
-                range.setFormula(cell.value);
-            } else {
-                range.setValue(cell.value);
+        // Transform to domain objects
+        return spreadsheetData.map(rowData => {
+            const domainData = {};
+            for (const [columnName, domainProp] of Object.entries(this.columnMap)) {
+                domainData[domainProp] = rowData[columnName];
             }
+            domainData.rowNum = rowData._rowNum;
+            return new RowCore(domainData);
         });
+    }
+    
+    saveDirtyFields(rowCore) {
+        const dirtyFields = rowCore.getDirtyFields();
+        
+        dirtyFields.forEach(domainProp => {
+            const columnName = this.domainToColumn[domainProp];
+            const value = rowCore[domainProp];
+            
+            // Cell-level write (preserves version history)
+            this._writeCell(rowCore.rowNum, columnName, value);
+        });
+        
         SpreadsheetApp.flush();
+        this._storeFormulas();
     }
 }
 ```
@@ -374,10 +518,15 @@ class ScheduleAdapter {
 **Testing Strategy**:
 - Test dirty field tracking across save cycles
 - Test formula preservation
+- Test spreadsheet → domain transformation
+- Test domain → spreadsheet transformation
 - Test batch write operations
 - Test cell-level precision (version history verification)
 
 **Success Criteria**:
+- ✅ Builds columnMap from getGlobals() at construction
+- ✅ Transforms spreadsheet data to domain objects correctly
+- ✅ Transforms domain dirty fields to spreadsheet updates
 - ✅ Preserves cell-level write pattern
 - ✅ Efficient batch operations
 - ✅ Clean integration with RowCore
