@@ -7,25 +7,25 @@ if (typeof require !== 'undefined') {
 
 class SCCCCEvent {
   // Managed names can be of the form:
-// Mon A 1/1 10:00 AM Ride route name
-// Mon A 1/1 10:00 route name
+  // Mon A 1/1 10:00 AM Ride route name
+  // Mon A 1/1 10:00 route name
 
-// the sub patterns are:
-// 3 letter capitalized day name
-// 2 digit month / 2 digit day (US Style dates)
-// 2 digit hour : 2 digit minute AM or PM (12 hour times)
+  // the sub patterns are:
+  // 3 letter capitalized day name
+  // 2 digit month / 2 digit day (US Style dates)
+  // 2 digit hour : 2 digit minute AM or PM (12 hour times)
 
-// In addition, there can be an optional 'CANCELLED: ' prefix.
+  // In addition, there can be an optional 'CANCELLED: ' prefix.
 
   /**
    * @param {string[]} [groupNames]
    */
   static makeManagedRE(groupNames = []) {
-  const grps = groupNames.join('|');
-  const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)(?<suffix>.*$)`;
-  const MANAGED_RE = new RegExp(MANAGED_RE_STR);
-  return MANAGED_RE;
-}
+    const grps = groupNames.join('|');
+    const MANAGED_RE_STR = `^(?<cancelled>(CANCELLED: )?)(?<meta>[MTWFS][a-z]{2} (${grps}) \\(\\d{1,2}\\/\\d{1,2} \\d\\d:\\d\\d( [AP]M)?\\) ?)(?<suffix>.*$)`;
+    const MANAGED_RE = new RegExp(MANAGED_RE_STR);
+    return MANAGED_RE;
+  }
   /**
    * Create the name of a Managed Event. A Managed Event is one where this code is
    * responsible for all parts of the name and the Event body.
@@ -75,9 +75,11 @@ class SCCCCEvent {
       this.start_time = undefined,
       this.visibility = 0
   }
+  isCancelled() {
+    return this.name.startsWith('CANCELLED: ');
+  }
   cancel() {
-    if (!this.name.startsWith('CANCELLED: '))
-      this.name = 'CANCELLED: ' + this.name;
+    this.name = this.isCancelled() ? this.name  : `CANCELLED: ${this.name}`;
     return this;
   }
   reinstate() {

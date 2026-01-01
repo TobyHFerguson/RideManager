@@ -294,6 +294,9 @@ const RideManager = (function () {
         } else {
             const event_id = _extractEventID(row.RideURL);
             rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
+            if (rowCheck.cancelled(row)) {
+                rideEvent.cancel();
+            }
             // DEBUG ISSUE 22
             if (rideEvent.name.trim().endsWith(']')) {
                 throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${rideEvent.name}. Original name: ${row.RideName}`);
