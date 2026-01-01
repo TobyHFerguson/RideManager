@@ -2,48 +2,85 @@
 /// <reference path="./gas-globals.d.ts" />
 
 /**
- * ScheduleAdapter - GAS-specific adapter for reading/writing schedule data
+ * ScheduleAdapter - Anti-corruption layer between spreadsheet and domain model
  * 
- * This adapter separates GAS dependencies (SpreadsheetApp, bmPreFiddler, DeveloperMetadata)
- * from pure JavaScript business logic. It handles:
- * - Reading spreadsheet data via Fiddler
- * - Converting to/from Row domain objects
- * - Formula preservation (Route and Ride columns) via DeveloperMetadata UUIDs
- * - Selection handling
- * - Spreadsheet-specific operations (highlighting, etc.)
- * - Tracking dirty rows for batch saves
+ * This adapter implements the Hexagonal/Ports & Adapters architecture pattern:
+ * - Separates GAS dependencies (SpreadsheetApp, bmPreFiddler) from pure domain logic
+ * - Maps between spreadsheet structure (column names from Globals) and RowCore domain model
+ * - Handles all spreadsheet I/O using Load → Work → Save pattern
+ * 
+ * KEY RESPONSIBILITIES:
+ * ====================
+ * 1. **Column Mapping**: Builds columnMap from getGlobals() to map spreadsheet columns
+ *    to RowCore domain properties (e.g., "Ride Name" column → rideName property)
+ * 
+ * 2. **Data Transformation**: Converts between spreadsheet representation and domain objects
+ *    - Load: Spreadsheet data (column names) → RowCore instances (camelCase properties)
+ *    - Save: RowCore dirty fields (camelCase) → Spreadsheet columns (Globals names)
+ * 
+ * 3. **Formula Preservation**: Route and Ride columns use HYPERLINK formulas which are
+ *    overlaid during load so domain code sees formula strings, not displayed values
+ * 
+ * 4. **Dirty Tracking**: Tracks which RowCore instances have been modified to enable
+ *    cell-level writes (preserves meaningful version history in spreadsheet)
  * 
  * ARCHITECTURE PATTERN: Load → Work → Save
- * ========================================
+ * =========================================
  * All operations MUST follow this pattern:
  * 
- * 1. LOAD: Create adapter and load rows
+ * 1. LOAD: Create adapter and load RowCore instances
+ *    ```javascript
  *    const adapter = new ScheduleAdapter();
- *    const rows = adapter.loadAll();  // or loadSelected(), loadYoungerRows(), etc.
+ *    const rows = adapter.loadAll();  // Returns RowCore[] with camelCase properties
+ *    ```
  * 
- * 2. WORK: Modify Row domain objects in memory
+ * 2. WORK: Modify RowCore domain objects in memory
+ *    ```javascript
  *    rows.forEach(row => {
- *        row.GoogleEventId = eventId;  // Setters mark fields dirty
- *        row.clearAnnouncement();       // Domain methods handle complex updates
+ *        row.setGoogleEventId(eventId);  // Marks 'googleEventId' field dirty
+ *        row.clearAnnouncement();         // Marks announcement fields dirty
+ *        adapter.markRowDirty(row);       // Register row for saving
  *    });
+ *    ```
  * 
  * 3. SAVE: Persist dirty rows in a single batch
- *    adapter.save();  // Writes only dirty cells, preserving version history
+ *    ```javascript
+ *    adapter.save();  // Maps domain properties back to spreadsheet columns
+ *                     // Writes only dirty cells (preserves version history)
+ *    ```
  * 
- * NOTE: "Row removal" means clearing field values, NOT deleting spreadsheet rows.
- * The spreadsheet structure is preserved; we only modify cell contents.
- * Row domain objects provide methods like clearAnnouncement() for this purpose.
+ * COLUMN MAPPING:
+ * ===============
+ * Spreadsheet Column (from Globals) → Domain Property (RowCore)
+ * - "Start Date/Time"    → startDate
+ * - "Duration"           → duration
+ * - "Group"              → group
+ * - "Route"              → routeCell  (HYPERLINK formula)
+ * - "Ride"               → rideCell   (HYPERLINK formula)
+ * - "Ride Leaders"       → rideLeaders
+ * - "Google Event ID"    → googleEventId
+ * - "Location"           → location
+ * - "Address"            → address
+ * - "Announcement"       → announcement
+ * - "SendAt"             → sendAt
+ * - "Status"             → status
+ * - "Attempts"           → attempts
+ * - "LastError"          → lastError
+ * - "LastAttemptAt"      → lastAttemptAt
  * 
- * PERFORMANCE: This pattern minimizes spreadsheet I/O:
+ * PERFORMANCE OPTIMIZATION:
+ * =========================
+ * This pattern minimizes spreadsheet I/O:
  * - Single load per operation (cached)
- * - All business logic works on in-memory objects
- * - Single save writes only modified cells
+ * - All business logic works on in-memory RowCore objects
+ * - Single batch save writes only modified cells
  * - For N row updates: 1 load + N modifications + 1 save (not N × [load + modify + save])
  */
 
 if (typeof require !== 'undefined') {
     var HyperlinkUtils = require('./HyperlinkUtils.js');
     var Row = require('./Row.js');
+    var RowCore = require('./RowCore.js');
     var RowIdCore = require('./RowIdCore.js');
 }
 
@@ -71,6 +108,35 @@ const ScheduleAdapter = (function() {
             // Get column names from header row
             this.columnNames = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
             
+            // Build mapping from Globals spreadsheet (spreadsheet column → domain property)
+            const globals = getGlobals();
+            this.columnMap = {
+                [globals.STARTDATETIMECOLUMNNAME]: 'startDate',
+                [globals.DURATIONCOLUMNNAME]: 'duration',
+                [globals.GROUPCOLUMNNAME]: 'group',
+                [globals.ROUTECOLUMNNAME]: 'routeCell',
+                [globals.RIDECOLUMNNAME]: 'rideCell',
+                [globals.RIDELEADERCOLUMNNAME]: 'rideLeaders',
+                [globals.GOOGLEEVENTIDCOLUMNNAME]: 'googleEventId',
+                [globals.LOCATIONCOLUMNNAME]: 'location',
+                [globals.ADDRESSCOLUMNNAME]: 'address',
+                // Announcement columns (no Globals needed - column names have no spaces)
+                'Announcement': 'announcement',
+                'SendAt': 'sendAt',
+                'Status': 'status',
+                'Attempts': 'attempts',
+                'LastError': 'lastError',
+                'LastAttemptAt': 'lastAttemptAt'
+            };
+            
+            // Reverse map (domain property → spreadsheet column)
+            this.domainToColumn = Object.fromEntries(
+                Object.entries(this.columnMap).map(([col, prop]) => [prop, col])
+            );
+            
+            // Store default duration from Globals for RowCore constructor
+            this.defaultDuration = globals.DEFAULTRIDEDURATION;
+            
             // Track rows that need saving
             this.dirtyRows = new Set();
             
@@ -80,16 +146,16 @@ const ScheduleAdapter = (function() {
 
         /**
          * Load all data from the spreadsheet (with caching)
-         * @returns {Row[]} Array of Row instances
+         * @returns {RowCore[]} Array of RowCore instances
          */
         loadAll() {
             this._ensureDataLoaded();
-            return this._cachedData.map((/** @type {any} */ row, /** @type {number} */ index) => this._createRow(row, index + 2));
+            return this._cachedData.map((/** @type {any} */ row, /** @type {number} */ index) => this._createRowCore(row, index + 2));
         }
 
         /**
          * Load selected rows from the spreadsheet (with caching)
-         * @returns {Row[]} Array of selected Row instances
+         * @returns {RowCore[]} Array of selected RowCore instances
          */
         loadSelected() {
             const selection = this.sheet.getSelection();
@@ -106,7 +172,7 @@ const ScheduleAdapter = (function() {
             const ranges = this._convertCellRangesToRowRanges(rangeList);
             const allData = this._cachedData;
             
-            /** @type {Row[]} */
+            /** @type {RowCore[]} */
             const selectedRows = [];
             ranges.forEach((/** @type {GoogleAppsScript.Spreadsheet.Range} */ range) => {
                 const startRow = range.getRow();
@@ -116,7 +182,7 @@ const ScheduleAdapter = (function() {
                     const rowNum = startRow + i;
                     const dataIndex = rowNum - 2; // -2 for header and 0-based indexing
                     if (dataIndex >= 0 && dataIndex < allData.length) {
-                        selectedRows.push(this._createRow(allData[dataIndex], rowNum));
+                        selectedRows.push(this._createRowCore(allData[dataIndex], rowNum));
                     }
                 }
             });
@@ -127,7 +193,7 @@ const ScheduleAdapter = (function() {
         /**
          * Load rows younger than (after) the specified date (with caching)
          * @param {Date} date - The cutoff date
-         * @returns {Row[]} Array of Row instances after the date
+         * @returns {RowCore[]} Array of RowCore instances after the date
          */
         loadYoungerRows(date) {
             this._ensureDataLoaded();
@@ -140,12 +206,12 @@ const ScheduleAdapter = (function() {
                     const rowDate = new Date(item.data[startDateColumn]);
                     return rowDate > date;
                 })
-                .map((/** @type {{ data: any, rowNum: number }} */ item) => this._createRow(item.data, item.rowNum));
+                .map((/** @type {{ data: any, rowNum: number }} */ item) => this._createRowCore(item.data, item.rowNum));
         }
 
         /**
          * Load the last row in the spreadsheet (with caching)
-         * @returns {Row|null} The last Row instance or null if no data
+         * @returns {RowCore|null} The last RowCore instance or null if no data
          */
         loadLastRow() {
             this._ensureDataLoaded();
@@ -154,7 +220,7 @@ const ScheduleAdapter = (function() {
                 return null;
             }
             const lastIndex = allData.length - 1;
-            return this._createRow(allData[lastIndex], lastIndex + 2);
+            return this._createRowCore(allData[lastIndex], lastIndex + 2);
         }
 
         /**
@@ -163,6 +229,8 @@ const ScheduleAdapter = (function() {
          * Only writes the specific dirty cells to preserve meaningful version history.
          * For each dirty row, only the modified fields are written to the spreadsheet.
          * This ensures version tracking shows exactly what changed, not all rows.
+         * 
+         * Maps RowCore domain properties back to spreadsheet columns using domainToColumn map.
          * 
          * CRITICAL: Formulas in Route/Ride columns are handled specially:
          * - If a formula column is dirty, we write the formula (not the value)
@@ -175,16 +243,22 @@ const ScheduleAdapter = (function() {
 
             // Write each dirty row's dirty fields
             this.dirtyRows.forEach(row => {
-                const dirtyFields = row._getDirtyFields();
+                const dirtyFields = row.getDirtyFields();
                 if (dirtyFields.size === 0) {
                     return; // Nothing to write for this row
                 }
                 
-                // Write each dirty field
-                dirtyFields.forEach((/** @type {string} */ columnName) => {
+                // Write each dirty field (domain property → spreadsheet column)
+                dirtyFields.forEach((/** @type {string} */ domainProp) => {
+                    const columnName = this.domainToColumn[domainProp];
+                    if (!columnName) {
+                        console.warn(`Unknown domain property: ${domainProp}, skipping`);
+                        return;
+                    }
+                    
                     const columnIndex = this._getColumnIndex(columnName) + 1; // 1-based
                     const cell = this.sheet.getRange(row.rowNum, columnIndex);
-                    const value = row._data[columnName];
+                    const value = row[domainProp];
                     
                     // If it's a formula (starts with '='), set as formula, else as value
                     if (value && typeof value === 'string' && value.startsWith('=')) {
@@ -194,7 +268,7 @@ const ScheduleAdapter = (function() {
                     }
                 });
                 
-                row._markClean();
+                row.markClean();
             });
             
             // Flush to ensure all writes are committed
@@ -301,7 +375,32 @@ const ScheduleAdapter = (function() {
 
 
         /**
-         * Create a Row instance from Fiddler data
+         * Create a RowCore instance from Fiddler data
+         * Maps spreadsheet columns to domain properties using columnMap
+         * @private
+         * @param {Object} data - Raw row data from Fiddler (spreadsheet column names as keys)
+         * @param {number} rowNum - Spreadsheet row number (1-based)
+         * @returns {InstanceType<typeof RowCore>} RowCore instance
+         */
+        _createRowCore(data, rowNum) {
+            // Map spreadsheet data to domain properties
+            /** @type {any} */
+            const domainData = {};
+            
+            for (const [columnName, domainProp] of Object.entries(this.columnMap)) {
+                domainData[domainProp] = data[columnName];
+            }
+            
+            // Add metadata
+            domainData.rowNum = rowNum;
+            domainData.defaultDuration = this.defaultDuration;
+            
+            // @ts-expect-error - RowCore is a constructor but TypeScript sees it as module export
+            return new RowCore(domainData);
+        }
+
+        /**
+         * Create a Row instance from Fiddler data (DEPRECATED - for backward compatibility)
          * @private
          * @param {Object} data - Raw row data from Fiddler
          * @param {number} rowNum - Spreadsheet row number (1-based)
@@ -318,7 +417,16 @@ const ScheduleAdapter = (function() {
         }
 
         /**
-         * Mark a row as dirty (needs saving)
+         * Mark a RowCore instance as dirty (needs saving)
+         * Called by ScheduleAdapter users after modifying RowCore instances
+         * @param {RowCore} row - The row to mark as dirty
+         */
+        markRowDirty(row) {
+            this.dirtyRows.add(row);
+        }
+
+        /**
+         * Mark a row as dirty (needs saving) - DEPRECATED for Row compatibility
          * Called by Row instances when they're modified
          * @private
          * @param {Row} row - The row to mark as dirty
