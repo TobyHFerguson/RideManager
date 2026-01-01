@@ -16,8 +16,7 @@ This document outlines the refactoring plan to bring legacy modules into complia
 ### ❌ Legacy Modules Requiring Refactoring
 - **Row + ScheduleAdapter**: Tightly coupled to SpreadsheetApp, mixed concerns
 - **RideManager**: Business logic mixed with GAS API calls
-- **rowCheck**: Validation logic mixed with UrlFetchApp calls
-- **UIManager**: Minor coupling issues (lower priority)
+- **Commands + UIManager + rowCheck**: Over-engineered with too many indirection layers
 
 ## Architecture Principles
 
@@ -534,9 +533,351 @@ class ScheduleAdapter {
 
 ---
 
-### Phase 2: High Priority
+### Phase 2: UI/Validation Layer Simplification
 
-#### 2.1 Extract RowCheckCore from rowCheck.js
+**GitHub Issue**: [#176 - Simplify UI/Validation Layer](https://github.com/TobyHFerguson/RideManager/issues/176)
+
+**Overview**: Eliminate over-engineered indirection layers (Commands → UIManager → rowCheck) and replace with cleaner, testable architecture (ValidationCore + RideCoordinator + UIHelper).
+
+**Current Problems**:
+1. **Commands.js adds no value** - frozen objects that just delegate to UIManager
+2. **UIManager.processRows** has too many responsibilities (validation + UI + orchestration)
+3. **rowCheck** mixes pure validation logic with GAS route fetching
+4. **Deep call stack** (4 layers) makes debugging difficult
+5. **Hard to test** - everything tangled together
+6. **Duplicate code** in UIManager special cases
+
+**Before (4 layers)**:
+```
+MenuFunctions → Commands → UIManager → rowCheck → RideManager
+```
+
+**After (2 layers)**:
+```
+MenuFunctions → RideCoordinator → Core logic
+                     ↓
+        ValidationCore + UIHelper
+```
+
+#### 2.1 Create ValidationCore + UIHelper
+**Effort**: 2-3 days  
+**Priority**: High  
+**Depends On**: Phase 1 complete (RowCore, RideManagerCore exist)
+
+**Goal**: Extract all validation logic into pure JavaScript, create simple UI utilities.
+
+**ValidationCore.js** - Pure validation logic (100% tested):
+```javascript
+class ValidationCore {
+    /**
+     * Validate rows for scheduling operation
+     * @param {RowCore[]} rows - Rows to validate
+     * @returns {Map<RowCore, {errors: string[], warnings: string[]}>}
+     */
+    static validateForScheduling(rows) {
+        const validationMap = new Map();
+        
+        rows.forEach(row => {
+            const errors = [];
+            const warnings = [];
+            
+            // Error rules (blocking)
+            if (this.isUnmanagedRide(row)) {
+                errors.push('Unmanaged ride (no Route URL)');
+            }
+            if (this.isScheduled(row)) {
+                errors.push('Already scheduled');
+            }
+            if (!row.startDate) {
+                errors.push('No start date');
+            }
+            if (!row.group) {
+                errors.push('No group');
+            }
+            if (this.isBadRoute(row)) {
+                errors.push('Bad route (missing required fields)');
+            }
+            
+            // Warning rules (non-blocking)
+            if (!row.leaders || row.leaders.length === 0) {
+                warnings.push('No ride leader specified');
+            }
+            if (!row.location) {
+                warnings.push('No location specified');
+            }
+            
+            validationMap.set(row, { errors, warnings });
+        });
+        
+        return validationMap;
+    }
+    
+    static validateForCancellation(rows) { /* ... */ }
+    static validateForUpdate(rows) { /* ... */ }
+    
+    /**
+     * Check if route metrics are inappropriate for group
+     * @param {string} groupName - Group name
+     * @param {number} elevationFeet - Elevation in feet
+     * @param {number} distanceMiles - Distance in miles
+     * @returns {string|undefined} Error message or undefined
+     */
+    static inappropriateGroup(groupName, elevationFeet, distanceMiles) {
+        const specs = Groups[groupName];
+        if (!specs) return `Unknown group: ${groupName}`;
+        
+        if (distanceMiles < specs.MIN_LENGTH) {
+            return `Group ${groupName} rides must be at least ${specs.MIN_LENGTH} miles`;
+        }
+        if (elevationFeet < specs.MIN_ELEVATION) {
+            return `Group ${groupName} rides must have at least ${specs.MIN_ELEVATION} feet of climbing`;
+        }
+        
+        return undefined;
+    }
+    
+    // Pure helper methods
+    static isScheduled(row) { return !!row.rideURL; }
+    static isCancelled(row) { return row.status === 'cancelled'; }
+    static isUnmanagedRide(row) { return !row.routeURL; }
+    static isBadRoute(row) { /* validation logic */ }
+}
+```
+
+**UIHelper.js** - Simple GAS UI utilities:
+```javascript
+class UIHelper {
+    /**
+     * Confirm operation with user
+     * @param {Object} options
+     * @returns {{confirmed: boolean, processableRows: RowCore[]}}
+     */
+    static confirmOperation({ operationName, rows, validation, force }) {
+        if (force) {
+            const processableRows = rows.filter(r => validation.get(r).errors.length === 0);
+            return { confirmed: true, processableRows };
+        }
+        
+        const message = this.buildValidationMessage(operationName, rows, validation);
+        const processableRows = rows.filter(r => validation.get(r).errors.length === 0);
+        
+        if (processableRows.length === 0) {
+            SpreadsheetApp.getUi().alert(
+                'No Processable Rides',
+                message + '\n\nAll selected rides have errors.',
+                SpreadsheetApp.getUi().ButtonSet.OK
+            );
+            return { confirmed: false, processableRows: [] };
+        }
+        
+        const ui = SpreadsheetApp.getUi();
+        const result = ui.alert(
+            operationName,
+            message + `\n\nProcess ${processableRows.length} ride(s)?`,
+            ui.ButtonSet.YES_NO
+        );
+        
+        return {
+            confirmed: result === ui.Button.YES,
+            processableRows
+        };
+    }
+    
+    static buildValidationMessage(operationName, rows, validation) {
+        // Format errors, warnings, clean rows into readable message
+    }
+    
+    static showSuccess(message) { /* ... */ }
+    static showError(title, error) { /* ... */ }
+}
+```
+
+**Testing Strategy**:
+```javascript
+describe('ValidationCore', () => {
+    describe('validateForScheduling', () => {
+        it('should detect missing start date', () => {
+            const row = new RowCore({ startDate: null, group: 'A' });
+            const validation = ValidationCore.validateForScheduling([row]);
+            expect(validation.get(row).errors).toContain('No start date');
+        });
+        
+        it('should detect already scheduled rides', () => {
+            const row = new RowCore({ 
+                startDate: new Date(), 
+                rideURL: 'https://ridewithgps.com/events/123' 
+            });
+            const validation = ValidationCore.validateForScheduling([row]);
+            expect(validation.get(row).errors).toContain('Already scheduled');
+        });
+    });
+    
+    describe('inappropriateGroup', () => {
+        it('should validate minimum distance', () => {
+            const error = ValidationCore.inappropriateGroup('A', 1000, 5);
+            expect(error).toContain('must be at least');
+        });
+        
+        it('should return undefined for valid metrics', () => {
+            const error = ValidationCore.inappropriateGroup('A', 2000, 50);
+            expect(error).toBeUndefined();
+        });
+    });
+});
+```
+
+**Success Criteria**:
+- ✅ ValidationCore.js created with all validation rules
+- ✅ ValidationCore.test.js achieves 100% coverage
+- ✅ UIHelper.js created with dialog utilities
+- ✅ All validation methods return Map<RowCore, {errors[], warnings[]}>
+- ✅ Types defined in .d.ts files
+
+#### 2.2 Create RideCoordinator
+**Effort**: 2-3 days  
+**Priority**: High  
+**Depends On**: ValidationCore, UIHelper exist
+
+**Goal**: Orchestration layer following validate → confirm → execute pattern.
+
+**RideCoordinator.js**:
+```javascript
+class RideCoordinator {
+    /**
+     * Orchestrate scheduling operation
+     * @param {RowCore[]} rows - Rows to schedule
+     * @param {RWGPS} rwgps - RWGPS service
+     * @param {ScheduleAdapter} adapter - Persistence adapter
+     */
+    static scheduleRides(rows, rwgps, adapter) {
+        // 1. Validate using pure logic
+        const validation = ValidationCore.validateForScheduling(rows);
+        
+        // 2. Show UI and get confirmation
+        const confirmation = UIHelper.confirmOperation({
+            operationName: 'Schedule Rides',
+            rows,
+            validation,
+            force: false
+        });
+        
+        if (!confirmation.confirmed) {
+            return;
+        }
+        
+        // 3. Execute business logic
+        try {
+            const processableRows = confirmation.processableRows;
+            
+            // Use RideManagerCore for business logic
+            processableRows.forEach(row => {
+                const eventConfig = RideManagerCore.prepareScheduling(row, rwgps);
+                rwgps.createEvent(eventConfig.rideURL, eventConfig);
+                row.rideURL = eventConfig.rideURL;
+                row.markDirty('rideURL');
+            });
+            
+            // Save changes
+            adapter.save(processableRows);
+            
+            // Log success
+            UserLogger.log('scheduleRides', 'Success', {
+                rowCount: processableRows.length,
+                rows: processableRows.map(r => r.rowNum)
+            });
+            
+            UIHelper.showSuccess(`Scheduled ${processableRows.length} rides successfully.`);
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            UserLogger.log('scheduleRides_ERROR', err.message, { stack: err.stack });
+            UIHelper.showError('Scheduling failed', err);
+            throw err;
+        }
+    }
+    
+    static cancelRides(rows, rwgps, adapter) { /* validate → confirm → execute */ }
+    static updateRides(rows, rwgps, adapter) { /* validate → confirm → execute */ }
+    static reinstateRides(rows, rwgps, adapter) { /* validate → confirm → execute */ }
+}
+```
+
+**MenuFunctions.js** - Simplified:
+```javascript
+function scheduleSelectedRides() {
+    const adapter = new ScheduleAdapter();
+    const rows = adapter.loadSelected();
+    const rwgps = getRWGPS();
+    
+    RideCoordinator.scheduleRides(rows, rwgps, adapter);
+}
+
+function cancelSelectedRides() {
+    const adapter = new ScheduleAdapter();
+    const rows = adapter.loadSelected();
+    const rwgps = getRWGPS();
+    
+    RideCoordinator.cancelRides(rows, rwgps, adapter);
+}
+```
+
+**Success Criteria**:
+- ✅ RideCoordinator.js created with all operation methods
+- ✅ All operations follow validate → confirm → execute pattern
+- ✅ MenuFunctions.js updated to call RideCoordinator directly
+- ✅ Commands.js deleted
+- ✅ UIManager.js deleted
+- ✅ rowCheck.js deleted
+- ✅ Types defined in .d.ts files
+- ✅ Zero regressions in production
+
+#### Benefits of Phase 2 Refactoring
+1. **Clearer flow**: 2 layers instead of 4
+2. **100% testable validation**: All rules verified in Jest
+3. **Simpler codebase**: Fewer files, less indirection
+4. **Obvious responsibilities**: Each class has one clear purpose
+5. **Easier to modify**: Add validation rules with tests
+6. **Better error handling**: Centralized in RideCoordinator
+7. **Consistent pattern**: All operations use same structure
+
+---
+
+### Phase 2.5: ProcessingManager & UserLogger Modernization
+
+**GitHub Issue**: [#177 - Modernize ProcessingManager & UserLogger](https://github.com/TobyHFerguson/RideManager/issues/177)
+
+**Overview**: Extract pure business logic from ProcessingManager and UserLogger into Core modules with 100% test coverage. These modules currently mix GAS dependencies with logic.
+
+**Current Problems**:
+- **ProcessingManager**: Constructor side effects, PropertiesService for UI state, no tests
+- **UserLogger**: Duplicate persistence (Sheet + Drive file), duplicate formatting logic, no tests
+
+**Target Architecture**:
+- **ProcessingCore.js**: Pure state management (immutable, 100% tested)
+- **ProcessingAdapter.js**: Thin GAS wrapper for modal dialog
+- **UserLoggerCore.js**: Pure formatting logic (100% tested)
+- **UserLogger.js**: Simplified (Sheet only, no Drive file)
+
+**Benefits**:
+1. **100% test coverage** for state management and formatting logic
+2. **Immutable state** in ProcessingCore (safer, predictable)
+3. **No constructor side effects** (explicit function calls)
+4. **Single persistence mechanism** in UserLogger (Sheet only)
+5. **No duplicate code** (formatting logic extracted once)
+
+**Effort**: 3-4 days  
+**Dependencies**: Recommended after Phase 2 (UI patterns established)
+
+See [Issue #177](https://github.com/TobyHFerguson/RideManager/issues/177) for detailed implementation plan.
+
+---
+
+### Phase 3: Optional Enhancements
+
+#### 3.1 Extract RowCheckCore from rowCheck.js (DEPRECATED - See Phase 2)
+**Note**: This item is superseded by Phase 2. The rowCheck.js file will be deleted entirely as part of the ValidationCore extraction.
+
+#### 3.2 Internalize RWGPS Library (Optional)
 **Effort**: 2-3 days  
 **Priority**: High  
 **Depends On**: RideManagerCore (for shared validation utilities)
@@ -865,8 +1206,21 @@ function onEdit(e) {
 - ✅ New features can be added with test coverage
 
 ### Phase 2 Complete When:
-- ✅ RowCheckCore has 100% test coverage
-- ✅ All validation rules testable without GAS
+- ✅ ValidationCore has 100% test coverage
+- ✅ RideCoordinator orchestrates all operations
+- ✅ UIHelper provides simple dialog utilities
+- ✅ Commands.js deleted
+- ✅ UIManager.js deleted
+- ✅ rowCheck.js deleted
+- ✅ All operations follow validate → confirm → execute pattern
+- ✅ Deployed to production without issues
+
+### Phase 2.5 Complete When:
+- ✅ ProcessingCore has 100% test coverage
+- ✅ UserLoggerCore has 100% test coverage
+- ✅ ProcessingAdapter replaces ProcessingManager
+- ✅ UserLogger simplified (Sheet only, no Drive file)
+- ✅ ProcessingManager.js deleted
 - ✅ Deployed to production without issues
 
 ### Overall Success:
@@ -886,11 +1240,14 @@ function onEdit(e) {
 | Phase 1.2: RideManagerCore | 3-4 days | 1.5 weeks |
 | Phase 1.3: ScheduleAdapter | 1-2 days | 3-4 days |
 | **Phase 1 Total** | **6-9 days** | **3 weeks** |
-| Phase 2.1: RowCheckCore | 2-3 days | 1 week |
-| **Phase 2 Total** | **2-3 days** | **1 week** |
-| Phase 3 (optional) | 5-9 days | 2-3 weeks |
+| Phase 2.1: ValidationCore + UIHelper | 2-3 days | 1 week |
+| Phase 2.2: RideCoordinator | 2-3 days | 1 week |
+| **Phase 2 Total** | **4-6 days** | **2 weeks** |
+| Phase 2.5: ProcessingCore + UserLoggerCore | 3-4 days | 1 week |
+| **Phase 2.5 Total** | **3-4 days** | **1 week** |
+| Phase 3 (optional RWGPS) | 5-9 days | 2-3 weeks |
 
-**Total Critical Path**: 3-4 weeks for Phase 1 & 2
+**Total Critical Path**: 6-7 weeks for Phase 1, 2 & 2.5
 
 ---
 

@@ -403,4 +403,68 @@ class ScheduleAdapter {
 
 ---
 
+### Q: Why the weird `if (typeof require !== 'undefined')` pattern?
+
+**A**: **CRITICAL: Code must run in BOTH Jest (with modules) AND GAS (no modules).**
+
+Google Apps Script concatenates all files into global scope with NO module system. But we test in Jest/Node.js which REQUIRES modules. The conditional pattern handles both:
+
+```javascript
+// At top of EVERY module file - Jest compatibility
+if (typeof require !== 'undefined') {
+    var SomeDependency = require('./SomeDependency');  // Use 'var', not 'const'!
+}
+
+// Module definition using IIFE pattern
+var ModuleName = (function() {
+    class ModuleName {
+        someMethod() {
+            // Can use SomeDependency here (loaded above in Jest, global in GAS)
+            return SomeDependency.doSomething();
+        }
+    }
+    return ModuleName;
+})();
+
+// At bottom - Jest export
+if (typeof module !== 'undefined') {
+    module.exports = ModuleName;  // Export the class/object
+}
+```
+
+**Why each piece is required**:
+
+1. **`if (typeof require !== 'undefined')`** - Only true in Jest/Node, false in GAS
+2. **`var` (not `const`/`let`)** - GAS hoists `var`, allows redeclaration across files
+3. **IIFE `(function() { ... })()`** - Works in both environments, returns the module
+4. **`if (typeof module !== 'undefined')`** - Only true in Jest, enables `require()`
+
+**What happens in each environment**:
+
+- **In Jest**: Runs both `if` blocks, imports dependencies, exports module
+- **In GAS**: Skips both `if` blocks, creates global variable, uses globals for dependencies
+
+**In Exports.js** (GAS only):
+```javascript
+var Exports = {
+    get ModuleName() {
+        return ModuleName;  // Returns the global variable (created by GAS concatenation)
+    }
+};
+```
+
+**Why property name must match variable name**:
+- `npm run validate-exports` checks that `ModuleName` (variable) is defined
+- If property name differs, validation fails (can't find the variable)
+
+**Common mistakes**:
+- ❌ Using `const ModuleName` - causes "already declared" errors in GAS
+- ❌ Using `export default` - doesn't exist in GAS
+- ❌ Forgetting IIFE - class definition doesn't return constructor
+- ❌ Mismatched names: `get MyModule() { return ModuleName; }` - validation fails
+
+**See also**: `.github/copilot-instructions.md` Module Export/Import Pattern section
+
+---
+
 **Remember**: If you're unsure, ask! Better to clarify now than refactor twice.

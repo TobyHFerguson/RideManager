@@ -23,15 +23,24 @@
 
 **Note**: Row.js wrapper is eliminated. ScheduleAdapter returns RowCore instances directly, and all consuming code uses RowCore with camelCase properties.
 
-### Phase 2: High Priority
+### Phase 2: High Priority (UI/Validation Simplification)
 
 | Issue | Title | Priority | Effort | Dependencies |
 |-------|-------|----------|--------|--------------|
-| [#174](https://github.com/TobyHFerguson/RideManager/issues/174) | Extract RowCheckCore from rowCheck.js - Validation Logic | High | 2-3 days | After #172 recommended |
+| [#176](https://github.com/TobyHFerguson/RideManager/issues/176) | Simplify UI/Validation Layer - Eliminate Commands, Refactor UIManager/rowCheck | High | 4-6 days | After Phase 1 recommended |
 
-**Phase 2 Total**: 2-3 days (approximately 1 week)
+**Phase 2 Total**: 4-6 days (approximately 2 weeks)
 
-### Phase 3: Optional Enhancements
+**Note**: Phase 2 eliminates 3 files (Commands.js, UIManager.js, rowCheck.js) and replaces with 3 cleaner, testable files (ValidationCore.js, RideCoordinator.js, UIHelper.js).
+### Phase 2.5: Medium Priority (Modernize ProcessingManager & UserLogger)
+
+| Issue | Title | Priority | Effort | Dependencies |
+|-------|-------|----------|--------|--------------||
+| [#177](https://github.com/TobyHFerguson/RideManager/issues/177) | Modernize ProcessingManager & UserLogger | Medium | 3-4 days | After Phase 2 recommended |
+
+**Phase 2.5 Total**: 3-4 days (approximately 1 week)
+
+**Note**: Phase 2.5 replaces ProcessingManager with ProcessingCore + ProcessingAdapter, extracts UserLoggerCore, and removes Drive file duplication from UserLogger.### Phase 3: Optional Enhancements
 
 | Issue | Title | Priority | Effort | Dependencies |
 |-------|-------|----------|--------|--------------|
@@ -44,11 +53,19 @@
 ```
 #171 (RowCore)
    ↓
-#172 (RideManagerCore) ← Recommended before #174
-   ↓                       ↓
-#173 (ScheduleAdapter)  #174 (RowCheckCore)
-   ↓                       ↓
-   └──── Phase 1 Complete ────┘
+#172 (RideManagerCore)
+   ↓                    
+#173 (ScheduleAdapter)  
+   ↓                       
+   Phase 1 Complete ────┐
+              ↓          │
+#176 (UI/Validation) ←──┘
+   ↓
+   Phase 2 Complete
+              ↓
+#177 (ProcessingManager/UserLogger)
+   ↓
+   Phase 2.5 Complete
               ↓
 #175 (RWGPS Internalization - Optional)
 ```
@@ -135,8 +152,13 @@ Any PR touching Row/RideManager/rowCheck MUST include:
 - ✅ RowCore has 100% test coverage
 - ✅ RideManagerCore has 100% test coverage
 - ✅ ScheduleAdapter uses enhanced dirty tracking
-- ✅ All Phase 1 modules deployed to production
-- ✅ Zero regressions reported
+- ✅ ValidationCore has 100% test coverage
+- ✅ RideCoordinator orchestrates all operations
+- ✅ UIHelper provides simple dialog utilities
+- ✅ Commands.js deleted
+- ✅ UIManager.js deleted
+- ✅ rowCheck.js deleted
+- ✅ All operations follow validate → confirm → execute pattern
 
 ### Phase 2 Complete When:
 - ✅ RowCheckCore has 100% test coverage
@@ -144,19 +166,20 @@ Any PR touching Row/RideManager/rowCheck MUST include:
 
 ### Overall Success:
 - ✅ >80% of business logic has test coverage
-- ✅ GAS code is thin, focused on I/O
-- ✅ New features can be added with confidence
-- ✅ Bugs caught in tests, not production
+- ✅ GAS code2 weeks | Not started |
+| Phase 3 | 2-3 weeks | Optional |
 
+**Total Critical Path**: 5
 ## Timeline Estimate
 
 | Phase | Calendar Time | Status |
 |-------|---------------|--------|
 | Phase 1 | 3 weeks | Not started |
 | Phase 2 | 1 week | Not started |
+| Phase 2.5 | 1 week | Not started |
 | Phase 3 | 2-3 weeks | Optional |
 
-**Total Critical Path**: 4 weeks for Phase 1 & 2
+**Total Critical Path**: 6 weeks for Phase 1, 2 & 2.5
 
 ## Next Steps
 
