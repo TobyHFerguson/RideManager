@@ -320,29 +320,13 @@ function testSendAnnouncement_() {
       return;
     }
 
-    // Ask for test email address
-    const rowNumbers = rowsWithAnnouncements.map(/** @param {any} r */ r => r.rowNum).join(', ');
-    const emailResponse = ui.prompt(
-      'Test Email Address',
-      `Enter test email address to send ${rowsWithAnnouncements.length} announcement(s) for:\nRows: ${rowNumbers}`,
-      ui.ButtonSet.OK_CANCEL
-    );
-
-    if (emailResponse.getSelectedButton() !== ui.Button.OK) {
-      return;
-    }
-
-    const testEmail = emailResponse.getResponseText().trim();
-    if (!testEmail || !testEmail.includes('@')) {
-      ui.alert('Invalid Email', 'Please enter a valid email address.', ui.ButtonSet.OK);
-      return;
-    }
+    const testEmail = Session.getActiveUser().getEmail();
 
     // Confirm
     const rideNames = rowsWithAnnouncements.map(/** @param {any} r */ r => r.RideName || 'Unknown').join('\n  • ');
     const confirmResponse = ui.alert(
       'Confirm Test Send',
-      `Send ${rowsWithAnnouncements.length} announcement(s) to:\n${testEmail}\n\nRides:\n  • ${rideNames}\n\nThis will NOT update the Status column in the spreadsheet.`,
+      `Send ${rowsWithAnnouncements.length} announcement(s) to: ${testEmail}\n\nRides:\n  • ${rideNames}\n\nThis will NOT update the Status column in the spreadsheet.`,
       ui.ButtonSet.YES_NO
     );
 
