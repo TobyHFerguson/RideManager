@@ -21,8 +21,12 @@
  * 3. **Formula Preservation**: Route and Ride columns use HYPERLINK formulas which are
  *    overlaid during load so domain code sees formula strings, not displayed values
  * 
- * 4. **Dirty Tracking**: Tracks which RowCore instances have been modified to enable
- *    cell-level writes (preserves meaningful version history in spreadsheet)
+ * 4. **Automatic Dirty Tracking**: Tracks which RowCore instances have been modified via
+ *    injected onDirty callback. When a RowCore is modified (via setters like setGoogleEventId()),
+ *    it automatically notifies the adapter, which adds it to the dirtyRows Set. This enables:
+ *    - Cell-level writes (only modified cells are written to spreadsheet)
+ *    - Preserves meaningful version history in spreadsheet (shows exactly what changed)
+ *    - No manual tracking required (adapter is notified automatically when row becomes dirty)
  * 
  * ARCHITECTURE PATTERN: Load → Work → Save
  * =========================================
@@ -70,6 +74,34 @@
  * - "Attempts"           → attempts
  * - "LastError"          → lastError
  * - "LastAttemptAt"      → lastAttemptAt
+ * 
+ * AUTOMATIC DIRTY TRACKING:
+ * =========================
+ * The adapter automatically tracks which rows have been modified WITHOUT manual calls:
+ * 
+ * 1. **onDirty Callback Injection**: When creating a RowCore instance, the adapter injects
+ *    an onDirty callback that adds the row to the dirtyRows Set.
+ * 
+ * 2. **Automatic Notification**: When RowCore methods like setGoogleEventId() are called,
+ *    they mark fields dirty via markDirty(). The FIRST time a row becomes dirty (transitions
+ *    from 0 to 1+ dirty fields), it calls the onDirty callback, notifying the adapter.
+ * 
+ * 3. **Single Notification**: The onDirty callback is only called ONCE per row (when it first
+ *    becomes dirty), not on every field change. The dirtyRows Set naturally deduplicates.
+ * 
+ * 4. **Field-Level Tracking**: RowCore tracks WHICH fields are dirty (_dirtyFields Set),
+ *    so save() writes only those specific cells, preserving meaningful version history.
+ * 
+ * Example:
+ * ```javascript
+ * const adapter = new ScheduleAdapter();
+ * const rows = adapter.loadAll();
+ * 
+ * rows[0].setGoogleEventId('event123');  // → onDirty(rows[0]) called → dirtyRows.add(rows[0])
+ * rows[0].setStatus('pending');          // → markDirty() called, but onDirty NOT called again
+ * 
+ * adapter.save();  // Writes only 'googleEventId' and 'status' cells for rows[0]
+ * ```
  * 
  * PERFORMANCE OPTIMIZATION:
  * =========================
