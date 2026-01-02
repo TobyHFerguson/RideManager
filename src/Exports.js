@@ -35,6 +35,15 @@ var Exports = {
     get UIManager() {
         return UIManager;
     },
+    get UIHelper() {
+        return UIHelper;
+    },
+    get ValidationCore() {
+        return ValidationCore;
+    },
+    get RideCoordinator() {
+        return RideCoordinator;
+    },
     get RideManager() {
         return RideManager;
     },
