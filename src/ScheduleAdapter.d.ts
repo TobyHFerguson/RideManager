@@ -1,10 +1,14 @@
 /**
- * ScheduleAdapter - GAS-specific adapter for reading/writing schedule data
+ * ScheduleAdapter - Anti-corruption layer between spreadsheet and domain model
  * 
  * Type definitions for schedule data operations.
- * This adapter separates GAS dependencies from pure JavaScript business logic.
+ * This adapter implements the Hexagonal/Ports & Adapters pattern:
+ * - Maps between spreadsheet structure (column names) and RowCore domain model
+ * - Separates GAS dependencies from pure domain logic
+ * - Handles all spreadsheet I/O using Load → Work → Save pattern
  */
 
+import RowCore from './RowCore';
 import Row from './Row';
 
 /**
@@ -12,7 +16,8 @@ import Row from './Row';
  * 
  * Handles:
  * - Reading spreadsheet data via Fiddler
- * - Converting to/from Row domain objects  
+ * - Mapping spreadsheet columns ↔ RowCore domain properties
+ * - Converting to/from RowCore domain objects  
  * - Formula preservation (Route and Ride columns)
  * - Selection handling
  * - Batch saves with dirty row tracking
@@ -26,8 +31,14 @@ declare class ScheduleAdapter {
     private fiddler: any;
     /** Column names from header row */
     private columnNames: string[];
+    /** Map from spreadsheet column names to domain property names */
+    private columnMap: Record<string, string>;
+    /** Map from domain property names to spreadsheet column names */
+    private domainToColumn: Record<string, string>;
+    /** Default ride duration from Globals */
+    private defaultDuration: number;
     /** Set of rows that need saving */
-    private dirtyRows: Set<Row>;
+    private dirtyRows: Set<RowCore>;
     /** Cached spreadsheet data */
     private _cachedData: Array<Record<string, any>> | null;
 
@@ -42,29 +53,29 @@ declare class ScheduleAdapter {
 
     /**
      * Load all data from the spreadsheet (with caching)
-     * @returns Array of Row instances for all rows
+     * @returns Array of RowCore instances for all rows
      */
-    loadAll(): Row[];
+    loadAll(): RowCore[];
 
     /**
      * Load selected rows from the spreadsheet (with caching)
      * Uses the current spreadsheet selection
-     * @returns Array of selected Row instances
+     * @returns Array of selected RowCore instances
      */
-    loadSelected(): Row[];
+    loadSelected(): RowCore[];
 
     /**
      * Load rows younger than (after) the specified date (with caching)
      * @param date - The cutoff date
-     * @returns Array of Row instances after the date
+     * @returns Array of RowCore instances after the date
      */
-    loadYoungerRows(date: Date): Row[];
+    loadYoungerRows(date: Date): RowCore[];
 
     /**
      * Load the last row in the spreadsheet (with caching)
-     * @returns The last Row instance or null if no data
+     * @returns The last RowCore instance or null if no data
      */
-    loadLastRow(): Row | null;
+    loadLastRow(): RowCore | null;
 
     // ===== PUBLIC SAVE METHOD =====
 
@@ -75,15 +86,23 @@ declare class ScheduleAdapter {
      * For each dirty row, only the modified fields are written to the spreadsheet.
      * This ensures version tracking shows exactly what changed, not all rows.
      * 
+     * Maps RowCore domain properties back to spreadsheet columns using domainToColumn map.
+     * 
      * CRITICAL: Formulas in Route/Ride columns are handled specially:
      * - If a formula column is dirty, we write the formula (not the value)
-     * - After write, formulas are stored in PropertiesService for next load
      * 
      * Clears cache after save to force reload on next operation.
      */
     save(): void;
 
     // ===== PUBLIC UTILITY METHODS =====
+
+    /**
+     * Mark a RowCore instance as dirty (needs saving)
+     * Call this after modifying a RowCore instance
+     * @param row - The RowCore instance to mark as dirty
+     */
+    markRowDirty(row: RowCore): void;
 
     /**
      * Highlight a cell in the spreadsheet
@@ -98,17 +117,6 @@ declare class ScheduleAdapter {
      * @param rowNum - The row number (1-based)
      */
     deleteRideLink(rowNum: number): void;
-
-    /**
-     * Store all formulas (Route and Ride columns)
-     * Called on spreadsheet open to preserve formulas
-     */
-    storeFormulas(): void;
-
-    /**
-     * Store Route column formulas only
-     */
-    storeRouteFormulas(): void;
 
     /**
      * Check if a column number matches a column name
@@ -130,13 +138,6 @@ declare class ScheduleAdapter {
      */
     getSheet(): GoogleAppsScript.Spreadsheet.Sheet;
 
-    /**
-     * Restore a formula for a specific row and column
-     * @param rowNum - Spreadsheet row number (1-based)
-     * @param columnName - Either 'Ride' or 'Route'
-     */
-    restoreFormula(rowNum: number, columnName: string): void;
-
     // ===== PRIVATE METHODS =====
 
     /**
@@ -154,15 +155,17 @@ declare class ScheduleAdapter {
     _overlayFormulas(): void;
 
     /**
-     * Load formulas from document properties
+     * Create a RowCore instance from Fiddler data
+     * Maps spreadsheet columns to domain properties using columnMap
      * @private
-     * @param propertyName - Property name ('rideColumnFormulas' or 'routeColumnFormulas')
-     * @returns 2D array of formulas or null if not found
+     * @param data - Raw row data from Fiddler (spreadsheet column names as keys)
+     * @param rowNum - Spreadsheet row number (1-based)
+     * @returns RowCore instance
      */
-    _loadFormulas(propertyName: string): string[][] | null;
+    _createRowCore(data: Record<string, any>, rowNum: number): RowCore;
 
     /**
-     * Create a Row instance from Fiddler data
+     * Create a Row instance from Fiddler data (DEPRECATED - for backward compatibility)
      * @private
      * @param data - Raw row data from Fiddler
      * @param rowNum - Spreadsheet row number (1-based)
@@ -171,7 +174,7 @@ declare class ScheduleAdapter {
     _createRow(data: Record<string, any>, rowNum: number): Row;
 
     /**
-     * Mark a row as dirty (needs saving)
+     * Mark a row as dirty (DEPRECATED - for Row compatibility)
      * Called by Row instances when they're modified
      * @private
      * @param row - The row to mark as dirty
@@ -194,24 +197,6 @@ declare class ScheduleAdapter {
     _convertCellRangesToRowRanges(
         cellRangeList: GoogleAppsScript.Spreadsheet.RangeList
     ): GoogleAppsScript.Spreadsheet.Range[];
-
-    /**
-     * Store Route and Ride column formulas in document properties
-     * @private
-     */
-    _storeFormulas(): void;
-
-    /**
-     * Store Ride column formulas
-     * @private
-     */
-    _storeRideFormulas(): void;
-
-    /**
-     * Store Route column formulas
-     * @private
-     */
-    _storeRouteFormulas(): void;
 
     /**
      * Get a range for a specific column

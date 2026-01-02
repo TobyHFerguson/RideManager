@@ -5,7 +5,7 @@
 declare namespace UIManager {
     /**
      * Processes rows with error and warning functions, then executes a command.
-     * @param {Row[]} rows - Array of Row objects to process.
+     * @param {RowCore[]} rows - Array of RowCore objects to process.
      * @param {Array<Function>} errorFuns - Array of functions to check for errors.
      * @param {Array<Function>} warningFuns - Array of functions to check for warnings.
      * @param {any} rwgps - RWGPS connector/service.
@@ -13,7 +13,7 @@ declare namespace UIManager {
      * @param {boolean} [force] - Whether to force execution despite warnings/errors.
      */
     function processRows(
-        rows: Row[],
+        rows: RowCore[],
         errorFuns: Array<Function>,
         warningFuns: Array<Function>,
         rwgps: any,
@@ -24,7 +24,7 @@ declare namespace UIManager {
 
 declare const UIManager: {
     processRows: (
-        rows: Row[],
+        rows: RowCore[],
         errorFuns: Array<Function>,
         warningFuns: Array<Function>,
         rwgps: any,

@@ -16,7 +16,7 @@ declare const EventFactory: {
      * @param event_id - The event ID (extracted from event URL).
      * @returns The created event object.
      */
-    newEvent(row: Row, organizers: Organizer[], event_id: string | number): SCCCCEvent;
+    newEvent(row: RowCore, organizers: Organizer[], event_id: string | number): SCCCCEvent;
 
     /**
      * Converts a RWGPS event object to a SCCCCEvent.

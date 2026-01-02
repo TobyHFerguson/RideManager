@@ -112,7 +112,7 @@ const UIManager = {
                 }
                 
                 // Has announcement - ask user if they want to send cancellation email
-                const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                const confirmMsg = `Row ${row.rowNum}: ${row.rideName}\n\n` +
                     `This ride has an announcement.\n` +
                     `Do you want to send a cancellation email to all riders?`;
                 
@@ -128,7 +128,7 @@ const UIManager = {
                 
                 if (sendEmail) {
                     // Get reason from user
-                    const promptMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                    const promptMsg = `Row ${row.rowNum}: ${row.rideName}\n\n` +
                         `Please provide a brief reason for the cancellation:`;
                     
                     const reasonResponse = ui.prompt('Cancellation Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
@@ -212,7 +212,7 @@ const UIManager = {
                 }
                 
                 // Has announcement - ask user if they want to send reinstatement email
-                const confirmMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                const confirmMsg = `Row ${row.rowNum}: ${row.rideName}\n\n` +
                     `This ride has an announcement.\n` +
                     `Do you want to send a reinstatement email to all riders?`;
                 
@@ -228,7 +228,7 @@ const UIManager = {
                 
                 if (sendEmail) {
                     // Get reason from user
-                    const promptMsg = `Row ${row.rowNum}: ${row.RideName}\n\n` +
+                    const promptMsg = `Row ${row.rowNum}: ${row.rideName}\n\n` +
                         `Please provide a brief reason for the reinstatement:`;
                     
                     const reasonResponse = ui.prompt('Reinstatement Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
