@@ -20,14 +20,14 @@ import type { GlobalsObject } from './Globals';
 import type { Externals as ExternalsType } from './Externals';
 import type SCCCCEventClass from './SCCCCEvent';
 import type EventFactoryNamespace from './EventFactory';
-import type CommandsNamespace from './Commands';
-import type rowCheckNamespace from './rowCheck';
 import type RideManagerNamespace from './RideManager';
 import type RideManagerCore from './RideManagerCore';
-import type UIManagerNamespace from './UIManager';
 import type AnnouncementCoreNamespace from './AnnouncementCore';
 import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
 import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
+import type ValidationCoreNamespace from './ValidationCore';
+import type UIHelperNamespace from './UIHelper';
+import type RideCoordinatorNamespace from './RideCoordinator';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
@@ -46,13 +46,13 @@ declare global {
     const MenuFunctions: MenuFunctionsType;
     const Exports: ExportsType; // This is the interface, not typeof
     const EventFactory: typeof EventFactoryNamespace;
-    const Commands: typeof CommandsNamespace;
-    const rowCheck: typeof rowCheckNamespace;
     const RideManager: typeof RideManagerNamespace;
     const RideManagerCore: typeof RideManagerCore;
-    const UIManager: typeof UIManagerNamespace;
     const AnnouncementCore: typeof AnnouncementCoreNamespace;
     const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
+    const ValidationCore: typeof ValidationCoreNamespace;
+    const UIHelper: typeof UIHelperNamespace;
+    const RideCoordinator: typeof RideCoordinatorNamespace;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;
