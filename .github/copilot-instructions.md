@@ -26,6 +26,7 @@ npm test && npm run typecheck && npm run validate-exports
 4. ✅ Update tests, types (`.d.ts`), and docs with EVERY code change
 5. ✅ Add new modules to `Exports.js` or GAS won't find them
 6. ✅ **MANDATORY**: Run `get_errors` tool after EVERY code change (must show ZERO errors)
+7. ✅ **ZERO TOLERANCE**: NEVER use `@param {any}` - use proper types to catch errors at compile-time, not runtime
 
 **Architecture Pattern**:
 ```javascript
@@ -44,6 +45,73 @@ class AnnouncementManager {
 ```
 
 **If you violate these rules**, code will be rejected or break in production.
+
+## CRITICAL: Type Safety - Zero Tolerance for `{any}`
+
+**MANDATORY RULE**: NEVER use `@param {any}` in function signatures. Proper types prevent runtime errors by catching them at development time.
+
+**Real Production Error Prevented by Proper Types**:
+```javascript
+// ❌ With @param {any} - No error until production runtime
+/** @param {any} row */
+function importRow_(row, rwgps) {
+    row.linkRouteURL();  // ✅ TypeScript allows this
+    // 💥 Runtime Error: "row.linkRouteURL is not a function"
+}
+
+// ✅ With proper types - Error caught immediately in VS Code
+/** @param {RowCoreInstance} row */
+function importRow_(row, rwgps) {
+    row.linkRouteURL();  // ❌ TypeScript Error: Property 'linkRouteURL' does not exist
+}
+```
+
+**Type Replacement Guide**:
+
+| ❌ NEVER Use | ✅ ALWAYS Use | Example |
+|-------------|--------------|---------|
+| `@param {any} row` | `@param {RowCoreInstance} row` | Single row parameter |
+| `@param {any} rows` | `@param {RowCoreInstance[]} rows` | Array of rows |
+| `@param {any} rwgps` | `@param {RWGPS} rwgps` | RWGPS API interface |
+| `@param {any} route` | `@param {{first_lat: number, first_lng: number}} route` | Object with known shape |
+| `@param {any} data` | `@param {any} data` + justification comment | ONLY when truly arbitrary |
+
+**Required Typedef Setup**:
+```javascript
+// At top of file (after triple-slash references)
+/**
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RWGPS} RWGPS
+ */
+```
+
+**Verification Workflow** (MANDATORY for every file you modify):
+```bash
+# 1. Check VS Code errors (MOST IMPORTANT - catches more than tsc)
+get_errors(['src/YourFile.js'])  # MUST show ZERO errors
+
+# 2. Run typecheck
+npm run typecheck
+
+# 3. Test type safety works
+# Temporarily add: row.nonExistentMethod()
+# Verify: TypeScript shows error
+# Remove: Test line after verification
+```
+
+**Exception**: Only use `{any}` when:
+1. The parameter is truly arbitrary user data with no expected structure
+2. You add a comment justifying why `{any}` is required
+3. Example: `/** @param {any} additionalData - Arbitrary user data (structure not constrained) */`
+
+**Benefits of Proper Types**:
+- ✅ Catch typos and non-existent methods at compile-time
+- ✅ IntelliSense shows available properties/methods
+- ✅ Refactoring is safe with type validation
+- ✅ Self-documenting code
+- ✅ Prevents entire class of runtime errors
+
+See GitHub Issue: "Enforce Strict Type Checking System-Wide" for complete audit and remediation plan.
 
 ## Architecture Overview
 This is a Google Apps Script (GAS) project that manages ride scheduling through integration with RideWithGPS and Google Calendar. The codebase mixes GAS-specific APIs with standard JavaScript/Node.js code.
