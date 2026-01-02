@@ -6,6 +6,7 @@ if (typeof require !== 'undefined') {
     // @ts-ignore
     const { getGroupNames } = require("./Groups");
     var dates = require('./common/dates');
+    var RideManagerCore = require('./RideManagerCore');
 }
 
 /**
@@ -25,7 +26,7 @@ const RideManager = (function () {
      * @param {string} event_url
      */
     function _extractEventID(event_url) {
-        return event_url.substring(event_url.lastIndexOf('/') + 1).split('-')[0]
+        return RideManagerCore.extractEventID(event_url);
     }
     /**
      * @param {string} groupName
@@ -43,7 +44,7 @@ const RideManager = (function () {
      */
     function getLatLong(row) {
         const route = getRoute(row.routeURL);
-        return route ? `${route.first_lat},${route.first_lng}` : '';
+        return RideManagerCore.extractLatLong(route);
     }
 
     /**
@@ -83,20 +84,24 @@ const RideManager = (function () {
      * @param {any} rwgps
      */
     function importRow_(row, rwgps) {
-        /** @type {{url: any, expiry: string, tags: any[], name?: string}} */
-        let route = {
-            url: row.routeURL ? row.routeURL : row.routeName,
-            //TODO use dates as native objects, not strings
-            expiry: String(dates.MMDDYYYY(dates.add(row.startDate ? row.startDate : new Date(), getGlobals().EXPIRY_DELAY))),
-            tags: [row.group]
-        }
-        let rn = row.routeName;
-        let ru = row.routeURL;
-        if (rn !== ru) route.name = row.routeName;
-
-        // Delete any foreign prefix in the name
-        if (route.name && route.name.startsWith(getGlobals().FOREIGN_PREFIX)) route.name = route.name.substring(getGlobals().FOREIGN_PREFIX.length);
+        // Prepare route configuration using Core logic
+        const rowData = {
+            routeURL: row.routeURL,
+            routeName: row.routeName,
+            startDate: row.startDate,
+            group: row.group
+        };
+        const route = RideManagerCore.prepareRouteImport(
+            rowData,
+            getGlobals(),
+            dates.add,
+            dates.MMDDYYYY
+        );
+        
+        // GAS API call: import route to RWGPS
         const url = rwgps.importRoute(route);
+        
+        // Update spreadsheet
         row.setRouteLink(route.name || url, url);
         //TODO remove dependency on Schedule
         row.linkRouteURL();
@@ -110,11 +115,17 @@ const RideManager = (function () {
      * @return {boolean} true if update succeeded, false otherwise
      */
     function updateEvent_(row, rideEvent, description) {
-        const name = rideEvent.name || '';
-        const start = rideEvent.start_time ? new Date(rideEvent.start_time) : new Date();
-        const end = row.endTime ? new Date(row.endTime) : new Date();
+        const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
-            GoogleCalendarManager.updateEvent(getCalendarId(row.group), row.googleEventId, name, start, end, getLatLong(row), description);
+            GoogleCalendarManager.updateEvent(
+                getCalendarId(row.group),
+                row.googleEventId,
+                eventData.name,
+                eventData.start,
+                eventData.end,
+                getLatLong(row),
+                description
+            );
             return true;
         } catch (calendarError) {
             const err = calendarError instanceof Error ? calendarError : new Error(String(calendarError));
@@ -142,11 +153,16 @@ const RideManager = (function () {
      * @param {string} description 
      */
     function createEvent_(row, rideEvent, description) {
-        const name = rideEvent.name || '';
-        const start = rideEvent.start_time ? new Date(rideEvent.start_time) : new Date();
-        const end = row.endTime ? new Date(row.endTime) : new Date();
+        const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
-            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.group), name, start, end, getLatLong(row), description);
+            const eventId = GoogleCalendarManager.createEvent(
+                getCalendarId(row.group),
+                eventData.name,
+                eventData.start,
+                eventData.end,
+                getLatLong(row),
+                description
+            );
             return eventId;
         } catch (calendarError) {
             const err = calendarError instanceof Error ? calendarError : new Error(String(calendarError));
@@ -284,13 +300,11 @@ const RideManager = (function () {
         const names = getGroupNames();
 
         let rideEvent
-        const originalGroup = SCCCCEvent.getGroupName(row.rideName, names);
-        if (!SCCCCEvent.managedEventName(row.rideName, names)) {
+        const originalGroup = RideManagerCore.extractGroupName(row.rideName, names);
+        if (!RideManagerCore.isManagedEventName(row.rideName, names)) {
             rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
             // DEBUG ISSUE 22
-            if (rideEvent.name.trim().endsWith(']')) {
-                throw new Error(`updateRow_: row ${row.rowNum}: Event name from RWGPS ends with a square bracket: ${rideEvent.name}. Original name: ${row.rideName}`);
-            }
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'RWGPS');
         } else {
             const event_id = _extractEventID(row.rideURL);
             rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
@@ -298,9 +312,7 @@ const RideManager = (function () {
                 rideEvent.cancel();
             }
             // DEBUG ISSUE 22
-            if (rideEvent.name.trim().endsWith(']')) {
-                throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${rideEvent.name}. Original name: ${row.rideName}`);
-            }
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'newEvent');
             rwgps.setRouteExpiration(row.routeURL, dates.add(row.startDate, getGlobals().EXPIRY_DELAY), true);
         }
 
