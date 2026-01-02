@@ -8,6 +8,7 @@ if (typeof require !== 'undefined') {
     var { getGroupNames } = require('./Groups');
     // @ts-ignore
     var { getGlobals } = require('./Globals');
+    var { default: RowCore } = require('./RowCore');
 }
 
 /**
@@ -42,7 +43,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
     }
 
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      * @returns {string}
      */
     function makeRideName(row) {
@@ -54,7 +55,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
 
     return {
         /**
-         * @param {InstanceType<typeof Row>} row row object to make event from
+         * @param {InstanceType<typeof RowCore>} row row object to make event from
          * @param {Organizer[]} organizers the organizers (i.e. ride leaders) for this event
          * @param {string | number} event_id the event ID (extracted from event URL)
          * @returns {InstanceType<typeof SCCCCEvent>} the constructed event
@@ -73,7 +74,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.address && !(row.address.startsWith("#")) ? row.address : "";
             let meet_time = dates.addMinutes(row.startTime, -15);
-            const startTime = row.StartTime instanceof Date ? row.StartTime : new Date(row.StartTime);
+            const startTime = row.startTime instanceof Date ? row.startTime : new Date(row.startTime);
             const meetTimeDate = meet_time instanceof Date ? meet_time : (typeof meet_time === 'number' ? new Date(meet_time) : new Date());
             event.desc = createDescription(organizers.map(o => o.text), address, meetTimeDate, startTime, event_id);
             return event;

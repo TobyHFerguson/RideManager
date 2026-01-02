@@ -28,19 +28,19 @@ const { getGlobals } = require('../../src/Globals');
 
 
 describe("Event Factory Tests", () => {
-    const managedRow = {
-        StartDate: "2023-01-01T18:00:00.000Z",
-        StartTime: "2023-01-01T18:00:00.000Z",
-        Group: 'A',
-        RouteName: 'SCP - Seascape/Corralitos',
-        RouteURL: 'http://ridewithgps.com/routes/17166902',
-        RideLeader: 'Toby Ferguson',
-        RideName: '',
-        RideURL: '',
-        Location: 'Seascape County Park',
-        Address: 'Address: Seascape County Park, Sumner Ave, Aptos, CA 95003'
+    const managedRow =  {
+        startDate: "2023-01-01T18:00:00.000Z",
+        startTime: "2023-01-01T18:00:00.000Z",
+        group: 'A',
+        routeName: 'SCP - Seascape/Corralitos',
+        routeURL: 'http://ridewithgps.com/routes/17166902',
+        rideLeader: 'Toby Ferguson',
+        rideName: '',
+        rideURL: '',
+        location: 'Seascape County Park',
+        address: 'Address: Seascape County Park, Sumner Ave, Aptos, CA 95003'
     }
-    const unmanagedRow = { ...managedRow, RideName: 'Tobys Ride' }
+    const unmanagedRow = { ...managedRow, rideName: 'Tobys Ride' }
     describe("Basic Construction", () => {
         describe("fromRow()", () => {
             test("should build from a row", () => {
@@ -70,7 +70,7 @@ describe("Event Factory Tests", () => {
                 if (hour === "11:00") { 
                     expected.desc = expected.desc.replace("Arrive 9:45 AM for a 10:00 AM rollout.", "Arrive 10:45 AM for a 11:00 AM rollout.");
                 }
-                const mr = { ...managedRow, StartDate: "2023-06-01T18:00:00.000Z", StartTime: "2023-06-01T18:00:00.000Z"}
+                const mr = { ...managedRow, startDate: "2023-06-01T18:00:00.000Z", startTime: "2023-06-01T18:00:00.000Z"}
                 const actual = EventFactory.newEvent(mr, organizers, 1234);
                 expect(actual).toMatchObject(expected);
             })
