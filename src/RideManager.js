@@ -12,6 +12,7 @@ if (typeof require !== 'undefined') {
 /**
  * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
  */
 
 const RideManager = (function () {
@@ -40,7 +41,7 @@ const RideManager = (function () {
         return id;
     }
     /**
-     * @param {any} row
+     * @param {RowCoreInstance} row
      */
     function getLatLong(row) {
         const route = getRoute(row.routeURL);
@@ -48,8 +49,8 @@ const RideManager = (function () {
     }
 
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
@@ -80,8 +81,8 @@ const RideManager = (function () {
         }
     }
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      */
     function importRow_(row, rwgps) {
         // Prepare route configuration using Core logic
@@ -107,7 +108,7 @@ const RideManager = (function () {
 
     /**
      * Update the calendar event for the ride in the given row
-     * @param {Row} row 
+     * @param {RowCoreInstance} row 
      * @param {SCCCCEvent} rideEvent 
      * @param {string} description 
      * @return {boolean} true if update succeeded, false otherwise
@@ -146,7 +147,7 @@ const RideManager = (function () {
 
     /**
      * Create a new calendar event for the ride in the given row
-     * @param {Row} row 
+     * @param {RowCoreInstance} row 
      * @param {SCCCCEvent} rideEvent 
      * @param {string} description 
      */
@@ -209,8 +210,8 @@ const RideManager = (function () {
         }
     }
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
@@ -241,8 +242,8 @@ const RideManager = (function () {
     }
 
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      */
     function schedule_row_(row, rwgps) {
         /**
@@ -291,8 +292,8 @@ const RideManager = (function () {
         }
     }
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      */
     function updateRow_(row, rwgps) {
         const names = getGroupNames();
@@ -354,8 +355,8 @@ const RideManager = (function () {
     }
 
     /**
-     * @param {any[]} rows
-     * @param {any} rwgps
+     * @param {RowCoreInstance[]} rows
+     * @param {RWGPS} rwgps
      * @param {Function} fn
      * @param {boolean} sendEmail
      * @param {string} reason
@@ -378,8 +379,8 @@ const RideManager = (function () {
     }
     return {
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
@@ -387,15 +388,15 @@ const RideManager = (function () {
             processRows_(rows, rwgps, cancelRow_, sendEmail, reason)
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         importRows: function (rows, rwgps) {
             processRows_(rows, rwgps, importRow_);
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
@@ -403,15 +404,15 @@ const RideManager = (function () {
             processRows_(rows, rwgps, reinstateRow_, sendEmail, reason);
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         scheduleRows: function (rows, rwgps) {
             processRows_(rows, rwgps, schedule_row_);
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         unscheduleRows: function (rows, rwgps) {
             // Collect RideURLs and GoogleEventIds BEFORE any modifications
@@ -510,8 +511,8 @@ const RideManager = (function () {
         },
 
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         updateRows: function (rows, rwgps) {
             processRows_(rows, rwgps, updateRow_);
