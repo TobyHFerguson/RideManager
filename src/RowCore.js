@@ -44,6 +44,7 @@ var RowCore = (function() {
          * @param {string} [params.lastError] - Last error message
          * @param {Date} [params.lastAttemptAt] - Timestamp of last send attempt
          * @param {number} params.rowNum - Spreadsheet row number (1-based)
+         * @param {Function} [params.onDirty] - Optional callback when row becomes dirty (called with this RowCore)
          */
         constructor({
             startDate,
@@ -62,7 +63,8 @@ var RowCore = (function() {
             attempts,
             lastError,
             lastAttemptAt,
-            rowNum
+            rowNum,
+            onDirty
         }) {
             // Core ride properties
             this.startDate = startDate;
@@ -89,6 +91,9 @@ var RowCore = (function() {
             
             // Track dirty fields for persistence
             this._dirtyFields = new Set();
+            
+            // Optional callback to notify when row becomes dirty
+            this._onDirty = onDirty;
         }
 
         // ===== COMPUTED PROPERTIES (GETTERS) =====
@@ -311,10 +316,17 @@ var RowCore = (function() {
 
         /**
          * Mark a field as dirty (needs saving)
+         * Automatically notifies adapter via onDirty callback when row first becomes dirty
          * @param {string} fieldName - The domain property name that was modified
          */
         markDirty(fieldName) {
+            const wasClean = this._dirtyFields.size === 0;
             this._dirtyFields.add(fieldName);
+            
+            // Notify adapter when row first becomes dirty (not on every field change)
+            if (wasClean && this._onDirty) {
+                this._onDirty(this);
+            }
         }
 
         /**

@@ -769,4 +769,140 @@ describe('RowCore', () => {
             expect(row.getDirtyFields().size).toBe(0);
         });
     });
+
+    describe('onDirty callback', () => {
+        it('should call onDirty callback when row becomes dirty', () => {
+            const onDirty = jest.fn();
+            const row = new RowCore({
+                startDate: new Date('2026-02-01T10:00:00'),
+                group: 'Sat A',
+                routeCell: '',
+                rideCell: '',
+                rideLeaders: '',
+                googleEventId: '',
+                location: '',
+                address: '',
+                rowNum: 5,
+                onDirty
+            });
+            
+            expect(onDirty).not.toHaveBeenCalled();
+            
+            row.markDirty('testField');
+            
+            expect(onDirty).toHaveBeenCalledTimes(1);
+            expect(onDirty).toHaveBeenCalledWith(row);
+        });
+
+        it('should call onDirty only once when multiple fields are marked dirty', () => {
+            const onDirty = jest.fn();
+            const row = new RowCore({
+                startDate: new Date('2026-02-01T10:00:00'),
+                group: 'Sat A',
+                routeCell: '',
+                rideCell: '',
+                rideLeaders: '',
+                googleEventId: '',
+                location: '',
+                address: '',
+                rowNum: 5,
+                onDirty
+            });
+            
+            row.markDirty('field1');
+            row.markDirty('field2');
+            row.markDirty('field3');
+            
+            expect(onDirty).toHaveBeenCalledTimes(1);
+            expect(onDirty).toHaveBeenCalledWith(row);
+        });
+
+        it('should call onDirty again after markClean is called', () => {
+            const onDirty = jest.fn();
+            const row = new RowCore({
+                startDate: new Date('2026-02-01T10:00:00'),
+                group: 'Sat A',
+                routeCell: '',
+                rideCell: '',
+                rideLeaders: '',
+                googleEventId: '',
+                location: '',
+                address: '',
+                rowNum: 5,
+                onDirty
+            });
+            
+            row.markDirty('field1');
+            expect(onDirty).toHaveBeenCalledTimes(1);
+            
+            row.markClean();
+            
+            row.markDirty('field2');
+            expect(onDirty).toHaveBeenCalledTimes(2);
+            expect(onDirty).toHaveBeenCalledWith(row);
+        });
+
+        it('should not error when onDirty is not provided', () => {
+            const row = new RowCore({
+                startDate: new Date('2026-02-01T10:00:00'),
+                group: 'Sat A',
+                routeCell: '',
+                rideCell: '',
+                rideLeaders: '',
+                googleEventId: '',
+                location: '',
+                address: '',
+                rowNum: 5
+                // No onDirty callback
+            });
+            
+            expect(() => {
+                row.markDirty('testField');
+            }).not.toThrow();
+        });
+
+        it('should call onDirty when setting a property through setter', () => {
+            const onDirty = jest.fn();
+            const row = new RowCore({
+                startDate: new Date('2026-02-01T10:00:00'),
+                group: 'Sat A',
+                routeCell: '',
+                rideCell: '',
+                rideLeaders: '',
+                googleEventId: '',
+                location: '',
+                address: '',
+                rowNum: 5,
+                onDirty
+            });
+            
+            row.setAnnouncement('https://docs.google.com/doc/new');
+            
+            expect(onDirty).toHaveBeenCalledTimes(1);
+            expect(onDirty).toHaveBeenCalledWith(row);
+        });
+
+        it('should call onDirty only once when setting multiple properties', () => {
+            const onDirty = jest.fn();
+            const row = new RowCore({
+                startDate: new Date('2026-02-01T10:00:00'),
+                group: 'Sat A',
+                routeCell: '',
+                rideCell: '',
+                rideLeaders: '',
+                googleEventId: '',
+                location: '',
+                address: '',
+                rowNum: 5,
+                onDirty
+            });
+            
+            row.setAnnouncement('https://docs.google.com/doc/new');
+            row.setStatus('pending');
+            row.setAttempts(1);
+            
+            expect(onDirty).toHaveBeenCalledTimes(1);
+            expect(onDirty).toHaveBeenCalledWith(row);
+        });
+    });
 });

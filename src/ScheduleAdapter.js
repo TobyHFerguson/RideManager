@@ -39,9 +39,12 @@
  *    rows.forEach(row => {
  *        row.setGoogleEventId(eventId);  // Marks 'googleEventId' field dirty
  *        row.clearAnnouncement();         // Marks announcement fields dirty
- *        adapter.markRowDirty(row);       // Register row for saving
+ *        // NO need to call adapter.markRowDirty(row) - it's automatic!
  *    });
  *    ```
+ *    
+ *    **Note**: RowCore automatically notifies the adapter when it becomes dirty via
+ *    an injected callback. You don't need to manually track dirty rows.
  * 
  * 3. SAVE: Persist dirty rows in a single batch
  *    ```javascript
@@ -79,7 +82,6 @@
 
 if (typeof require !== 'undefined') {
     var HyperlinkUtils = require('./HyperlinkUtils.js');
-    var Row = require('./Row.js');
     var RowCore = require('./RowCore.js');
 }
 
@@ -394,17 +396,13 @@ const ScheduleAdapter = (function() {
             domainData.rowNum = rowNum;
             domainData.defaultDuration = this.defaultDuration;
             
+            // Inject dirty callback - RowCore will call this when it becomes dirty
+            domainData.onDirty = (/** @type {any} */ row) => {
+                this.dirtyRows.add(row);
+            };
+            
             // @ts-expect-error - RowCore is a constructor but TypeScript sees it as module export
             return new RowCore(domainData);
-        }
-
-        /**
-         * Mark a RowCore instance as dirty (needs saving)
-         * Called by ScheduleAdapter users after modifying RowCore instances
-         * @param {RowCore} row - The row to mark as dirty
-         */
-        markRowDirty(row) {
-            this.dirtyRows.add(row);
         }
 
         /**

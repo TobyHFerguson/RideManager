@@ -52,6 +52,12 @@ interface RowCoreParams {
     lastAttemptAt?: Date;
     /** Spreadsheet row number (1-based) */
     rowNum: number;
+    /** Optional callback when row becomes dirty (called with this RowCore) */
+    onDirty?: (row: RowCore) => void;
+    /** Timestamp of last send attempt */
+    lastAttemptAt?: Date;
+    /** Spreadsheet row number (1-based) */
+    rowNum: number;
 }
 
 /**
