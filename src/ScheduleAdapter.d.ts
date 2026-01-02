@@ -98,13 +98,6 @@ declare class ScheduleAdapter {
     // ===== PUBLIC UTILITY METHODS =====
 
     /**
-     * Mark a RowCore instance as dirty (needs saving)
-     * Call this after modifying a RowCore instance
-     * @param row - The RowCore instance to mark as dirty
-     */
-    markRowDirty(row: RowCore): void;
-
-    /**
      * Highlight a cell in the spreadsheet
      * @param rowNum - The row number (1-based)
      * @param columnName - The column name
