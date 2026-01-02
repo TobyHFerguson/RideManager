@@ -17,7 +17,7 @@ const Commands = (() => {
          */
         cancelSelectedRidesWithCreds(rows, rwgps, force = false) {
             // Check if any rows have announcements that need special handling
-            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof RowCore>} */ r) => r.Announcement && r.Status);
+            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof RowCore>} */ r) => r.announcement && r.status);
             
             if (rowsWithAnnouncements.length > 0 && !force) {
                 // Handle cancellation with UI for announcements
@@ -43,7 +43,7 @@ const Commands = (() => {
          */
         reinstateSelectedRidesWithCreds(rows, rwgps, force = false) {
             // Check if any rows have announcements that need special handling
-            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof RowCore>} */ r) => r.Announcement && r.Status === 'cancelled');
+            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof RowCore>} */ r) => r.announcement && r.status === 'cancelled');
             
             if (rowsWithAnnouncements.length > 0 && !force) {
                 // Handle reinstatement with UI for announcements

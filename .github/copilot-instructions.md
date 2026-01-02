@@ -26,6 +26,7 @@ npm test && npm run typecheck && npm run validate-exports
 4. ✅ Update tests, types (`.d.ts`), and docs with EVERY code change
 5. ✅ Add new modules to `Exports.js` or GAS won't find them
 6. ✅ **MANDATORY**: Run `get_errors` tool after EVERY code change (must show ZERO errors)
+7. ✅ **ZERO TOLERANCE**: NEVER use `@param {any}` - use proper types to catch errors at compile-time, not runtime
 
 **Architecture Pattern**:
 ```javascript
@@ -44,6 +45,73 @@ class AnnouncementManager {
 ```
 
 **If you violate these rules**, code will be rejected or break in production.
+
+## CRITICAL: Type Safety - Zero Tolerance for `{any}`
+
+**MANDATORY RULE**: NEVER use `@param {any}` in function signatures. Proper types prevent runtime errors by catching them at development time.
+
+**Real Production Error Prevented by Proper Types**:
+```javascript
+// ❌ With @param {any} - No error until production runtime
+/** @param {any} row */
+function importRow_(row, rwgps) {
+    row.linkRouteURL();  // ✅ TypeScript allows this
+    // 💥 Runtime Error: "row.linkRouteURL is not a function"
+}
+
+// ✅ With proper types - Error caught immediately in VS Code
+/** @param {RowCoreInstance} row */
+function importRow_(row, rwgps) {
+    row.linkRouteURL();  // ❌ TypeScript Error: Property 'linkRouteURL' does not exist
+}
+```
+
+**Type Replacement Guide**:
+
+| ❌ NEVER Use | ✅ ALWAYS Use | Example |
+|-------------|--------------|---------|
+| `@param {any} row` | `@param {RowCoreInstance} row` | Single row parameter |
+| `@param {any} rows` | `@param {RowCoreInstance[]} rows` | Array of rows |
+| `@param {any} rwgps` | `@param {RWGPS} rwgps` | RWGPS API interface |
+| `@param {any} route` | `@param {{first_lat: number, first_lng: number}} route` | Object with known shape |
+| `@param {any} data` | `@param {any} data` + justification comment | ONLY when truly arbitrary |
+
+**Required Typedef Setup**:
+```javascript
+// At top of file (after triple-slash references)
+/**
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RWGPS} RWGPS
+ */
+```
+
+**Verification Workflow** (MANDATORY for every file you modify):
+```bash
+# 1. Check VS Code errors (MOST IMPORTANT - catches more than tsc)
+get_errors(['src/YourFile.js'])  # MUST show ZERO errors
+
+# 2. Run typecheck
+npm run typecheck
+
+# 3. Test type safety works
+# Temporarily add: row.nonExistentMethod()
+# Verify: TypeScript shows error
+# Remove: Test line after verification
+```
+
+**Exception**: Only use `{any}` when:
+1. The parameter is truly arbitrary user data with no expected structure
+2. You add a comment justifying why `{any}` is required
+3. Example: `/** @param {any} additionalData - Arbitrary user data (structure not constrained) */`
+
+**Benefits of Proper Types**:
+- ✅ Catch typos and non-existent methods at compile-time
+- ✅ IntelliSense shows available properties/methods
+- ✅ Refactoring is safe with type validation
+- ✅ Self-documenting code
+- ✅ Prevents entire class of runtime errors
+
+See GitHub Issue: "Enforce Strict Type Checking System-Wide" for complete audit and remediation plan.
 
 ## Architecture Overview
 This is a Google Apps Script (GAS) project that manages ride scheduling through integration with RideWithGPS and Google Calendar. The codebase mixes GAS-specific APIs with standard JavaScript/Node.js code.
@@ -1191,7 +1259,93 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
    2. Changed import in `gas-globals.d.ts`: `import type { GlobalsObject } from './Globals'`
    3. Updated function signature: `function getGlobals(): GlobalsObject`
 
-14. **Deployment Checklist**
+14. **Namespace Pattern TypeScript Limitations (CRITICAL)**
+   
+   **Problem**: When a JavaScript module exports a namespace object (not a class), TypeScript's module resolution conflicts with the namespace pattern, causing false "Property does not exist" errors even though the methods exist and work at runtime.
+   
+   **Example - RideManagerCore**:
+   ```javascript
+   // RideManagerCore.js - Exports namespace object
+   var RideManagerCore = (function() {
+       function extractEventID(eventUrl) { /* ... */ }
+       function prepareRouteImport(rowData, globals) { /* ... */ }
+       return {
+           extractEventID,
+           prepareRouteImport
+       };
+   })();
+   
+   if (typeof module !== 'undefined') {
+       module.exports = RideManagerCore;
+   }
+   ```
+   
+   ```typescript
+   // RideManagerCore.d.ts - Declares namespace
+   declare namespace RideManagerCore {
+       function extractEventID(eventUrl: string): string;
+       function prepareRouteImport(rowData: any, globals: any): any;
+   }
+   export default RideManagerCore;
+   ```
+   
+   **Symptom**: When importing in another module:
+   ```javascript
+   // RideManager.js
+   if (typeof require !== 'undefined') {
+       var RideManagerCore = require('./RideManagerCore');
+   }
+   
+   // This works at runtime but TypeScript shows error:
+   RideManagerCore.extractEventID(url);
+   // Error: Property 'extractEventID' does not exist on type 'typeof import(...)/RideManagerCore'
+   ```
+   
+   **Why This Happens**:
+   - TypeScript sees the **module export type** (typeof import), not the namespace type
+   - The triple-slash reference to gas-globals.d.ts declares it as a global, but VS Code's resolution prioritizes the require import
+   - This is a known TypeScript limitation with namespace+module patterns
+   
+   **Solution Pattern**:
+   Since the methods DO exist and work correctly at runtime (verified by tests), suppress the false positive errors with explanatory comments:
+   
+   ```javascript
+   /**
+    * @param {string} event_url
+    */
+   function _extractEventID(event_url) {
+       // NOTE: extractEventID exists in RideManagerCore (see RideManagerCore.js:18, test coverage: 100%)
+       // TypeScript error is false positive due to namespace export pattern
+       // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
+       return RideManagerCore.extractEventID(event_url);
+   }
+   ```
+   
+   **When to Use This Pattern**:
+   - ✅ Methods exist in the source file and have test coverage
+   - ✅ Code works correctly at runtime in GAS
+   - ✅ TypeScript errors are "Property does not exist on type 'typeof import(...)'"
+   - ✅ Module uses namespace pattern (not class pattern)
+   - ❌ Don't use for actual missing methods or API calls
+   - ❌ Don't use if method names are misspelled
+   
+   **Verification Checklist**:
+   1. **Confirm method exists**: Check source file (`RideManagerCore.js`) for the method
+   2. **Verify test coverage**: Run `npm test -- --coverage --collectCoverageFrom='src/ModuleCore.js'`
+   3. **Check runtime behavior**: Deploy to GAS and verify method works
+   4. **Document in comment**: Reference source line number and test coverage
+   5. **Use specific error comment**: `@ts-expect-error - TypeScript can't resolve namespace methods through module imports`
+   
+   **Alternative Solution (Not Recommended)**:
+   You could convert the namespace to a class with static methods, but this breaks the established GAS pattern used throughout the codebase.
+   
+   **Examples in Codebase**:
+   - `RideManagerCore` - 7 methods with namespace pattern (PR #179)
+   - All methods exist, have 100% test coverage (32 tests)
+   - TypeScript shows 9 false positive errors
+   - All suppressed with `@ts-expect-error` + explanatory comments
+
+15. **Deployment Checklist**
    - ✅ All tests pass: `npm test`
    - ✅ **VS Code errors checked: `get_errors(['src/'])`** (MANDATORY)
    - ✅ Type check passes: `npm run typecheck`

@@ -6,11 +6,14 @@ if (typeof require !== 'undefined') {
     // @ts-ignore
     const { getGroupNames } = require("./Groups");
     var dates = require('./common/dates');
+    var RideManagerCore = require('./RideManagerCore');
 }
 
 /**
  * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./RideManagerCore').default} RideManagerCoreType
  */
 
 const RideManager = (function () {
@@ -25,7 +28,7 @@ const RideManager = (function () {
      * @param {string} event_url
      */
     function _extractEventID(event_url) {
-        return event_url.substring(event_url.lastIndexOf('/') + 1).split('-')[0]
+        return RideManagerCore.extractEventID(event_url);
     }
     /**
      * @param {string} groupName
@@ -39,16 +42,16 @@ const RideManager = (function () {
         return id;
     }
     /**
-     * @param {any} row
+     * @param {RowCoreInstance} row
      */
     function getLatLong(row) {
         const route = getRoute(row.routeURL);
-        return route ? `${route.first_lat},${route.first_lng}` : '';
+        return RideManagerCore.extractLatLong(route);
     }
 
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
@@ -79,42 +82,50 @@ const RideManager = (function () {
         }
     }
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      */
     function importRow_(row, rwgps) {
-        /** @type {{url: any, expiry: string, tags: any[], name?: string}} */
-        let route = {
-            url: row.routeURL ? row.routeURL : row.routeName,
-            //TODO use dates as native objects, not strings
-            expiry: String(dates.MMDDYYYY(dates.add(row.startDate ? row.startDate : new Date(), getGlobals().EXPIRY_DELAY))),
-            tags: [row.group]
-        }
-        let rn = row.routeName;
-        let ru = row.routeURL;
-        if (rn !== ru) route.name = row.routeName;
-
-        // Delete any foreign prefix in the name
-        if (route.name && route.name.startsWith(getGlobals().FOREIGN_PREFIX)) route.name = route.name.substring(getGlobals().FOREIGN_PREFIX.length);
+        // Prepare route configuration using Core logic
+        const rowData = {
+            routeURL: row.routeURL,
+            routeName: row.routeName,
+            startDate: row.startDate,
+            group: row.group
+        };
+        const route = RideManagerCore.prepareRouteImport(
+            rowData,
+            getGlobals(),
+            dates.add,
+            dates.MMDDYYYY
+        );
+        
+        // GAS API call: import route to RWGPS
         const url = rwgps.importRoute(route);
+        
+        // Update spreadsheet (dirty tracking handles save automatically)
         row.setRouteLink(route.name || url, url);
-        //TODO remove dependency on Schedule
-        row.linkRouteURL();
     }
 
     /**
      * Update the calendar event for the ride in the given row
-     * @param {Row} row 
+     * @param {RowCoreInstance} row 
      * @param {SCCCCEvent} rideEvent 
      * @param {string} description 
      * @return {boolean} true if update succeeded, false otherwise
      */
     function updateEvent_(row, rideEvent, description) {
-        const name = rideEvent.name || '';
-        const start = rideEvent.start_time ? new Date(rideEvent.start_time) : new Date();
-        const end = row.endTime ? new Date(row.endTime) : new Date();
+        const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
-            GoogleCalendarManager.updateEvent(getCalendarId(row.group), row.googleEventId, name, start, end, getLatLong(row), description);
+            GoogleCalendarManager.updateEvent(
+                getCalendarId(row.group),
+                row.googleEventId,
+                eventData.name,
+                eventData.start,
+                eventData.end,
+                getLatLong(row),
+                description
+            );
             return true;
         } catch (calendarError) {
             const err = calendarError instanceof Error ? calendarError : new Error(String(calendarError));
@@ -137,16 +148,21 @@ const RideManager = (function () {
 
     /**
      * Create a new calendar event for the ride in the given row
-     * @param {Row} row 
+     * @param {RowCoreInstance} row 
      * @param {SCCCCEvent} rideEvent 
      * @param {string} description 
      */
     function createEvent_(row, rideEvent, description) {
-        const name = rideEvent.name || '';
-        const start = rideEvent.start_time ? new Date(rideEvent.start_time) : new Date();
-        const end = row.endTime ? new Date(row.endTime) : new Date();
+        const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
-            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.group), name, start, end, getLatLong(row), description);
+            const eventId = GoogleCalendarManager.createEvent(
+                getCalendarId(row.group),
+                eventData.name,
+                eventData.start,
+                eventData.end,
+                getLatLong(row),
+                description
+            );
             return eventId;
         } catch (calendarError) {
             const err = calendarError instanceof Error ? calendarError : new Error(String(calendarError));
@@ -195,8 +211,8 @@ const RideManager = (function () {
         }
     }
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
@@ -227,8 +243,8 @@ const RideManager = (function () {
     }
 
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      */
     function schedule_row_(row, rwgps) {
         /**
@@ -246,12 +262,16 @@ const RideManager = (function () {
         const event_id = _extractEventID(new_event_url);
         const rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
         rwgps.edit_event(new_event_url, rideEvent);
-        rwgps.setRouteExpiration(row.routeURL, dates.add(row.startDate, getGlobals().EXPIRY_DELAY), true);
+        const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
+        rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
         row.setRideLink(rideEvent.name, new_event_url);
         rwgps.unTagEvents([new_event_url], ["template"]);
         const description = `<a href="${new_event_url}">${rideEvent.name}</a>`;
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with rideEvent:`, rideEvent);
-        row.setGoogleEventId(createEvent_(row, rideEvent, description));
+        const eventId = createEvent_(row, rideEvent, description);
+        if (eventId) {
+            row.setGoogleEventId(eventId);
+        }
 
         // Create ride announcement regardless of calendar success
         try {
@@ -277,20 +297,18 @@ const RideManager = (function () {
         }
     }
     /**
-     * @param {any} row
-     * @param {any} rwgps
+     * @param {RowCoreInstance} row
+     * @param {RWGPS} rwgps
      */
     function updateRow_(row, rwgps) {
         const names = getGroupNames();
 
         let rideEvent
-        const originalGroup = SCCCCEvent.getGroupName(row.rideName, names);
-        if (!SCCCCEvent.managedEventName(row.rideName, names)) {
+        const originalGroup = RideManagerCore.extractGroupName(row.rideName, names);
+        if (!RideManagerCore.isManagedEventName(row.rideName, names)) {
             rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
             // DEBUG ISSUE 22
-            if (rideEvent.name.trim().endsWith(']')) {
-                throw new Error(`updateRow_: row ${row.rowNum}: Event name from RWGPS ends with a square bracket: ${rideEvent.name}. Original name: ${row.rideName}`);
-            }
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'RWGPS');
         } else {
             const event_id = _extractEventID(row.rideURL);
             rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
@@ -298,10 +316,9 @@ const RideManager = (function () {
                 rideEvent.cancel();
             }
             // DEBUG ISSUE 22
-            if (rideEvent.name.trim().endsWith(']')) {
-                throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${rideEvent.name}. Original name: ${row.rideName}`);
-            }
-            rwgps.setRouteExpiration(row.routeURL, dates.add(row.startDate, getGlobals().EXPIRY_DELAY), true);
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'newEvent');
+            const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
+            rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
         }
 
         row.setRideLink(rideEvent.name, row.rideURL);
@@ -321,7 +338,10 @@ const RideManager = (function () {
                 success = true;
             };
         } else {
-            row.setGoogleEventId(createEvent_(row, rideEvent, description));
+            const eventId = createEvent_(row, rideEvent, description);
+            if (eventId) {
+                row.setGoogleEventId(eventId);
+            }
         }
 
 
@@ -344,8 +364,8 @@ const RideManager = (function () {
     }
 
     /**
-     * @param {any[]} rows
-     * @param {any} rwgps
+     * @param {RowCoreInstance[]} rows
+     * @param {RWGPS} rwgps
      * @param {Function} fn
      * @param {boolean} sendEmail
      * @param {string} reason
@@ -368,8 +388,8 @@ const RideManager = (function () {
     }
     return {
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
@@ -377,15 +397,15 @@ const RideManager = (function () {
             processRows_(rows, rwgps, cancelRow_, sendEmail, reason)
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         importRows: function (rows, rwgps) {
             processRows_(rows, rwgps, importRow_);
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
@@ -393,15 +413,15 @@ const RideManager = (function () {
             processRows_(rows, rwgps, reinstateRow_, sendEmail, reason);
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         scheduleRows: function (rows, rwgps) {
             processRows_(rows, rwgps, schedule_row_);
         },
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         unscheduleRows: function (rows, rwgps) {
             // Collect RideURLs and GoogleEventIds BEFORE any modifications
@@ -412,7 +432,8 @@ const RideManager = (function () {
             }));
 
             // Step 1: Delete rides from RWGPS (batch operation, but handle errors gracefully)
-            const rideUrlsToDelete = rideData.map(data => data.rideUrl).filter(url => url);
+            /** @type {string[]} */
+            const rideUrlsToDelete = rideData.map(data => data.rideUrl).filter(url => url !== null && url !== undefined);
             if (rideUrlsToDelete.length > 0) {
                 try {
                     rwgps.batch_delete_events(rideUrlsToDelete);
@@ -485,7 +506,8 @@ const RideManager = (function () {
             });
 
             // Step 3: Batch remove announcements
-            const rideUrlsWithAnnouncements = rideData.map(data => data.rideUrl).filter(url => url);
+            /** @type {string[]} */
+            const rideUrlsWithAnnouncements = rideData.map(data => data.rideUrl).filter(url => url !== null && url !== undefined);
             if (rideUrlsWithAnnouncements.length > 0) {
                 try {
                     const count = new (AnnouncementManager)().removeByRideUrls(rideUrlsWithAnnouncements);
@@ -500,8 +522,8 @@ const RideManager = (function () {
         },
 
         /**
-         * @param {any[]} rows
-         * @param {any} rwgps
+         * @param {RowCoreInstance[]} rows
+         * @param {RWGPS} rwgps
          */
         updateRows: function (rows, rwgps) {
             processRows_(rows, rwgps, updateRow_);

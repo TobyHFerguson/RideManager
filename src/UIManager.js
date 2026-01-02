@@ -103,7 +103,7 @@ const UIManager = {
         for (const row of processableRows) {
             try {
                 // Check if row has announcement
-                if (!row.Announcement || !row.Status) {
+                if (!row.announcement || !row.status) {
                     // No announcement - simple cancellation, no user prompt needed
                     RideManager.cancelRows([row], rwgps, false, '');
                     cancelled++;
@@ -203,7 +203,7 @@ const UIManager = {
         for (const row of processableRows) {
             try {
                 // Check if row has announcement
-                if (!row.Announcement || !row.Status || row.Status !== 'cancelled') {
+                if (!row.announcement || !row.status || row.status !== 'cancelled') {
                     // No announcement or not cancelled - simple reinstatement, no user prompt needed
                     RideManager.reinstateRows([row], rwgps, false, '');
                     reinstated++;

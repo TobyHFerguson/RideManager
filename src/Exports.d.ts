@@ -14,8 +14,9 @@ import Row from './Row';
 import RouteColumnEditor from './RouteColumnEditor';
 import HyperlinkUtils from './HyperlinkUtils';
 import UIManager from './UIManager';
-import RideManager from './RideManager';
-import UserLogger from './UserLogger';
+import type RideManagerType from './RideManager';
+import type RideManagerCoreType from './RideManagerCore';
+import type UserLoggerType from './UserLogger';
 import SCCCCEvent from './SCCCCEvent';
 import EventFactory from './EventFactory';
 import AnnouncementManager from './AnnouncementManager';
@@ -57,6 +58,8 @@ interface ExportsNamespace {
     readonly UIManager: typeof UIManager;
     /** RideManager module */
     readonly RideManager: typeof RideManager;
+    /** RideManagerCore module - Pure business logic */
+    readonly RideManagerCore: typeof RideManagerCoreType;
     /** UserLogger module */
     readonly UserLogger: typeof UserLogger;
     /** SCCCCEvent class */

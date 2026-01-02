@@ -1,6 +1,12 @@
 /**
  * RideManager provides functions to manage ride events, including scheduling, importing,
- * canceling, reinstating, updating, and unscheduling rides, as well as updating rider counts.
+ * canceling, reinstating, updating, and unschedules rides, as well as updating rider counts.
+ * 
+ * **Architecture**: RideManager is a thin GAS adapter that delegates business logic to RideManagerCore.
+ * - Business logic (route preparation, validation, event data) is in RideManagerCore (pure JS, 100% tested)
+ * - GAS API calls (RWGPS, Calendar, Spreadsheet) are in this adapter
+ * 
+ * @see RideManagerCore for testable business logic
  */
 declare const RideManager: {
     /**

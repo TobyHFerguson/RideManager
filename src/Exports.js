@@ -38,6 +38,9 @@ var Exports = {
     get RideManager() {
         return RideManager;
     },
+    get RideManagerCore() {
+        return RideManagerCore;
+    },
     get UserLogger() {
         return UserLogger;
     },

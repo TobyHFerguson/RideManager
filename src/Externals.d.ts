@@ -85,6 +85,12 @@
      * @param tags Array of tag names to remove.
      */
     unTagEvents(eventUrls: string[], tags: string[]): void;
+
+    /**
+     * Batch deletes multiple events from RWGPS.
+     * @param eventUrls Array of event URLs to delete.
+     */
+    batch_delete_events(eventUrls: string[]): void;
   }
 
 /**
