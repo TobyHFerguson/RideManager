@@ -235,7 +235,6 @@ const ScheduleAdapter = (function() {
          * 
          * CRITICAL: Formulas in Route/Ride columns are handled specially:
          * - If a formula column is dirty, we write the formula (not the value)
-         * - After write, formulas are stored in DeveloperMetadata by row UUID for next load
          */
         save() {
             if (this.dirtyRows.size === 0) {
