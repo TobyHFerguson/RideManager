@@ -6,7 +6,7 @@ if (typeof require !== 'undefined') {
 
 const rowCheck = {
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     unmanagedRide: function (row) {
         if (!SCCCCEvent.managedEventName(row.RideName, getGroupNames())) {
@@ -14,7 +14,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     unscheduled: function (row) {
         if (!row.RideURL) {
@@ -22,7 +22,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noStartDate: function (row) {
         if ((!row.StartDate) || (dates.convert(row.StartDate).toString() === "Invalid Date")) {
@@ -30,7 +30,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noStartTime: function (row) {
         if ((!row.StartTime) || (dates.convert(row.StartTime).toString() === "Invalid Date")) {
@@ -38,7 +38,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noGroup: function (row) {
         if (!row.Group) return "Group column is empty";
@@ -48,7 +48,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     routeInaccessibleOrOwnedByClub: function (row) {
         const url = row.RouteURL ? row.RouteURL : row.RouteName;
@@ -75,7 +75,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     badRoute: function (row) {
         try {
@@ -88,7 +88,7 @@ const rowCheck = {
     },
     // Warnings
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      * @param {any} rwgps
      */
     noRideLeader: function (row, rwgps) {
@@ -116,7 +116,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     notCancelled: function (row) {
         if (!(row.RideName.toLowerCase().startsWith('cancelled'))) {
@@ -124,7 +124,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     cancelled: function (row) {
         if (row.RideName.toLowerCase().startsWith('cancelled')) {
@@ -132,7 +132,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noLocation: function (row) {
         if (!row.Location || row.Location.startsWith('#')) {
@@ -140,7 +140,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noAddress: function (row) {
         if (!row.Address || row.Address.startsWith('#')) {
@@ -148,7 +148,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     inappropiateGroup: function (row) {
         const nrg = this.noGroup(row);
@@ -181,7 +181,7 @@ const rowCheck = {
         return __inappropriateGroup(row.Group, e, d);
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     scheduled: function (row) {
         if (row.RideURL) {
@@ -189,7 +189,7 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     foreignRoute: function (row) {
         try {
@@ -230,7 +230,7 @@ function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
         return row;
     }
 
-    return rows.map((/** @type {InstanceType<typeof Row>} */ row) => evalRow_(row, rwgps, efs, wfs));
+    return rows.map((/** @type {InstanceType<typeof RowCore>} */ row) => evalRow_(row, rwgps, efs, wfs));
 }
 
 

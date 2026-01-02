@@ -23,9 +23,6 @@ var Exports = {
     get ScheduleAdapter() {
         return ScheduleAdapter;
     },
-    get Row() {
-        return Row;
-    },
     get RowCore() {
         return RowCore;
     },

@@ -133,7 +133,7 @@ function editEventReport_(event) {
   const adapter = new ScheduleAdapter();
   const row = adapter.loadSelected()[0];
   //  console.log(`ride URL: ${row.RideURL}`);
-  console.log(`route URL: ${row.RouteURL}`);
+  console.log(`route URL: ${row.routeURL}`);
   console.log(`isScheduled: ${row.isScheduled()}`);
 }
 

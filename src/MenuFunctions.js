@@ -46,7 +46,7 @@ function getRWGPS() {
 
 const MenuFunctions = (() => {
   /**
-   * @param {(rows: InstanceType<typeof Row>[], rwgps: any, force?: boolean) => void} command
+   * @param {(rows: InstanceType<typeof RowCore>[], rwgps: any, force?: boolean) => void} command
    * @param {boolean} [force]
    */
   function executeCommand(command, force = false) {

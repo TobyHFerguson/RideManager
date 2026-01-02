@@ -17,7 +17,6 @@ import type TriggerManagerClass from './TriggerManager';
 import type ExportsType from './Exports';
 import type { GlobalsObject } from './Globals';
 import type { Externals as ExternalsType } from './Externals';
-import type RowClass from './Row';
 import type SCCCCEventClass from './SCCCCEvent';
 import type EventFactoryNamespace from './EventFactory';
 import type CommandsNamespace from './Commands';
@@ -37,7 +36,6 @@ declare global {
     const RouteColumnEditor: typeof RouteColumnEditorClass;
     const AnnouncementManager: typeof AnnouncementManagerClass;
     const TriggerManager: typeof TriggerManagerClass;
-    const Row: typeof RowClass;
     const SCCCCEvent: typeof SCCCCEventClass;
     const RWGPSMembersAdapter: typeof RWGPSMembersAdapterClass;
     
@@ -51,7 +49,6 @@ declare global {
     const UIManager: typeof UIManagerNamespace;
     const AnnouncementCore: typeof AnnouncementCoreNamespace;
     const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
-    const RowIdCore: typeof RowIdCoreNamespace;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;

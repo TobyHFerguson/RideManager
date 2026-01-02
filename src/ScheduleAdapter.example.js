@@ -14,7 +14,7 @@ var console;
 
 /**
  * Example function (implementation not shown)
- * @param {InstanceType<typeof Row>} row
+ * @param {InstanceType<typeof RowCore>} row
  * @returns {string}
  */
 function createCalendarEvent(row) {

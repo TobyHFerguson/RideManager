@@ -81,7 +81,6 @@ if (typeof require !== 'undefined') {
     var HyperlinkUtils = require('./HyperlinkUtils.js');
     var Row = require('./Row.js');
     var RowCore = require('./RowCore.js');
-    var RowIdCore = require('./RowIdCore.js');
 }
 
 const ScheduleAdapter = (function() {
@@ -378,7 +377,7 @@ const ScheduleAdapter = (function() {
          * Create a RowCore instance from Fiddler data
          * Maps spreadsheet columns to domain properties using columnMap
          * @private
-         * @param {Object} data - Raw row data from Fiddler (spreadsheet column names as keys)
+         * @param {Object<string, any>} data - Raw row data from Fiddler (spreadsheet column names as keys)
          * @param {number} rowNum - Spreadsheet row number (1-based)
          * @returns {InstanceType<typeof RowCore>} RowCore instance
          */
@@ -400,38 +399,11 @@ const ScheduleAdapter = (function() {
         }
 
         /**
-         * Create a Row instance from Fiddler data (DEPRECATED - for backward compatibility)
-         * @private
-         * @param {Object} data - Raw row data from Fiddler
-         * @param {number} rowNum - Spreadsheet row number (1-based)
-         * @returns {InstanceType<typeof Row>} Row instance
-         */
-        _createRow(data, rowNum) {
-            const enrichedData = {
-                ...data,
-                _rowNum: rowNum,
-                _range: this.sheet.getRange(rowNum, 1, 1, this.columnNames.length)
-            };
-            // @ts-expect-error - Row is a constructor but TypeScript sees it as module export
-            return new Row(enrichedData, this);
-        }
-
-        /**
          * Mark a RowCore instance as dirty (needs saving)
          * Called by ScheduleAdapter users after modifying RowCore instances
          * @param {RowCore} row - The row to mark as dirty
          */
         markRowDirty(row) {
-            this.dirtyRows.add(row);
-        }
-
-        /**
-         * Mark a row as dirty (needs saving) - DEPRECATED for Row compatibility
-         * Called by Row instances when they're modified
-         * @private
-         * @param {Row} row - The row to mark as dirty
-         */
-        _markRowDirty(row) {
             this.dirtyRows.add(row);
         }
 
