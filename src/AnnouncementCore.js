@@ -83,7 +83,7 @@ var AnnouncementCore = (function() {
     /**
      * Get rows from spreadsheet that are due for sending or reminder
      * 
-     * @param {any[]} rows - Array of Row objects from spreadsheet
+     * @param {any[]} rows - Array of RowCore domain objects
      * @param {number} currentTime - Current timestamp
      * @returns {Object} Object with dueToSend and dueForReminder arrays
      */
@@ -93,12 +93,12 @@ var AnnouncementCore = (function() {
         
         rows.forEach(row => {
             // Skip rows without announcement data
-            if (!row.Announcement || !row.SendAt) {
+            if (!row.announcement || !row.sendAt) {
                 return;
             }
             
-            const sendTime = new Date(row.SendAt).getTime();
-            const status = row.Status || 'pending';
+            const sendTime = new Date(row.sendAt).getTime();
+            const status = row.status || 'pending';
             
             if (status === 'pending') {
                 const timeDiff = sendTime - currentTime;
@@ -120,7 +120,7 @@ var AnnouncementCore = (function() {
     /**
      * Get statistics about announcements from rows
      * 
-     * @param {any[]} rows - Array of Row objects
+     * @param {any[]} rows - Array of RowCore domain objects
      * @returns {Object} Statistics object
      */
     function getStatistics(rows) {
@@ -132,9 +132,9 @@ var AnnouncementCore = (function() {
         };
         
         rows.forEach(row => {
-            if (row.Announcement) {
+            if (row.announcement) {
                 stats.total++;
-                const status = row.Status || 'pending';
+                const status = row.status || 'pending';
                 if (stats.hasOwnProperty(status)) {
                     /** @type {any} */ (stats)[status]++;
                 }
@@ -148,7 +148,7 @@ var AnnouncementCore = (function() {
      * Enrich row data with calculated template fields
      * Adds DateTime, Date, Day, Time, RideLink, Gain, Length, FPM, StartPin, Lat, Long fields
      * 
-     * @param {any} rowData - Original row data
+     * @param {any} rowData - Original RowCore domain object
      * @param {any} [route] - Optional route object from RWGPS with distance, elevation_gain, first_lat, first_lng
      * @returns {any} Enriched row data with calculated fields
      */
@@ -156,8 +156,20 @@ var AnnouncementCore = (function() {
         /** @type {any} */
         const enriched = { ...rowData };
         
+        // Map camelCase domain properties to PascalCase for template expansion
+        // This allows templates to use {RideName}, {Location}, etc.
+        if (rowData.rideName !== undefined) enriched.RideName = rowData.rideName;
+        if (rowData.rideURL !== undefined) enriched.RideURL = rowData.rideURL;
+        if (rowData.routeName !== undefined) enriched.RouteName = rowData.routeName;
+        if (rowData.routeURL !== undefined) enriched.RouteURL = rowData.routeURL;
+        if (rowData.location !== undefined) enriched.Location = rowData.location;
+        if (rowData.address !== undefined) enriched.Address = rowData.address;
+        if (rowData.group !== undefined) enriched.Group = rowData.group;
+        if (rowData.rideLeader !== undefined) enriched.RideLeader = rowData.rideLeader;
+        if (rowData.date !== undefined) enriched.StartDate = rowData.date;
+        
         // Parse the start date/time
-        const startDate = rowData.Date ? new Date(rowData.Date) : null;
+        const startDate = rowData.date ? new Date(rowData.date) : null;
         
         if (startDate && !isNaN(startDate.getTime())) {
             // Format date and time fields
@@ -198,18 +210,18 @@ var AnnouncementCore = (function() {
             });
         }
         
-        // RideLink: Hyperlink connecting RideURL to RideName
-        if (rowData.RideURL && rowData.RideName) {
-            enriched.RideLink = `<a href="${rowData.RideURL}">${rowData.RideName}</a>`;
-        } else if (rowData.RideName) {
-            enriched.RideLink = rowData.RideName;
-        } else if (rowData.RideURL) {
-            enriched.RideLink = rowData.RideURL;
+        // RideLink: Hyperlink connecting rideURL to rideName
+        if (rowData.rideURL && rowData.rideName) {
+            enriched.RideLink = `<a href="${rowData.rideURL}">${rowData.rideName}</a>`;
+        } else if (rowData.rideName) {
+            enriched.RideLink = rowData.rideName;
+        } else if (rowData.rideURL) {
+            enriched.RideLink = rowData.rideURL;
         }
         
-        // RideLeader: Use RideLeaders field (already should be a string from rowData)
-        if (rowData.RideLeaders) {
-            enriched.RideLeader = rowData.RideLeaders;
+        // RideLeader: Use rideLeader field
+        if (rowData.rideLeader) {
+            enriched.RideLeader = rowData.rideLeader;
         }
         
         // Route-based fields (if route object provided)
