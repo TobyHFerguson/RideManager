@@ -10,6 +10,7 @@
 
 // Import the actual types we need
 import type ScheduleAdapterClass from './ScheduleAdapter';
+import type RowCoreClass from './RowCore';
 import type { MenuFunctions as MenuFunctionsType } from './MenuFunctions';
 import type RouteColumnEditorClass from './RouteColumnEditor';
 import type AnnouncementManagerClass from './AnnouncementManager';
@@ -33,6 +34,7 @@ import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
 declare global {
     // Classes - use 'typeof' to get the constructor type (can use 'new')
     const ScheduleAdapter: typeof ScheduleAdapterClass;
+    const RowCore: typeof RowCoreClass;
     const RouteColumnEditor: typeof RouteColumnEditorClass;
     const AnnouncementManager: typeof AnnouncementManagerClass;
     const TriggerManager: typeof TriggerManagerClass;

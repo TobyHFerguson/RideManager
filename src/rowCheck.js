@@ -106,12 +106,15 @@ const rowCheck = {
                 { known: [], unknown: [] });
 
             if (rls.unknown.length) {
-                row.highlightRideLeader(true);
+                // TODO: Highlighting removed during Row → RowCore refactoring
+                // Cell highlighting should be handled separately from validation logic
+                // row.highlightRideLeader(true);
                 const prefix = `${rls.known.length ? "Some" : "All"} Ride Leaders (${rls.unknown.join(', ')}) unknown.`
                 const suffix = rls.known.length ? "" : ` Defaulting to ${getGlobals().RIDE_LEADER_TBD_NAME}`;
                 return prefix + suffix;
             } else {
-                row.highlightRideLeader(false);
+                // TODO: Highlighting removed during Row → RowCore refactoring
+                // row.highlightRideLeader(false);
             }
         }
     },

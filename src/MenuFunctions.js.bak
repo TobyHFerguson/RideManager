@@ -133,8 +133,8 @@ const MenuFunctions = (() => {
         
         // Filter for rows with pending announcements
         const pendingRows = selectedRows.filter(row => 
-          row.announcement && 
-          row.status === 'pending'
+          row.Announcement && 
+          row.Status === 'pending'
         );
         
         if (pendingRows.length === 0) {
@@ -170,17 +170,21 @@ const MenuFunctions = (() => {
             const result = manager.sendAnnouncement(row);
             
             if (result.success) {
-              row.setStatus('sent');
-              row.setLastAttemptAt(new Date(now));
+              row.Status = 'sent';
+              row.LastAttemptAt = new Date(now);
               sent++;
             } else {
               failedRows.push({ rowNum: row.rowNum, error: result.error || 'Unknown error' });
               
               // Update failure info
-              row.setStatus('failed');
-              row.setAttempts(row.attempts + 1);
-              row.setLastError(result.error || 'Unknown error');
-              row.setLastAttemptAt(new Date(now));
+              const sendTime = row.SendAt ? row.SendAt.getTime() : now;
+              const attempts = row.Attempts + 1;
+              const failureUpdate = AnnouncementCore.calculateFailureUpdate(attempts, sendTime, result.error || 'Unknown error', now);
+              
+              row.Status = failureUpdate.status;
+              row.Attempts = failureUpdate.attempts;
+              row.LastError = failureUpdate.lastError;
+              row.LastAttemptAt = new Date(now);
             }
           } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
