@@ -54,9 +54,24 @@ describe('ValidationCore', () => {
             };
         }
         if (url === 'https://ridewithgps.com/routes/network-error.json') {
+            // Only throw if not muting exceptions
+            if (!muteHttpExceptions) {
+                throw new Error('Network error');
+            }
+            // If muting, return error response
+            return {
+                getResponseCode: () => 500,
+                getContentText: () => ''
+            };
+        }
+        // Default: network error
+        if (!muteHttpExceptions) {
             throw new Error('Network error');
         }
-        throw new Error('Network error');
+        return {
+            getResponseCode: () => 500,
+            getContentText: () => ''
+        };
     };
 
     const createMockRow = (overrides = {}) => ({
@@ -418,7 +433,8 @@ describe('ValidationCore', () => {
             const result = ValidationCore.validateForRouteImport([row], defaultOptions);
             
             const validation = result.get(row);
-            expect(validation.errors).toContain('Unknown issue with Route URL - please check it and try again');
+            // Since we use muteHttpExceptions: true, network error returns 500 status
+            expect(validation.errors).toContain('Unknown issue with Route URL');
         });
     });
 

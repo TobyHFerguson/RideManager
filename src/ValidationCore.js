@@ -375,7 +375,7 @@ var ValidationCore = (function() {
                 return `No Route URL in row ${row.rowNum}. Are you sure you've selected the right row?`;
             }
             try {
-                const response = fetchUrl(url + ".json", false);
+                const response = fetchUrl(url + ".json", true); // Use mute to handle errors gracefully
                 
                 switch (response.getResponseCode()) {
                     case 200:

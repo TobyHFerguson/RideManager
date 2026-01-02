@@ -367,7 +367,9 @@ var RideCoordinator = (function() {
             try {
                 // 1. Validate
                 const validation = ValidationCore.validateForRouteImport(rows, {
-                    fetchUrl: (url, muteHttpExceptions) => UrlFetchApp.fetch(url, { muteHttpExceptions }),
+                    fetchUrl: (url, muteHttpExceptions) => {
+                        return UrlFetchApp.fetch(url, { muteHttpExceptions: muteHttpExceptions });
+                    },
                     clubUserId: getGlobals().SCCCC_USER_ID
                 });
 
