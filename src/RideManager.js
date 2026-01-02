@@ -101,10 +101,8 @@ const RideManager = (function () {
         // GAS API call: import route to RWGPS
         const url = rwgps.importRoute(route);
         
-        // Update spreadsheet
+        // Update spreadsheet (dirty tracking handles save automatically)
         row.setRouteLink(route.name || url, url);
-        //TODO remove dependency on Schedule
-        row.linkRouteURL();
     }
 
     /**
