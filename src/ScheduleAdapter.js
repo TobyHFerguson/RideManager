@@ -260,11 +260,20 @@ const ScheduleAdapter = (function() {
                     const cell = this.sheet.getRange(row.rowNum, columnIndex);
                     const value = row[domainProp];
                     
-                    // If it's a formula (starts with '='), set as formula, else as value
-                    if (value && typeof value === 'string' && value.startsWith('=')) {
-                        cell.setFormula(value);
-                    } else {
-                        cell.setValue(value);
+                    try {
+                        // If it's a formula (starts with '='), set as formula, else as value
+                        if (value && typeof value === 'string' && value.startsWith('=')) {
+                            cell.setFormula(value);
+                        } else {
+                            cell.setValue(value);
+                        }
+                    } catch (error) {
+                        const err = error instanceof Error ? error : new Error(String(error));
+                        console.error(`ScheduleAdapter: Failed to write ${domainProp} to row ${row.rowNum}, column ${columnName}: ${err.message}`);
+                        console.error(`  Value was: ${JSON.stringify(value)}`);
+                        console.error(`  This may be due to data validation rules on the spreadsheet column`);
+                        // Re-throw so the error is visible to the user
+                        throw new Error(`Failed to save ${columnName}: ${err.message}. Check spreadsheet data validation rules.`);
                     }
                 });
                 
