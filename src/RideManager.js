@@ -13,6 +13,7 @@ if (typeof require !== 'undefined') {
  * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
  * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./RideManagerCore').default} RideManagerCoreType
  */
 
 const RideManager = (function () {
@@ -27,7 +28,6 @@ const RideManager = (function () {
      * @param {string} event_url
      */
     function _extractEventID(event_url) {
-        // @ts-expect-error - extractEventID will be implemented in RideManagerCore (PR #179)
         return RideManagerCore.extractEventID(event_url);
     }
     /**
@@ -46,7 +46,6 @@ const RideManager = (function () {
      */
     function getLatLong(row) {
         const route = getRoute(row.routeURL);
-        // @ts-expect-error - extractLatLong will be implemented in RideManagerCore (PR #179)
         return RideManagerCore.extractLatLong(route);
     }
 
@@ -94,7 +93,6 @@ const RideManager = (function () {
             startDate: row.startDate,
             group: row.group
         };
-        // @ts-expect-error - prepareRouteImport will be implemented in RideManagerCore (PR #179)
         const route = RideManagerCore.prepareRouteImport(
             rowData,
             getGlobals(),
@@ -117,7 +115,6 @@ const RideManager = (function () {
      * @return {boolean} true if update succeeded, false otherwise
      */
     function updateEvent_(row, rideEvent, description) {
-        // @ts-expect-error - prepareCalendarEventData will be implemented in RideManagerCore (PR #179)
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             GoogleCalendarManager.updateEvent(
@@ -156,7 +153,6 @@ const RideManager = (function () {
      * @param {string} description 
      */
     function createEvent_(row, rideEvent, description) {
-        // @ts-expect-error - prepareCalendarEventData will be implemented in RideManagerCore (PR #179)
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             const eventId = GoogleCalendarManager.createEvent(
@@ -308,13 +304,10 @@ const RideManager = (function () {
         const names = getGroupNames();
 
         let rideEvent
-        // @ts-expect-error - extractGroupName will be implemented in RideManagerCore (PR #179)
         const originalGroup = RideManagerCore.extractGroupName(row.rideName, names);
-        // @ts-expect-error - isManagedEventName will be implemented in RideManagerCore (PR #179)
         if (!RideManagerCore.isManagedEventName(row.rideName, names)) {
             rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
             // DEBUG ISSUE 22
-            // @ts-expect-error - validateEventNameFormat will be implemented in RideManagerCore (PR #179)
             RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'RWGPS');
         } else {
             const event_id = _extractEventID(row.rideURL);
@@ -323,7 +316,6 @@ const RideManager = (function () {
                 rideEvent.cancel();
             }
             // DEBUG ISSUE 22
-            // @ts-expect-error - validateEventNameFormat will be implemented in RideManagerCore (PR #179)
             RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'newEvent');
             const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
             rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
