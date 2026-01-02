@@ -70,12 +70,12 @@ describe('AnnouncementCore', () => {
     describe('getDueItems', () => {
         const now = new Date('2025-12-05T18:00:00').getTime();
         
-        // Mock Row objects
+        // Mock RowCore objects with camelCase properties
         const createMockRow = (announcement, sendAt, status = 'pending') => ({
-            Announcement: announcement,
-            SendAt: sendAt ? new Date(sendAt) : undefined,
-            Status: status,
-            RideName: 'Test Ride',
+            announcement: announcement,
+            sendAt: sendAt ? new Date(sendAt) : undefined,
+            status: status,
+            rideName: 'Test Ride',
             rowNum: 1
         });
 
@@ -88,8 +88,8 @@ describe('AnnouncementCore', () => {
 
             const dueToSend = AnnouncementCore.getDueItems(rows, now);
             expect(dueToSend).toHaveLength(2);
-            expect(dueToSend[0].Announcement).toBe('http://doc1');
-            expect(dueToSend[1].Announcement).toBe('http://doc3');
+            expect(dueToSend[0].announcement).toBe('http://doc1');
+            expect(dueToSend[1].announcement).toBe('http://doc3');
         });
 
         it('should NOT retry failed announcements automatically', () => {
@@ -114,7 +114,7 @@ describe('AnnouncementCore', () => {
 
             const dueToSend = AnnouncementCore.getDueItems(rows, now);
             expect(dueToSend).toHaveLength(1);
-            expect(dueToSend[0].Announcement).toBe('http://doc2');
+            expect(dueToSend[0].announcement).toBe('http://doc2');
         });
 
         it('should handle empty rows array', () => {
@@ -125,8 +125,8 @@ describe('AnnouncementCore', () => {
 
     describe('getStatistics', () => {
         const createMockRow = (announcement, status = 'pending') => ({
-            Announcement: announcement,
-            Status: status
+            announcement: announcement,
+            status: status
         });
 
         it('should calculate correct statistics from rows', () => {
@@ -157,10 +157,10 @@ describe('AnnouncementCore', () => {
     describe('enrichRowData', () => {
         it('should create DateTime, Date, Day, Time from Date field', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'), // Saturday 10:00 AM
-                RideURL: 'https://ridewithgps.com/events/123',
-                RideName: 'Great Ride',
-                RideLeader: 'John Doe'
+                date: new Date('2024-12-07T10:00:00'), // Saturday 10:00 AM
+                rideURL: 'https://ridewithgps.com/events/123',
+                rideName: 'Great Ride',
+                rideLeader: 'John Doe'
             };
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
@@ -175,9 +175,9 @@ describe('AnnouncementCore', () => {
 
         it('should handle missing RideURL', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'),
-                RideName: 'Great Ride',
-                RideLeader: 'Jane Smith'
+                date: new Date('2024-12-07T10:00:00'),
+                rideName: 'Great Ride',
+                rideLeader: 'Jane Smith'
             };
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
@@ -188,8 +188,8 @@ describe('AnnouncementCore', () => {
 
         it('should handle missing RideName', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'),
-                RideURL: 'https://ridewithgps.com/events/123'
+                date: new Date('2024-12-07T10:00:00'),
+                rideURL: 'https://ridewithgps.com/events/123'
             };
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
@@ -199,26 +199,26 @@ describe('AnnouncementCore', () => {
 
         it('should preserve original rowData fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'),
-                Location: 'Seascape Park',
-                Address: '123 Main St',
-                Group: 'Sat A',
-                RouteName: 'Coastal Loop',
-                RideLeaders: 'John Doe, Jane Smith'
+                date: new Date('2024-12-07T10:00:00'),
+                location: 'Seascape Park',
+                address: '123 Main St',
+                group: 'Sat A',
+                routeName: 'Coastal Loop',
+                rideLeader: 'John Doe, Jane Smith'
             };
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
 
-            expect(enriched.Location).toBe('Seascape Park');
-            expect(enriched.Address).toBe('123 Main St');
-            expect(enriched.Group).toBe('Sat A');
-            expect(enriched.RouteName).toBe('Coastal Loop');
+            expect(enriched.location).toBe('Seascape Park');
+            expect(enriched.address).toBe('123 Main St');
+            expect(enriched.group).toBe('Sat A');
+            expect(enriched.routeName).toBe('Coastal Loop');
             expect(enriched.RideLeader).toBe('John Doe, Jane Smith');
         });
 
         it('should add route metrics when route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00')
+                date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 72420.5,        // meters (45 miles)
@@ -238,7 +238,7 @@ describe('AnnouncementCore', () => {
 
         it('should generate startPin with Apple and Google Maps links', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00')
+                date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 72420.5,
@@ -256,7 +256,7 @@ describe('AnnouncementCore', () => {
 
         it('should round route metrics correctly', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00')
+                date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 80467.2,        // 50 miles
@@ -274,7 +274,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with zero distance', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00')
+                date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 0,
@@ -291,7 +291,7 @@ describe('AnnouncementCore', () => {
 
         it('should handle route with missing fields', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00')
+                date: new Date('2024-12-07T10:00:00')
             };
             const route = {
                 distance: 50000,
@@ -312,13 +312,13 @@ describe('AnnouncementCore', () => {
 
         it('should handle null route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'),
-                RideName: 'Test Ride'
+                date: new Date('2024-12-07T10:00:00'),
+                rideName: 'Test Ride'
             };
 
             const enriched = AnnouncementCore.enrichRowData(rowData, null);
 
-            expect(enriched.RideName).toBe('Test Ride');
+            expect(enriched.rideName).toBe('Test Ride');
             expect(enriched.Length).toBeUndefined();
             expect(enriched.Gain).toBeUndefined();
             expect(enriched.FPM).toBeUndefined();
@@ -329,13 +329,13 @@ describe('AnnouncementCore', () => {
 
         it('should handle omitted route parameter', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'),
-                Location: 'Test Location'
+                date: new Date('2024-12-07T10:00:00'),
+                location: 'Test Location'
             };
 
             const enriched = AnnouncementCore.enrichRowData(rowData);
 
-            expect(enriched.Location).toBe('Test Location');
+            expect(enriched.location).toBe('Test Location');
             expect(enriched.Length).toBeUndefined();
             expect(enriched.Gain).toBeUndefined();
             expect(enriched.FPM).toBeUndefined();
@@ -346,9 +346,9 @@ describe('AnnouncementCore', () => {
 
         it('should preserve route fields when both rowData and route provided', () => {
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'),
-                RideName: 'Test Ride',
-                Location: 'Test Location'
+                date: new Date('2024-12-07T10:00:00'),
+                rideName: 'Test Ride',
+                location: 'Test Location'
             };
             const route = {
                 distance: 80467.2,
@@ -360,8 +360,8 @@ describe('AnnouncementCore', () => {
             const enriched = AnnouncementCore.enrichRowData(rowData, route);
 
             // Original fields preserved
-            expect(enriched.RideName).toBe('Test Ride');
-            expect(enriched.Location).toBe('Test Location');
+            expect(enriched.rideName).toBe('Test Ride');
+            expect(enriched.location).toBe('Test Location');
             
             // Route fields added
             expect(enriched.Length).toBe(50);
@@ -377,10 +377,10 @@ describe('AnnouncementCore', () => {
         it('should expand all fields including enriched fields', () => {
             const template = 'Ride: {RideLink} on {DateTime} at {Location}';
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'), // Saturday 10:00 AM
-                RideURL: 'https://ridewithgps.com/events/123',
-                RideName: 'Saturday Ride',
-                Location: 'Seascape Park'
+                date: new Date('2024-12-07T10:00:00'), // Saturday 10:00 AM
+                rideURL: 'https://ridewithgps.com/events/123',
+                rideName: 'Saturday Ride',
+                location: 'Seascape Park'
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
@@ -392,7 +392,7 @@ describe('AnnouncementCore', () => {
         it('should expand date/time fields separately', () => {
             const template = '{DateTime}';
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00')
+                date: new Date('2024-12-07T10:00:00')
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
@@ -404,8 +404,8 @@ describe('AnnouncementCore', () => {
         it('should preserve {FieldName} for missing fields', () => {
             const template = 'Ride: {RideName} at {Location}';
             const rowData = {
-                RideName: 'Saturday Ride'
-                // Location is missing
+                rideName: 'Saturday Ride'
+                // location is missing
             };
 
             const result = AnnouncementCore.expandTemplate(template, rowData);
@@ -522,8 +522,8 @@ describe('AnnouncementCore', () => {
         it('should expand mix of standard and route fields', () => {
             const template = '{RideName} - {Length} miles with {Gain} feet on {Day}';
             const rowData = {
-                Date: new Date('2024-12-07T10:00:00'),
-                RideName: 'Saturday Ride'
+                date: new Date('2024-12-07T10:00:00'),
+                rideName: 'Saturday Ride'
             };
             const route = {
                 distance: 80467.2,        // 50 miles
