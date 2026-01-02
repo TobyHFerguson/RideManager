@@ -23,6 +23,7 @@ import type EventFactoryNamespace from './EventFactory';
 import type CommandsNamespace from './Commands';
 import type rowCheckNamespace from './rowCheck';
 import type RideManagerNamespace from './RideManager';
+import type RideManagerCoreNamespace from './RideManagerCore';
 import type UIManagerNamespace from './UIManager';
 import type AnnouncementCoreNamespace from './AnnouncementCore';
 import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
@@ -48,6 +49,7 @@ declare global {
     const Commands: typeof CommandsNamespace;
     const rowCheck: typeof rowCheckNamespace;
     const RideManager: typeof RideManagerNamespace;
+    const RideManagerCore: typeof RideManagerCoreNamespace;
     const UIManager: typeof UIManagerNamespace;
     const AnnouncementCore: typeof AnnouncementCoreNamespace;
     const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
