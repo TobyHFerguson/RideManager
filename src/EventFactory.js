@@ -46,9 +46,9 @@ Note: When using a browser use the "Go to route" link below to open up the route
      * @returns {string}
      */
     function makeRideName(row) {
-        const name = (!row.RideName || SCCCCEvent.managedEventName(row.RideName, getGroupNames()))
-            ? SCCCCEvent.makeManagedRideName(row.StartDate, row.StartTime, row.Group, row.RouteName)
-            : SCCCCEvent.makeUnmanagedRideName(row.RideName);
+        const name = (!row.rideName || SCCCCEvent.managedEventName(row.rideName, getGroupNames()))
+            ? SCCCCEvent.makeManagedRideName(row.startDate, row.startTime, row.group, row.routeName)
+            : SCCCCEvent.makeUnmanagedRideName(row.rideName);
         return name;
     }
 
@@ -65,14 +65,14 @@ Note: When using a browser use the "Go to route" link below to open up the route
             }
             if (!row) throw new Error("no row object given");
             const event = new SCCCCEvent();
-            event.location = row.Location && !(row.Location.startsWith("#")) ? row.Location : "";
-            event.route_ids = [row.RouteURL.split('/')[4]];
-            event.start_time = row.StartTime;
-            event.start_date = row.StartDate;
+            event.location = row.location && !(row.location.startsWith("#")) ? row.location : "";
+            event.route_ids = [row.routeURL.split('/')[4]];
+            event.start_time = row.startTime;
+            event.start_date = row.startDate;
             event.name = makeRideName(row);
             event.organizer_tokens = organizers.map(o => o.id + "");
-            let address = row.Address && !(row.Address.startsWith("#")) ? row.Address : "";
-            let meet_time = dates.addMinutes(row.StartTime, -15);
+            let address = row.address && !(row.address.startsWith("#")) ? row.address : "";
+            let meet_time = dates.addMinutes(row.startTime, -15);
             const startTime = row.StartTime instanceof Date ? row.StartTime : new Date(row.StartTime);
             const meetTimeDate = meet_time instanceof Date ? meet_time : (typeof meet_time === 'number' ? new Date(meet_time) : new Date());
             event.desc = createDescription(organizers.map(o => o.text), address, meetTimeDate, startTime, event_id);

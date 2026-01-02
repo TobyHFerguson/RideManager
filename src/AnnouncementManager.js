@@ -77,34 +77,34 @@ var AnnouncementManager = (function () {
                 // Calculate send time using core logic
                 const timezone = Session.getScriptTimeZone();
                 // @ts-expect-error - AnnouncementCore is a namespace object, TypeScript sees module type
-                const sendTime = AnnouncementCore.calculateSendTime(row.StartDate, timezone);
+                const sendTime = AnnouncementCore.calculateSendTime(row.startDate, timezone);
                 const sendDate = new Date(sendTime);
                 console.log(`AnnouncementManager: Calculated send time: ${sendDate}`);
 
                 // Build rowData object for template expansion
                 const rowData = {
                     _rowNum: row.rowNum,
-                    RideName: row.RideName,
-                    Date: row.StartDate,
-                    RideLeaders: row.RideLeaders.join(', '),
-                    StartTime: row.StartTime,
-                    Location: row.Location,
-                    Address: row.Address,
-                    Group: row.Group,
-                    RideURL: row.RideURL,
-                    RouteURL: row.RouteURL,
-                    RouteName: row.RouteName,
-                    // @ts-expect-error - _data is private but needed for complete template data
-                    ...row._data
+                    RideName: row.rideName,
+                    Date: row.startDate,
+                    RideLeaders: row.leaders.join(', '),
+                    StartTime: row.startTime,
+                    Location: row.location,
+                    Address: row.address,
+                    Group: row.group,
+                    RideURL: row.rideURL,
+                    RouteURL: row.routeURL,
+                    RouteName: row.routeName,
+                    Duration: row.duration,
+                    EndTime: row.endTime
                 };
 
                 // Append instructions for the operator
                 this._appendInstructions(newDoc.getId(), sendTime, rowData);
 
-                row.SendAt = sendDate;
-                row.Status = 'pending';
-                row.Attempts = 0;
-                row.LastError = '';
+                row.setSendAt(sendDate);
+                row.setStatus('pending');
+                row.setAttempts(0);
+                row.setLastError('');
 
                 // @ts-ignore - Row._adapter is internal but needed for immediate save
                 // Save the row (will mark columns as dirty and persist on adapter.save())
@@ -129,7 +129,7 @@ var AnnouncementManager = (function () {
         sendAnnouncement(row, email = null) {
             try {
                 const globals = getGlobals();
-                const key = `${row.Group}_GROUP_ANNOUNCEMENT_ADDRESS`;
+                const key = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
 
                 let recipientEmail = '';
                 if (email) {
@@ -141,7 +141,7 @@ var AnnouncementManager = (function () {
                 }
 
                 // Extract document ID from announcement URL
-                const docUrl = row.Announcement;
+                const docUrl = row.announcement;
                 const documentId = this._extractDocId(docUrl);
                 if (!documentId) {
                     throw new Error(`Invalid announcement URL: ${docUrl}`);
@@ -153,24 +153,25 @@ var AnnouncementManager = (function () {
                 // Build rowData object for template expansion
                 const rowData = {
                     _rowNum: row.rowNum,
-                    RideName: row.RideName,
-                    Date: row.StartDate,
-                    RideLeaders: row.RideLeaders.join(', '),
-                    StartTime: row.StartTime,
-                    Location: row.Location,
-                    Address: row.Address,
-                    Group: row.Group,
-                    RideURL: row.RideURL,
-                    RouteURL: row.RouteURL,
-                    RouteName: row.RouteName
-                    // Note: Only including specific fields needed for template expansion
+                    RideName: row.rideName,
+                    Date: row.startDate,
+                    RideLeaders: row.leaders.join(', '),
+                    StartTime: row.startTime,
+                    Location: row.location,
+                    Address: row.address,
+                    Group: row.group,
+                    RideURL: row.rideURL,
+                    RouteURL: row.routeURL,
+                    RouteName: row.routeName,
+                    Duration: row.duration,
+                    EndTime: row.endTime
                 };
 
                 // Fetch route data for template enrichment (gain, length, fpm, startPin, lat, long)
                 let route = null;
-                if (row.RouteURL) {
+                if (row.routeURL) {
                     try {
-                        route = getRoute(row.RouteURL);
+                        route = getRoute(row.routeURL);
                     } catch (error) {
                         const err = error instanceof Error ? error : new Error(String(error));
                         console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${err.message}`);
@@ -191,7 +192,7 @@ var AnnouncementManager = (function () {
 
                 // Extract subject from HTML (look for Subject: line at start)
                 const emailContent = this._extractSubjectFromHtml(html);
-                const subject = emailContent.subject || `Ride Announcement: ${row.RideName || 'Unknown Ride'}`;
+                const subject = emailContent.subject || `Ride Announcement: ${row.rideName || 'Unknown Ride'}`;
                 const htmlBody = emailContent.body;
 
                 // Send HTML email
@@ -313,7 +314,7 @@ var AnnouncementManager = (function () {
                         if (documentId) {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);
-                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.RideURL}`);
+                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.rideURL}`);
                         }
                     } catch (error) {
                         const err = error instanceof Error ? error : new Error(String(error));
@@ -372,7 +373,7 @@ var AnnouncementManager = (function () {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);
                             trashedCount++;
-                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.RideName}`);
+                            console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.rideName}`);
                         }
                     } catch (error) {
                         const err = error instanceof Error ? error : new Error(String(error));
@@ -520,8 +521,8 @@ var AnnouncementManager = (function () {
                         documentName: currentDocName
                     },
                     {
-                        rideName: row.RideName,
-                        rideDate: row.StartDate
+                        rideName: row.rideName,
+                        rideDate: row.startDate
                     },
                     timezone
                 );
@@ -653,7 +654,7 @@ var AnnouncementManager = (function () {
          * @returns {GoogleAppsScript.Drive.File} New document file
          */
         _copyTemplate(templateInfo, row) {
-            const rideName = row.RideName || 'Unknown Ride';
+            const rideName = row.rideName || 'Unknown Ride';
             console.log(`AnnouncementManager: Creating announcement for ${rideName} (row ${row.rowNum})`);
             const templateFile = this._getTemplateFile(templateInfo)
 
@@ -1154,8 +1155,8 @@ var AnnouncementManager = (function () {
                     return;
                 }
 
-                const subject = `FAILED: Ride announcement for "${row.RideName}" could not be sent`;
-                const body = `The scheduled announcement for ride "${row.RideName}" (Row ${row.rowNum}) failed to send.\n\n` +
+                const subject = `FAILED: Ride announcement for "${row.rideName}" could not be sent`;
+                const body = `The scheduled announcement for ride "${row.rideName}" (Row ${row.rowNum}) failed to send.\n\n` +
                     `Error: ${error}\n\n` +
                     `Please review the announcement and manually retry by updating the ride in the spreadsheet.\n` +
                     `Document: ${row.Announcement}`;
@@ -1331,26 +1332,26 @@ var AnnouncementManager = (function () {
 
             const rowData = {
                 _rowNum: row.rowNum,
-                RideName: row.RideName,
-                Date: row.StartDate,
-                RideLeaders: row.RideLeaders.join(', '),
-                StartTime: row.StartTime,
-                Location: row.Location,
-                Address: row.Address,
-                Group: row.Group,
-                RideURL: row.RideURL,
-                RouteURL: row.RouteURL,
-                RouteName: row.RouteName,
-                [reasonFieldName]: reasonText, // Add the reason field with default
-                // @ts-expect-error - _data is private but needed for complete template expansion
-                ...row._data
+                RideName: row.rideName,
+                Date: row.startDate,
+                RideLeaders: row.leaders.join(', '),
+                StartTime: row.startTime,
+                Location: row.location,
+                Address: row.address,
+                Group: row.group,
+                RideURL: row.rideURL,
+                RouteURL: row.routeURL,
+                RouteName: row.routeName,
+                Duration: row.duration,
+                EndTime: row.endTime,
+                [reasonFieldName]: reasonText // Add the reason field with default
             };
 
             // Fetch route data for template enrichment (gain, length, fpm, startPin, lat, long)
             let route = null;
-            if (row.RouteURL) {
+            if (row.routeURL) {
                 try {
-                    route = getRoute(row.RouteURL);
+                    route = getRoute(row.routeURL);
                 } catch (error) {
                     const err = error instanceof Error ? error : new Error(String(error));
                     console.warn(`AnnouncementManager: Could not fetch route data for enrichment: ${err.message}`);
@@ -1367,7 +1368,7 @@ var AnnouncementManager = (function () {
 
             // Extract subject from HTML
             const emailContent = this._extractSubjectFromHtml(html);
-            const subject = emailContent.subject || `Ride ${reasonFieldName === 'CancellationReason' ? 'Cancellation' : 'Reinstatement'}: ${row.RideName || 'Unknown Ride'}`;
+            const subject = emailContent.subject || `Ride ${reasonFieldName === 'CancellationReason' ? 'Cancellation' : 'Reinstatement'}: ${row.rideName || 'Unknown Ride'}`;
             const htmlBody = emailContent.body;
 
             return { html: htmlBody, subject };

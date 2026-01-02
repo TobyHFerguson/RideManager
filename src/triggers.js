@@ -359,12 +359,12 @@ function testSendAnnouncement_() {
         if (result.success) {
           successCount++;
         } else {
-          failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: result.error });
+          failedRows.push({ rowNum: row.rowNum, rideName: row.rideName, error: result.error });
         }
 
       } catch (e) {
         const error = /** @type {Error} */ (e);
-        failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: error.message });
+        failedRows.push({ rowNum: row.rowNum, rideName: row.rideName, error: error.message });
         console.error(`testSendAnnouncement_ error for row ${row.rowNum}:`, error);
       }
     });
