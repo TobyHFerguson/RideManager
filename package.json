@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "@google/clasp": "^2.4.1",
-    "@types/google-apps-script": "^1.0.53",
     "clasp": "^1.0.0"
   },
   "name": "working",
@@ -35,9 +34,10 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@babel/preset-env": "^7.15.0",
+    "@types/google-apps-script": "^2.0.8",
     "chai": "^4.3.7",
     "jest": "^27.5.1",
-    "sinon": "^14.0.2",
-    "@babel/preset-env": "^7.15.0"
+    "sinon": "^14.0.2"
   }
 }

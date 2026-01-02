@@ -42,7 +42,7 @@ const RideManager = (function () {
      * @param {any} row
      */
     function getLatLong(row) {
-        const route = getRoute(row.RouteURL);
+        const route = getRoute(row.routeURL);
         return route ? `${route.first_lat},${route.first_lng}` : '';
     }
 
@@ -53,21 +53,21 @@ const RideManager = (function () {
      * @param {string} [reason]
      */
     function cancelRow_(row, rwgps, sendEmail = false, reason = '') {
-        const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+        const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
         rideEvent.cancel();
-        row.setRideLink(rideEvent.name, row.RideURL);
-        rwgps.edit_event(row.RideURL, rideEvent)
-        const description = `<a href="${row.RideURL}">${rideEvent.name}</a>`;
+        row.setRideLink(rideEvent.name, row.rideURL);
+        rwgps.edit_event(row.rideURL, rideEvent)
+        const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
         updateEvent_(row, rideEvent, description);
 
         // Handle announcement cancellation
-        if (row.Announcement && row.Status) {
+        if (row.announcement && row.status) {
             try {
                 const manager = new AnnouncementManager();
                 const result = manager.handleCancellation(row, sendEmail, reason);
 
                 // Log to UserLogger
-                UserLogger.log('CANCEL_RIDE', `Row ${row.rowNum}, ${row.RideName}, Reason: ${reason || '(none)'}`, {
+                UserLogger.log('CANCEL_RIDE', `Row ${row.rowNum}, ${row.rideName}, Reason: ${reason || '(none)'}`, {
                     announcementSent: result.announcementSent,
                     error: result.error
                 });
@@ -85,14 +85,14 @@ const RideManager = (function () {
     function importRow_(row, rwgps) {
         /** @type {{url: any, expiry: string, tags: any[], name?: string}} */
         let route = {
-            url: row.RouteURL ? row.RouteURL : row.RouteName,
+            url: row.routeURL ? row.routeURL : row.routeName,
             //TODO use dates as native objects, not strings
-            expiry: String(dates.MMDDYYYY(dates.add(row.StartDate ? row.StartDate : new Date(), getGlobals().EXPIRY_DELAY))),
-            tags: [row.Group]
+            expiry: String(dates.MMDDYYYY(dates.add(row.startDate ? row.startDate : new Date(), getGlobals().EXPIRY_DELAY))),
+            tags: [row.group]
         }
-        let rn = row.RouteName;
-        let ru = row.RouteURL;
-        if (rn !== ru) route.name = row.RouteName;
+        let rn = row.routeName;
+        let ru = row.routeURL;
+        if (rn !== ru) route.name = row.routeName;
 
         // Delete any foreign prefix in the name
         if (route.name && route.name.startsWith(getGlobals().FOREIGN_PREFIX)) route.name = route.name.substring(getGlobals().FOREIGN_PREFIX.length);
@@ -112,9 +112,9 @@ const RideManager = (function () {
     function updateEvent_(row, rideEvent, description) {
         const name = rideEvent.name || '';
         const start = rideEvent.start_time ? new Date(rideEvent.start_time) : new Date();
-        const end = row.EndTime ? new Date(row.EndTime) : new Date();
+        const end = row.endTime ? new Date(row.endTime) : new Date();
         try {
-            GoogleCalendarManager.updateEvent(getCalendarId(row.Group), row.GoogleEventId, name, start, end, getLatLong(row), description);
+            GoogleCalendarManager.updateEvent(getCalendarId(row.group), row.googleEventId, name, start, end, getLatLong(row), description);
             return true;
         } catch (calendarError) {
             const err = calendarError instanceof Error ? calendarError : new Error(String(calendarError));
@@ -144,9 +144,9 @@ const RideManager = (function () {
     function createEvent_(row, rideEvent, description) {
         const name = rideEvent.name || '';
         const start = rideEvent.start_time ? new Date(rideEvent.start_time) : new Date();
-        const end = row.EndTime ? new Date(row.EndTime) : new Date();
+        const end = row.endTime ? new Date(row.endTime) : new Date();
         try {
-            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.Group), name, start, end, getLatLong(row), description);
+            const eventId = GoogleCalendarManager.createEvent(getCalendarId(row.group), name, start, end, getLatLong(row), description);
             return eventId;
         } catch (calendarError) {
             const err = calendarError instanceof Error ? calendarError : new Error(String(calendarError));
@@ -201,20 +201,20 @@ const RideManager = (function () {
      * @param {string} [reason]
      */
     function reinstateRow_(row, rwgps, sendEmail = false, reason = '') {
-        const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+        const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
         rideEvent.reinstate();
-        row.setRideLink(rideEvent.name, row.RideURL);
-        rwgps.edit_event(row.RideURL, rideEvent)
-        const description = `<a href="${row.RideURL}">${rideEvent.name}</a>`;
+        row.setRideLink(rideEvent.name, row.rideURL);
+        rwgps.edit_event(row.rideURL, rideEvent)
+        const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
         updateEvent_(row, rideEvent, description)
         // Handle announcement reinstatement
-        if (row.Announcement && row.Status === 'cancelled') {
+        if (row.announcement && row.status === 'cancelled') {
             try {
                 const manager = new AnnouncementManager();
                 const result = manager.handleReinstatement(row, sendEmail, reason);
 
                 // Log to UserLogger
-                UserLogger.log('REINSTATE_RIDE', `Row ${row.rowNum}, ${row.RideName}, Reason: ${reason || '(none)'}`, {
+                UserLogger.log('REINSTATE_RIDE', `Row ${row.rowNum}, ${row.rideName}, Reason: ${reason || '(none)'}`, {
                     announcementSent: result.announcementSent,
                     error: result.error
                 });
@@ -242,16 +242,16 @@ const RideManager = (function () {
             }
         }
 
-        const new_event_url = rwgps.copy_template_(get_template_(row.Group));
+        const new_event_url = rwgps.copy_template_(get_template_(row.group));
         const event_id = _extractEventID(new_event_url);
-        const rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
+        const rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
         rwgps.edit_event(new_event_url, rideEvent);
-        rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
+        rwgps.setRouteExpiration(row.routeURL, dates.add(row.startDate, getGlobals().EXPIRY_DELAY), true);
         row.setRideLink(rideEvent.name, new_event_url);
         rwgps.unTagEvents([new_event_url], ["template"]);
         const description = `<a href="${new_event_url}">${rideEvent.name}</a>`;
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with rideEvent:`, rideEvent);
-        row.GoogleEventId = createEvent_(row, rideEvent, description);
+        row.setGoogleEventId(createEvent_(row, rideEvent, description));
 
         // Create ride announcement regardless of calendar success
         try {
@@ -284,44 +284,44 @@ const RideManager = (function () {
         const names = getGroupNames();
 
         let rideEvent
-        const originalGroup = SCCCCEvent.getGroupName(row.RideName, names);
-        if (!SCCCCEvent.managedEventName(row.RideName, names)) {
-            rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.RideURL));
+        const originalGroup = SCCCCEvent.getGroupName(row.rideName, names);
+        if (!SCCCCEvent.managedEventName(row.rideName, names)) {
+            rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
             // DEBUG ISSUE 22
             if (rideEvent.name.trim().endsWith(']')) {
-                throw new Error(`updateRow_: row ${row.rowNum}: Event name from RWGPS ends with a square bracket: ${rideEvent.name}. Original name: ${row.RideName}`);
+                throw new Error(`updateRow_: row ${row.rowNum}: Event name from RWGPS ends with a square bracket: ${rideEvent.name}. Original name: ${row.rideName}`);
             }
         } else {
-            const event_id = _extractEventID(row.RideURL);
-            rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.RideLeaders), event_id);
+            const event_id = _extractEventID(row.rideURL);
+            rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
             if (rowCheck.cancelled(row)) {
                 rideEvent.cancel();
             }
             // DEBUG ISSUE 22
             if (rideEvent.name.trim().endsWith(']')) {
-                throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${rideEvent.name}. Original name: ${row.RideName}`);
+                throw new Error(`updateRow_: row ${row.rowNum}: Event name from newEvent ends with a square bracket: ${rideEvent.name}. Original name: ${row.rideName}`);
             }
-            rwgps.setRouteExpiration(row.RouteURL, dates.add(row.StartDate, getGlobals().EXPIRY_DELAY), true);
+            rwgps.setRouteExpiration(row.routeURL, dates.add(row.startDate, getGlobals().EXPIRY_DELAY), true);
         }
 
-        row.setRideLink(rideEvent.name, row.RideURL);
-        rwgps.edit_event(row.RideURL, rideEvent);
-        if (originalGroup !== row.Group) {
-            if (!deleteEvent_(originalGroup, row.GoogleEventId)) {
+        row.setRideLink(rideEvent.name, row.rideURL);
+        rwgps.edit_event(row.rideURL, rideEvent);
+        if (originalGroup !== row.group) {
+            if (!deleteEvent_(originalGroup, row.googleEventId)) {
                 return;
             } else {
-                row.GoogleEventId = ''; // Clear so new event is created below
+                row.setGoogleEventId(''); // Clear so new event is created below
             }
         }
 
-        const description = `<a href="${row.RideURL}">${rideEvent.name}</a>`;
+        const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
         let success = false;
-        if (row.GoogleEventId) {
+        if (row.googleEventId) {
             if (updateEvent_(row, rideEvent, description)) {
                 success = true;
             };
         } else {
-            row.GoogleEventId = createEvent_(row, rideEvent, description);
+            row.setGoogleEventId(createEvent_(row, rideEvent, description));
         }
 
 
@@ -406,9 +406,9 @@ const RideManager = (function () {
         unscheduleRows: function (rows, rwgps) {
             // Collect RideURLs and GoogleEventIds BEFORE any modifications
             const rideData = rows.map(row => ({
-                rideUrl: row.RideURL || null,
-                googleEventId: row.GoogleEventId || null,
-                group: row.Group
+                rideUrl: row.rideURL || null,
+                googleEventId: row.googleEventId || null,
+                group: row.group
             }));
 
             // Step 1: Delete rides from RWGPS (batch operation, but handle errors gracefully)
@@ -469,7 +469,7 @@ const RideManager = (function () {
                             console.error(`RideManager.unscheduleRows: No Calendar ID found for ${data.group} - skipping calendar deletion`);
                         } else {
                             if (deleteEvent_(data.group, data.googleEventId)) {
-                                row.GoogleEventId = '';
+                                row.setGoogleEventId('');
                             }
                         }
                     }
@@ -477,7 +477,7 @@ const RideManager = (function () {
                     console.error(`RideManager.unscheduleRows: Error deleting calendar event ${data.googleEventId}:`, error);
                     // Still clear the field even if deletion failed
                     try {
-                        row.GoogleEventId = '';
+                        row.setGoogleEventId('');
                     } catch (e) {
                         console.error(`RideManager.unscheduleRows: Error clearing GoogleEventId:`, e);
                     }

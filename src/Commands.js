@@ -11,13 +11,13 @@ if (typeof require !== 'undefined') {
 const Commands = (() => {
     return Object.freeze({
         /**
-         * @param {InstanceType<typeof Row>[]} rows
+         * @param {InstanceType<typeof RowCore>[]} rows
          * @param {RWGPS} rwgps
          * @param {boolean} [force]
          */
         cancelSelectedRidesWithCreds(rows, rwgps, force = false) {
             // Check if any rows have announcements that need special handling
-            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof Row>} */ r) => r.Announcement && r.Status);
+            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof RowCore>} */ r) => r.Announcement && r.Status);
             
             if (rowsWithAnnouncements.length > 0 && !force) {
                 // Handle cancellation with UI for announcements
@@ -29,7 +29,7 @@ const Commands = (() => {
             }
         },
         /**
-         * @param {InstanceType<typeof Row>[]} rows
+         * @param {InstanceType<typeof RowCore>[]} rows
          * @param {RWGPS} rwgps
          * @param {boolean} force
          */
@@ -37,13 +37,13 @@ const Commands = (() => {
             UIManager.processRows(rows, [rowCheck.routeInaccessibleOrOwnedByClub], [], rwgps, RideManager.importRows, force);
         },
         /**
-         * @param {InstanceType<typeof Row>[]} rows
+         * @param {InstanceType<typeof RowCore>[]} rows
          * @param {RWGPS} rwgps
          * @param {boolean} [force]
          */
         reinstateSelectedRidesWithCreds(rows, rwgps, force = false) {
             // Check if any rows have announcements that need special handling
-            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof Row>} */ r) => r.Announcement && r.Status === 'cancelled');
+            const rowsWithAnnouncements = rows.filter((/** @type {InstanceType<typeof RowCore>} */ r) => r.Announcement && r.Status === 'cancelled');
             
             if (rowsWithAnnouncements.length > 0 && !force) {
                 // Handle reinstatement with UI for announcements
@@ -55,7 +55,7 @@ const Commands = (() => {
             }
         },
         /**
-         * @param {InstanceType<typeof Row>[]} rows
+         * @param {InstanceType<typeof RowCore>[]} rows
          * @param {RWGPS} rwgps
          * @param {boolean} [force]
          */
@@ -65,7 +65,7 @@ const Commands = (() => {
             UIManager.processRows(rows, errorFuns, warningFuns, rwgps, RideManager.scheduleRows, force);
         },
         /**
-         * @param {InstanceType<typeof Row>[]} rows
+         * @param {InstanceType<typeof RowCore>[]} rows
          * @param {RWGPS} rwgps
          * @param {boolean} [force]
          */
@@ -73,7 +73,7 @@ const Commands = (() => {
             UIManager.processRows(rows, [rowCheck.unscheduled, rowCheck.unmanagedRide], [], rwgps, RideManager.unscheduleRows, force);
         },
         /**
-         * @param {InstanceType<typeof Row>[]} rows
+         * @param {InstanceType<typeof RowCore>[]} rows
          * @param {RWGPS} rwgps
          * @param {boolean} [force]
          */

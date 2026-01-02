@@ -10,6 +10,7 @@
 
 // Import the actual types we need
 import type ScheduleAdapterClass from './ScheduleAdapter';
+import type RowCoreClass from './RowCore';
 import type { MenuFunctions as MenuFunctionsType } from './MenuFunctions';
 import type RouteColumnEditorClass from './RouteColumnEditor';
 import type AnnouncementManagerClass from './AnnouncementManager';
@@ -17,7 +18,6 @@ import type TriggerManagerClass from './TriggerManager';
 import type ExportsType from './Exports';
 import type { GlobalsObject } from './Globals';
 import type { Externals as ExternalsType } from './Externals';
-import type RowClass from './Row';
 import type SCCCCEventClass from './SCCCCEvent';
 import type EventFactoryNamespace from './EventFactory';
 import type CommandsNamespace from './Commands';
@@ -34,10 +34,10 @@ import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
 declare global {
     // Classes - use 'typeof' to get the constructor type (can use 'new')
     const ScheduleAdapter: typeof ScheduleAdapterClass;
+    const RowCore: typeof RowCoreClass;
     const RouteColumnEditor: typeof RouteColumnEditorClass;
     const AnnouncementManager: typeof AnnouncementManagerClass;
     const TriggerManager: typeof TriggerManagerClass;
-    const Row: typeof RowClass;
     const SCCCCEvent: typeof SCCCCEventClass;
     const RWGPSMembersAdapter: typeof RWGPSMembersAdapterClass;
     
@@ -51,7 +51,6 @@ declare global {
     const UIManager: typeof UIManagerNamespace;
     const AnnouncementCore: typeof AnnouncementCoreNamespace;
     const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
-    const RowIdCore: typeof RowIdCoreNamespace;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;

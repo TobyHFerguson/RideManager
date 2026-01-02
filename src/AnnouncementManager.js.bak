@@ -29,7 +29,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Create a ride announcement document and add to row's announcement columns
-         * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
+         * @param {InstanceType<typeof Row>} row - Row object from ScheduleAdapter
          * @returns {string} Document URL
          */
         createAnnouncement(row) {
@@ -48,7 +48,7 @@ var AnnouncementManager = (function () {
 
                 const newDoc = this._copyTemplate(templateInfo, row);
                 const docUrl = newDoc.getUrl();
-                row.setAnnouncement(docUrl);
+                row.Announcement = docUrl;
                 console.log(`AnnouncementManager: Created document ${docUrl} from ${templateInfo.type} template (${templateId})`);
 
                 // Set permissions: RS group can edit
@@ -122,7 +122,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Send an announcement email for a row
-         * @param {InstanceType<typeof RowCore>} row - Row object with announcement data
+         * @param {InstanceType<typeof Row>} row - Row object with announcement data
          * @returns {{success: boolean, error?: string}} Result object
          */
         sendAnnouncement(row, email = null) {
@@ -241,17 +241,17 @@ var AnnouncementManager = (function () {
 
                     if (result.success) {
                         // Mark as sent
-                        row.setStatus('sent');
-                        row.setLastAttemptAt(new Date(now));
+                        row.Status = 'sent';
+                        row.LastAttemptAt = new Date(now);
                         sent++;
                     } else {
                         // Handle failure - set status to failed immediately
-                        row.setStatus('failed');
-                        row.setLastError(result.error || 'Unknown error');
-                        row.setLastAttemptAt(new Date(now));
+                        row.Status = 'failed';
+                        row.LastError = result.error || 'Unknown error';
+                        row.LastAttemptAt = new Date(now);
                         failed++;
 
-                        console.error(`AnnouncementManager: Announcement for row ${row.rowNum} failed: ${row.lastError}`);
+                        console.error(`AnnouncementManager: Announcement for row ${row.rowNum} failed: ${row.LastError}`);
 
                         // Send immediate failure notification to Ride Schedulers
                         this._notifyFailureImmediately(row, result.error || 'Unknown error');
@@ -299,7 +299,7 @@ var AnnouncementManager = (function () {
                 const adapter = new ScheduleAdapter();
                 const allRows = adapter.loadAll();
                 const rideUrlSet = new Set(rideUrls);
-                const rowsToRemove = allRows.filter(r => r.announcement && rideUrlSet.has(r.rideURL));
+                const rowsToRemove = allRows.filter(r => r.Announcement && rideUrlSet.has(r.RideURL));
 
                 if (rowsToRemove.length === 0) {
                     console.log(`AnnouncementManager: No announcements found for ${rideUrls.length} ride(s)`);
@@ -309,7 +309,7 @@ var AnnouncementManager = (function () {
                 // Delete the announcement documents and clear row data
                 rowsToRemove.forEach(row => {
                     try {
-                        const documentId = this._extractDocId(row.announcement);
+                        const documentId = this._extractDocId(row.Announcement);
                         if (documentId) {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);
@@ -354,7 +354,7 @@ var AnnouncementManager = (function () {
             try {
                 const adapter = new ScheduleAdapter();
                 const allRows = adapter.loadAll();
-                const rowsWithAnnouncements = allRows.filter(r => r.announcement);
+                const rowsWithAnnouncements = allRows.filter(r => r.Announcement);
                 const count = rowsWithAnnouncements.length;
 
                 if (count === 0) {
@@ -367,7 +367,7 @@ var AnnouncementManager = (function () {
                 let failedCount = 0;
                 rowsWithAnnouncements.forEach(row => {
                     try {
-                        const documentId = this._extractDocId(row.announcement);
+                        const documentId = this._extractDocId(row.Announcement);
                         if (documentId) {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);
@@ -380,8 +380,15 @@ var AnnouncementManager = (function () {
                         console.warn(`AnnouncementManager: Could not trash document: ${err.message}`);
                     }
 
-                    // Clear announcement columns using RowCore method
-                    row.clearAnnouncement();
+                    // Clear announcement columns
+                    row.Announcement = '';
+                    // @ts-expect-error - Clear other announcement-related columns
+                    row.SendAt = undefined;
+                    row.Status = '';
+                    row.Attempts = 0;
+                    row.LastError = '';
+                    // @ts-expect-error - Clear last attempt timestamp
+                    row.LastAttemptAt = undefined;
                 });
 
                 // Save all changes
@@ -400,7 +407,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Handle ride cancellation with announcement
-         * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
+         * @param {InstanceType<typeof Row>} row - Row object from ScheduleAdapter
          * @param {boolean} sendEmail - Whether to send cancellation email
          * @param {string} [reason=''] - User-provided cancellation reason
          * @returns {{announcementSent: boolean, error?: string}} Result object
@@ -408,7 +415,7 @@ var AnnouncementManager = (function () {
         handleCancellation(row, sendEmail, reason = '') {
             try {
                 // Check if announcement exists
-                if (!row.announcement || !row.status) {
+                if (!row.Announcement || !row.Status) {
                     console.log(`AnnouncementManager.handleCancellation: No announcement for row ${row.rowNum}, skipping`);
                     return { announcementSent: false };
                 }
@@ -436,7 +443,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Handle ride reinstatement with announcement
-         * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
+         * @param {InstanceType<typeof Row>} row - Row object from ScheduleAdapter
          * @param {boolean} sendEmail - Whether to send reinstatement email
          * @param {string} [reason=''] - User-provided reinstatement reason
          * @returns {{announcementSent: boolean, error?: string}} Result object
@@ -475,13 +482,13 @@ var AnnouncementManager = (function () {
          * Automatically updates document name and sendAt based on new ride data
          * If no announcement exists, creates one
          * 
-         * @param {InstanceType<typeof RowCore>} row - Row object with updated ride data
+         * @param {InstanceType<typeof Row>} row - Row object with updated ride data
          * @returns {{success: boolean, error?: string}} Result object
          */
         updateAnnouncement(row) {
             try {
                 // Check if row has announcement - if not, create one
-                if (!row.announcement || !row.status) {
+                if (!row.Announcement || !row.Status) {
                     console.log(`AnnouncementManager.updateAnnouncement: No announcement for row ${row.rowNum}, creating one`);
                     try {
                         this.createAnnouncement(row);
@@ -495,9 +502,9 @@ var AnnouncementManager = (function () {
                 }
 
                 // Get current announcement document name
-                const documentId = this._extractDocId(row.announcement);
+                const documentId = this._extractDocId(row.Announcement);
                 if (!documentId) {
-                    throw new Error(`Invalid announcement URL: ${row.announcement}`);
+                    throw new Error(`Invalid announcement URL: ${row.Announcement}`);
                 }
 
                 const doc = DriveApp.getFileById(documentId);
@@ -524,7 +531,7 @@ var AnnouncementManager = (function () {
 
                 // Always update sendAt to calculated time
                 if (updates.needsSendAtUpdate && updates.calculatedSendAt) {
-                    row.setSendAt(updates.calculatedSendAt);
+                    row.SendAt = updates.calculatedSendAt;
                     console.log(`AnnouncementManager.updateAnnouncement: Updated sendAt to ${updates.calculatedSendAt} for row ${row.rowNum}`);
                 }
 
@@ -1130,7 +1137,7 @@ var AnnouncementManager = (function () {
         /**
          * Notify immediately about a failed announcement
          * Sends email to Ride Scheduler group with failure details
-         * @param {InstanceType<typeof RowCore>} row - Row instance with failed announcement
+         * @param {InstanceType<typeof Row>} row - Row instance with failed announcement
          * @param {string} error - Error message
          * @private
          */
@@ -1148,7 +1155,7 @@ var AnnouncementManager = (function () {
                 const body = `The scheduled announcement for ride "${row.rideName}" (Row ${row.rowNum}) failed to send.\n\n` +
                     `Error: ${error}\n\n` +
                     `Please review the announcement and manually retry by updating the ride in the spreadsheet.\n` +
-                    `Document: ${row.announcement}`;
+                    `Document: ${row.Announcement}`;
 
                 GmailApp.sendEmail(rsGroupEmail, subject, body, {
                     name: 'Ride Scheduler',
@@ -1182,9 +1189,9 @@ var AnnouncementManager = (function () {
 
                 // Find earliest pending announcement
                 const pendingRows = allRows.filter(r =>
-                    r.announcement &&
-                    r.status === 'pending' &&
-                    r.sendAt
+                    r.Announcement &&
+                    r.Status === 'pending' &&
+                    r.SendAt
                 );
 
                 if (pendingRows.length === 0) {
@@ -1196,19 +1203,19 @@ var AnnouncementManager = (function () {
 
                 // Find earliest send time
                 const earliestRow = pendingRows.reduce((earliest, row) => {
-                    if (!row.sendAt || !earliest.sendAt) return earliest;
-                    return row.sendAt.getTime() < earliest.sendAt.getTime() ? row : earliest;
+                    if (!row.SendAt || !earliest.SendAt) return earliest;
+                    return row.SendAt.getTime() < earliest.SendAt.getTime() ? row : earliest;
                 });
 
-                if (!earliestRow.sendAt) {
+                if (!earliestRow.SendAt) {
                     console.warn('AnnouncementManager: Earliest row has no SendAt time');
                     return;
                 }
-                const nextSendTime = earliestRow.sendAt.getTime();
+                const nextSendTime = earliestRow.SendAt.getTime();
 
                 // Schedule trigger for earliest announcement
                 this.triggerManager.scheduleAnnouncementTrigger(nextSendTime);
-                console.log(`AnnouncementManager: Scheduled trigger for ${earliestRow.sendAt.toLocaleString()} (row ${earliestRow.rowNum})`);
+                console.log(`AnnouncementManager: Scheduled trigger for ${earliestRow.SendAt.toLocaleString()} (row ${earliestRow.rowNum})`);
 
             } catch (error) {
                 console.error('AnnouncementManager._scheduleNextAnnouncement error:', error);
@@ -1219,7 +1226,7 @@ var AnnouncementManager = (function () {
         /**
          * Send cancellation email
          * @private
-         * @param {InstanceType<typeof RowCore>} row - Row instance
+         * @param {InstanceType<typeof Row>} row - Row instance
          * @param {string} reason - Cancellation reason
          * @returns {{success: boolean, error?: string}} Result object
          */
@@ -1259,7 +1266,7 @@ var AnnouncementManager = (function () {
         /**
          * Send reinstatement email
          * @private
-         * @param {InstanceType<typeof RowCore>} row - Row instance
+         * @param {InstanceType<typeof Row>} row - Row instance
          * @param {string} reason - Reinstatement reason
          * @returns {{success: boolean, error?: string}} Result object
          */
@@ -1300,7 +1307,7 @@ var AnnouncementManager = (function () {
          * Load template document and expand with row data
          * @private
          * @param {string} templateUrl - Template document URL
-         * @param {InstanceType<typeof RowCore>} row - Row instance
+         * @param {InstanceType<typeof Row>} row - Row instance
          * @param {string} reason - Cancellation/reinstatement reason
          * @param {string} reasonFieldName - Field name for reason (always 'Reason')
          * @returns {{html: string, subject: string}} HTML and subject

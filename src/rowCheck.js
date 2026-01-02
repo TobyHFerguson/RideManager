@@ -6,52 +6,52 @@ if (typeof require !== 'undefined') {
 
 const rowCheck = {
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     unmanagedRide: function (row) {
-        if (!SCCCCEvent.managedEventName(row.RideName, getGroupNames())) {
+        if (!SCCCCEvent.managedEventName(row.rideName, getGroupNames())) {
             return "Ride is unmanaged";
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     unscheduled: function (row) {
-        if (!row.RideURL) {
+        if (!row.rideURL) {
             return "Ride has not been scheduled";
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noStartDate: function (row) {
-        if ((!row.StartDate) || (dates.convert(row.StartDate).toString() === "Invalid Date")) {
-            return `Invalid row.StartDate: "${row.StartDate} ${dates.convert(row.StartDate)}"`
+        if ((!row.startDate) || (dates.convert(row.startDate).toString() === "Invalid Date")) {
+            return `Invalid row.startDate: "${row.startDate} ${dates.convert(row.startDate)}"`
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noStartTime: function (row) {
-        if ((!row.StartTime) || (dates.convert(row.StartTime).toString() === "Invalid Date")) {
-            return `Invalid row.StartTime: "${row.StartTime} ${dates.convert(row.StartTime)}"`
+        if ((!row.startTime) || (dates.convert(row.startTime).toString() === "Invalid Date")) {
+            return `Invalid row.startTime: "${row.startTime} ${dates.convert(row.startTime)}"`
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noGroup: function (row) {
-        if (!row.Group) return "Group column is empty";
+        if (!row.group) return "Group column is empty";
         const groups = getGroupNames();
-        if (!groups.includes(row.Group)) {
-            return `Unknown group: '${row.Group}'. Expected one of ${groups.join(', ')}`;
+        if (!groups.includes(row.group)) {
+            return `Unknown group: '${row.group}'. Expected one of ${groups.join(', ')}`;
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     routeInaccessibleOrOwnedByClub: function (row) {
-        const url = row.RouteURL ? row.RouteURL : row.RouteName;
+        const url = row.routeURL ? row.routeURL : row.routeName;
         if (!url) {
             return `No Route URL in row ${row.rowNum}. Are you sure you've selected the right row?`
         }
@@ -75,11 +75,11 @@ const rowCheck = {
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     badRoute: function (row) {
         try {
-            getRoute(row.RouteURL);
+            getRoute(row.routeURL);
         }
         catch (e) {
             const err = e instanceof Error ? e : new Error(String(e));
@@ -88,14 +88,14 @@ const rowCheck = {
     },
     // Warnings
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      * @param {any} rwgps
      */
     noRideLeader: function (row, rwgps) {
-        if (!row.RideLeaders || row.RideLeaders.length === 0) {
+        if (!row.leaders || row.leaders.length === 0) {
             return `No ride leader given. Defaulting to '${getGlobals().RIDE_LEADER_TBD_NAME}'`;
         } else {
-            const rls = row.RideLeaders.reduce((/** @type {{known: any[], unknown: any[]}} */ p, /** @type {any} */ rl) => {
+            const rls = row.leaders.reduce((/** @type {{known: any[], unknown: any[]}} */ p, /** @type {any} */ rl) => {
                 if (rwgps.knownRideLeader(rl)) {
                     p.known.push(rl)
                 } else {
@@ -106,49 +106,52 @@ const rowCheck = {
                 { known: [], unknown: [] });
 
             if (rls.unknown.length) {
-                row.highlightRideLeader(true);
+                // TODO: Highlighting removed during Row → RowCore refactoring
+                // Cell highlighting should be handled separately from validation logic
+                // row.highlightRideLeader(true);
                 const prefix = `${rls.known.length ? "Some" : "All"} Ride Leaders (${rls.unknown.join(', ')}) unknown.`
                 const suffix = rls.known.length ? "" : ` Defaulting to ${getGlobals().RIDE_LEADER_TBD_NAME}`;
                 return prefix + suffix;
             } else {
-                row.highlightRideLeader(false);
+                // TODO: Highlighting removed during Row → RowCore refactoring
+                // row.highlightRideLeader(false);
             }
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     notCancelled: function (row) {
-        if (!(row.RideName.toLowerCase().startsWith('cancelled'))) {
+        if (!(row.rideName.toLowerCase().startsWith('cancelled'))) {
             return 'Operation not permitted when ride is not cancelled';
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     cancelled: function (row) {
-        if (row.RideName.toLowerCase().startsWith('cancelled')) {
+        if (row.rideName.toLowerCase().startsWith('cancelled')) {
             return 'Operation not permitted on cancelled ride';
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noLocation: function (row) {
-        if (!row.Location || row.Location.startsWith('#')) {
+        if (!row.location || row.location.startsWith('#')) {
             return "Unknown location";
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     noAddress: function (row) {
-        if (!row.Address || row.Address.startsWith('#')) {
+        if (!row.address || row.address.startsWith('#')) {
             return "Unknown address";
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     inappropiateGroup: function (row) {
         const nrg = this.noGroup(row);
@@ -173,27 +176,27 @@ const rowCheck = {
             }
         }
 
-        if (!row.RouteURL) return;
-        const response = UrlFetchApp.fetch(row.RouteURL + ".json", { muteHttpExceptions: true });
+        if (!row.routeURL) return;
+        const response = UrlFetchApp.fetch(row.routeURL + ".json", { muteHttpExceptions: true });
         const route = JSON.parse(response.getContentText());
         const d = Math.round(route.distance * getGlobals().METERS_TO_MILES);
         const e = Math.round(route.elevation_gain * getGlobals().METERS_TO_FEET);
-        return __inappropriateGroup(row.Group, e, d);
+        return __inappropriateGroup(row.group, e, d);
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     scheduled: function (row) {
-        if (row.RideURL) {
+        if (row.rideURL) {
             return "This ride has already been scheduled";
         }
     },
     /**
-     * @param {InstanceType<typeof Row>} row
+     * @param {InstanceType<typeof RowCore>} row
      */
     foreignRoute: function (row) {
         try {
-            const route = getRoute(row.RouteURL)
+            const route = getRoute(row.routeURL)
             if (route.user_id !== getGlobals().SCCCC_USER_ID) {
                 return 'Route is not owned by SCCCC';
             }
@@ -230,7 +233,7 @@ function evalRows(rows, rwgps, efs = errorFuns, wfs = warningFuns) {
         return row;
     }
 
-    return rows.map((/** @type {InstanceType<typeof Row>} */ row) => evalRow_(row, rwgps, efs, wfs));
+    return rows.map((/** @type {InstanceType<typeof RowCore>} */ row) => evalRow_(row, rwgps, efs, wfs));
 }
 
 

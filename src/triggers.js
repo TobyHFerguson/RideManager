@@ -133,7 +133,7 @@ function editEventReport_(event) {
   const adapter = new ScheduleAdapter();
   const row = adapter.loadSelected()[0];
   //  console.log(`ride URL: ${row.RideURL}`);
-  console.log(`route URL: ${row.RouteURL}`);
+  console.log(`route URL: ${row.routeURL}`);
   console.log(`isScheduled: ${row.isScheduled()}`);
 }
 
@@ -311,11 +311,12 @@ function testSendAnnouncement_() {
     }
 
     // Filter for rows with announcements
-    const rowsWithAnnouncements = selectedRows.filter(/** @param {any} r */ r => r.Announcement);
+    const rowsWithAnnouncements = selectedRows.filter(/** @param {any} r */ r => r.announcement);
 
     if (rowsWithAnnouncements.length === 0) {
+      const rowNumbers = selectedRows.map(/** @param {any} r */ r => r.rowNum).join(', ');
       ui.alert('No Announcements',
-        `None of the selected rows have announcements.\n\nSelected rows: ${selectedRows.length}`,
+        `None of the selected rows have announcements.\n\nSelected rows: ${rowNumbers}`,
         ui.ButtonSet.OK);
       return;
     }
@@ -323,7 +324,7 @@ function testSendAnnouncement_() {
     const testEmail = Session.getActiveUser().getEmail();
 
     // Confirm
-    const rideNames = rowsWithAnnouncements.map(/** @param {any} r */ r => r.RideName || 'Unknown').join('\n  • ');
+    const rideNames = rowsWithAnnouncements.map(/** @param {any} r */ r => r.rideName || 'Unknown').join('\n  • ');
     const confirmResponse = ui.alert(
       'Confirm Test Send',
       `Send ${rowsWithAnnouncements.length} announcement(s) to: ${testEmail}\n\nRides:\n  • ${rideNames}\n\nThis will NOT update the Status column in the spreadsheet.`,
@@ -359,12 +360,12 @@ function testSendAnnouncement_() {
         if (result.success) {
           successCount++;
         } else {
-          failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: result.error });
+          failedRows.push({ rowNum: row.rowNum, rideName: row.rideName, error: result.error });
         }
 
       } catch (e) {
         const error = /** @type {Error} */ (e);
-        failedRows.push({ rowNum: row.rowNum, rideName: row.RideName, error: error.message });
+        failedRows.push({ rowNum: row.rowNum, rideName: row.rideName, error: error.message });
         console.error(`testSendAnnouncement_ error for row ${row.rowNum}:`, error);
       }
     });

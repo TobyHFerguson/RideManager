@@ -14,7 +14,7 @@ var console;
 
 /**
  * Example function (implementation not shown)
- * @param {InstanceType<typeof Row>} row
+ * @param {InstanceType<typeof RowCore>} row
  * @returns {string}
  */
 function createCalendarEvent(row) {
@@ -35,18 +35,18 @@ function processSelectedRides() {
     // Work with Row objects using same interface as before
     rows.forEach(row => {
         // Getters work the same
-        console.log(`Processing ride: ${row.RideName}`);
-        console.log(`Start: ${row.StartDate}`);
-        console.log(`Leaders: ${row.RideLeaders.join(', ')}`);
+        console.log(`Processing ride: ${row.rideName}`);
+        console.log(`Start: ${row.startDate}`);
+        console.log(`Leaders: ${row.leaders.join(', ')}`);
         
-        // Setters automatically mark row as dirty
-        if (!row.GoogleEventId) {
-            row.GoogleEventId = createCalendarEvent(row);
+        // Use setter methods to automatically mark fields dirty
+        if (!row.googleEventId) {
+            row.setGoogleEventId(createCalendarEvent(row));
         }
         
         // Methods work the same
         if (row.isPlanned()) {
-            row.setRideLink('Updated Name', row.RideURL);
+            row.setRideLink('Updated Name', row.rideURL);
         }
     });
     
@@ -73,7 +73,7 @@ function processSelectedRides() {
 //         if (row.isPlanned() && !row.isScheduled()) {
 //             // Create ride on RWGPS
 //             const rideId = createRWGPSRide(row);
-//             row.setRideLink(row.RouteName, `https://ridewithgps.com/rides/${rideId}`);
+//             row.setRideLink(row.routeName, `https://ridewithgps.com/rides/${rideId}`);
 //         }
 //     });
     
@@ -106,7 +106,7 @@ function highlightMissingRideLeaders() {
     const rows = adapter.loadAll();
     
     rows.forEach(row => {
-        if (row.isPlanned() && row.RideLeaders.length === 0) {
+        if (row.isPlanned() && row.leaders.length === 0) {
             // Highlighting is handled by adapter (GAS operation)
             row.highlightRideLeader(true);
         }
@@ -121,7 +121,7 @@ function highlightMissingRideLeaders() {
 
 /**
  * 1. SAME INTERFACE: Row objects work exactly the same as before
- *    - row.RideName, row.StartDate, etc.
+ *    - row.rideName, row.startDate, etc.
  *    - row.setRideLink(), row.isPlanned(), etc.
  * 
  * 2. AUTOMATIC DIRTY TRACKING: No manual saveRow() calls
