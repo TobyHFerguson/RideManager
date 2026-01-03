@@ -16,7 +16,7 @@ var UserLoggerCore = (function() {
          * 
          * @param {string} action - Action name (e.g., "Schedule Ride", "Update Ride")
          * @param {string} details - Action details
-         * @param {any} additionalData - Additional data object (will be stringified)
+         * @param {any} additionalData - Arbitrary user activity data (structure not constrained, will be stringified)
          * @param {string} user - User email address
          * @param {Date} timestamp - Log timestamp
          * @returns {{timestamp: Date, user: string, action: string, details: string, additionalData: string}} Formatted log entry

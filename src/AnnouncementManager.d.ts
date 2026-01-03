@@ -5,6 +5,7 @@
  * This is a thin wrapper around AnnouncementCore that handles GAS APIs.
  */
 
+import type RowCore from './RowCore';
 import { AnnouncementQueueItem, AnnouncementStatistics } from './AnnouncementCore';
 
 /**
@@ -130,11 +131,11 @@ declare class AnnouncementManager {
     /**
      * Send an announcement email
      * 
-     * @param item - Queue item with announcement details
+     * @param row - Row instance with announcement data
      * @param {string} [testEmail=null] - Optional email address for testing (overrides actual recipients)
      * @returns Result indicating success or failure
      */
-    sendAnnouncement(item: AnnouncementQueueItem, testEmail?: string | null): SendResult;
+    sendAnnouncement(row: InstanceType<typeof RowCore>, testEmail?: string | null): SendResult;
 
     /**
      * Process all due announcements
