@@ -46,10 +46,11 @@ function getRWGPS() {
 
 const MenuFunctions = (() => {
   /**
-   * @param {(rows: InstanceType<typeof RowCore>[], rwgps: any, force?: boolean) => void} command
+   * Execute a ride operation using RideCoordinator
+   * @param {(rows: InstanceType<typeof RowCore>[], rwgps: any, adapter: InstanceType<typeof ScheduleAdapter>, force?: boolean) => void} operation
    * @param {boolean} [force]
    */
-  function executeCommand(command, force = false) {
+  function executeOperation(operation, force = false) {
     const g2 = getGroupSpecs();
     const globals = getGlobals();
     globals["A_TEMPLATE"] = g2.A.TEMPLATE // Needed because RWGPSLib expects globals["A_TEMPLATE"]
@@ -63,12 +64,12 @@ const MenuFunctions = (() => {
     const rowNumbers = rows.map(row => row.rowNum).join(", ");
     
     try {
-      // User logging executed after they've agreed to any warnings in UIManager
-      command(rows, rwgps, force);
+      // Execute operation (validation and confirmation handled by RideCoordinator)
+      operation(rows, rwgps, adapter, force);
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
-      // Log errors too
-      UserLogger.log(`${command.name}_ERROR`, error.message, { 
+      // Log errors
+      UserLogger.log(`${operation.name}_ERROR`, error.message, { 
         rowNumbers, 
         error: error.stack 
       });
@@ -92,28 +93,22 @@ const MenuFunctions = (() => {
   
   return Object.freeze({
     cancelSelectedRides(force = false) {
-      let command = Commands.cancelSelectedRidesWithCreds;
-      executeCommand(command, force);
+      executeOperation(RideCoordinator.cancelRides, force);
     },
     importSelectedRoutes(force = false) {
-      let command = Commands.importSelectedRoutesWithCredentials;
-      executeCommand(command, force);
+      executeOperation(RideCoordinator.importRoutes, force);
     },
     reinstateSelectedRides(force = false) {
-      let command = Commands.reinstateSelectedRidesWithCreds;
-      executeCommand(command, force);
+      executeOperation(RideCoordinator.reinstateRides, force);
     },
     scheduleSelectedRides(force = false) {
-      let command = Commands.scheduleSelectedRidesWithCredentials;
-      executeCommand(command, force);
+      executeOperation(RideCoordinator.scheduleRides, force);
     },
     unscheduleSelectedRides(force = false) {
-      let command = Commands.unscheduleSelectedRidesWithCreds;
-      executeCommand(command, force);
+      executeOperation(RideCoordinator.unscheduleRides, force);
     },
     updateSelectedRides(force = false) {
-      let command = Commands.updateSelectedRidesWithCredentials;
-      executeCommand(command, force);
+      executeOperation(RideCoordinator.updateRides, force);
     },
     
     /**

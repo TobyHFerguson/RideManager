@@ -1,7 +1,6 @@
 // @ts-check
 if (typeof require !== 'undefined') {
     const {RWGPS, RWGPSService} = require('./Externals')
-    const Commands = require('./Commands')
     modules.export = Exports;
 }
 
@@ -17,9 +16,6 @@ var Exports = {
     get MenuFunctions() {
         return MenuFunctions;
     },
-    get Commands() {
-        return Commands;
-    },
     get ScheduleAdapter() {
         return ScheduleAdapter;
     },
@@ -32,8 +28,14 @@ var Exports = {
     get HyperlinkUtils() {
         return HyperlinkUtils;
     },
-    get UIManager() {
-        return UIManager;
+    get UIHelper() {
+        return UIHelper;
+    },
+    get ValidationCore() {
+        return ValidationCore;
+    },
+    get RideCoordinator() {
+        return RideCoordinator;
     },
     get RideManager() {
         return RideManager;
@@ -70,9 +72,6 @@ var Exports = {
     },
     get CacheManager() {
         return CacheManager;
-    },
-    get TriggerManager() {
-        return TriggerManager;
     },
     get TriggerManagerCore() {
         return TriggerManagerCore;

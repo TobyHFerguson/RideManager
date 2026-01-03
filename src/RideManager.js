@@ -335,7 +335,7 @@ const RideManager = (function () {
         } else {
             const event_id = _extractEventID(row.rideURL);
             rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
-            if (rowCheck.cancelled(row)) {
+            if (ValidationCore.isCancelled(row)) {
                 rideEvent.cancel();
             }
             // DEBUG ISSUE 22

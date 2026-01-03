@@ -20,14 +20,14 @@ import type { GlobalsObject } from './Globals';
 import type { Externals as ExternalsType } from './Externals';
 import type SCCCCEventClass from './SCCCCEvent';
 import type EventFactoryNamespace from './EventFactory';
-import type CommandsNamespace from './Commands';
-import type rowCheckNamespace from './rowCheck';
 import type RideManagerNamespace from './RideManager';
 import type RideManagerCore from './RideManagerCore';
-import type UIManagerNamespace from './UIManager';
 import type AnnouncementCoreNamespace from './AnnouncementCore';
 import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
 import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
+import type ValidationCoreClass from './ValidationCore';
+import type UIHelperClass from './UIHelper';
+import type RideCoordinatorNamespace from './RideCoordinator';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
@@ -41,18 +41,18 @@ declare global {
     const TriggerManager: typeof TriggerManagerClass;
     const SCCCCEvent: typeof SCCCCEventClass;
     const RWGPSMembersAdapter: typeof RWGPSMembersAdapterClass;
+    const ValidationCore: typeof ValidationCoreClass;
+    const UIHelper: typeof UIHelperClass;
     
     // Objects/Namespaces - singleton instances or frozen objects
     const MenuFunctions: MenuFunctionsType;
     const Exports: ExportsType; // This is the interface, not typeof
     const EventFactory: typeof EventFactoryNamespace;
-    const Commands: typeof CommandsNamespace;
-    const rowCheck: typeof rowCheckNamespace;
     const RideManager: typeof RideManagerNamespace;
     const RideManagerCore: typeof RideManagerCore;
-    const UIManager: typeof UIManagerNamespace;
     const AnnouncementCore: typeof AnnouncementCoreNamespace;
     const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
+    const RideCoordinator: typeof RideCoordinatorNamespace;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;
