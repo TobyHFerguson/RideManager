@@ -1235,10 +1235,11 @@ var AnnouncementManager = (function () {
                 // Load and expand template
                 const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'Reason');
 
-                // Send email
-                const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
+                // Send email to group-specific announcement address
+                const key = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
+                const recipientEmail = globals[key];
                 if (!recipientEmail) {
-                    throw new Error('RIDE_ANNOUNCEMENT_EMAIL not configured in Globals');
+                    throw new Error(`${key} not configured in Globals`);
                 }
 
                 MailApp.sendEmail(recipientEmail, subject, '', {
@@ -1275,10 +1276,11 @@ var AnnouncementManager = (function () {
                 // Load and expand template
                 const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'Reason');
 
-                // Send email
-                const recipientEmail = globals.RIDE_ANNOUNCEMENT_EMAIL;
+                // Send email to group-specific announcement address
+                const key = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
+                const recipientEmail = globals[key];
                 if (!recipientEmail) {
-                    throw new Error('RIDE_ANNOUNCEMENT_EMAIL not configured in Globals');
+                    throw new Error(`${key} not configured in Globals`);
                 }
 
                 MailApp.sendEmail(recipientEmail, subject, '', {
