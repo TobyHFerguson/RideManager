@@ -148,9 +148,9 @@ var AnnouncementCore = (function() {
      * Enrich row data with calculated template fields
      * Adds DateTime, Date, Day, Time, RideLink, Gain, Length, FPM, StartPin, Lat, Long fields
      * 
-     * @param {Object} rowData - Original RowCore domain object with ride properties
-     * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number}} [route] - Optional route object from RWGPS
-     * @returns {Object} Enriched row data with calculated fields
+     * @param {{rideName?: string, rideURL?: string, routeName?: string, routeURL?: string, location?: string, address?: string, group?: string, rideLeader?: string, date?: Date | string}} rowData - Original RowCore domain object with ride properties
+     * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number} | null} [route] - Optional route object from RWGPS
+     * @returns {Record<string, any>} Enriched row data with calculated fields
      */
     function enrichRowData(rowData, route) {
         /** @type {any} */
@@ -267,9 +267,9 @@ var AnnouncementCore = (function() {
      * Expand template placeholders with row data
      * 
      * @param {string} template - Template text with {FieldName} placeholders
-     * @param {Object} rowData - Row data object with ride properties
-     * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number}} [route] - Optional route object from RWGPS
-     * @returns {Object} Object with expandedText and missingFields
+     * @param {{rideName?: string, rideURL?: string, routeName?: string, routeURL?: string, location?: string, address?: string, group?: string, rideLeader?: string, date?: Date | string}} rowData - Row data object with ride properties
+     * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number} | null} [route] - Optional route object from RWGPS
+     * @returns {{expandedText: string, missingFields: string[]}} Object with expandedText and missingFields
      */
     function expandTemplate(template, rowData, route = null) {
         /** @type {string[]} */
@@ -329,13 +329,10 @@ var AnnouncementCore = (function() {
      * Determine what updates are needed for an announcement when ride is updated
      * Returns an object describing what needs to be updated
      * 
-     * @param {Object} currentAnnouncement - Current announcement data
-     * @param {string} currentAnnouncement.documentName - Current document name
-     * @param {Object} newRideData - New ride data
-     * @param {string} newRideData.rideName - New ride name
-     * @param {Date|string} newRideData.rideDate - New ride date
+     * @param {{documentName: string}} currentAnnouncement - Current announcement data
+     * @param {{rideName: string, rideDate: Date | string}} newRideData - New ride data
      * @param {string} [timezone='America/Los_Angeles'] - Timezone for calculation
-     * @returns {Object} Update decision object
+     * @returns {{needsDocumentRename: boolean, newDocumentName: string | null, needsSendAtUpdate: boolean, calculatedSendAt: Date | null}} Update decision object
      */
     function calculateAnnouncementUpdates(currentAnnouncement, newRideData, timezone = 'America/Los_Angeles') {
         const updates = {
