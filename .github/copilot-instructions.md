@@ -48,16 +48,33 @@ npm test && npm run typecheck && npm run validate-exports
 
 **Architecture Pattern**:
 ```javascript
-// ✅ CORRECT: Pure logic + tested
+// ✅ CORRECT: Pure logic + tested (CLASS with static methods)
 class AnnouncementCore {
-    static calculateSendTime(rideDate) { /* pure logic */ }
+    static calculateSendTime(rideDate) { 
+        // Pure logic - fully testable
+        return new Date(rideDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+    }
+    
+    static expandTemplate(template, rowData) {
+        // Call other static methods directly
+        const enriched = AnnouncementCore.enrichRowData(rowData);
+        return template.replace(/\{(\w+)\}/g, (match, field) => enriched[field] || match);
+    }
+    
+    static enrichRowData(rowData) {
+        // Helper method
+        return { ...rowData, DateTime: new Date(rowData.Date).toISOString() };
+    }
 }
 
-// ✅ CORRECT: Thin GAS adapter
+// ✅ CORRECT: Thin GAS adapter (CLASS with instance methods)
 class AnnouncementManager {
-    sendAnnouncement() {
-        const sendTime = AnnouncementCore.calculateSendTime(ride.date);
-        GmailApp.sendEmail(/* GAS API call */);
+    sendAnnouncement(row, route) {
+        // Use Core class static methods
+        const sendTime = AnnouncementCore.calculateSendTime(row.Date);
+        const body = AnnouncementCore.expandTemplate(template, row);
+        // Only GAS API calls here
+        GmailApp.sendEmail(/* ... */);
     }
 }
 ```
@@ -292,6 +309,53 @@ RetryQueueCore.createQueueItem(operation, generateId, getCurrentTime)
 // ❌ Bad - hardcoded GAS dependency
 createQueueItem(operation) { id: Utilities.getUuid() }
 ```
+
+**Rule 4.5: MANDATORY Class Pattern for All New Code**
+- **ALL new modules MUST use class pattern with static methods**
+- **NEVER create new namespace pattern modules** (IIFE returning object)
+- Namespace pattern creates TypeScript blind spots requiring `@ts-expect-error` suppressions
+- `@ts-expect-error` suppresses ALL errors on line, not just namespace resolution (hides real bugs)
+
+```javascript
+// ✅ CORRECT: Class pattern with static methods
+class ValidationCore {
+    static validateForScheduling(rows, options) {
+        // Call other static methods
+        const error = ValidationCore.isUnmanagedRide(row, options.managedEventName);
+        return result;
+    }
+    
+    static isUnmanagedRide(row, managedEventName) {
+        // Helper method
+    }
+}
+
+if (typeof module !== 'undefined') {
+    module.exports = ValidationCore;
+}
+
+// ❌ WRONG: Namespace pattern (DEPRECATED - creates type safety blind spots)
+var ValidationCore = (function() {
+    const ValidationCore = {
+        validateForScheduling(rows, options) {
+            // TypeScript can't resolve this.isUnmanagedRide through module imports
+            const error = this.isUnmanagedRide(row, options.managedEventName);
+        },
+        isUnmanagedRide(row, managedEventName) { }
+    };
+    return ValidationCore;
+})();
+```
+
+**Why Class Pattern is Mandatory**:
+- TypeScript correctly resolves static method calls (no `@ts-expect-error` needed)
+- Full type checking enabled (catches missing parameters, wrong types)
+- No blind spots - all errors visible at development time
+- Better tooling support (IntelliSense, refactoring)
+- Production bugs caught before deployment
+
+**Converting Existing Namespace Modules**:
+See GitHub Issue #XXX for tracking conversion of legacy modules (RideManagerCore, AnnouncementCore, TriggerManagerCore, etc.)
 
 #### CRITICAL: Schedule & Row Refactoring Requirements
 **Schedule & Row Classes** - Currently tightly coupled to SpreadsheetApp (MUST fix when modifying):
@@ -676,6 +740,9 @@ npm run validate-exports
 # 4. Coverage meets requirements (pure JS modules)
 npm test -- --coverage
 
+# 5. Verify class pattern (no new namespace modules)
+grep -r "^var .*= (function()" src/*.js  # Should return NOTHING
+
 # One-liner validation:
 npm test && npm run typecheck && npm run validate-exports
 ```
@@ -717,6 +784,9 @@ Autonomous agents MUST run `npm run typecheck` after EVERY code change.
 - ❌ Mixing data transformation with SpreadsheetApp calls (separate in Core + Adapter)
 - ❌ Hardcoded GAS dependencies (use dependency injection)
 - ❌ Tests missing or <100% coverage for Core modules
+- ❌ **NEW namespace pattern modules** (use class pattern instead)
+- ❌ Pattern: `var ModuleName = (function() { return { ... }; })()` (DEPRECATED)
+- ❌ Using `@ts-expect-error` to hide TypeScript errors (fix root cause with class pattern)
 
 ## TypeScript Type Coverage (MANDATORY)
 
@@ -1405,21 +1475,66 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
    - ❌ Don't use for actual missing methods or API calls
    - ❌ Don't use if method names are misspelled
    
+   **CRITICAL LIMITATION - Type Safety Blind Spot**:
+   
+   ⚠️ **`@ts-expect-error` suppresses ALL errors on that line, not just the namespace resolution error.**
+   
+   This means legitimate type errors (wrong parameter count, wrong types, etc.) will also be hidden:
+   
+   ```javascript
+   // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
+   UIHelper.promptForCancellationReason();  // Missing required parameter - NOT CAUGHT!
+   
+   // @ts-expect-error - TypeScript can't resolve namespace methods through module imports  
+   ValidationCore.validateForScheduling(rows, "wrong type");  // Wrong type - NOT CAUGHT!
+   ```
+   
+   **Production Impact**: This blind spot allowed a runtime error to reach production (TypeError: Cannot read properties of undefined).
+   
+   **Mitigation Strategies**:
+   1. ✅ **100% Test Coverage MANDATORY** - Tests are the only safety net
+   2. ✅ **Verify parameter counts** - Manually check calls match `.d.ts` signatures
+   3. ✅ **Code review carefully** - Human review catches what TypeScript can't
+   4. ✅ **Prefer class pattern** - Convert namespace modules to classes when refactoring
+   5. ✅ **Document thoroughly** - Add comments about expected parameters
+   
+   **Why This Happens**:
+   - TypeScript's `@ts-expect-error` suppresses ALL errors on the line
+   - There's no way to suppress only specific errors in JSDoc
+   - The namespace pattern forces us to accept this trade-off
+   
+   **Long-Term Solution**:
+   Convert namespace modules to classes with static methods:
+   ```javascript
+   // Instead of namespace object
+   var UIHelper = {
+       promptForCancellationReason: function(row) { }
+   };
+   
+   // Use class with static methods
+   class UIHelper {
+       static promptForCancellationReason(row) { }
+   }
+   ```
+   This eliminates the need for `@ts-expect-error` and restores full type checking.
+   
    **Verification Checklist**:
    1. **Confirm method exists**: Check source file (`RideManagerCore.js`) for the method
    2. **Verify test coverage**: Run `npm test -- --coverage --collectCoverageFrom='src/ModuleCore.js'`
    3. **Check runtime behavior**: Deploy to GAS and verify method works
    4. **Document in comment**: Reference source line number and test coverage
    5. **Use specific error comment**: `@ts-expect-error - TypeScript can't resolve namespace methods through module imports`
+   6. **⚠️ MANUALLY VERIFY**: Parameter count and types match `.d.ts` signature
    
-   **Alternative Solution (Not Recommended)**:
-   You could convert the namespace to a class with static methods, but this breaks the established GAS pattern used throughout the codebase.
+   **Alternative Solution (Recommended for New Code)**:
+   Use class pattern with static methods instead of namespace objects. This maintains GAS compatibility while enabling full type checking.
    
    **Examples in Codebase**:
    - `RideManagerCore` - 7 methods with namespace pattern (PR #179)
    - All methods exist, have 100% test coverage (32 tests)
    - TypeScript shows 9 false positive errors
    - All suppressed with `@ts-expect-error` + explanatory comments
+   - ⚠️ WARNING: Parameter errors on these lines will NOT be caught by TypeScript
 
 15. **Deployment Checklist**
    - ✅ All tests pass: `npm test`
