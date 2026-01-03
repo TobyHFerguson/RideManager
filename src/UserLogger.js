@@ -16,7 +16,7 @@ class UserLogger {
    * Logs user activity to a dedicated sheet in the spreadsheet
    * @param {string} action - The action performed
    * @param {string} details - Additional details about the action
-   * @param {any} additionalData - Any additional data to log
+   * @param {any} additionalData - Arbitrary user activity data (structure not constrained, will be stringified)
    */
   static log(action, details = '', additionalData = {}) {
     try {

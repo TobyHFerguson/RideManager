@@ -81,35 +81,108 @@ class AnnouncementManager {
 
 **If you violate these rules**, code will be rejected or break in production.
 
-## CRITICAL: Type Safety - Zero Tolerance for `{any}`
+## CRITICAL: Type Safety - Zero Tolerance for `{any}` and `{Object}`
 
-**MANDATORY RULE**: NEVER use `@param {any}` in function signatures. Proper types prevent runtime errors by catching them at development time.
+**MANDATORY RULE**: NEVER use `@param {any}` or `@param {Object}` in function signatures. These overly broad types prevent compile-time error detection. Always use specific types or object shapes that describe the actual structure.
 
-**Real Production Error Prevented by Proper Types**:
-```javascript
-// ❌ With @param {any} - No error until production runtime
-/** @param {any} row */
-function importRow_(row, rwgps) {
-    row.linkRouteURL();  // ✅ TypeScript allows this
-    // 💥 Runtime Error: "row.linkRouteURL is not a function"
-}
-
-// ✅ With proper types - Error caught immediately in VS Code
-/** @param {RowCoreInstance} row */
-function importRow_(row, rwgps) {
-    row.linkRouteURL();  // ❌ TypeScript Error: Property 'linkRouteURL' does not exist
-}
-```
+**Why `{Object}` is as bad as `{any}`**:
+- TypeScript cannot validate property access (e.g., `obj.propertyName`)
+- Typos in property names won't be caught until runtime
+- No IntelliSense/autocomplete for properties
+- Refactoring becomes unsafe
+- Defeats the entire purpose of type checking
 
 **Type Replacement Guide**:
 
 | ❌ NEVER Use | ✅ ALWAYS Use | Example |
 |-------------|--------------|---------|
 | `@param {any} row` | `@param {RowCoreInstance} row` | Single row parameter |
-| `@param {any} rows` | `@param {RowCoreInstance[]} rows` | Array of rows |
-| `@param {any} rwgps` | `@param {RWGPS} rwgps` | RWGPS API interface |
-| `@param {any} route` | `@param {{first_lat: number, first_lng: number}} route` | Object with known shape |
+| `@param {Object} rowData` | `@param {{rideName?: string, rideURL?: string, date?: Date}} rowData` | Plain object with known properties |
+| `@param {Object} options` | `@param {{force?: boolean, managedEventName?: string}} options` | Options/config object |
+| `@param {Object} result` | `@param {{success: boolean, error?: string}} result` | Return value object |
 | `@param {any} data` | `@param {any} data` + justification comment | ONLY when truly arbitrary |
+
+**Pattern for Plain Objects**:
+```javascript
+// ❌ WRONG - Too broad, no type checking
+/**
+ * @param {Object} rowData - Row data
+ */
+function enrichRowData(rowData) {
+    return rowData.rideName; // No error if rideName doesn't exist!
+}
+
+// ✅ CORRECT - Specific shape with optional properties
+/**
+ * @param {{rideName?: string, rideURL?: string, routeName?: string, date?: Date | string}} rowData - Row data with specific fields
+ * @returns {Record<string, any>} Enriched data object
+ */
+function enrichRowData(rowData) {
+    return rowData.rideName; // TypeScript validates rideName exists in type
+}
+```
+
+**Pattern for GAS API Return Objects**:
+```javascript
+// ❌ WRONG
+/**
+ * @param {Object} result
+ */
+function handleResult(result) {
+    if (result.success) { } // No error if 'success' doesn't exist!
+}
+
+// ✅ CORRECT
+/**
+ * @param {{success: boolean, emailAddress?: string, error?: string}} result
+ */
+function handleResult(result) {
+    if (result.success) { } // TypeScript knows 'success' is boolean
+}
+```
+
+**Pattern for Dictionary-like Objects**:
+```javascript
+// When keys are dynamic but values have consistent type:
+/**
+ * @param {Record<string, any>} attributes - Dictionary of attribute values
+ */
+function applyAttributes(attributes) { }
+
+// Or with specific value type:
+/**
+ * @param {Record<GoogleAppsScript.Document.Attribute, any>} attributes
+ */
+function applyTextAttributes(attributes) { }
+```
+
+**Exception**: Only use `{any}` when:
+1. The parameter is truly arbitrary user data with no expected structure
+2. You add a comment justifying why `{any}` is required
+3. Example: `/** @param {any} additionalData - Arbitrary user data (structure not constrained) */`
+
+**Benefits of Specific Types**:
+- ✅ Catch typos and non-existent properties at compile-time
+- ✅ IntelliSense shows available properties/methods
+- ✅ Refactoring is safe with type validation
+- ✅ Self-documenting code
+- ✅ Prevents entire class of runtime errors
+
+**Real Production Error Prevented by Proper Types**:
+```javascript
+// ❌ With @param {any} or @param {Object} - No error until production runtime
+/** @param {Object} rowData */
+function enrichRowData(rowData) {
+    return rowData.ridName;  // ✅ TypeScript allows this (typo not caught!)
+    // 💥 Runtime Error: undefined value, silent bug
+}
+
+// ✅ With proper types - Error caught immediately in VS Code
+/** @param {{rideName?: string, rideURL?: string}} rowData */
+function enrichRowData(rowData) {
+    return rowData.ridName;  // ❌ TypeScript Error: Property 'ridName' does not exist
+}
+```
 
 **Required Typedef Setup**:
 ```javascript
@@ -151,10 +224,6 @@ npm test
 # Check .d.ts file: Does ValidationCore.validateForScheduling exist?
 # If not, ADD IT TO .d.ts before calling it in code
 ```
-
-**Exception**: Only use `{any}` when:
-1. The parameter is truly arbitrary user data with no expected structure
-2. You add a comment justifying why `{any}` is required
 3. Example: `/** @param {any} additionalData - Arbitrary user data (structure not constrained) */`
 
 **Benefits of Proper Types**:
@@ -164,7 +233,7 @@ npm test
 - ✅ Self-documenting code
 - ✅ Prevents entire class of runtime errors
 
-See GitHub Issue: "Enforce Strict Type Checking System-Wide" for complete audit and remediation plan.
+See GitHub Issue #188: "Eliminate `@param {any}` parameter types to enable compile-time error detection" for complete type safety enforcement.
 
 ## Architecture Overview
 This is a Google Apps Script (GAS) project that manages ride scheduling through integration with RideWithGPS and Google Calendar. The codebase mixes GAS-specific APIs with standard JavaScript/Node.js code.

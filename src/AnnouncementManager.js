@@ -18,6 +18,10 @@ if (typeof require !== 'undefined') {
     var TriggerManager = require('./TriggerManager');
 }
 
+/**
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ */
+
 var AnnouncementManager = (function () {
 
     class AnnouncementManager {
@@ -153,20 +157,17 @@ var AnnouncementManager = (function () {
                 const doc = DocumentApp.openById(documentId);
 
                 // Build rowData object for template expansion
+                // Note: enrichRowData in AnnouncementCore will map these camelCase fields to PascalCase
                 const rowData = {
-                    _rowNum: row.rowNum,
-                    RideName: row.rideName,
-                    Date: row.startDate,
-                    RideLeaders: row.leaders.join(', '),
-                    StartTime: row.startTime,
-                    Location: row.location,
-                    Address: row.address,
-                    Group: row.group,
-                    RideURL: row.rideURL,
-                    RouteURL: row.routeURL,
-                    RouteName: row.routeName,
-                    Duration: row.duration,
-                    EndTime: row.endTime
+                    rideName: row.rideName,
+                    rideURL: row.rideURL,
+                    routeName: row.routeName,
+                    routeURL: row.routeURL,
+                    location: row.location,
+                    address: row.address,
+                    group: row.group,
+                    rideLeader: row.leaders.join(', '),
+                    date: row.startDate
                 };
 
                 // Fetch route data for template enrichment (gain, length, fpm, startPin, lat, long)
@@ -646,7 +647,7 @@ var AnnouncementManager = (function () {
          * Copy a template and append operator instructions
          * @private
          * @param {{type: string, id:string}} templateInfo - Template info object
-         * @param {any} row - Row data object
+         * @param {RowCoreInstance} row - Row data object
          * @returns {GoogleAppsScript.Drive.File} New document file
          */
         _copyTemplate(templateInfo, row) {
@@ -670,7 +671,7 @@ var AnnouncementManager = (function () {
          * @private
          * @param {string} documentId - Document ID
          * @param {Date|number} sendTime - Scheduled send time
-         * @param {any} rowData - Row data object
+         * @param {{_rowNum: number, RideName: string, Date: Date, RideLeaders: string, StartTime: Date, Location: string, Address: string, Group: string, RideURL: string, RouteURL: string, RouteName: string, Duration?: number, EndTime: Date}} rowData - Row data object
          */
         _appendInstructions(documentId, sendTime, rowData) {
             try {
@@ -779,7 +780,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Process a document element recursively to HTML
-         * @param {any} element - Document element
+         * @param {GoogleAppsScript.Document.Element} element - Document element
          * @returns {string} HTML string
          * @private
          */
@@ -807,8 +808,10 @@ var AnnouncementManager = (function () {
 
                 case DocumentApp.ElementType.LIST_ITEM:
                     html += '<li>';
+                    // @ts-expect-error - Type narrowing needed for LIST_ITEM element
                     const listChildren = element.getNumChildren();
                     for (let i = 0; i < listChildren; i++) {
+                        // @ts-expect-error - Type narrowing needed for LIST_ITEM element
                         html += this._processElement(element.getChild(i));
                     }
                     html += '</li>';
@@ -816,8 +819,10 @@ var AnnouncementManager = (function () {
 
                 case DocumentApp.ElementType.TABLE:
                     html += '<table border="1" style="border-collapse:collapse;">';
+                    // @ts-expect-error - Type narrowing needed for TABLE element
                     const numRows = element.getNumRows();
                     for (let i = 0; i < numRows; i++) {
+                        // @ts-expect-error - Type narrowing needed for TABLE element
                         html += this._processElement(element.getRow(i));
                     }
                     html += '</table>';
@@ -825,8 +830,10 @@ var AnnouncementManager = (function () {
 
                 case DocumentApp.ElementType.TABLE_ROW:
                     html += '<tr>';
+                    // @ts-expect-error - Type narrowing needed for TABLE_ROW element
                     const numCells = element.getNumCells();
                     for (let i = 0; i < numCells; i++) {
+                        // @ts-expect-error - Type narrowing needed for TABLE_ROW element
                         html += this._processElement(element.getCell(i));
                     }
                     html += '</tr>';
@@ -834,16 +841,20 @@ var AnnouncementManager = (function () {
 
                 case DocumentApp.ElementType.TABLE_CELL:
                     html += '<td>';
+                    // @ts-expect-error - Type narrowing needed for TABLE_CELL element
                     const cellChildren = element.getNumChildren();
                     for (let i = 0; i < cellChildren; i++) {
+                        // @ts-expect-error - Type narrowing needed for TABLE_CELL element
                         html += this._processElement(element.getChild(i));
                     }
                     html += '</td>';
                     break;
 
                 case DocumentApp.ElementType.BODY_SECTION:
+                    // @ts-expect-error - Type narrowing needed for BODY_SECTION element
                     const bodyChildren = element.getNumChildren();
                     for (let i = 0; i < bodyChildren; i++) {
+                        // @ts-expect-error - Type narrowing needed for BODY_SECTION element
                         html += this._processElement(element.getChild(i));
                     }
                     break;
@@ -855,9 +866,12 @@ var AnnouncementManager = (function () {
                 default:
                     // For other element types, try to process children if available
                     try {
+                        // @ts-expect-error - Type narrowing needed for generic element
                         if (typeof element.getNumChildren === 'function') {
+                            // @ts-expect-error - Type narrowing needed for generic element
                             const defaultChildren = element.getNumChildren();
                             for (let i = 0; i < defaultChildren; i++) {
+                                // @ts-expect-error - Type narrowing needed for generic element
                                 html += this._processElement(element.getChild(i));
                             }
                         }
@@ -878,7 +892,7 @@ var AnnouncementManager = (function () {
          * - Images larger than ~100KB when base64 encoded
          * - Certain image formats (prefer PNG, JPG, GIF)
          * - Total email size > 25MB
-         * @param {any} imageElement - Inline image element
+         * @param {GoogleAppsScript.Document.InlineImage} imageElement - Inline image element
          * @returns {string} HTML img tag with base64 data URL
          * @private
          */
@@ -1007,7 +1021,7 @@ var AnnouncementManager = (function () {
          * Apply text formatting attributes
          * @private
          * @param {string} text - Text to format
-         * @param {any} attributes - Text attributes object
+         * @param {Record<GoogleAppsScript.Document.Attribute, any>} attributes - Text attributes object (DocumentApp.Attribute properties)
          * @returns {string} Formatted HTML
          */
         _applyTextAttributes(text, attributes) {
@@ -1335,20 +1349,17 @@ var AnnouncementManager = (function () {
             // Use "No reason given" if reason is empty or not provided
             const reasonText = reason && reason.trim() ? reason : 'No reason given';
 
+            // Note: enrichRowData in AnnouncementCore will map these camelCase fields to PascalCase
             const rowData = {
-                _rowNum: row.rowNum,
-                RideName: row.rideName,
-                Date: row.startDate,
-                RideLeaders: row.leaders.join(', '),
-                StartTime: row.startTime,
-                Location: row.location,
-                Address: row.address,
-                Group: row.group,
-                RideURL: row.rideURL,
-                RouteURL: row.routeURL,
-                RouteName: row.routeName,
-                Duration: row.duration,
-                EndTime: row.endTime,
+                rideName: row.rideName,
+                rideURL: row.rideURL,
+                routeName: row.routeName,
+                routeURL: row.routeURL,
+                location: row.location,
+                address: row.address,
+                group: row.group,
+                rideLeader: row.leaders.join(', '),
+                date: row.startDate,
                 [reasonFieldName]: reasonText // Add the reason field with default
             };
 
@@ -1367,6 +1378,7 @@ var AnnouncementManager = (function () {
             let html = this._convertDocToHtml(doc);
 
             // Expand template fields in the HTML (with route data for enrichment)
+            // Note: expandTemplate internally calls enrichRowData which adds RideLink, DateTime, etc.
             // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
             html = expandResult.expandedText;
