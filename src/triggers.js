@@ -3,6 +3,10 @@
 
 // @ts-check
 
+/**
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ */
+
 
 function onOpen() {
   createMenu_();
@@ -310,10 +314,10 @@ function testSendAnnouncement_() {
     }
 
     // Filter for rows with announcements
-    const rowsWithAnnouncements = selectedRows.filter(/** @param {any} r */ r => r.announcement);
+    const rowsWithAnnouncements = selectedRows.filter((/** @type {RowCoreInstance} */ r) => r.announcement);
 
     if (rowsWithAnnouncements.length === 0) {
-      const rowNumbers = selectedRows.map(/** @param {any} r */ r => r.rowNum).join(', ');
+      const rowNumbers = selectedRows.map((/** @type {RowCoreInstance} */ r) => r.rowNum).join(', ');
       ui.alert('No Announcements',
         `None of the selected rows have announcements.\n\nSelected rows: ${rowNumbers}`,
         ui.ButtonSet.OK);
@@ -323,7 +327,7 @@ function testSendAnnouncement_() {
     const testEmail = Session.getActiveUser().getEmail();
 
     // Confirm
-    const rideNames = rowsWithAnnouncements.map(/** @param {any} r */ r => r.rideName || 'Unknown').join('\n  • ');
+    const rideNames = rowsWithAnnouncements.map((/** @type {RowCoreInstance} */ r) => r.rideName || 'Unknown').join('\n  • ');
     const confirmResponse = ui.alert(
       'Confirm Test Send',
       `Send ${rowsWithAnnouncements.length} announcement(s) to: ${testEmail}\n\nRides:\n  • ${rideNames}\n\nThis will NOT update the Status column in the spreadsheet.`,
@@ -340,7 +344,7 @@ function testSendAnnouncement_() {
     /** @type {any[]} */
     const failedRows = [];
 
-    rowsWithAnnouncements.forEach(/** @param {any} row */(row) => {
+    rowsWithAnnouncements.forEach((/** @type {RowCoreInstance} */ row) => {
       try {
         // Temporarily override the recipient email in globals
         const globals = getGlobals();

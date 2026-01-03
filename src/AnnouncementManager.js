@@ -18,6 +18,10 @@ if (typeof require !== 'undefined') {
     var TriggerManager = require('./TriggerManager');
 }
 
+/**
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ */
+
 var AnnouncementManager = (function () {
 
     class AnnouncementManager {
@@ -646,7 +650,7 @@ var AnnouncementManager = (function () {
          * Copy a template and append operator instructions
          * @private
          * @param {{type: string, id:string}} templateInfo - Template info object
-         * @param {any} row - Row data object
+         * @param {RowCoreInstance} row - Row data object
          * @returns {GoogleAppsScript.Drive.File} New document file
          */
         _copyTemplate(templateInfo, row) {
@@ -670,7 +674,7 @@ var AnnouncementManager = (function () {
          * @private
          * @param {string} documentId - Document ID
          * @param {Date|number} sendTime - Scheduled send time
-         * @param {any} rowData - Row data object
+         * @param {RowCoreInstance} rowData - Row data object
          */
         _appendInstructions(documentId, sendTime, rowData) {
             try {
@@ -779,7 +783,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Process a document element recursively to HTML
-         * @param {any} element - Document element
+         * @param {GoogleAppsScript.Document.Element} element - Document element
          * @returns {string} HTML string
          * @private
          */
@@ -878,7 +882,7 @@ var AnnouncementManager = (function () {
          * - Images larger than ~100KB when base64 encoded
          * - Certain image formats (prefer PNG, JPG, GIF)
          * - Total email size > 25MB
-         * @param {any} imageElement - Inline image element
+         * @param {GoogleAppsScript.Document.InlineImage} imageElement - Inline image element
          * @returns {string} HTML img tag with base64 data URL
          * @private
          */
@@ -1007,7 +1011,7 @@ var AnnouncementManager = (function () {
          * Apply text formatting attributes
          * @private
          * @param {string} text - Text to format
-         * @param {any} attributes - Text attributes object
+         * @param {Object} attributes - Text attributes object (DocumentApp.Attribute properties)
          * @returns {string} Formatted HTML
          */
         _applyTextAttributes(text, attributes) {
