@@ -9,7 +9,6 @@ describe('UserLoggerCore', () => {
                 'test details',
                 { key: 'value', number: 42 },
                 'user@example.com',
-                true,
                 timestamp
             );
             
@@ -17,23 +16,9 @@ describe('UserLoggerCore', () => {
             expect(entry.user).toBe('user@example.com');
             expect(entry.action).toBe('test_action');
             expect(entry.details).toBe('test details');
-            expect(entry.dtrtStatus).toBe('Enabled');
             expect(entry.additionalData).toBe('{"key":"value","number":42}');
         });
         
-        it('should handle disabled DTRT status', () => {
-            const timestamp = new Date('2026-01-01T12:00:00');
-            const entry = UserLoggerCore.formatLogEntry(
-                'action',
-                '',
-                {},
-                'user@example.com',
-                false,
-                timestamp
-            );
-            
-            expect(entry.dtrtStatus).toBe('Disabled');
-        });
         
         it('should handle empty details', () => {
             const entry = UserLoggerCore.formatLogEntry(
@@ -76,7 +61,6 @@ describe('UserLoggerCore', () => {
                 'details',
                 complexData,
                 'user@example.com',
-                true,
                 new Date()
             );
             
@@ -90,10 +74,10 @@ describe('UserLoggerCore', () => {
             const timestamp2 = new Date('2026-12-31T23:59:59');
             
             const entry1 = UserLoggerCore.formatLogEntry(
-                'action', '', {}, 'user', true, timestamp1
+                'action', '', {}, 'user', timestamp1
             );
             const entry2 = UserLoggerCore.formatLogEntry(
-                'action', '', {}, 'user', true, timestamp2
+                'action', '', {}, 'user', timestamp2
             );
             
             expect(entry1.timestamp).toEqual(timestamp1);
@@ -109,7 +93,6 @@ describe('UserLoggerCore', () => {
                 user: 'user@example.com',
                 action: 'test_action',
                 details: 'test details',
-                dtrtStatus: 'Enabled',
                 additionalData: '{"key":"value"}'
             };
             
@@ -120,25 +103,10 @@ describe('UserLoggerCore', () => {
                 'user@example.com',
                 'test_action',
                 'test details',
-                'Enabled',
                 '{"key":"value"}'
             ]);
         });
         
-        it('should handle disabled DTRT status', () => {
-            const entry = {
-                timestamp: new Date(),
-                user: 'user@example.com',
-                action: 'action',
-                details: 'details',
-                dtrtStatus: 'Disabled',
-                additionalData: '{}'
-            };
-            
-            const row = UserLoggerCore.toSpreadsheetRow(entry);
-            
-            expect(row[4]).toBe('Disabled');
-        });
         
         it('should preserve all six columns', () => {
             const entry = {
@@ -146,13 +114,12 @@ describe('UserLoggerCore', () => {
                 user: 'user',
                 action: 'action',
                 details: 'details',
-                dtrtStatus: 'Enabled',
                 additionalData: '{}'
             };
             
             const row = UserLoggerCore.toSpreadsheetRow(entry);
             
-            expect(row).toHaveLength(6);
+            expect(row).toHaveLength(5);
         });
         
         it('should handle empty strings', () => {
@@ -161,7 +128,6 @@ describe('UserLoggerCore', () => {
                 user: '',
                 action: '',
                 details: '',
-                dtrtStatus: 'Enabled',
                 additionalData: ''
             };
             
@@ -170,7 +136,6 @@ describe('UserLoggerCore', () => {
             expect(row[1]).toBe('');
             expect(row[2]).toBe('');
             expect(row[3]).toBe('');
-            expect(row[5]).toBe('');
         });
     });
     
@@ -183,14 +148,13 @@ describe('UserLoggerCore', () => {
                 'User',
                 'Action',
                 'Details',
-                'DTRT Status',
                 'Additional Data'
             ]);
         });
         
-        it('should return exactly 6 headers', () => {
+        it('should return exactly 5 headers', () => {
             const headers = UserLoggerCore.getHeaderRow();
-            expect(headers).toHaveLength(6);
+            expect(headers).toHaveLength(5);
         });
         
         it('should return consistent headers on multiple calls', () => {
@@ -209,7 +173,6 @@ describe('UserLoggerCore', () => {
             const details = 'Row 42';
             const additionalData = { rideUrl: 'https://ridewithgps.com/events/123' };
             const user = 'scheduler@example.com';
-            const dtrtEnabled = true;
             
             // Format entry
             const entry = UserLoggerCore.formatLogEntry(
@@ -217,7 +180,6 @@ describe('UserLoggerCore', () => {
                 details,
                 additionalData,
                 user,
-                dtrtEnabled,
                 timestamp
             );
             
@@ -230,24 +192,10 @@ describe('UserLoggerCore', () => {
                 'scheduler@example.com',
                 'Schedule Ride',
                 'Row 42',
-                'Enabled',
                 '{"rideUrl":"https://ridewithgps.com/events/123"}'
             ]);
         });
         
-        it('should handle workflow with disabled DTRT', () => {
-            const entry = UserLoggerCore.formatLogEntry(
-                'Update Ride',
-                'Modified route',
-                { oldRoute: 'A', newRoute: 'B' },
-                'user@example.com',
-                false,
-                new Date()
-            );
-            
-            const row = UserLoggerCore.toSpreadsheetRow(entry);
-            
-            expect(row[4]).toBe('Disabled');
-        });
+
     });
 });

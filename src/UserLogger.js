@@ -1,9 +1,9 @@
 // @ts-check
 
-// Node.js/Jest compatibility
-if (typeof require !== 'undefined') {
-    var UserLoggerCore = require('./UserLoggerCore');
-}
+// Note: UserLoggerCore is NOT imported here because:
+// 1. In GAS runtime, it is available as a global class
+// 2. In tests, it needs to be mocked/injected by the test setup
+// 3. Importing it shadows the global and breaks TypeScript resolution
 
 /**
  * UserLogger - Thin GAS adapter for user activity logging
@@ -11,25 +11,23 @@ if (typeof require !== 'undefined') {
  * Uses UserLoggerCore for formatting logic, handles only GAS-specific operations.
  * Logs to "User Activity Log" sheet only (Drive file duplication removed).
  */
-const UserLogger = (() => {
-  
+class UserLogger {
   /**
    * Logs user activity to a dedicated sheet in the spreadsheet
    * @param {string} action - The action performed
    * @param {string} details - Additional details about the action
    * @param {any} additionalData - Any additional data to log
    */
-  function log(action, details = '', additionalData = {}) {
+  static log(action, details = '', additionalData = {}) {
     try {
       // Gather GAS-dependent data
       const user = Session.getActiveUser()?.getEmail() || 'Unknown User';
-      const dtrtEnabled = PropertiesService.getUserProperties()
-        .getProperty('DTRT') === 'true';
+
       const timestamp = new Date();
       
       // Use Core for formatting
       const entry = UserLoggerCore.formatLogEntry(
-        action, details, additionalData, user, dtrtEnabled, timestamp
+        action, details, additionalData, user, timestamp
       );
       
       // Write to sheet only (no Drive file duplication)
@@ -50,6 +48,4 @@ const UserLogger = (() => {
       console.error('Failed to log:', err.message);
     }
   }
-
-  return { log };
-})();
+}

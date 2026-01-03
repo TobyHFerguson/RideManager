@@ -11,7 +11,7 @@
 /**
  * User logger for tracking activity
  */
-interface UserLoggerNamespace {
+declare class UserLogger {
     /**
      * Log user activity to "User Activity Log" sheet
      * 
@@ -26,7 +26,7 @@ interface UserLoggerNamespace {
      * UserLogger.log('Schedule Ride', 'Row 42', { rideUrl: 'https://...' });
      * ```
      */
-    log(action: string, details?: string, additionalData?: any): void;
+    static log(action: string, details?: string, additionalData?: any): void;
 }
 
-declare const UserLogger: UserLoggerNamespace;
+export default UserLogger;

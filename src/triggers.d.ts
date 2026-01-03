@@ -18,34 +18,6 @@ declare function onOpen(): void;
 declare function createMenu_(): void;
 
 /**
- * Get DTRT menu text based on current state
- * @private
- * @returns "Enable DTRT" or "Disable DTRT"
- */
-declare function getDTRTMenuText_(): string;
-
-/**
- * Check if DTRT is currently enabled
- * @private
- * @returns True if DTRT is enabled
- */
-declare function dtrtIsEnabled_(): boolean;
-
-/**
- * Set DTRT setting and show alert
- * @private
- * @param value - Enable (true) or disable (false) DTRT
- */
-declare function setDTRTSetting_(value: boolean): void;
-
-/**
- * Toggle DTRT setting
- * Called from menu
- * @private
- */
-declare function toggleDTRT_(): void;
-
-/**
  * Show alert dialog
  * @private
  * @param message - Message to display

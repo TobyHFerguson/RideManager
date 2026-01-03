@@ -18,17 +18,15 @@ var UserLoggerCore = (function() {
          * @param {string} details - Action details
          * @param {any} additionalData - Additional data object (will be stringified)
          * @param {string} user - User email address
-         * @param {boolean} dtrtEnabled - DTRT status flag
          * @param {Date} timestamp - Log timestamp
-         * @returns {{timestamp: Date, user: string, action: string, details: string, dtrtStatus: string, additionalData: string}} Formatted log entry
+         * @returns {{timestamp: Date, user: string, action: string, details: string, additionalData: string}} Formatted log entry
          */
-        static formatLogEntry(action, details, additionalData, user, dtrtEnabled, timestamp) {
+        static formatLogEntry(action, details, additionalData, user, timestamp) {
             return {
                 timestamp,
                 user,
                 action,
                 details,
-                dtrtStatus: dtrtEnabled ? 'Enabled' : 'Disabled',
                 additionalData: JSON.stringify(additionalData)
             };
         }
@@ -36,8 +34,8 @@ var UserLoggerCore = (function() {
         /**
          * Convert log entry to spreadsheet row array
          * 
-         * @param {{timestamp: Date, user: string, action: string, details: string, dtrtStatus: string, additionalData: string}} entry - Log entry object
-         * @returns {Array<Date|string>} Spreadsheet row values [timestamp, user, action, details, dtrtStatus, additionalData]
+         * @param {{timestamp: Date, user: string, action: string, details: string, additionalData: string}} entry - Log entry object
+         * @returns {Array<Date|string>} Spreadsheet row values [timestamp, user, action, details, additionalData]
          */
         static toSpreadsheetRow(entry) {
             return [
@@ -45,7 +43,6 @@ var UserLoggerCore = (function() {
                 entry.user,
                 entry.action,
                 entry.details,
-                entry.dtrtStatus,
                 entry.additionalData
             ];
         }
@@ -56,7 +53,7 @@ var UserLoggerCore = (function() {
          * @returns {string[]} Header values for User Activity Log sheet
          */
         static getHeaderRow() {
-            return ['Timestamp', 'User', 'Action', 'Details', 'DTRT Status', 'Additional Data'];
+            return ['Timestamp', 'User', 'Action', 'Details', 'Additional Data'];
         }
     }
     
