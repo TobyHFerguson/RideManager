@@ -70,10 +70,10 @@ var RideCoordinator = (function() {
                 // 3. Execute operation
                 RideManager.scheduleRows(confirmation.processableRows, rwgps);
 
-                // 4. Save changes (handled by adapter's dirty tracking)
-                // adapter.save() is called in finally block of executeCommand
+                // 4. Save changes to spreadsheet (before showing dialog)
+                adapter.save();
 
-                // 5. Show success
+                // 5. Show success (after save completes)
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69, implementation: UIHelper.js:86)
                 UIHelper.showSuccess(`Successfully scheduled ${confirmation.processableRows.length} ride(s).`);
 
@@ -163,6 +163,9 @@ var RideCoordinator = (function() {
                         }
                     }
 
+                    // Save changes to spreadsheet (before showing dialog)
+                    adapter.save();
+                    
                     // Show results
                     if (results.length > 0) {
                         const resultMsg = `Cancellation Complete\n\n${cancelled} ride(s) cancelled.\n\n` +
@@ -187,6 +190,10 @@ var RideCoordinator = (function() {
 
                     // Execute operation
                     RideManager.cancelRows(confirmation.processableRows, rwgps, false, '');
+                    
+                    // Save changes to spreadsheet (before showing dialog)
+                    adapter.save();
+                    
                     // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69, implementation: UIHelper.js:86)
                     UIHelper.showSuccess(`Successfully cancelled ${confirmation.processableRows.length} ride(s).`);
                 }
@@ -235,7 +242,10 @@ var RideCoordinator = (function() {
                 // 3. Execute operation
                 RideManager.updateRows(confirmation.processableRows, rwgps);
 
-                // 4. Show success
+                // 4. Save changes to spreadsheet (before showing dialog)
+                adapter.save();
+
+                // 5. Show success (after save completes)
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
                 UIHelper.showSuccess(`Successfully updated ${confirmation.processableRows.length} ride(s).`);
 
@@ -325,6 +335,9 @@ var RideCoordinator = (function() {
                         }
                     }
 
+                    // Save changes to spreadsheet (before showing dialog)
+                    adapter.save();
+                    
                     // Show results
                     if (results.length > 0) {
                         const resultMsg = `Reinstatement Complete\n\n${reinstated} ride(s) reinstated.\n\n` +
@@ -349,6 +362,10 @@ var RideCoordinator = (function() {
 
                     // Execute operation
                     RideManager.reinstateRows(confirmation.processableRows, rwgps, false, '');
+                    
+                    // Save changes to spreadsheet (before showing dialog)
+                    adapter.save();
+                    
                     // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
                     UIHelper.showSuccess(`Successfully reinstated ${confirmation.processableRows.length} ride(s).`);
                 }
@@ -394,7 +411,10 @@ var RideCoordinator = (function() {
                 // 3. Execute operation
                 RideManager.unscheduleRows(confirmation.processableRows, rwgps);
 
-                // 4. Show success
+                // 4. Save changes to spreadsheet (before showing dialog)
+                adapter.save();
+
+                // 5. Show success (after save completes)
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
                 UIHelper.showSuccess(`Successfully unscheduled ${confirmation.processableRows.length} ride(s).`);
 
@@ -441,7 +461,10 @@ var RideCoordinator = (function() {
                 // 3. Execute operation
                 RideManager.importRows(confirmation.processableRows, rwgps);
 
-                // 4. Show success
+                // 4. Save changes to spreadsheet (before showing dialog)
+                adapter.save();
+
+                // 5. Show success (after save completes)
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
                 UIHelper.showSuccess(`Successfully imported ${confirmation.processableRows.length} route(s).`);
 

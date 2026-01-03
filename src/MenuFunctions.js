@@ -86,8 +86,9 @@ const MenuFunctions = (() => {
       throw (e);
     }
     finally {
-      // Save all dirty rows
-      adapter.save();
+      // Note: adapter.save() is now called inside RideCoordinator operations
+      // before showing success dialogs, so spreadsheet updates complete before
+      // user sees confirmation. No need to save again here.
     }
   }
   
