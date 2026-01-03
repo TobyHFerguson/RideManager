@@ -2,15 +2,32 @@
 
 ## Quick Start (READ THIS FIRST)
 
+**AUDIENCE**: These instructions apply to:
+- **Chat Assistants** (like GitHub Copilot Chat) - have access to `get_errors` tool
+- **Autonomous Coding Agents** (create PRs automatically) - do NOT have `get_errors` tool
+
+**KEY DIFFERENCE**:
+- **Chat Assistants**: Can see VS Code errors via `get_errors` tool → MUST use it after every change
+- **Autonomous Agents**: Cannot see VS Code errors → MUST create `.d.ts` files FIRST, run `npm run typecheck` after every change
+
 **CRITICAL Pre-Deployment Checks** (MANDATORY before EVERY code change):
 ```bash
 npm test && npm run typecheck && npm run validate-exports
 ```
 
 **MANDATORY After EVERY Code Modification**:
+
+**FOR CHAT ASSISTANTS** (have `get_errors` tool):
 1. ✅ Use `get_errors` tool to check VS Code reports ZERO problems
 2. ✅ If errors exist, FIX THEM before proceeding
 3. ✅ NEVER leave code with VS Code errors - they indicate bugs
+
+**FOR AUTONOMOUS CODING AGENTS** (no `get_errors` tool):
+1. ✅ Run `npm run typecheck` after EVERY code change (ZERO errors required)
+2. ✅ Run `npm test` to verify tests pass
+3. ✅ Create `.d.ts` files FIRST before implementing new modules
+4. ✅ NEVER reference non-existent methods - verify method exists in `.d.ts` before calling
+5. ✅ Add proper JSDoc types to ALL function parameters (no implicit `any`)
 
 **Key Workflow Commands**:
 - `npm run dev:push` - Deploy to dev environment (with debug version)
@@ -25,21 +42,39 @@ npm test && npm run typecheck && npm run validate-exports
 3. ✅ NEVER mix business logic with GAS API calls
 4. ✅ Update tests, types (`.d.ts`), and docs with EVERY code change
 5. ✅ Add new modules to `Exports.js` or GAS won't find them
-6. ✅ **MANDATORY**: Run `get_errors` tool after EVERY code change (must show ZERO errors)
+6. ✅ **MANDATORY**: Verify ZERO type errors (chat: use `get_errors` tool; agents: run `npm run typecheck`)
 7. ✅ **ZERO TOLERANCE**: NEVER use `@param {any}` - use proper types to catch errors at compile-time, not runtime
+8. ✅ **CREATE TYPES FIRST**: Always create `.d.ts` files BEFORE writing implementation code
 
 **Architecture Pattern**:
 ```javascript
-// ✅ CORRECT: Pure logic + tested
+// ✅ CORRECT: Pure logic + tested (CLASS with static methods)
 class AnnouncementCore {
-    static calculateSendTime(rideDate) { /* pure logic */ }
+    static calculateSendTime(rideDate) { 
+        // Pure logic - fully testable
+        return new Date(rideDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+    }
+    
+    static expandTemplate(template, rowData) {
+        // Call other static methods directly
+        const enriched = AnnouncementCore.enrichRowData(rowData);
+        return template.replace(/\{(\w+)\}/g, (match, field) => enriched[field] || match);
+    }
+    
+    static enrichRowData(rowData) {
+        // Helper method
+        return { ...rowData, DateTime: new Date(rowData.Date).toISOString() };
+    }
 }
 
-// ✅ CORRECT: Thin GAS adapter
+// ✅ CORRECT: Thin GAS adapter (CLASS with instance methods)
 class AnnouncementManager {
-    sendAnnouncement() {
-        const sendTime = AnnouncementCore.calculateSendTime(ride.date);
-        GmailApp.sendEmail(/* GAS API call */);
+    sendAnnouncement(row, route) {
+        // Use Core class static methods
+        const sendTime = AnnouncementCore.calculateSendTime(row.Date);
+        const body = AnnouncementCore.expandTemplate(template, row);
+        // Only GAS API calls here
+        GmailApp.sendEmail(/* ... */);
     }
 }
 ```
@@ -86,6 +121,8 @@ function importRow_(row, rwgps) {
 ```
 
 **Verification Workflow** (MANDATORY for every file you modify):
+
+**FOR CHAT ASSISTANTS** (have `get_errors` tool):
 ```bash
 # 1. Check VS Code errors (MOST IMPORTANT - catches more than tsc)
 get_errors(['src/YourFile.js'])  # MUST show ZERO errors
@@ -97,6 +134,22 @@ npm run typecheck
 # Temporarily add: row.nonExistentMethod()
 # Verify: TypeScript shows error
 # Remove: Test line after verification
+```
+
+**FOR AUTONOMOUS CODING AGENTS** (no `get_errors` tool):
+```bash
+# 1. FIRST: Create .d.ts file with ALL method signatures
+# Example: src/ValidationCore.d.ts must declare validateForScheduling()
+
+# 2. Run typecheck (catches most errors)
+npm run typecheck  # MUST show ZERO errors
+
+# 3. Run tests
+npm test
+
+# 4. Verify method exists before calling
+# Check .d.ts file: Does ValidationCore.validateForScheduling exist?
+# If not, ADD IT TO .d.ts before calling it in code
 ```
 
 **Exception**: Only use `{any}` when:
@@ -256,6 +309,53 @@ RetryQueueCore.createQueueItem(operation, generateId, getCurrentTime)
 // ❌ Bad - hardcoded GAS dependency
 createQueueItem(operation) { id: Utilities.getUuid() }
 ```
+
+**Rule 4.5: MANDATORY Class Pattern for All New Code**
+- **ALL new modules MUST use class pattern with static methods**
+- **NEVER create new namespace pattern modules** (IIFE returning object)
+- Namespace pattern creates TypeScript blind spots requiring `@ts-expect-error` suppressions
+- `@ts-expect-error` suppresses ALL errors on line, not just namespace resolution (hides real bugs)
+
+```javascript
+// ✅ CORRECT: Class pattern with static methods
+class ValidationCore {
+    static validateForScheduling(rows, options) {
+        // Call other static methods
+        const error = ValidationCore.isUnmanagedRide(row, options.managedEventName);
+        return result;
+    }
+    
+    static isUnmanagedRide(row, managedEventName) {
+        // Helper method
+    }
+}
+
+if (typeof module !== 'undefined') {
+    module.exports = ValidationCore;
+}
+
+// ❌ WRONG: Namespace pattern (DEPRECATED - creates type safety blind spots)
+var ValidationCore = (function() {
+    const ValidationCore = {
+        validateForScheduling(rows, options) {
+            // TypeScript can't resolve this.isUnmanagedRide through module imports
+            const error = this.isUnmanagedRide(row, options.managedEventName);
+        },
+        isUnmanagedRide(row, managedEventName) { }
+    };
+    return ValidationCore;
+})();
+```
+
+**Why Class Pattern is Mandatory**:
+- TypeScript correctly resolves static method calls (no `@ts-expect-error` needed)
+- Full type checking enabled (catches missing parameters, wrong types)
+- No blind spots - all errors visible at development time
+- Better tooling support (IntelliSense, refactoring)
+- Production bugs caught before deployment
+
+**Converting Existing Namespace Modules**:
+See GitHub Issue #XXX for tracking conversion of legacy modules (RideManagerCore, AnnouncementCore, TriggerManagerCore, etc.)
 
 #### CRITICAL: Schedule & Row Refactoring Requirements
 **Schedule & Row Classes** - Currently tightly coupled to SpreadsheetApp (MUST fix when modifying):
@@ -622,6 +722,8 @@ npm test -- --coverage --collectCoverageFrom='src/ModuleName.js'
 ### Architecture Validation
 
 **Before committing code, verify**:
+
+**FOR CHAT ASSISTANTS** (have `get_errors` tool):
 ```bash
 # 0. VS Code errors (MANDATORY FIRST STEP)
 get_errors(['src/'])  # Must show ZERO errors
@@ -638,12 +740,43 @@ npm run validate-exports
 # 4. Coverage meets requirements (pure JS modules)
 npm test -- --coverage
 
+# 5. Verify class pattern (no new namespace modules)
+grep -r "^var .*= (function()" src/*.js  # Should return NOTHING
+
 # One-liner validation:
 npm test && npm run typecheck && npm run validate-exports
 ```
 
-**CRITICAL**: The `get_errors` tool check is MANDATORY and must be done FIRST.
+**FOR AUTONOMOUS CODING AGENTS** (no `get_errors` tool):
+```bash
+# 1. Type checking (MANDATORY FIRST STEP - catches method existence errors)
+npm run typecheck  # Must show ZERO errors
+
+# 2. All tests pass
+npm test
+
+# 3. All modules exported
+npm run validate-exports
+
+# 4. Coverage meets requirements (pure JS modules)
+npm test -- --coverage
+
+# One-liner validation:
+npm run typecheck && npm test && npm run validate-exports
+```
+
+**CRITICAL**: The `get_errors` tool check is MANDATORY for chat assistants and must be done FIRST.
 VS Code's TypeScript language server catches errors that `tsc --noEmit` may miss.
+Autonomous agents MUST run `npm run typecheck` after EVERY code change.
+npm test -- --coverage
+
+# One-liner validation:
+npm test && npm run typecheck && npm run validate-exports
+```
+
+**CRITICAL**: The `get_errors` tool check is MANDATORY for chat assistants and must be done FIRST.
+VS Code's TypeScript language server catches errors that `tsc --noEmit` may miss.
+Autonomous agents MUST run `npm run typecheck` after EVERY code change.
 
 **Red Flags** (indicates architecture violation):
 - ❌ GAS API calls in `*Core.js` files (should be pure JavaScript)
@@ -651,6 +784,9 @@ VS Code's TypeScript language server catches errors that `tsc --noEmit` may miss
 - ❌ Mixing data transformation with SpreadsheetApp calls (separate in Core + Adapter)
 - ❌ Hardcoded GAS dependencies (use dependency injection)
 - ❌ Tests missing or <100% coverage for Core modules
+- ❌ **NEW namespace pattern modules** (use class pattern instead)
+- ❌ Pattern: `var ModuleName = (function() { return { ... }; })()` (DEPRECATED)
+- ❌ Using `@ts-expect-error` to hide TypeScript errors (fix root cause with class pattern)
 
 ## TypeScript Type Coverage (MANDATORY)
 
@@ -834,7 +970,7 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
 
 10. **VS Code TypeScript Error Checking (CRITICAL)**
    
-   **MANDATORY: VS Code TypeScript server is MORE STRICT than `tsc --noEmit`**
+   **FOR CHAT ASSISTANTS**: VS Code TypeScript server is MORE STRICT than `tsc --noEmit`
    
    The VS Code TypeScript language server catches implicit type errors that the command-line TypeScript compiler (`tsc --noEmit`) does NOT catch. This means:
    
@@ -843,7 +979,17 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
    - 🔍 **VS Code catches**: Implicit `any` types, generic types without parameters, implicit `any[]` arrays
    - ⚠️ **tsc --noEmit allows**: Many implicit types that VS Code flags as errors
    
-   **How to Find VS Code Errors:**
+   **FOR AUTONOMOUS CODING AGENTS**: You cannot use `get_errors` tool
+   
+   Since you don't have access to VS Code's TypeScript server, you MUST:
+   
+   - ✅ **Create `.d.ts` files FIRST** with all method signatures before implementation
+   - ✅ **Run `npm run typecheck` after EVERY code change** (catches most errors)
+   - ✅ **Add explicit JSDoc types** to ALL function parameters (no implicit `any`)
+   - ✅ **Verify methods exist in `.d.ts`** before calling them in code
+   - ❌ **NEVER call non-existent methods** - this is the #1 error agents make
+   
+   **How to Find VS Code Errors (Chat Assistants Only)**:
    ```bash
    # Use get_errors tool to see VS Code's TypeScript server errors
    # This shows the SAME errors VS Code displays in the editor
@@ -1329,21 +1475,66 @@ All code in the `src/` directory MUST have comprehensive TypeScript type coverag
    - ❌ Don't use for actual missing methods or API calls
    - ❌ Don't use if method names are misspelled
    
+   **CRITICAL LIMITATION - Type Safety Blind Spot**:
+   
+   ⚠️ **`@ts-expect-error` suppresses ALL errors on that line, not just the namespace resolution error.**
+   
+   This means legitimate type errors (wrong parameter count, wrong types, etc.) will also be hidden:
+   
+   ```javascript
+   // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
+   UIHelper.promptForCancellationReason();  // Missing required parameter - NOT CAUGHT!
+   
+   // @ts-expect-error - TypeScript can't resolve namespace methods through module imports  
+   ValidationCore.validateForScheduling(rows, "wrong type");  // Wrong type - NOT CAUGHT!
+   ```
+   
+   **Production Impact**: This blind spot allowed a runtime error to reach production (TypeError: Cannot read properties of undefined).
+   
+   **Mitigation Strategies**:
+   1. ✅ **100% Test Coverage MANDATORY** - Tests are the only safety net
+   2. ✅ **Verify parameter counts** - Manually check calls match `.d.ts` signatures
+   3. ✅ **Code review carefully** - Human review catches what TypeScript can't
+   4. ✅ **Prefer class pattern** - Convert namespace modules to classes when refactoring
+   5. ✅ **Document thoroughly** - Add comments about expected parameters
+   
+   **Why This Happens**:
+   - TypeScript's `@ts-expect-error` suppresses ALL errors on the line
+   - There's no way to suppress only specific errors in JSDoc
+   - The namespace pattern forces us to accept this trade-off
+   
+   **Long-Term Solution**:
+   Convert namespace modules to classes with static methods:
+   ```javascript
+   // Instead of namespace object
+   var UIHelper = {
+       promptForCancellationReason: function(row) { }
+   };
+   
+   // Use class with static methods
+   class UIHelper {
+       static promptForCancellationReason(row) { }
+   }
+   ```
+   This eliminates the need for `@ts-expect-error` and restores full type checking.
+   
    **Verification Checklist**:
    1. **Confirm method exists**: Check source file (`RideManagerCore.js`) for the method
    2. **Verify test coverage**: Run `npm test -- --coverage --collectCoverageFrom='src/ModuleCore.js'`
    3. **Check runtime behavior**: Deploy to GAS and verify method works
    4. **Document in comment**: Reference source line number and test coverage
    5. **Use specific error comment**: `@ts-expect-error - TypeScript can't resolve namespace methods through module imports`
+   6. **⚠️ MANUALLY VERIFY**: Parameter count and types match `.d.ts` signature
    
-   **Alternative Solution (Not Recommended)**:
-   You could convert the namespace to a class with static methods, but this breaks the established GAS pattern used throughout the codebase.
+   **Alternative Solution (Recommended for New Code)**:
+   Use class pattern with static methods instead of namespace objects. This maintains GAS compatibility while enabling full type checking.
    
    **Examples in Codebase**:
    - `RideManagerCore` - 7 methods with namespace pattern (PR #179)
    - All methods exist, have 100% test coverage (32 tests)
    - TypeScript shows 9 false positive errors
    - All suppressed with `@ts-expect-error` + explanatory comments
+   - ⚠️ WARNING: Parameter errors on these lines will NOT be caught by TypeScript
 
 15. **Deployment Checklist**
    - ✅ All tests pass: `npm test`
@@ -1609,7 +1800,9 @@ If you see errors like "Property 'X' does not exist on type 'typeof import(...)/
 
 When modifying ANY code file, you MUST update all related artifacts:
 
-### 0. Verify Zero VS Code Errors (MANDATORY AFTER EVERY EDIT)
+### 0. Verify Zero Type Errors (MANDATORY AFTER EVERY EDIT)
+
+**FOR CHAT ASSISTANTS** (have `get_errors` tool):
 - ✅ **IMMEDIATELY** after modifying ANY file, run `get_errors` tool
 - ✅ Target the specific file or directory: `get_errors(['src/YourFile.js'])`
 - ✅ Fix ALL errors before proceeding to next change
@@ -1618,10 +1811,18 @@ When modifying ANY code file, you MUST update all related artifacts:
 - ❌ NEVER proceed with work when VS Code shows errors
 - ❌ NEVER say "I'll fix the errors later" - fix them NOW
 
+**FOR AUTONOMOUS CODING AGENTS** (no `get_errors` tool):
+- ✅ **IMMEDIATELY** after modifying ANY file, run `npm run typecheck`
+- ✅ Fix ALL errors before proceeding to next change
+- ✅ If you see "Property does not exist" errors, ADD THE METHOD to the `.d.ts` file
+- ✅ If you see implicit `any` errors, add explicit JSDoc types
+- ❌ NEVER proceed with work when typecheck shows errors
+- ❌ NEVER reference methods that don't exist in `.d.ts` files
+
 **Why This Matters**:
-- VS Code TypeScript server catches errors `tsc --noEmit` misses
+- VS Code TypeScript server catches errors `tsc --noEmit` misses (chat assistants)
+- `npm run typecheck` catches most errors (autonomous agents)
 - Type errors indicate runtime bugs waiting to happen
-- 175 errors = 175 potential production failures
 - Zero tolerance policy: ZERO errors or code is not complete
 
 ### 1. Update Tests (MANDATORY for Pure JavaScript)
@@ -1643,15 +1844,25 @@ When modifying ANY code file, you MUST update all related artifacts:
 - ❌ NEVER leave documentation inconsistent with code
 
 ### 4. Deployment Verification (MANDATORY)
+
+**FOR CHAT ASSISTANTS**:
 - ✅ **FIRST**: Check VS Code errors: `get_errors(['src/'])` - MUST be zero
-- ✅ Run full validation: `npm run typecheck; npm run validate-exports; npm test`
+- ✅ Run full validation: `npm run typecheck && npm run validate-exports && npm test`
 - ✅ Deploy: `npm run dev:push` (or `prod:push` for production)
 - ✅ Verify deployment success
 - ✅ Test in GAS environment (manual testing of critical paths)
 - ❌ NEVER assume deployment worked without verification
 - ❌ NEVER deploy with VS Code errors present
 
-**Example Workflow for Adding Trigger Cleanup:**
+**FOR AUTONOMOUS CODING AGENTS**:
+- ✅ **FIRST**: Run typecheck: `npm run typecheck` - MUST show zero errors
+- ✅ Run full validation: `npm test && npm run validate-exports`
+- ✅ Verify all `.d.ts` files are up to date
+- ✅ Check that all called methods exist in `.d.ts` files
+- ❌ NEVER create PR with typecheck errors
+- ❌ NEVER reference non-existent methods
+
+**Example Workflow (Chat Assistants with `get_errors` tool)**:
 ```
 1. ✅ Modify triggers.js (add cleanup calls)
 2. ✅ IMMEDIATELY check: get_errors(['src/triggers.js']) -- fix any errors
@@ -1662,6 +1873,22 @@ When modifying ANY code file, you MUST update all related artifacts:
 7. ✅ Run npm test -- verify all pass
 8. ✅ Run npm run typecheck -- verify no errors
 9. ✅ Final check: get_errors(['src/']) -- must show ZERO errors
+10. ✅ Deploy: npm run dev:push
+11. ✅ Test in spreadsheet: verify triggers clean up
+```
+
+**Example Workflow (Autonomous Agents without `get_errors` tool)**:
+```
+1. ✅ Create ValidationCore.d.ts with ALL method signatures FIRST
+2. ✅ Implement ValidationCore.js with proper JSDoc types
+3. ✅ Run npm run typecheck -- MUST show zero errors
+4. ✅ Create UIHelper.d.ts with ALL method signatures
+5. ✅ Implement UIHelper.js with proper JSDoc types
+6. ✅ Run npm run typecheck again -- MUST show zero errors
+7. ✅ Create RideCoordinator.js that calls ValidationCore/UIHelper methods
+8. ✅ Run npm run typecheck -- verify all methods exist
+9. ✅ Write tests for ValidationCore/UIHelper
+10. ✅ Run npm test -- verify all pass
 10. ✅ Deploy: npm run dev:push
 11. ✅ Test in spreadsheet: verify triggers clean up
 ```
