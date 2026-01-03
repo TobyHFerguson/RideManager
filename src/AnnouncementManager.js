@@ -157,20 +157,17 @@ var AnnouncementManager = (function () {
                 const doc = DocumentApp.openById(documentId);
 
                 // Build rowData object for template expansion
+                // Note: enrichRowData in AnnouncementCore will map these camelCase fields to PascalCase
                 const rowData = {
-                    _rowNum: row.rowNum,
-                    RideName: row.rideName,
-                    Date: row.startDate,
-                    RideLeaders: row.leaders.join(', '),
-                    StartTime: row.startTime,
-                    Location: row.location,
-                    Address: row.address,
-                    Group: row.group,
-                    RideURL: row.rideURL,
-                    RouteURL: row.routeURL,
-                    RouteName: row.routeName,
-                    Duration: row.duration,
-                    EndTime: row.endTime
+                    rideName: row.rideName,
+                    rideURL: row.rideURL,
+                    routeName: row.routeName,
+                    routeURL: row.routeURL,
+                    location: row.location,
+                    address: row.address,
+                    group: row.group,
+                    rideLeader: row.leaders.join(', '),
+                    date: row.startDate
                 };
 
                 // Fetch route data for template enrichment (gain, length, fpm, startPin, lat, long)
@@ -1352,20 +1349,17 @@ var AnnouncementManager = (function () {
             // Use "No reason given" if reason is empty or not provided
             const reasonText = reason && reason.trim() ? reason : 'No reason given';
 
+            // Note: enrichRowData in AnnouncementCore will map these camelCase fields to PascalCase
             const rowData = {
-                _rowNum: row.rowNum,
-                RideName: row.rideName,
-                Date: row.startDate,
-                RideLeaders: row.leaders.join(', '),
-                StartTime: row.startTime,
-                Location: row.location,
-                Address: row.address,
-                Group: row.group,
-                RideURL: row.rideURL,
-                RouteURL: row.routeURL,
-                RouteName: row.routeName,
-                Duration: row.duration,
-                EndTime: row.endTime,
+                rideName: row.rideName,
+                rideURL: row.rideURL,
+                routeName: row.routeName,
+                routeURL: row.routeURL,
+                location: row.location,
+                address: row.address,
+                group: row.group,
+                rideLeader: row.leaders.join(', '),
+                date: row.startDate,
                 [reasonFieldName]: reasonText // Add the reason field with default
             };
 
@@ -1384,6 +1378,7 @@ var AnnouncementManager = (function () {
             let html = this._convertDocToHtml(doc);
 
             // Expand template fields in the HTML (with route data for enrichment)
+            // Note: expandTemplate internally calls enrichRowData which adds RideLink, DateTime, etc.
             // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
             html = expandResult.expandedText;
