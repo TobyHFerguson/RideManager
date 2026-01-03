@@ -92,7 +92,9 @@ class ValidationCore {
             const validationMap = new Map();
             
             rows.forEach(row => {
+                /** @type {string[]} */
                 const errors = [];
+                /** @type {string[]} */
                 const warnings = [];
                 
                 if (ValidationCore.isCancelled(row)) {
@@ -127,7 +129,9 @@ class ValidationCore {
             const validationMap = new Map();
             
             rows.forEach(row => {
+                /** @type {string[]} */
                 const errors = [];
+                /** @type {string[]} */
                 const warnings = [];
                 
                 // Error checks
@@ -183,7 +187,9 @@ class ValidationCore {
             const validationMap = new Map();
             
             rows.forEach(row => {
+                /** @type {string[]} */
                 const errors = [];
+                /** @type {string[]} */
                 const warnings = [];
                 
                 if (!ValidationCore.isCancelled(row)) {
@@ -211,7 +217,9 @@ class ValidationCore {
             const validationMap = new Map();
             
             rows.forEach(row => {
+                /** @type {string[]} */
                 const errors = [];
+                /** @type {string[]} */
                 const warnings = [];
                 
                 if (!ValidationCore.isScheduled(row)) {
@@ -239,7 +247,9 @@ class ValidationCore {
             const validationMap = new Map();
             
             rows.forEach(row => {
+                /** @type {string[]} */
                 const errors = [];
+                /** @type {string[]} */
                 const warnings = [];
                 
                 const routeError = ValidationCore.isRouteInaccessibleOrOwnedByClub(row, options.fetchUrl, options.clubUserId);

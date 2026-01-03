@@ -15,6 +15,20 @@ if (typeof require !== 'undefined') {
  */
 
 /**
+ * Helper: Wrap dates.convert to ensure Date return type (throw on NaN)
+ * @param {any} date - Date input
+ * @returns {Date} Date object
+ * @throws {Error} If date cannot be converted
+ */
+function convertToDate(date) {
+    const result = dates.convert(date);
+    if (typeof result === 'number') {
+        throw new Error(`Invalid date: ${date}`);
+    }
+    return result;
+}
+
+/**
  * Orchestration layer for ride operations
  * Implements validate → confirm → execute pattern for all operations
  */
@@ -37,7 +51,7 @@ var RideCoordinator = (function() {
                     getRoute: getRoute,
                     clubUserId: getGlobals().SCCCC_USER_ID,
                     managedEventName: SCCCCEvent.managedEventName,
-                    convertDate: dates.convert
+                    convertDate: convertToDate
                 });
 
                 // 2. Get user confirmation
@@ -202,7 +216,7 @@ var RideCoordinator = (function() {
                     getRoute: getRoute,
                     clubUserId: getGlobals().SCCCC_USER_ID,
                     managedEventName: SCCCCEvent.managedEventName,
-                    convertDate: dates.convert
+                    convertDate: convertToDate
                 });
 
                 // 2. Get user confirmation
