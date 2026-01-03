@@ -1,4 +1,16 @@
 // @ts-check
+
+// Node.js/Jest compatibility
+if (typeof require !== 'undefined') {
+    var UserLoggerCore = require('./UserLoggerCore');
+}
+
+/**
+ * UserLogger - Thin GAS adapter for user activity logging
+ * 
+ * Uses UserLoggerCore for formatting logic, handles only GAS-specific operations.
+ * Logs to "User Activity Log" sheet only (Drive file duplication removed).
+ */
 const UserLogger = (() => {
   
   /**
@@ -7,84 +19,37 @@ const UserLogger = (() => {
    * @param {string} details - Additional details about the action
    * @param {any} additionalData - Any additional data to log
    */
-  function logToSheet(action, details = '', additionalData = {}) {
+  function log(action, details = '', additionalData = {}) {
     try {
+      // Gather GAS-dependent data
+      const user = Session.getActiveUser()?.getEmail() || 'Unknown User';
+      const dtrtEnabled = PropertiesService.getUserProperties()
+        .getProperty('DTRT') === 'true';
+      const timestamp = new Date();
+      
+      // Use Core for formatting
+      const entry = UserLoggerCore.formatLogEntry(
+        action, details, additionalData, user, dtrtEnabled, timestamp
+      );
+      
+      // Write to sheet only (no Drive file duplication)
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       let logSheet = ss.getSheetByName('User Activity Log');
       
-      // Create the log sheet if it doesn't exist
       if (!logSheet) {
         logSheet = ss.insertSheet('User Activity Log');
-        logSheet.getRange(1, 1, 1, 6).setValues([
-          ['Timestamp', 'User', 'Action', 'Details', 'DTRT Status', 'Additional Data']
-        ]);
-        logSheet.getRange(1, 1, 1, 6).setFontWeight('bold');
+        const header = UserLoggerCore.getHeaderRow();
+        logSheet.getRange(1, 1, 1, header.length).setValues([header]);
+        logSheet.getRange(1, 1, 1, header.length).setFontWeight('bold');
       }
       
-      const timestamp = new Date();
-      const user = Session.getActiveUser()?.getEmail() || 'Unknown User';
-      const dtrtStatus = PropertiesService.getUserProperties().getProperty('DTRT') === 'true' ? 'Enabled' : 'Disabled';
-      
-      logSheet.appendRow([
-        timestamp,
-        user,
-        action,
-        details,
-        dtrtStatus,
-        JSON.stringify(additionalData)
-      ]);
+      logSheet.appendRow(UserLoggerCore.toSpreadsheetRow(entry));
       
     } catch (error) {
-      console.error('Failed to log to sheet:', error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error('Failed to log:', err.message);
     }
   }
 
-  /**
-   * Logs user activity to Google Drive as a text file
-   * @param {string} action - The action performed
-   * @param {string} details - Additional details about the action
-   * @param {any} additionalData - Any additional data to log
-   */
-  function logToFile(action, details = '', additionalData = {}) {
-    try {
-      const fileName = 'RLC_User_Activity_Log.txt';
-      const timestamp = new Date();
-      const user = Session.getActiveUser()?.getEmail() || 'Unknown User';
-      const dtrtStatus = PropertiesService.getUserProperties().getProperty('DTRT') === 'true' ? 'Enabled' : 'Disabled';
-      
-      const logEntry = `${timestamp} | ${user} | ${action} | ${details} | DTRT: ${dtrtStatus} | ${JSON.stringify(additionalData)}\n`;
-      
-      // Try to find existing log file
-      const files = DriveApp.getFilesByName(fileName);
-      let logFile;
-      
-      if (files.hasNext()) {
-        logFile = files.next();
-        const currentContent = logFile.getBlob().getDataAsString();
-        logFile.setContent(currentContent + logEntry);
-      } else {
-        // Create new log file
-        logFile = DriveApp.createFile(fileName, logEntry, MimeType.PLAIN_TEXT);
-      }
-      
-    } catch (error) {
-      console.error('Failed to log to file:', error);
-    }
-  }
-
-  return {
-    /**
-     * Logs user activity using the configured method
-     * @param {string} action - The action performed
-     * @param {string} details - Additional details about the action
-     * @param {any} additionalData - Any additional data to log
-     */
-    log(action, details = '', additionalData = {}) {
-      // Use sheet logging by default, fallback to file if needed
-      logToSheet(action, details, additionalData);
-    },
-    
-    logToSheet,
-    logToFile
-  };
+  return { log };
 })();
