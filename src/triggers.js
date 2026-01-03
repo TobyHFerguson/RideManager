@@ -4,7 +4,6 @@
 // @ts-check
 
 
-const _DTRT_KEY = 'DTRT_ENABLED_FOR_'
 function onOpen() {
   createMenu_();
   protectColumns_();

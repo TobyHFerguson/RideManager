@@ -46,6 +46,9 @@ var Exports = {
     get UserLogger() {
         return UserLogger;
     },
+    get UserLoggerCore() {
+        return UserLoggerCore;
+    },
     get SCCCCEvent() {
         return SCCCCEvent;
     },
