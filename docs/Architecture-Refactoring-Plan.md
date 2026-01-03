@@ -10,6 +10,7 @@ This document outlines the refactoring plan to bring legacy modules into complia
 - **AnnouncementCore + AnnouncementManager**: Perfect separation of pure logic and GAS adapter
 - **TriggerManagerCore + TriggerManager**: Model implementation of Core/Adapter pattern
 - **RWGPSMembersCore + RWGPSMembersAdapter**: Clean data transformation with Fiddler integration
+- **UserLoggerCore + UserLogger**: Pure formatting logic with thin GAS adapter
 - **RouteColumnEditor**: Pure JavaScript with no GAS dependencies
 - **HyperlinkUtils**: Framework-agnostic utility functions
 
@@ -846,27 +847,37 @@ function cancelSelectedRides() {
 
 **GitHub Issue**: [#177 - Modernize ProcessingManager & UserLogger](https://github.com/TobyHFerguson/RideManager/issues/177)
 
-**Overview**: Extract pure business logic from ProcessingManager and UserLogger into Core modules with 100% test coverage. These modules currently mix GAS dependencies with logic.
+**Status**: ✅ **COMPLETED**
 
-**Current Problems**:
-- **ProcessingManager**: Constructor side effects, PropertiesService for UI state, no tests
-- **UserLogger**: Duplicate persistence (Sheet + Drive file), duplicate formatting logic, no tests
+**Overview**: Extract pure business logic from UserLogger into Core module with 100% test coverage. ProcessingManager was found to be dead code (no references) and was removed entirely.
 
-**Target Architecture**:
-- **ProcessingCore.js**: Pure state management (immutable, 100% tested)
-- **ProcessingAdapter.js**: Thin GAS wrapper for modal dialog
+**What Was Done**:
+- **ProcessingManager**: Removed entirely (dead code - not referenced anywhere in codebase)
+  - Deleted `src/ProcessingManager.js` and `src/ProcessingManager.d.ts`
+  - No replacement needed as it was unused
+- **UserLogger**: Extracted formatting logic to Core module
+  - Created `UserLoggerCore.js` with pure formatting functions (100% tested)
+  - Removed Drive file duplication (Sheet-only logging now)
+  - Simplified UserLogger to thin GAS adapter
+
+**Actual Architecture**:
 - **UserLoggerCore.js**: Pure formatting logic (100% tested)
-- **UserLogger.js**: Simplified (Sheet only, no Drive file)
+  - `formatLogEntry()` - Format log entry with all fields
+  - `toSpreadsheetRow()` - Convert to spreadsheet array
+  - `getHeaderRow()` - Get column headers
+- **UserLogger.js**: Simplified (Sheet only, uses UserLoggerCore)
+  - No Drive file duplication
+  - Uses UserLoggerCore for all formatting
 
-**Benefits**:
-1. **100% test coverage** for state management and formatting logic
-2. **Immutable state** in ProcessingCore (safer, predictable)
-3. **No constructor side effects** (explicit function calls)
-4. **Single persistence mechanism** in UserLogger (Sheet only)
-5. **No duplicate code** (formatting logic extracted once)
+**Benefits Achieved**:
+1. ✅ **100% test coverage** for log formatting logic (15 tests)
+2. ✅ **Single persistence mechanism** in UserLogger (Sheet only)
+3. ✅ **No duplicate code** (formatting logic extracted once)
+4. ✅ **Removed dead code** (ProcessingManager)
+5. ✅ **Testable formatting** (can verify all edge cases)
 
-**Effort**: 3-4 days  
-**Dependencies**: Recommended after Phase 2 (UI patterns established)
+**Effort**: 1 day (less than estimated due to ProcessingManager being unused)  
+**Dependencies**: Completed after Phase 2
 
 See [Issue #177](https://github.com/TobyHFerguson/RideManager/issues/177) for detailed implementation plan.
 
@@ -1216,12 +1227,11 @@ function onEdit(e) {
 - ✅ Deployed to production without issues
 
 ### Phase 2.5 Complete When:
-- ✅ ProcessingCore has 100% test coverage
 - ✅ UserLoggerCore has 100% test coverage
-- ✅ ProcessingAdapter replaces ProcessingManager
 - ✅ UserLogger simplified (Sheet only, no Drive file)
-- ✅ ProcessingManager.js deleted
-- ✅ Deployed to production without issues
+- ✅ ProcessingManager.js deleted (was dead code)
+- ✅ All tests pass
+- [ ] Deployed to production without issues
 
 ### Overall Success:
 - ✅ >80% of business logic has test coverage
@@ -1243,8 +1253,8 @@ function onEdit(e) {
 | Phase 2.1: ValidationCore + UIHelper | 2-3 days | 1 week |
 | Phase 2.2: RideCoordinator | 2-3 days | 1 week |
 | **Phase 2 Total** | **4-6 days** | **2 weeks** |
-| Phase 2.5: ProcessingCore + UserLoggerCore | 3-4 days | 1 week |
-| **Phase 2.5 Total** | **3-4 days** | **1 week** |
+| Phase 2.5: UserLoggerCore | 1 day | 2-3 days |
+| **Phase 2.5 Total** | **1 day** | **2-3 days** |
 | Phase 3 (optional RWGPS) | 5-9 days | 2-3 weeks |
 
 **Total Critical Path**: 6-7 weeks for Phase 1, 2 & 2.5
