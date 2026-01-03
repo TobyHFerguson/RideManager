@@ -51,11 +51,11 @@ export interface GroupSpecs {
 /**
  * Pure validation logic module (no GAS dependencies)
  */
-declare namespace ValidationCore {
+declare class ValidationCore {
     /**
      * Validate rows for scheduling operation
      */
-    function validateForScheduling(
+    static validateForScheduling(
         rows: InstanceType<typeof RowCore>[],
         options: ValidationOptionsWithRoute
     ): Map<InstanceType<typeof RowCore>, ValidationResult>;
@@ -63,7 +63,7 @@ declare namespace ValidationCore {
     /**
      * Validate rows for cancellation operation
      */
-    function validateForCancellation(
+    static validateForCancellation(
         rows: InstanceType<typeof RowCore>[],
         options: ValidationOptionsBase
     ): Map<InstanceType<typeof RowCore>, ValidationResult>;
@@ -71,7 +71,7 @@ declare namespace ValidationCore {
     /**
      * Validate rows for update operation
      */
-    function validateForUpdate(
+    static validateForUpdate(
         rows: InstanceType<typeof RowCore>[],
         options: ValidationOptionsWithRoute
     ): Map<InstanceType<typeof RowCore>, ValidationResult>;
@@ -79,7 +79,7 @@ declare namespace ValidationCore {
     /**
      * Validate rows for reinstatement operation
      */
-    function validateForReinstatement(
+    static validateForReinstatement(
         rows: InstanceType<typeof RowCore>[],
         options: ValidationOptionsBase
     ): Map<InstanceType<typeof RowCore>, ValidationResult>;
@@ -87,7 +87,7 @@ declare namespace ValidationCore {
     /**
      * Validate rows for unscheduling operation
      */
-    function validateForUnschedule(
+    static validateForUnschedule(
         rows: InstanceType<typeof RowCore>[],
         options: ValidationOptionsBase
     ): Map<InstanceType<typeof RowCore>, ValidationResult>;
@@ -95,7 +95,7 @@ declare namespace ValidationCore {
     /**
      * Validate rows for route import operation
      */
-    function validateForRouteImport(
+    static validateForRouteImport(
         rows: InstanceType<typeof RowCore>[],
         options: ValidationOptionsImport
     ): Map<InstanceType<typeof RowCore>, ValidationResult>;
@@ -103,17 +103,17 @@ declare namespace ValidationCore {
     /**
      * Check if ride is scheduled
      */
-    function isScheduled(row: InstanceType<typeof RowCore>): boolean;
+    static isScheduled(row: InstanceType<typeof RowCore>): boolean;
 
     /**
      * Check if ride is cancelled
      */
-    function isCancelled(row: InstanceType<typeof RowCore>): boolean;
+    static isCancelled(row: InstanceType<typeof RowCore>): boolean;
 
     /**
      * Check if ride is unmanaged
      */
-    function isUnmanagedRide(
+    static isUnmanagedRide(
         row: InstanceType<typeof RowCore>,
         managedEventName: (rideName: string, groupNames: string[]) => boolean,
         groupNames: string[]
@@ -122,7 +122,7 @@ declare namespace ValidationCore {
     /**
      * Validate start date
      */
-    function validateStartDate(
+    static validateStartDate(
         row: InstanceType<typeof RowCore>,
         convertDate: (date: any) => Date
     ): string | undefined;
@@ -130,7 +130,7 @@ declare namespace ValidationCore {
     /**
      * Validate start time
      */
-    function validateStartTime(
+    static validateStartTime(
         row: InstanceType<typeof RowCore>,
         convertDate: (time: any) => Date
     ): string | undefined;
@@ -138,7 +138,7 @@ declare namespace ValidationCore {
     /**
      * Validate group
      */
-    function validateGroup(
+    static validateGroup(
         row: InstanceType<typeof RowCore>,
         groupNames: string[]
     ): string | undefined;
@@ -146,7 +146,7 @@ declare namespace ValidationCore {
     /**
      * Check if route is bad (cannot be fetched)
      */
-    function isBadRoute(
+    static isBadRoute(
         row: InstanceType<typeof RowCore>,
         getRoute: (routeURL: string) => { user_id: number }
     ): string | undefined;
@@ -154,7 +154,7 @@ declare namespace ValidationCore {
     /**
      * Check if route is foreign (not owned by club)
      */
-    function isForeignRoute(
+    static isForeignRoute(
         row: InstanceType<typeof RowCore>,
         getRoute: (routeURL: string) => { user_id: number },
         clubUserId: number
@@ -163,7 +163,7 @@ declare namespace ValidationCore {
     /**
      * Check if route is inaccessible or owned by club (for import operation)
      */
-    function isRouteInaccessibleOrOwnedByClub(
+    static isRouteInaccessibleOrOwnedByClub(
         row: InstanceType<typeof RowCore>,
         fetchUrl: (url: string, muteHttpExceptions: boolean) => {
             getResponseCode: () => number;
@@ -175,22 +175,22 @@ declare namespace ValidationCore {
     /**
      * Validate ride leader
      */
-    function validateRideLeader(row: InstanceType<typeof RowCore>): string | undefined;
+    static validateRideLeader(row: InstanceType<typeof RowCore>): string | undefined;
 
     /**
      * Validate location
      */
-    function validateLocation(row: InstanceType<typeof RowCore>): string | undefined;
+    static validateLocation(row: InstanceType<typeof RowCore>): string | undefined;
 
     /**
      * Validate address
      */
-    function validateAddress(row: InstanceType<typeof RowCore>): string | undefined;
+    static validateAddress(row: InstanceType<typeof RowCore>): string | undefined;
 
     /**
      * Check if route metrics are inappropriate for group
      */
-    function inappropriateGroup(
+    static inappropriateGroup(
         groupName: string,
         elevationFeet: number,
         distanceMiles: number,

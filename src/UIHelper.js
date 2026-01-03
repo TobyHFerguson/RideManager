@@ -10,18 +10,17 @@
  * Simple UI utilities for Google Apps Script
  * Handles user interaction dialogs and messages
  */
-var UIHelper = (function() {
-    const UIHelper = {
-        /**
-         * Confirm operation with user
-         * @param {Object} options - Confirmation options
-         * @param {string} options.operationName - Name of the operation (e.g., "Schedule Rides")
-         * @param {RowCoreInstance[]} options.rows - Rows to process
-         * @param {Map<RowCoreInstance, ValidationResult>} options.validation - Validation results
-         * @param {boolean} [options.force] - Skip user confirmation if true
-         * @returns {{confirmed: boolean, processableRows: RowCoreInstance[]}}
-         */
-        confirmOperation({ operationName, rows, validation, force = false }) {
+class UIHelper {
+    /**
+     * Confirm operation with user
+     * @param {Object} options - Confirmation options
+     * @param {string} options.operationName - Name of the operation (e.g., "Schedule Rides")
+     * @param {RowCoreInstance[]} options.rows - Rows to process
+     * @param {Map<RowCoreInstance, ValidationResult>} options.validation - Validation results
+     * @param {boolean} [options.force] - Skip user confirmation if true
+     * @returns {{confirmed: boolean, processableRows: RowCoreInstance[]}}
+     */
+    static confirmOperation({ operationName, rows, validation, force = false }) {
             const processableRows = rows.filter(r => {
                 const v = validation.get(r);
                 return v && v.errors.length === 0;
@@ -53,16 +52,16 @@ var UIHelper = (function() {
                 confirmed: result === ui.Button.YES,
                 processableRows
             };
-        },
+    }
 
-        /**
-         * Build validation message for display
-         * @param {string} operationName - Name of the operation
-         * @param {RowCoreInstance[]} rows - Rows being validated
-         * @param {Map<RowCoreInstance, ValidationResult>} validation - Validation results
-         * @returns {string}
-         */
-        buildValidationMessage(operationName, rows, validation) {
+    /**
+     * Build validation message for display
+     * @param {string} operationName - Name of the operation
+     * @param {RowCoreInstance[]} rows - Rows being validated
+     * @param {Map<RowCoreInstance, ValidationResult>} validation - Validation results
+     * @returns {string}
+     */
+    static buildValidationMessage(operationName, rows, validation) {
             /** @type {string[]} */
             const sections = [];
 
@@ -110,42 +109,42 @@ var UIHelper = (function() {
             }
 
             return sections.join('\n');
-        },
+    }
 
-        /**
-         * Show success message
-         * @param {string} message - Success message to display
-         */
-        showSuccess(message) {
+    /**
+     * Show success message
+     * @param {string} message - Success message to display
+     */
+    static showSuccess(message) {
             SpreadsheetApp.getUi().alert(
                 'Success',
                 message,
                 SpreadsheetApp.getUi().ButtonSet.OK
             );
-        },
+    }
 
-        /**
-         * Show error message
-         * @param {string} title - Error title
-         * @param {Error|string} error - Error object or message
-         */
-        showError(title, error) {
+    /**
+     * Show error message
+     * @param {string} title - Error title
+     * @param {Error|string} error - Error object or message
+     */
+    static showError(title, error) {
             const err = error instanceof Error ? error : new Error(String(error));
             SpreadsheetApp.getUi().alert(
                 title,
                 `${err.message}\n\nCheck Logs for details.`,
                 SpreadsheetApp.getUi().ButtonSet.OK
             );
-        },
+    }
 
-        /**
-         * Confirm cancellation with announcement handling
-         * @param {RowCoreInstance[]} rows - Rows to cancel
-         * @param {Map<RowCoreInstance, ValidationResult>} validation - Validation results
-         * @param {RowCoreInstance[]} rowsWithAnnouncements - Rows that have announcements
-         * @returns {{confirmed: boolean, sendCancellationNotice: boolean, processableRows: RowCoreInstance[]}}
-         */
-        confirmCancellationWithAnnouncements(rows, validation, rowsWithAnnouncements) {
+    /**
+     * Confirm cancellation with announcement handling
+     * @param {RowCoreInstance[]} rows - Rows to cancel
+     * @param {Map<RowCoreInstance, ValidationResult>} validation - Validation results
+     * @param {RowCoreInstance[]} rowsWithAnnouncements - Rows that have announcements
+     * @returns {{confirmed: boolean, sendCancellationNotice: boolean, processableRows: RowCoreInstance[]}}
+     */
+    static confirmCancellationWithAnnouncements(rows, validation, rowsWithAnnouncements) {
             const processableRows = rows.filter(r => {
                 const v = validation.get(r);
                 return v && v.errors.length === 0;
@@ -164,12 +163,12 @@ var UIHelper = (function() {
 
             const ui = SpreadsheetApp.getUi();
             const announcementInfo = rowsWithAnnouncements.length > 0
-                ? `\n\n⚠️  ${rowsWithAnnouncements.length} ride(s) have announcements.\nSelect YES to send cancellation notices, NO to skip notices.`
+                ? `\n\n⚠️  ${rowsWithAnnouncements.length} ride(s) have announcements.\nSelect YES to send cancellation notices, NO to skip notices, CANCEL to abort.`
                 : '';
 
             const result = ui.alert(
                 'Cancel Rides',
-                message + announcementInfo + `\n\nCancel ${processableRows.length} ride(s)?`,
+                message + announcementInfo + `\n\nSend cancellation notices for ${processableRows.length} ride(s)?`,
                 ui.ButtonSet.YES_NO_CANCEL
             );
 
@@ -178,16 +177,16 @@ var UIHelper = (function() {
                 sendCancellationNotice: result === ui.Button.YES,
                 processableRows
             };
-        },
+    }
 
-        /**
-         * Confirm reinstatement with announcement handling
-         * @param {RowCoreInstance[]} rows - Rows to reinstate
-         * @param {Map<RowCoreInstance, ValidationResult>} validation - Validation results
-         * @param {RowCoreInstance[]} rowsWithAnnouncements - Rows that have announcements
-         * @returns {{confirmed: boolean, sendReinstatementNotice: boolean, processableRows: RowCoreInstance[]}}
-         */
-        confirmReinstatementWithAnnouncements(rows, validation, rowsWithAnnouncements) {
+    /**
+     * Confirm reinstatement with announcement handling
+     * @param {RowCoreInstance[]} rows - Rows to reinstate
+     * @param {Map<RowCoreInstance, ValidationResult>} validation - Validation results
+     * @param {RowCoreInstance[]} rowsWithAnnouncements - Rows that have announcements
+     * @returns {{confirmed: boolean, sendReinstatementNotice: boolean, processableRows: RowCoreInstance[]}}
+     */
+    static confirmReinstatementWithAnnouncements(rows, validation, rowsWithAnnouncements) {
             const processableRows = rows.filter(r => {
                 const v = validation.get(r);
                 return v && v.errors.length === 0;
@@ -206,12 +205,12 @@ var UIHelper = (function() {
 
             const ui = SpreadsheetApp.getUi();
             const announcementInfo = rowsWithAnnouncements.length > 0
-                ? `\n\n⚠️  ${rowsWithAnnouncements.length} ride(s) have announcements.\nSelect YES to send reinstatement notices, NO to skip notices.`
+                ? `\n\n⚠️  ${rowsWithAnnouncements.length} ride(s) have announcements.\nSelect YES to send reinstatement notices, NO to skip notices, CANCEL to abort.`
                 : '';
 
             const result = ui.alert(
                 'Reinstate Rides',
-                message + announcementInfo + `\n\nReinstate ${processableRows.length} ride(s)?`,
+                message + announcementInfo + `\n\nSend reinstatement notices for ${processableRows.length} ride(s)?`,
                 ui.ButtonSet.YES_NO_CANCEL
             );
 
@@ -220,17 +219,18 @@ var UIHelper = (function() {
                 sendReinstatementNotice: result === ui.Button.YES,
                 processableRows
             };
-        },
+    }
 
-        /**
-         * Prompt user for cancellation reason
-         * @param {RowCoreInstance} row - Row being cancelled
-         * @returns {{cancelled: boolean, reason: string}}
-         */
-        promptForCancellationReason(row) {
+    /**
+     * Prompt user for cancellation reason
+     * @param {RowCoreInstance} row - Row being cancelled
+     * @returns {{cancelled: boolean, reason: string}}
+     */
+    static promptForCancellationReason(row) {
             const ui = SpreadsheetApp.getUi();
-            const promptMsg = `Row ${row.rowNum}: ${row.rideName}\n\n` +
-                `Please provide a brief reason for the cancellation:`;
+            const promptMsg = row 
+                ? `Row ${row.rowNum}: ${row.rideName}\n\nPlease provide a brief reason for the cancellation:`
+                : 'Please provide a brief reason for the cancellation of the selected rides:';
 
             const response = ui.prompt('Cancellation Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
 
@@ -238,17 +238,18 @@ var UIHelper = (function() {
                 cancelled: response.getSelectedButton() === ui.Button.CANCEL,
                 reason: response.getResponseText()
             };
-        },
+    }
 
-        /**
-         * Prompt user for reinstatement reason
-         * @param {RowCoreInstance} row - Row being reinstated
-         * @returns {{cancelled: boolean, reason: string}}
-         */
-        promptForReinstatementReason(row) {
+    /**
+     * Prompt user for reinstatement reason
+     * @param {RowCoreInstance} row - Row being reinstated
+     * @returns {{cancelled: boolean, reason: string}}
+     */
+    static promptForReinstatementReason(row) {
             const ui = SpreadsheetApp.getUi();
-            const promptMsg = `Row ${row.rowNum}: ${row.rideName}\n\n` +
-                `Please provide a brief reason for the reinstatement:`;
+            const promptMsg = row
+                ? `Row ${row.rowNum}: ${row.rideName}\n\nPlease provide a brief reason for the reinstatement:`
+                : 'Please provide a brief reason for the reinstatement of the selected rides:';
 
             const response = ui.prompt('Reinstatement Reason', promptMsg, ui.ButtonSet.OK_CANCEL);
 
@@ -256,11 +257,8 @@ var UIHelper = (function() {
                 cancelled: response.getSelectedButton() === ui.Button.CANCEL,
                 reason: response.getResponseText()
             };
-        }
-    };
-
-    return UIHelper;
-})();
+    }
+}
 
 if (typeof module !== 'undefined') {
     module.exports = UIHelper;

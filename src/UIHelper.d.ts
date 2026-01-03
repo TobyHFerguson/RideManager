@@ -45,16 +45,16 @@ export interface ConfirmationOptions {
 /**
  * UI Helper utilities for Google Apps Script
  */
-declare namespace UIHelper {
+declare class UIHelper {
     /**
      * Confirm operation with user
      */
-    function confirmOperation(options: ConfirmationOptions): ConfirmationResult;
+    static confirmOperation(options: ConfirmationOptions): ConfirmationResult;
 
     /**
      * Build validation message for display
      */
-    function buildValidationMessage(
+    static buildValidationMessage(
         operationName: string,
         rows: InstanceType<typeof RowCore>[],
         validation: Map<InstanceType<typeof RowCore>, ValidationResult>
@@ -63,17 +63,17 @@ declare namespace UIHelper {
     /**
      * Show success message
      */
-    function showSuccess(message: string): void;
+    static showSuccess(message: string): void;
 
     /**
      * Show error message
      */
-    function showError(title: string, error: Error | string): void;
+    static showError(title: string, error: Error | string): void;
 
     /**
      * Confirm cancellation with announcement handling
      */
-    function confirmCancellationWithAnnouncements(
+    static confirmCancellationWithAnnouncements(
         rows: InstanceType<typeof RowCore>[],
         validation: Map<InstanceType<typeof RowCore>, ValidationResult>,
         rowsWithAnnouncements: InstanceType<typeof RowCore>[]
@@ -82,7 +82,7 @@ declare namespace UIHelper {
     /**
      * Confirm reinstatement with announcement handling
      */
-    function confirmReinstatementWithAnnouncements(
+    static confirmReinstatementWithAnnouncements(
         rows: InstanceType<typeof RowCore>[],
         validation: Map<InstanceType<typeof RowCore>, ValidationResult>,
         rowsWithAnnouncements: InstanceType<typeof RowCore>[]
@@ -90,13 +90,15 @@ declare namespace UIHelper {
 
     /**
      * Prompt user for cancellation reason
+     * @param row - Optional row for context in prompt message
      */
-    function promptForCancellationReason(row: InstanceType<typeof RowCore>): ReasonPromptResult;
+    static promptForCancellationReason(row?: InstanceType<typeof RowCore>): ReasonPromptResult;
 
     /**
      * Prompt user for reinstatement reason
+     * @param row - Optional row for context in prompt message
      */
-    function promptForReinstatementReason(row: InstanceType<typeof RowCore>): ReasonPromptResult;
+    static promptForReinstatementReason(row?: InstanceType<typeof RowCore>): ReasonPromptResult;
 }
 
 export default UIHelper;

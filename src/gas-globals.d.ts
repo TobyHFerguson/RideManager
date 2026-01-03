@@ -25,8 +25,8 @@ import type RideManagerCore from './RideManagerCore';
 import type AnnouncementCoreNamespace from './AnnouncementCore';
 import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
 import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
-import type ValidationCoreNamespace from './ValidationCore';
-import type UIHelperNamespace from './UIHelper';
+import type ValidationCoreClass from './ValidationCore';
+import type UIHelperClass from './UIHelper';
 import type RideCoordinatorNamespace from './RideCoordinator';
 
 // Declare all module exports as global variables for GAS runtime
@@ -41,6 +41,8 @@ declare global {
     const TriggerManager: typeof TriggerManagerClass;
     const SCCCCEvent: typeof SCCCCEventClass;
     const RWGPSMembersAdapter: typeof RWGPSMembersAdapterClass;
+    const ValidationCore: typeof ValidationCoreClass;
+    const UIHelper: typeof UIHelperClass;
     
     // Objects/Namespaces - singleton instances or frozen objects
     const MenuFunctions: MenuFunctionsType;
@@ -50,8 +52,6 @@ declare global {
     const RideManagerCore: typeof RideManagerCore;
     const AnnouncementCore: typeof AnnouncementCoreNamespace;
     const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
-    const ValidationCore: typeof ValidationCoreNamespace;
-    const UIHelper: typeof UIHelperNamespace;
     const RideCoordinator: typeof RideCoordinatorNamespace;
     
     // External libraries available in GAS runtime

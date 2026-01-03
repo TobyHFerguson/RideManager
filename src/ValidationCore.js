@@ -20,20 +20,19 @@ if (typeof require !== 'undefined') {
  * Pure validation logic (no GAS dependencies)
  * All methods return validation results without side effects
  */
-var ValidationCore = (function() {
-    const ValidationCore = {
-        /**
-         * Validate rows for scheduling operation
-         * @param {RowCoreInstance[]} rows - Rows to validate
-         * @param {Object} options - Validation options
-         * @param {string[]} options.groupNames - Available group names
-         * @param {(routeURL: string) => {user_id: number}} options.getRoute - Function to fetch route
-         * @param {number} options.clubUserId - SCCCC user ID
-         * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
-         * @param {(startDate: any) => Date} options.convertDate - Date conversion function
-         * @returns {Map<RowCoreInstance, ValidationResult>}
-         */
-        validateForScheduling(rows, options) {
+class ValidationCore {
+    /**
+     * Validate rows for scheduling operation
+     * @param {RowCoreInstance[]} rows - Rows to validate
+     * @param {Object} options - Validation options
+     * @param {string[]} options.groupNames - Available group names
+     * @param {(routeURL: string) => {user_id: number}} options.getRoute - Function to fetch route
+     * @param {number} options.clubUserId - SCCCC user ID
+     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @param {(startDate: any) => Date} options.convertDate - Date conversion function
+     * @returns {Map<RowCoreInstance, ValidationResult>}
+     */
+    static validateForScheduling(rows, options) {
             const validationMap = new Map();
             
             rows.forEach(row => {
@@ -41,37 +40,37 @@ var ValidationCore = (function() {
                 const warnings = [];
                 
                 // Error checks
-                const unmanagedError = this.isUnmanagedRide(row, options.managedEventName, options.groupNames);
+                const unmanagedError = ValidationCore.isUnmanagedRide(row, options.managedEventName, options.groupNames);
                 if (unmanagedError) errors.push(unmanagedError);
                 
-                if (this.isScheduled(row)) {
+                if (ValidationCore.isScheduled(row)) {
                     errors.push('This ride has already been scheduled');
                 }
                 
-                const dateError = this.validateStartDate(row, options.convertDate);
+                const dateError = ValidationCore.validateStartDate(row, options.convertDate);
                 if (dateError) errors.push(dateError);
                 
-                const timeError = this.validateStartTime(row, options.convertDate);
+                const timeError = ValidationCore.validateStartTime(row, options.convertDate);
                 if (timeError) errors.push(timeError);
                 
-                const groupError = this.validateGroup(row, options.groupNames);
+                const groupError = ValidationCore.validateGroup(row, options.groupNames);
                 if (groupError) errors.push(groupError);
                 
-                const badRouteError = this.isBadRoute(row, options.getRoute);
+                const badRouteError = ValidationCore.isBadRoute(row, options.getRoute);
                 if (badRouteError) errors.push(badRouteError);
                 
-                const foreignRouteError = this.isForeignRoute(row, options.getRoute, options.clubUserId);
+                const foreignRouteError = ValidationCore.isForeignRoute(row, options.getRoute, options.clubUserId);
                 if (foreignRouteError) errors.push(foreignRouteError);
                 
                 // Warning checks (only if no errors - don't clutter output)
                 if (errors.length === 0) {
-                    const leaderWarning = this.validateRideLeader(row);
+                    const leaderWarning = ValidationCore.validateRideLeader(row);
                     if (leaderWarning) warnings.push(leaderWarning);
                     
-                    const locationWarning = this.validateLocation(row);
+                    const locationWarning = ValidationCore.validateLocation(row);
                     if (locationWarning) warnings.push(locationWarning);
                     
-                    const addressWarning = this.validateAddress(row);
+                    const addressWarning = ValidationCore.validateAddress(row);
                     if (addressWarning) warnings.push(addressWarning);
                 }
                 
@@ -79,52 +78,52 @@ var ValidationCore = (function() {
             });
             
             return validationMap;
-        },
+    }
 
-        /**
-         * Validate rows for cancellation operation
-         * @param {RowCoreInstance[]} rows - Rows to validate
-         * @param {Object} options - Validation options
-         * @param {string[]} options.groupNames - Available group names
-         * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
-         * @returns {Map<RowCoreInstance, ValidationResult>}
-         */
-        validateForCancellation(rows, options) {
+    /**
+     * Validate rows for cancellation operation
+     * @param {RowCoreInstance[]} rows - Rows to validate
+     * @param {Object} options - Validation options
+     * @param {string[]} options.groupNames - Available group names
+     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @returns {Map<RowCoreInstance, ValidationResult>}
+     */
+    static validateForCancellation(rows, options) {
             const validationMap = new Map();
             
             rows.forEach(row => {
                 const errors = [];
                 const warnings = [];
                 
-                if (this.isCancelled(row)) {
+                if (ValidationCore.isCancelled(row)) {
                     errors.push('Operation not permitted on cancelled ride');
                 }
                 
-                if (!this.isScheduled(row)) {
+                if (!ValidationCore.isScheduled(row)) {
                     errors.push('Ride has not been scheduled');
                 }
                 
-                const unmanagedError = this.isUnmanagedRide(row, options.managedEventName, options.groupNames);
+                const unmanagedError = ValidationCore.isUnmanagedRide(row, options.managedEventName, options.groupNames);
                 if (unmanagedError) errors.push(unmanagedError);
                 
                 validationMap.set(row, { errors, warnings });
             });
             
             return validationMap;
-        },
+    }
 
-        /**
-         * Validate rows for update operation
-         * @param {RowCoreInstance[]} rows - Rows to validate
-         * @param {Object} options - Validation options
-         * @param {string[]} options.groupNames - Available group names
-         * @param {(routeURL: string) => {user_id: number}} options.getRoute - Function to fetch route
-         * @param {number} options.clubUserId - SCCCC user ID
-         * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
-         * @param {(startDate: any) => Date} options.convertDate - Date conversion function
-         * @returns {Map<RowCoreInstance, ValidationResult>}
-         */
-        validateForUpdate(rows, options) {
+    /**
+     * Validate rows for update operation
+     * @param {RowCoreInstance[]} rows - Rows to validate
+     * @param {Object} options - Validation options
+     * @param {string[]} options.groupNames - Available group names
+     * @param {(routeURL: string) => {user_id: number}} options.getRoute - Function to fetch route
+     * @param {number} options.clubUserId - SCCCC user ID
+     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @param {(startDate: any) => Date} options.convertDate - Date conversion function
+     * @returns {Map<RowCoreInstance, ValidationResult>}
+     */
+    static validateForUpdate(rows, options) {
             const validationMap = new Map();
             
             rows.forEach(row => {
@@ -132,37 +131,37 @@ var ValidationCore = (function() {
                 const warnings = [];
                 
                 // Error checks
-                if (!this.isScheduled(row)) {
+                if (!ValidationCore.isScheduled(row)) {
                     errors.push('Ride has not been scheduled');
                 }
                 
-                const unmanagedError = this.isUnmanagedRide(row, options.managedEventName, options.groupNames);
+                const unmanagedError = ValidationCore.isUnmanagedRide(row, options.managedEventName, options.groupNames);
                 if (unmanagedError) errors.push(unmanagedError);
                 
-                const dateError = this.validateStartDate(row, options.convertDate);
+                const dateError = ValidationCore.validateStartDate(row, options.convertDate);
                 if (dateError) errors.push(dateError);
                 
-                const timeError = this.validateStartTime(row, options.convertDate);
+                const timeError = ValidationCore.validateStartTime(row, options.convertDate);
                 if (timeError) errors.push(timeError);
                 
-                const groupError = this.validateGroup(row, options.groupNames);
+                const groupError = ValidationCore.validateGroup(row, options.groupNames);
                 if (groupError) errors.push(groupError);
                 
-                const badRouteError = this.isBadRoute(row, options.getRoute);
+                const badRouteError = ValidationCore.isBadRoute(row, options.getRoute);
                 if (badRouteError) errors.push(badRouteError);
                 
-                const foreignRouteError = this.isForeignRoute(row, options.getRoute, options.clubUserId);
+                const foreignRouteError = ValidationCore.isForeignRoute(row, options.getRoute, options.clubUserId);
                 if (foreignRouteError) errors.push(foreignRouteError);
                 
                 // Warning checks (only if no errors)
                 if (errors.length === 0) {
-                    const leaderWarning = this.validateRideLeader(row);
+                    const leaderWarning = ValidationCore.validateRideLeader(row);
                     if (leaderWarning) warnings.push(leaderWarning);
                     
-                    const locationWarning = this.validateLocation(row);
+                    const locationWarning = ValidationCore.validateLocation(row);
                     if (locationWarning) warnings.push(locationWarning);
                     
-                    const addressWarning = this.validateAddress(row);
+                    const addressWarning = ValidationCore.validateAddress(row);
                     if (addressWarning) warnings.push(addressWarning);
                 }
                 
@@ -170,63 +169,63 @@ var ValidationCore = (function() {
             });
             
             return validationMap;
-        },
+    }
 
-        /**
-         * Validate rows for reinstatement operation
-         * @param {RowCoreInstance[]} rows - Rows to validate
-         * @param {Object} options - Validation options
-         * @param {string[]} options.groupNames - Available group names
-         * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
-         * @returns {Map<RowCoreInstance, ValidationResult>}
-         */
-        validateForReinstatement(rows, options) {
+    /**
+     * Validate rows for reinstatement operation
+     * @param {RowCoreInstance[]} rows - Rows to validate
+     * @param {Object} options - Validation options
+     * @param {string[]} options.groupNames - Available group names
+     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @returns {Map<RowCoreInstance, ValidationResult>}
+     */
+    static validateForReinstatement(rows, options) {
             const validationMap = new Map();
             
             rows.forEach(row => {
                 const errors = [];
                 const warnings = [];
                 
-                if (!this.isCancelled(row)) {
+                if (!ValidationCore.isCancelled(row)) {
                     errors.push('Operation not permitted when ride is not cancelled');
                 }
                 
-                const unmanagedError = this.isUnmanagedRide(row, options.managedEventName, options.groupNames);
+                const unmanagedError = ValidationCore.isUnmanagedRide(row, options.managedEventName, options.groupNames);
                 if (unmanagedError) errors.push(unmanagedError);
                 
                 validationMap.set(row, { errors, warnings });
             });
             
             return validationMap;
-        },
+    }
 
-        /**
-         * Validate rows for unscheduling operation
-         * @param {RowCoreInstance[]} rows - Rows to validate
-         * @param {Object} options - Validation options
-         * @param {string[]} options.groupNames - Available group names
-         * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
-         * @returns {Map<RowCoreInstance, ValidationResult>}
-         */
-        validateForUnschedule(rows, options) {
+    /**
+     * Validate rows for unscheduling operation
+     * @param {RowCoreInstance[]} rows - Rows to validate
+     * @param {Object} options - Validation options
+     * @param {string[]} options.groupNames - Available group names
+     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @returns {Map<RowCoreInstance, ValidationResult>}
+     */
+    static validateForUnschedule(rows, options) {
             const validationMap = new Map();
             
             rows.forEach(row => {
                 const errors = [];
                 const warnings = [];
                 
-                if (!this.isScheduled(row)) {
+                if (!ValidationCore.isScheduled(row)) {
                     errors.push('Ride has not been scheduled');
                 }
                 
-                const unmanagedError = this.isUnmanagedRide(row, options.managedEventName, options.groupNames);
+                const unmanagedError = ValidationCore.isUnmanagedRide(row, options.managedEventName, options.groupNames);
                 if (unmanagedError) errors.push(unmanagedError);
                 
                 validationMap.set(row, { errors, warnings });
             });
             
             return validationMap;
-        },
+    }
 
         /**
          * Validate rows for route import operation
@@ -236,41 +235,41 @@ var ValidationCore = (function() {
          * @param {number} options.clubUserId - SCCCC user ID
          * @returns {Map<RowCoreInstance, ValidationResult>}
          */
-        validateForRouteImport(rows, options) {
+    static validateForRouteImport(rows, options) {
             const validationMap = new Map();
             
             rows.forEach(row => {
                 const errors = [];
                 const warnings = [];
                 
-                const routeError = this.isRouteInaccessibleOrOwnedByClub(row, options.fetchUrl, options.clubUserId);
+                const routeError = ValidationCore.isRouteInaccessibleOrOwnedByClub(row, options.fetchUrl, options.clubUserId);
                 if (routeError) errors.push(routeError);
                 
                 validationMap.set(row, { errors, warnings });
             });
             
             return validationMap;
-        },
+    }
 
         // ========== Pure Validation Helpers ==========
 
-        /**
-         * Check if ride is scheduled
-         * @param {RowCoreInstance} row
-         * @returns {boolean}
-         */
-        isScheduled(row) {
+    /**
+     * Check if row is scheduled
+     * @param {RowCoreInstance} row
+     * @returns {boolean}
+     */
+    static isScheduled(row) {
             return !!row.rideURL;
-        },
+    }
 
-        /**
-         * Check if ride is cancelled
-         * @param {RowCoreInstance} row
-         * @returns {boolean}
-         */
-        isCancelled(row) {
+    /**
+     * Check if row is cancelled
+     * @param {RowCoreInstance} row
+     * @returns {boolean}
+     */
+    static isCancelled(row) {
             return row.rideName.toLowerCase().startsWith('cancelled');
-        },
+    }
 
         /**
          * Check if ride is unmanaged
@@ -279,52 +278,52 @@ var ValidationCore = (function() {
          * @param {string[]} groupNames
          * @returns {string|undefined}
          */
-        isUnmanagedRide(row, managedEventName, groupNames) {
+    static isUnmanagedRide(row, managedEventName, groupNames) {
             if (!managedEventName(row.rideName, groupNames)) {
                 return "Ride is unmanaged";
             }
             return undefined;
-        },
+    }
 
-        /**
-         * Validate start date
-         * @param {RowCoreInstance} row
-         * @param {(date: any) => Date} convertDate
-         * @returns {string|undefined}
-         */
-        validateStartDate(row, convertDate) {
+    /**
+     * Validate start date
+     * @param {RowCoreInstance} row
+     * @param {(date: any) => Date} convertDate
+     * @returns {string|undefined}
+     */
+    static validateStartDate(row, convertDate) {
             if (!row.startDate || convertDate(row.startDate).toString() === "Invalid Date") {
                 return `Invalid row.startDate: "${row.startDate} ${convertDate(row.startDate)}"`;
             }
             return undefined;
-        },
+    }
 
-        /**
-         * Validate start time
-         * @param {RowCoreInstance} row
-         * @param {(time: any) => Date} convertDate
-         * @returns {string|undefined}
-         */
-        validateStartTime(row, convertDate) {
+    /**
+     * Validate start time
+     * @param {RowCoreInstance} row
+     * @param {(time: any) => Date} convertDate
+     * @returns {string|undefined}
+     */
+    static validateStartTime(row, convertDate) {
             if (!row.startTime || convertDate(row.startTime).toString() === "Invalid Date") {
                 return `Invalid row.startTime: "${row.startTime} ${convertDate(row.startTime)}"`;
             }
             return undefined;
-        },
+    }
 
-        /**
-         * Validate group
-         * @param {RowCoreInstance} row
-         * @param {string[]} groupNames
-         * @returns {string|undefined}
-         */
-        validateGroup(row, groupNames) {
+    /**
+     * Validate group
+     * @param {RowCoreInstance} row
+     * @param {string[]} groupNames
+     * @returns {string|undefined}
+     */
+    static validateGroup(row, groupNames) {
             if (!row.group) return "Group column is empty";
             if (!groupNames.includes(row.group)) {
                 return `Unknown group: '${row.group}'. Expected one of ${groupNames.join(', ')}`;
             }
             return undefined;
-        },
+    }
 
         /**
          * Check if route is bad (cannot be fetched)
@@ -332,7 +331,7 @@ var ValidationCore = (function() {
          * @param {(routeURL: string) => {user_id: number}} getRoute
          * @returns {string|undefined}
          */
-        isBadRoute(row, getRoute) {
+    static isBadRoute(row, getRoute) {
             try {
                 getRoute(row.routeURL);
             } catch (e) {
@@ -340,16 +339,16 @@ var ValidationCore = (function() {
                 return err.message;
             }
             return undefined;
-        },
+    }
 
-        /**
-         * Check if route is foreign (not owned by club)
-         * @param {RowCoreInstance} row
-         * @param {(routeURL: string) => {user_id: number}} getRoute
-         * @param {number} clubUserId
-         * @returns {string|undefined}
-         */
-        isForeignRoute(row, getRoute, clubUserId) {
+    /**
+     * Check if route is foreign (not owned by club)
+     * @param {RowCoreInstance} row
+     * @param {(routeURL: string) => {user_id: number}} getRoute
+     * @param {number} clubUserId
+     * @returns {string|undefined}
+     */
+    static isForeignRoute(row, getRoute, clubUserId) {
             try {
                 const route = getRoute(row.routeURL);
                 if (route.user_id !== clubUserId) {
@@ -360,7 +359,7 @@ var ValidationCore = (function() {
                 return err.message;
             }
             return undefined;
-        },
+    }
 
         /**
          * Check if route is inaccessible or owned by club (for import operation)
@@ -369,7 +368,7 @@ var ValidationCore = (function() {
          * @param {number} clubUserId
          * @returns {string|undefined}
          */
-        isRouteInaccessibleOrOwnedByClub(row, fetchUrl, clubUserId) {
+    static isRouteInaccessibleOrOwnedByClub(row, fetchUrl, clubUserId) {
             const url = row.routeURL ? row.routeURL : row.routeName;
             if (!url) {
                 return `No Route URL in row ${row.rowNum}. Are you sure you've selected the right row?`;
@@ -396,43 +395,43 @@ var ValidationCore = (function() {
                 return "Unknown issue with Route URL - please check it and try again";
             }
             return undefined;
-        },
+    }
 
-        /**
-         * Validate ride leader
-         * @param {RowCoreInstance} row
-         * @returns {string|undefined}
-         */
-        validateRideLeader(row) {
+    /**
+     * Validate ride leader
+     * @param {RowCoreInstance} row
+     * @returns {string|undefined}
+     */
+    static validateRideLeader(row) {
             if (!row.leaders || row.leaders.length === 0) {
                 return `No ride leader given`;
             }
             return undefined;
-        },
+    }
 
-        /**
-         * Validate location
-         * @param {RowCoreInstance} row
-         * @returns {string|undefined}
-         */
-        validateLocation(row) {
+    /**
+     * Validate location
+     * @param {RowCoreInstance} row
+     * @returns {string|undefined}
+     */
+    static validateLocation(row) {
             if (!row.location || row.location.startsWith('#')) {
                 return "Unknown location";
             }
             return undefined;
-        },
+    }
 
-        /**
-         * Validate address
-         * @param {RowCoreInstance} row
-         * @returns {string|undefined}
-         */
-        validateAddress(row) {
+    /**
+     * Validate address
+     * @param {RowCoreInstance} row
+     * @returns {string|undefined}
+     */
+    static validateAddress(row) {
             if (!row.address || row.address.startsWith('#')) {
                 return "Unknown address";
             }
             return undefined;
-        },
+    }
 
         /**
          * Check if route metrics are inappropriate for group
@@ -442,7 +441,7 @@ var ValidationCore = (function() {
          * @param {Object.<string, {MIN_ELEVATION_GAIN?: number, MAX_ELEVATION_GAIN?: number, MIN_LENGTH?: number, MAX_LENGTH?: number}>} groupSpecs - Group specifications
          * @returns {string|undefined}
          */
-        inappropriateGroup(groupName, elevationFeet, distanceMiles, groupSpecs) {
+    static inappropriateGroup(groupName, elevationFeet, distanceMiles, groupSpecs) {
             const specs = groupSpecs[groupName];
             if (!specs) return `Unknown group: ${groupName}`;
             
@@ -460,11 +459,8 @@ var ValidationCore = (function() {
             }
             
             return undefined;
-        }
-    };
-
-    return ValidationCore;
-})();
+    }
+}
 
 if (typeof module !== 'undefined') {
     module.exports = ValidationCore;

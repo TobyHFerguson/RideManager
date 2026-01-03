@@ -3,8 +3,10 @@
 
 if (typeof require !== 'undefined') {
     var dates = require('./common/dates');
-    var ValidationCore = require('./ValidationCore');
-    var UIHelper = require('./UIHelper');
+    // Note: ValidationCore and UIHelper are NOT imported here because:
+    // 1. In GAS runtime, they are available as global classes
+    // 2. In tests, they need to be mocked/injected by the test setup
+    // 3. Importing them shadows the global and breaks TypeScript resolution
 }
 
 /**
@@ -30,7 +32,6 @@ var RideCoordinator = (function() {
                 // 1. Validate
                 // NOTE: validateForScheduling exists in ValidationCore (see ValidationCore.d.ts:59, test coverage: TBD)
                 // TypeScript error is false positive due to namespace export pattern
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const validation = ValidationCore.validateForScheduling(rows, {
                     groupNames: getGroupNames(),
                     getRoute: getRoute,
@@ -41,7 +42,6 @@ var RideCoordinator = (function() {
 
                 // 2. Get user confirmation
                 // NOTE: confirmOperation exists in UIHelper (see UIHelper.d.ts:53, implementation: UIHelper.js:25)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const confirmation = UIHelper.confirmOperation({
                     operationName: 'Schedule Rides',
                     rows,
@@ -61,14 +61,12 @@ var RideCoordinator = (function() {
 
                 // 5. Show success
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69, implementation: UIHelper.js:86)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showSuccess(`Successfully scheduled ${confirmation.processableRows.length} ride(s).`);
 
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.scheduleRides error:', err);
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74, implementation: UIHelper.js:90)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showError('Schedule Failed', err);
                 throw err;
             }
@@ -85,7 +83,6 @@ var RideCoordinator = (function() {
             try {
                 // 1. Validate
                 // NOTE: validateForCancellation exists in ValidationCore (see ValidationCore.d.ts:68, implementation: ValidationCore.js)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const validation = ValidationCore.validateForCancellation(rows, {
                     groupNames: getGroupNames(),
                     managedEventName: SCCCCEvent.managedEventName
@@ -101,7 +98,6 @@ var RideCoordinator = (function() {
                 let confirmation;
                 if (rowsWithAnnouncements.length > 0 && !force) {
                     // NOTE: confirmCancellationWithAnnouncements exists in UIHelper (see UIHelper.d.ts:79, implementation: UIHelper.js:117)
-                    // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                     confirmation = UIHelper.confirmCancellationWithAnnouncements(
                         rows,
                         validation,
@@ -110,6 +106,17 @@ var RideCoordinator = (function() {
 
                     if (!confirmation.confirmed) {
                         return;
+                    }
+
+                    // Get cancellation reason if sending notices
+                    let cancellationReason = '';
+                    if (confirmation.sendCancellationNotice) {
+                        // NOTE: promptForCancellationReason exists in UIHelper (see UIHelper.d.ts:93, implementation: UIHelper.js:163)
+                        const reasonPrompt = UIHelper.promptForCancellationReason();
+                        if (reasonPrompt.cancelled) {
+                            return; // User cancelled the operation
+                        }
+                        cancellationReason = reasonPrompt.reason;
                     }
 
                     // Process each row with announcement individually
@@ -125,16 +132,8 @@ var RideCoordinator = (function() {
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled`);
                             } else if (confirmation.sendCancellationNotice) {
-                                // Get cancellation reason
-                                // NOTE: promptForCancellationReason exists in UIHelper (see UIHelper.d.ts:93, implementation: UIHelper.js:163)
-                                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
-                                const reasonPrompt = UIHelper.promptForCancellationReason(row);
-                                if (reasonPrompt.cancelled) {
-                                    continue; // User cancelled for this row
-                                }
-
-                                // Cancel with email
-                                RideManager.cancelRows([row], rwgps, true, reasonPrompt.reason);
+                                // Cancel with email using the shared reason
+                                RideManager.cancelRows([row], rwgps, true, cancellationReason);
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled (notice sent)`);
                             } else {
@@ -161,7 +160,6 @@ var RideCoordinator = (function() {
                     // No announcements or force mode - standard flow
                     // NOTE: confirmOperation exists in UIHelper (see UIHelper.js, test coverage required)
                     // TypeScript error is false positive due to namespace export pattern
-                    // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                     confirmation = UIHelper.confirmOperation({
                         operationName: 'Cancel Rides',
                         rows,
@@ -176,7 +174,6 @@ var RideCoordinator = (function() {
                     // Execute operation
                     RideManager.cancelRows(confirmation.processableRows, rwgps, false, '');
                     // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69, implementation: UIHelper.js:86)
-                    // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                     UIHelper.showSuccess(`Successfully cancelled ${confirmation.processableRows.length} ride(s).`);
                 }
 
@@ -184,7 +181,6 @@ var RideCoordinator = (function() {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.cancelRides error:', err);
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74, implementation: UIHelper.js:90)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showError('Cancellation Failed', err);
                 throw err;
             }
@@ -201,7 +197,6 @@ var RideCoordinator = (function() {
             try {
                 // 1. Validate
                 // NOTE: validateForUpdate exists in ValidationCore (see ValidationCore.d.ts:77)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const validation = ValidationCore.validateForUpdate(rows, {
                     groupNames: getGroupNames(),
                     getRoute: getRoute,
@@ -212,7 +207,6 @@ var RideCoordinator = (function() {
 
                 // 2. Get user confirmation
                 // NOTE: confirmOperation exists in UIHelper (see UIHelper.d.ts:53)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const confirmation = UIHelper.confirmOperation({
                     operationName: 'Update Rides',
                     rows,
@@ -229,14 +223,12 @@ var RideCoordinator = (function() {
 
                 // 4. Show success
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showSuccess(`Successfully updated ${confirmation.processableRows.length} ride(s).`);
 
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.updateRides error:', err);
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showError('Update Failed', err);
                 throw err;
             }
@@ -253,7 +245,6 @@ var RideCoordinator = (function() {
             try {
                 // 1. Validate
                 // NOTE: validateForReinstatement exists in ValidationCore (see ValidationCore.d.ts:86)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const validation = ValidationCore.validateForReinstatement(rows, {
                     groupNames: getGroupNames(),
                     managedEventName: SCCCCEvent.managedEventName
@@ -269,7 +260,6 @@ var RideCoordinator = (function() {
                 let confirmation;
                 if (rowsWithAnnouncements.length > 0 && !force) {
                     // NOTE: confirmReinstatementWithAnnouncements exists in UIHelper (see UIHelper.d.ts:84)
-                    // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                     confirmation = UIHelper.confirmReinstatementWithAnnouncements(
                         rows,
                         validation,
@@ -278,6 +268,17 @@ var RideCoordinator = (function() {
 
                     if (!confirmation.confirmed) {
                         return;
+                    }
+
+                    // Get reinstatement reason if sending notices
+                    let reinstatementReason = '';
+                    if (confirmation.sendReinstatementNotice) {
+                        // NOTE: promptForReinstatementReason exists in UIHelper (see UIHelper.d.ts:98)
+                        const reasonPrompt = UIHelper.promptForReinstatementReason();
+                        if (reasonPrompt.cancelled) {
+                            return; // User cancelled the operation
+                        }
+                        reinstatementReason = reasonPrompt.reason;
                     }
 
                     // Process each row with announcement individually
@@ -293,16 +294,8 @@ var RideCoordinator = (function() {
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated`);
                             } else if (confirmation.sendReinstatementNotice) {
-                                // Get reinstatement reason
-                                // NOTE: promptForReinstatementReason exists in UIHelper (see UIHelper.d.ts:98)
-                                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
-                                const reasonPrompt = UIHelper.promptForReinstatementReason(row);
-                                if (reasonPrompt.cancelled) {
-                                    continue; // User cancelled for this row
-                                }
-
-                                // Reinstate with email
-                                RideManager.reinstateRows([row], rwgps, true, reasonPrompt.reason);
+                                // Reinstate with email using the shared reason
+                                RideManager.reinstateRows([row], rwgps, true, reinstatementReason);
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated (notice sent)`);
                             } else {
@@ -329,7 +322,6 @@ var RideCoordinator = (function() {
                     // No announcements or force mode - standard flow
                     // NOTE: confirmOperation exists in UIHelper (see UIHelper.js, test coverage required)
                     // TypeScript error is false positive due to namespace export pattern
-                    // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                     confirmation = UIHelper.confirmOperation({
                         operationName: 'Reinstate Rides',
                         rows,
@@ -344,7 +336,6 @@ var RideCoordinator = (function() {
                     // Execute operation
                     RideManager.reinstateRows(confirmation.processableRows, rwgps, false, '');
                     // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
-                    // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                     UIHelper.showSuccess(`Successfully reinstated ${confirmation.processableRows.length} ride(s).`);
                 }
 
@@ -352,7 +343,6 @@ var RideCoordinator = (function() {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.reinstateRides error:', err);
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showError('Reinstatement Failed', err);
                 throw err;
             }
@@ -369,7 +359,6 @@ var RideCoordinator = (function() {
             try {
                 // 1. Validate
                 // NOTE: validateForUnschedule exists in ValidationCore (see ValidationCore.d.ts:95)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const validation = ValidationCore.validateForUnschedule(rows, {
                     groupNames: getGroupNames(),
                     managedEventName: SCCCCEvent.managedEventName
@@ -377,7 +366,6 @@ var RideCoordinator = (function() {
 
                 // 2. Get user confirmation
                 // NOTE: confirmOperation exists in UIHelper (see UIHelper.d.ts:53)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const confirmation = UIHelper.confirmOperation({
                     operationName: 'Unschedule Rides',
                     rows,
@@ -394,14 +382,12 @@ var RideCoordinator = (function() {
 
                 // 4. Show success
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showSuccess(`Successfully unscheduled ${confirmation.processableRows.length} ride(s).`);
 
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.unscheduleRides error:', err);
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showError('Unschedule Failed', err);
                 throw err;
             }
@@ -418,7 +404,6 @@ var RideCoordinator = (function() {
             try {
                 // 1. Validate
                 // NOTE: validateForRouteImport exists in ValidationCore (see ValidationCore.d.ts:104)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const validation = ValidationCore.validateForRouteImport(rows, {
                     fetchUrl: (/** @type {string} */ url, /** @type {boolean} */ muteHttpExceptions) => {
                         return UrlFetchApp.fetch(url, { muteHttpExceptions: muteHttpExceptions });
@@ -428,7 +413,6 @@ var RideCoordinator = (function() {
 
                 // 2. Get user confirmation
                 // NOTE: confirmOperation exists in UIHelper (see UIHelper.d.ts:53)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 const confirmation = UIHelper.confirmOperation({
                     operationName: 'Import Routes',
                     rows,
@@ -445,14 +429,12 @@ var RideCoordinator = (function() {
 
                 // 4. Show success
                 // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showSuccess(`Successfully imported ${confirmation.processableRows.length} route(s).`);
 
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.importRoutes error:', err);
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74)
-                // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
                 UIHelper.showError('Import Failed', err);
                 throw err;
             }
