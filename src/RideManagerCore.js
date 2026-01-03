@@ -21,7 +21,7 @@ var RideManagerCore = (function() {
 
     /**
      * Extracts latitude and longitude from route data
-     * @param {any} route - Route object with first_lat and first_lng properties
+     * @param {{first_lat: number, first_lng: number}} route - Route object with first_lat and first_lng properties
      * @returns {string} Location string in format "lat,lng" or empty string if route is null
      */
     function extractLatLong(route) {

@@ -148,9 +148,9 @@ var AnnouncementCore = (function() {
      * Enrich row data with calculated template fields
      * Adds DateTime, Date, Day, Time, RideLink, Gain, Length, FPM, StartPin, Lat, Long fields
      * 
-     * @param {any} rowData - Original RowCore domain object
-     * @param {any} [route] - Optional route object from RWGPS with distance, elevation_gain, first_lat, first_lng
-     * @returns {any} Enriched row data with calculated fields
+     * @param {Object} rowData - Original RowCore domain object with ride properties
+     * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number}} [route] - Optional route object from RWGPS
+     * @returns {Object} Enriched row data with calculated fields
      */
     function enrichRowData(rowData, route) {
         /** @type {any} */
@@ -267,8 +267,8 @@ var AnnouncementCore = (function() {
      * Expand template placeholders with row data
      * 
      * @param {string} template - Template text with {FieldName} placeholders
-     * @param {any} rowData - Row data object
-     * @param {any} [route] - Optional route object
+     * @param {Object} rowData - Row data object with ride properties
+     * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number}} [route] - Optional route object from RWGPS
      * @returns {Object} Object with expandedText and missingFields
      */
     function expandTemplate(template, rowData, route = null) {

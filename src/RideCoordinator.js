@@ -16,7 +16,7 @@ if (typeof require !== 'undefined') {
 
 /**
  * Helper: Wrap dates.convert to ensure Date return type (throw on NaN)
- * @param {any} date - Date input
+ * @param {Date|string|number|Array<number>} date - Date input (Date object, ISO string, timestamp, or [year, month, day] array)
  * @returns {Date} Date object
  * @throws {Error} If date cannot be converted
  */
