@@ -122,8 +122,11 @@ var AnnouncementManager = (function () {
 
         /**
          * Send an announcement email for a row
+        /**
+         * Send announcement email for a row
          * @param {InstanceType<typeof RowCore>} row - Row object with announcement data
-         * @returns {{success: boolean, error?: string}} Result object
+         * @param {string | null} email - Optional email override (defaults to group email from globals)
+         * @returns {{success: boolean, emailAddress?: string, error?: string}} Result object
          */
         sendAnnouncement(row, email = null) {
             try {
@@ -203,7 +206,7 @@ var AnnouncementManager = (function () {
 
                 console.log(`AnnouncementManager: Sent announcement for row ${row.rowNum} to ${recipientEmail}`);
 
-                return { success: true };
+                return { success: true, emailAddress: recipientEmail };
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.sendAnnouncement error for row ${row.rowNum}:`, error);
@@ -403,7 +406,7 @@ var AnnouncementManager = (function () {
          * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
          * @param {boolean} sendEmail - Whether to send cancellation email
          * @param {string} [reason=''] - User-provided cancellation reason
-         * @returns {{announcementSent: boolean, error?: string}} Result object
+         * @returns {{announcementSent: boolean, emailAddress?: string, error?: string}} Result object
          */
         handleCancellation(row, sendEmail, reason = '') {
             try {
@@ -413,12 +416,14 @@ var AnnouncementManager = (function () {
                     return { announcementSent: false };
                 }
 
+                let emailAddress;
                 if (sendEmail) {
                     // Send cancellation email
                     const emailResult = this._sendCancellationEmail(row, reason);
                     if (!emailResult.success) {
                         return { announcementSent: false, error: emailResult.error };
                     }
+                    emailAddress = emailResult.emailAddress;
                 }
 
                 // Update status to cancelled regardless of whether email was sent
@@ -426,7 +431,7 @@ var AnnouncementManager = (function () {
                 // Note: Row will be saved automatically by adapter.save() in calling code
 
                 console.log(`AnnouncementManager.handleCancellation: Row ${row.rowNum} cancelled, email sent: ${sendEmail}`);
-                return { announcementSent: sendEmail };
+                return { announcementSent: sendEmail, emailAddress };
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.handleCancellation error for row ${row.rowNum}:`, error);
@@ -439,7 +444,7 @@ var AnnouncementManager = (function () {
          * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
          * @param {boolean} sendEmail - Whether to send reinstatement email
          * @param {string} [reason=''] - User-provided reinstatement reason
-         * @returns {{announcementSent: boolean, error?: string}} Result object
+         * @returns {{announcementSent: boolean, emailAddress?: string, error?: string}} Result object
          */
         handleReinstatement(row, sendEmail, reason = '') {
             try {
@@ -449,12 +454,14 @@ var AnnouncementManager = (function () {
                     return { announcementSent: false };
                 }
 
+                let emailAddress;
                 if (sendEmail) {
                     // Send reinstatement email
                     const emailResult = this._sendReinstatementEmail(row, reason);
                     if (!emailResult.success) {
                         return { announcementSent: false, error: emailResult.error };
                     }
+                    emailAddress = emailResult.emailAddress;
                 }
 
                 // Update status to pending regardless of whether email was sent
@@ -462,7 +469,7 @@ var AnnouncementManager = (function () {
                 // Note: Row will be saved automatically by adapter.save() in calling code
 
                 console.log(`AnnouncementManager.handleReinstatement: Row ${row.rowNum} reinstated, email sent: ${sendEmail}`);
-                return { announcementSent: sendEmail };
+                return { announcementSent: sendEmail, emailAddress };
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager.handleReinstatement error for row ${row.rowNum}:`, error);
@@ -1156,6 +1163,13 @@ var AnnouncementManager = (function () {
                 });
 
                 console.log(`AnnouncementManager: Sent immediate failure notification for row ${row.rowNum} to ${rsGroupEmail}`);
+                
+                // Log to UserLogger
+                UserLogger.log('ANNOUNCEMENT_FAILURE_NOTIFICATION', `Row ${row.rowNum}, ${row.rideName}`, {
+                    emailAddress: rsGroupEmail,
+                    error: error,
+                    operation: 'Automatic failure notification to Ride Schedulers'
+                });
             } catch (notifyError) {
                 const err = notifyError instanceof Error ? notifyError : new Error(String(notifyError));
                 console.error(`AnnouncementManager: Failed to send failure notification:`, err.message);
@@ -1221,7 +1235,7 @@ var AnnouncementManager = (function () {
          * @private
          * @param {InstanceType<typeof RowCore>} row - Row instance
          * @param {string} reason - Cancellation reason
-         * @returns {{success: boolean, error?: string}} Result object
+         * @returns {{success: boolean, emailAddress?: string, error?: string}} Result object
          */
         _sendCancellationEmail(row, reason) {
             try {
@@ -1249,7 +1263,7 @@ var AnnouncementManager = (function () {
                 });
 
                 console.log(`AnnouncementManager: Sent cancellation email for row ${row.rowNum} to ${recipientEmail}`);
-                return { success: true };
+                return { success: true, emailAddress: recipientEmail };
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager._sendCancellationEmail error for row ${row.rowNum}:`, err);
@@ -1262,7 +1276,7 @@ var AnnouncementManager = (function () {
          * @private
          * @param {InstanceType<typeof RowCore>} row - Row instance
          * @param {string} reason - Reinstatement reason
-         * @returns {{success: boolean, error?: string}} Result object
+         * @returns {{success: boolean, emailAddress?: string, error?: string}} Result object
          */
         _sendReinstatementEmail(row, reason) {
             try {
@@ -1290,7 +1304,7 @@ var AnnouncementManager = (function () {
                 });
 
                 console.log(`AnnouncementManager: Sent reinstatement email for row ${row.rowNum} to ${recipientEmail}`);
-                return { success: true };
+                return { success: true, emailAddress: recipientEmail };
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error(`AnnouncementManager._sendReinstatementEmail error for row ${row.rowNum}:`, err);

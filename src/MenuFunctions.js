@@ -155,8 +155,10 @@ const MenuFunctions = (() => {
         const manager = new AnnouncementManager();
         const now = new Date().getTime();
         let sent = 0;
-        /** @type {Array<{rowNum: number, error: string}>} */
+        /** @type {Array<{rowNum: number, rideName: string, routeName: string, emailAddress?: string, error: string}>} */
         const failedRows = [];
+        /** @type {Array<{rowNum: number, rideName: string, routeName: string, emailAddress: string}>} */
+        const sentRows = [];
         
         pendingRows.forEach(row => {
           try {
@@ -168,8 +170,22 @@ const MenuFunctions = (() => {
               row.setStatus('sent');
               row.setLastAttemptAt(new Date(now));
               sent++;
+              
+              // Capture send details for logging
+              sentRows.push({ 
+                rowNum: row.rowNum, 
+                rideName: row.rideName || '(unnamed)',
+                routeName: row.routeName || '(unnamed)',
+                emailAddress: result.emailAddress || '(unknown)'
+              });
             } else {
-              failedRows.push({ rowNum: row.rowNum, error: result.error || 'Unknown error' });
+              failedRows.push({ 
+                rowNum: row.rowNum, 
+                rideName: row.rideName || '(unnamed)',
+                routeName: row.routeName || '(unnamed)',
+                emailAddress: result.emailAddress,
+                error: result.error || 'Unknown error' 
+              });
               
               // Update failure info
               row.setStatus('failed');
@@ -179,8 +195,36 @@ const MenuFunctions = (() => {
             }
           } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
-            failedRows.push({ rowNum: row.rowNum, error: err.message });
+            failedRows.push({ 
+              rowNum: row.rowNum, 
+              rideName: row.rideName || '(unnamed)',
+              routeName: row.routeName || '(unnamed)',
+              error: err.message 
+            });
           }
+        });
+        
+        // Build row descriptions with ride/route names for logging
+        const rowDescriptions = sentRows.map(r => {
+          const name = r.rideName || r.routeName || '(unnamed)';
+          const nameType = r.rideName ? 'ride' : 'route';
+          return `${r.rowNum} (${nameType}: ${name})`;
+        }).join(', ');
+        
+        // Log to UserLogger
+        UserLogger.log('SEND_ANNOUNCEMENTS', `Rows: ${rowDescriptions}`, {
+          sent: sent,
+          failed: failedRows.length,
+          sentRows: sentRows.map(r => ({
+            rowNum: r.rowNum,
+            rideName: r.rideName,
+            emailAddress: r.emailAddress
+          })),
+          failedRows: failedRows.map(f => ({
+            rowNum: f.rowNum,
+            rideName: f.rideName,
+            error: f.error
+          }))
         });
         
         // Save all changes

@@ -78,6 +78,7 @@ const RideManager = (function () {
                 // Log to UserLogger
                 UserLogger.log('CANCEL_RIDE', `Row ${row.rowNum}, ${row.rideName}, Reason: ${reason || '(none)'}`, {
                     announcementSent: result.announcementSent,
+                    emailAddress: result.emailAddress || '(not sent)',
                     error: result.error
                 });
             } catch (error) {
@@ -247,6 +248,7 @@ const RideManager = (function () {
                 // Log to UserLogger
                 UserLogger.log('REINSTATE_RIDE', `Row ${row.rowNum}, ${row.rideName}, Reason: ${reason || '(none)'}`, {
                     announcementSent: result.announcementSent,
+                    emailAddress: result.emailAddress || '(not sent)',
                     error: result.error
                 });
             } catch (error) {
@@ -310,6 +312,18 @@ const RideManager = (function () {
                 console.error(`RideManager.schedule_row_: Failed to show UI alert:`, e);
             }
         }
+        
+        // Log to UserLogger
+        const globals = getGlobals();
+        const emailKey = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
+        const announcementEmail = row.announcement ? (globals[emailKey] || '(not configured)') : '(no announcement)';
+        
+        UserLogger.log('SCHEDULE_RIDE', `Row ${row.rowNum}, ${row.rideName}`, {
+            rideUrl: new_event_url,
+            googleEventId: eventId || '(creation failed)',
+            announcementCreated: !!row.announcement,
+            announcementEmail: announcementEmail
+        });
     }
     /**
      * @param {RowCoreInstance} row
@@ -349,6 +363,12 @@ const RideManager = (function () {
 
         row.setRideLink(rideEvent.name, row.rideURL);
         rwgps.edit_event(row.rideURL, rideEvent);
+        
+        // Log to UserLogger
+        UserLogger.log('UPDATE_RIDE', `Row ${row.rowNum}, ${row.rideName}`, {
+            rideUrl: row.rideURL,
+            groupChanged: originalGroup !== row.group
+        });
         if (originalGroup !== row.group) {
             if (!deleteEvent_(originalGroup, row.googleEventId)) {
                 return;
@@ -545,6 +565,18 @@ const RideManager = (function () {
                     // Don't throw - announcement cleanup is not critical
                 }
             }
+            
+            // Log to UserLogger
+            const rowDescriptions = rows.map(r => {
+                const name = r.rideName || r.routeName || '(unnamed)';
+                const nameType = r.rideName ? 'ride' : (r.routeName ? 'route' : 'unknown');
+                return `${r.rowNum} (${nameType}: ${name})`;
+            }).join(', ');
+            UserLogger.log('UNSCHEDULE_RIDES', `Rows: ${rowDescriptions}`, {
+                count: rows.length,
+                rwgpsDeleted: rideUrlsToDelete.length,
+                announcementsRemoved: rideUrlsWithAnnouncements.length
+            });
         },
 
         /**
