@@ -566,16 +566,14 @@ const RideManager = (function () {
                 }
             }
             
-            // Log to UserLogger
-            const rowDescriptions = rows.map(r => {
+            // Log to UserLogger - one entry per row
+            rows.forEach(r => {
                 const name = r.rideName || r.routeName || '(unnamed)';
                 const nameType = r.rideName ? 'ride' : (r.routeName ? 'route' : 'unknown');
-                return `${r.rowNum} (${nameType}: ${name})`;
-            }).join(', ');
-            UserLogger.log('UNSCHEDULE_RIDES', `Rows: ${rowDescriptions}`, {
-                count: rows.length,
-                rwgpsDeleted: rideUrlsToDelete.length,
-                announcementsRemoved: rideUrlsWithAnnouncements.length
+                UserLogger.log('UNSCHEDULE_RIDE', `Row ${r.rowNum} (${nameType}: ${name})`, {
+                    rideUrl: r.rideURL || '(not scheduled)',
+                    announcementRemoved: !!r.announcement
+                });
             });
         },
 
