@@ -33,7 +33,7 @@ function parseRouteInput(input) {
 
 /**
  * Determine the display name for a route
- * @param {Object} route - Route object from RWGPS
+ * @param {{user_id: number, name: string}} route - Route object from RWGPS
  * @param {number} route.user_id - User ID of route owner
  * @param {string} route.name - Route name
  * @param {number} clubUserId - Club's RWGPS user ID
@@ -67,9 +67,9 @@ function buildHyperlinkFormula(url, name) {
 
 /**
  * Process route column edit - pure logic
- * @param {Object} params
+ * @param {{inputValue: string | null, route: {user_id: number, name: string}, clubUserId: number, foreignPrefix: string, userProvidedName?: string}} params
  * @param {string|null} params.inputValue - Raw input value
- * @param {Object} params.route - Route data from RWGPS
+ * @param {{user_id: number, name: string}} params.route - Route data from RWGPS
  * @param {number} params.route.user_id - Route owner ID
  * @param {string} params.route.name - Route name
  * @param {number} params.clubUserId - Club's user ID

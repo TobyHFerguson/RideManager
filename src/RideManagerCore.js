@@ -30,17 +30,11 @@ var RideManagerCore = (function() {
 
     /**
      * Prepares route import configuration for RWGPS
-     * @param {Object} rowData - Plain object with row data
-     * @param {string} rowData.routeURL - Route URL
-     * @param {string} rowData.routeName - Route name
-     * @param {Date|string} rowData.startDate - Ride start date
-     * @param {string} rowData.group - Ride group
-     * @param {Object} globals - Global configuration
-     * @param {number} globals.EXPIRY_DELAY - Days until route expires
-     * @param {string} globals.FOREIGN_PREFIX - Prefix to remove from foreign route names
+     * @param {{routeURL?: string, routeName?: string, startDate: Date, group: string}} rowData - Plain object with row data
+     * @param {{EXPIRY_DELAY: number, FOREIGN_PREFIX: string}} globals - Global configuration
      * @param {Function} addDays - Function to add days to a date (dates.add)
      * @param {Function} formatDate - Function to format date as MMDDYYYY (dates.MMDDYYYY)
-     * @returns {Object} Route configuration object with url, expiry, tags, and optional name
+     * @returns {{url: string, expiry: string, tags: string[], name?: string}} Route configuration object with url, expiry, tags, and optional name
      */
     function prepareRouteImport(rowData, globals, addDays, formatDate) {
         const startDate = rowData.startDate || new Date();
@@ -48,7 +42,7 @@ var RideManagerCore = (function() {
         
         /** @type {{url: string, expiry: string, tags: string[], name?: string}} */
         const route = {
-            url: rowData.routeURL || rowData.routeName,
+            url: rowData.routeURL || rowData.routeName || '',
             expiry: String(formatDate(expiryDate)),
             tags: [rowData.group]
         };
@@ -116,12 +110,9 @@ var RideManagerCore = (function() {
 
     /**
      * Prepares calendar event data from row and ride event
-     * @param {Object} rideEvent - Ride event object
-     * @param {string} rideEvent.name - Event name
-     * @param {string|Date} rideEvent.start_time - Event start time
-     * @param {Object} rowData - Row data
-     * @param {Date|string} rowData.endTime - Event end time
-     * @returns {Object} Calendar event data with name, start, end
+     * @param {{name: string, start_time: Date | string}} rideEvent - Ride event object
+     * @param {{endTime: Date}} rowData - Row data with end time
+     * @returns {{name: string, start: Date, end: Date}} Calendar event data with name, start, end
      */
     function prepareCalendarEventData(rideEvent, rowData) {
         return {

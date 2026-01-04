@@ -156,6 +156,123 @@ function applyAttributes(attributes) { }
 function applyTextAttributes(attributes) { }
 ```
 
+**CRITICAL: When to Use Record<string, any> (RARELY)**:
+
+⚠️ **STOP BEFORE USING Record<string, any>** - Ask these questions:
+
+1. **Do I know the property names?**
+   - ✅ YES → Use specific inline type or typedef
+   - ❌ NO → Continue to question 2
+
+2. **Are the keys truly dynamic/unknown at compile time?**
+   - ✅ YES → Use Record<string, any> with justification
+   - ❌ NO → Use specific inline type or typedef
+
+3. **Examples of JUSTIFIED use**:
+   ```javascript
+   // ✅ JUSTIFIED - Keys are dynamic trigger type names (unknown at compile time)
+   /** @returns {{installed: number, failed: number, details: Record<string, any>}} */
+   function buildSummary() {
+       return {
+           installed: 0,
+           failed: 0,
+           details: {} // Keys added dynamically: details[triggerType] = result
+       };
+   }
+   
+   // ✅ JUSTIFIED - Enriched data dynamically adds template fields based on input
+   /** @returns {Record<string, any>} Enriched data with calculated template fields */
+   function enrichRowData(rowData, route) {
+       const enriched = { ...rowData };
+       // Dynamically adds: DateTime, RideLink, Gain, Length, etc.
+       return enriched;
+   }
+   ```
+
+4. **Examples of UNJUSTIFIED use** (use typedefs instead):
+   ```javascript
+   // ❌ WRONG - Properties are known and fixed
+   /**
+    * @param {Record<string, any>} options - Validation options
+    */
+   function validate(options) {
+       // Always uses: options.groupNames, options.managedEventName
+       // These are KNOWN properties → use typedef!
+   }
+   
+   // ✅ CORRECT - Use typedef for known properties
+   /**
+    * @typedef {Object} ValidationOptions
+    * @property {string[]} groupNames - Valid group names
+    * @property {(rideName: string, groupNames: string[]) => boolean} managedEventName - Validation function
+    */
+   
+   /**
+    * @param {ValidationOptions} options
+    */
+   function validate(options) {
+       // TypeScript validates property access
+       if (!options.managedEventName(row.rideName, options.groupNames)) { }
+   }
+   ```
+
+**Decision Flowchart for Object Parameters**:
+
+```
+Parameter is object type
+    ↓
+Do I know the property names?
+    ↓
+   YES → Are there 3+ properties OR used in multiple functions?
+         ↓
+        YES → Create @typedef (reusable, clear)
+        NO  → Use inline type {{prop1: type, prop2: type}}
+    ↓
+   NO → Are keys truly dynamic (added/accessed with variables)?
+        ↓
+       YES → Use Record<string, any> with justification comment
+       NO  → You actually DO know the properties → Go back to YES branch
+```
+
+**Pattern: Using @typedef for Complex/Repeated Types**:
+```javascript
+// At top of file or before first usage
+/**
+ * @typedef {Object} ValidationOptions
+ * @property {string[]} groupNames - Valid group names
+ * @property {(routeURL: string) => {user_id: number}} getRoute - Route lookup function
+ * @property {number} clubUserId - Club owner user ID
+ * @property {(rideName: string, groupNames: string[]) => boolean} managedEventName - Validation function
+ * @property {(date: any) => Date} convertDate - Date conversion function
+ */
+
+// Use in multiple functions - full type safety
+/**
+ * @param {RowCoreInstance[]} rows
+ * @param {ValidationOptions} options
+ */
+function validateForScheduling(rows, options) {
+    // TypeScript catches: options.grouNames (typo)
+    // TypeScript validates: options.getRoute returns {user_id: number}
+}
+
+/**
+ * @param {RowCoreInstance[]} rows
+ * @param {ValidationOptions} options
+ */
+function validateForUpdate(rows, options) {
+    // Same type safety across multiple functions
+}
+```
+
+**Benefits of Proper Types vs Record<string, any>**:
+- ✅ **Catch typos at compile-time**: `options.grouNames` → Error immediately
+- ✅ **Validate function signatures**: Wrong parameter types caught before runtime
+- ✅ **IntelliSense autocomplete**: IDE suggests available properties
+- ✅ **Safe refactoring**: Rename property → all usages updated/flagged
+- ✅ **Self-documenting**: Type shows exactly what's expected
+- ❌ **Record<string, any>**: None of the above - you might as well use `{Object}`
+
 **Exception**: Only use `{any}` when:
 1. The parameter is truly arbitrary user data with no expected structure
 2. You add a comment justifying why `{any}` is required

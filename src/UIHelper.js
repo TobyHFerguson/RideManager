@@ -13,7 +13,7 @@
 class UIHelper {
     /**
      * Confirm operation with user
-     * @param {Object} options - Confirmation options
+     * @param {{operationName: string, rows: RowCoreInstance[], validation: Map<RowCoreInstance, ValidationResult>, force?: boolean}} options - Confirmation options
      * @param {string} options.operationName - Name of the operation (e.g., "Schedule Rides")
      * @param {RowCoreInstance[]} options.rows - Rows to process
      * @param {Map<RowCoreInstance, ValidationResult>} options.validation - Validation results

@@ -48,7 +48,7 @@ var RWGPSMembersAdapter = (function() {
          * Main entry point - fetches from API, transforms, and saves to sheet
          * Creates sheet if it doesn't exist
          * 
-         * @returns {Object} Result object with success status and counts
+         * @returns {{success: boolean, addedCount: number, removedCount: number, errorCount: number, totalMembers: number}} Result object with success status and counts
          * @throws {Error} If API fetch or data processing fails
          */
         updateMembers() {

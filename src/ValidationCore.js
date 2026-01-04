@@ -17,6 +17,27 @@ if (typeof require !== 'undefined') {
  */
 
 /**
+ * @typedef {Object} ScheduleValidationOptions
+ * @property {string[]} groupNames - Valid group names
+ * @property {(routeURL: string) => {user_id: number}} getRoute - Route lookup function
+ * @property {number} clubUserId - Club owner user ID
+ * @property {(rideName: string, groupNames: string[]) => boolean} managedEventName - Managed event name validation function
+ * @property {(date: any) => Date} convertDate - Date conversion function
+ */
+
+/**
+ * @typedef {Object} CancellationValidationOptions
+ * @property {string[]} groupNames - Valid group names
+ * @property {(rideName: string, groupNames: string[]) => boolean} managedEventName - Managed event name validation function
+ */
+
+/**
+ * @typedef {Object} RouteImportValidationOptions
+ * @property {(url: string, muteHttpExceptions: boolean) => {getResponseCode: () => number, getContentText: () => string}} fetchUrl - URL fetch function
+ * @property {number} clubUserId - Club owner user ID
+ */
+
+/**
  * Pure validation logic (no GAS dependencies)
  * All methods return validation results without side effects
  */
@@ -24,12 +45,7 @@ class ValidationCore {
     /**
      * Validate rows for scheduling operation
      * @param {RowCoreInstance[]} rows - Rows to validate
-     * @param {Object} options - Validation options
-     * @param {string[]} options.groupNames - Available group names
-     * @param {(routeURL: string) => {user_id: number}} options.getRoute - Function to fetch route
-     * @param {number} options.clubUserId - SCCCC user ID
-     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
-     * @param {(startDate: any) => Date} options.convertDate - Date conversion function
+     * @param {ScheduleValidationOptions} options - Validation options
      * @returns {Map<RowCoreInstance, ValidationResult>}
      */
     static validateForScheduling(rows, options) {
@@ -83,9 +99,7 @@ class ValidationCore {
     /**
      * Validate rows for cancellation operation
      * @param {RowCoreInstance[]} rows - Rows to validate
-     * @param {Object} options - Validation options
-     * @param {string[]} options.groupNames - Available group names
-     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @param {CancellationValidationOptions} options - Validation options
      * @returns {Map<RowCoreInstance, ValidationResult>}
      */
     static validateForCancellation(rows, options) {
@@ -117,12 +131,7 @@ class ValidationCore {
     /**
      * Validate rows for update operation
      * @param {RowCoreInstance[]} rows - Rows to validate
-     * @param {Object} options - Validation options
-     * @param {string[]} options.groupNames - Available group names
-     * @param {(routeURL: string) => {user_id: number}} options.getRoute - Function to fetch route
-     * @param {number} options.clubUserId - SCCCC user ID
-     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
-     * @param {(startDate: any) => Date} options.convertDate - Date conversion function
+     * @param {ScheduleValidationOptions} options - Validation options
      * @returns {Map<RowCoreInstance, ValidationResult>}
      */
     static validateForUpdate(rows, options) {
@@ -178,9 +187,7 @@ class ValidationCore {
     /**
      * Validate rows for reinstatement operation
      * @param {RowCoreInstance[]} rows - Rows to validate
-     * @param {Object} options - Validation options
-     * @param {string[]} options.groupNames - Available group names
-     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @param {CancellationValidationOptions} options - Validation options
      * @returns {Map<RowCoreInstance, ValidationResult>}
      */
     static validateForReinstatement(rows, options) {
@@ -208,9 +215,7 @@ class ValidationCore {
     /**
      * Validate rows for unscheduling operation
      * @param {RowCoreInstance[]} rows - Rows to validate
-     * @param {Object} options - Validation options
-     * @param {string[]} options.groupNames - Available group names
-     * @param {(rideName: string, groupNames: string[]) => boolean} options.managedEventName - Check if event name is managed
+     * @param {CancellationValidationOptions} options - Validation options
      * @returns {Map<RowCoreInstance, ValidationResult>}
      */
     static validateForUnschedule(rows, options) {
@@ -238,9 +243,7 @@ class ValidationCore {
         /**
          * Validate rows for route import operation
          * @param {RowCoreInstance[]} rows - Rows to validate
-         * @param {Object} options - Validation options
-         * @param {(routeURL: string, muteHttpExceptions: boolean) => {getResponseCode: () => number, getContentText: () => string}} options.fetchUrl - Function to fetch URL
-         * @param {number} options.clubUserId - SCCCC user ID
+         * @param {RouteImportValidationOptions} options - Validation options
          * @returns {Map<RowCoreInstance, ValidationResult>}
          */
     static validateForRouteImport(rows, options) {

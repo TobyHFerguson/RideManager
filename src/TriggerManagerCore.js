@@ -46,13 +46,14 @@ var TriggerManagerCore = (function() {
         /**
          * Get trigger configuration for a specific type
          * @param {string} triggerType - One of TRIGGER_TYPES values
-         * @returns {Object} {handlerFunction: string, propertyKey: string, isInstallable: boolean}
+         * @returns {Record<string, any>} Trigger configuration with handler, property key, and schedule details
          */
         static getTriggerConfig(triggerType) {
             if (!HANDLER_FUNCTIONS[triggerType]) {
                 throw new Error(`Unknown trigger type: ${triggerType}`);
             }
             
+            /** @type {Record<string, any>} */
             const config = {
                 handlerFunction: HANDLER_FUNCTIONS[triggerType],
                 triggerType: triggerType
@@ -134,7 +135,7 @@ var TriggerManagerCore = (function() {
      * @param {string} triggerType - Trigger type constant
      * @param {number|null|undefined} existingTriggerTime - Time from existing trigger (queried from ScriptApp), or null/undefined if no trigger exists
      * @param {number} newTime - New time to schedule for
-     * @returns {Object} {shouldSchedule: boolean, reason: string}
+     * @returns {{shouldSchedule: boolean, reason: string}} Scheduling decision
      */
     static shouldScheduleTrigger(triggerType, existingTriggerTime, newTime) {
         const config = this.getTriggerConfig(triggerType);
@@ -203,7 +204,7 @@ var TriggerManagerCore = (function() {
          * Validate trigger installation request
          * @param {string} currentUserEmail - Email of user requesting installation
          * @param {string} ownerEmail - Email of spreadsheet owner
-         * @returns {Object} {valid: boolean, error?: string}
+         * @returns {{valid: boolean, error?: string}} Validation result
          */
         static validateTriggerInstallation(currentUserEmail, ownerEmail) {
             if (!currentUserEmail) {
@@ -232,11 +233,10 @@ var TriggerManagerCore = (function() {
         
         /**
          * Build installation summary from results
-         * @param {Object} results - Installation results for each trigger type
-         * @returns {Object} {installed: number, existed: number, failed: number, details: Object}
+         * @param {Record<string, {success: boolean, existed?: boolean}>} results - Installation results for each trigger type
+         * @returns {{installed: number, existed: number, failed: number, details: Record<string, any>}} Installation summary
          */
-        static buildInstallationSummary(results) {
-            const summary = {
+        static buildInstallationSummary(results) {            /** @type {{installed: number, existed: number, failed: number, details: Record<string, any>}} */            const summary = {
                 installed: 0,
                 existed: 0,
                 failed: 0,
@@ -253,7 +253,7 @@ var TriggerManagerCore = (function() {
                 } else {
                     summary.failed++;
                 }
-                summary.details[triggerType] = result;
+                (/** @type {Record<string, any>} */ (summary.details))[triggerType] = result;
             });
             
             return summary;

@@ -56,7 +56,7 @@ var AnnouncementCore = (function() {
      * @param {string} rideName - Ride name (for display)
      * @param {Function} generateId - Function to generate unique ID
      * @param {Function} getCurrentTime - Function to get current timestamp
-     * @returns {Object} Queue item
+     * @returns {{id: string, rideURL: string, documentId: string, sendTime: number, rsEmail: string, status: string, attemptCount: number, enqueuedAt: number, lastAttemptAt: number | null, rowNum: number, rideName: string, createdAt: number, lastError: string | null, reminderSent: boolean}} Queue item with all properties
      */
     function createQueueItem(rideURL, documentId, sendTime, rsEmail, rowNum, rideName, generateId, getCurrentTime) {
         const now = getCurrentTime();
@@ -72,6 +72,8 @@ var AnnouncementCore = (function() {
             rideName: rideName,
             status: 'pending',
             createdAt: now,
+            enqueuedAt: now,
+            lastAttemptAt: null,
             attemptCount: 0,
             lastError: null,
             reminderSent: false
@@ -81,11 +83,11 @@ var AnnouncementCore = (function() {
 
 
     /**
-     * Get rows from spreadsheet that are due for sending or reminder
+     * Get rows from spreadsheet that are due for sending
      * 
      * @param {any[]} rows - Array of RowCore domain objects
      * @param {number} currentTime - Current timestamp
-     * @returns {Object} Object with dueToSend and dueForReminder arrays
+     * @returns {any[]} Array of rows due for sending
      */
     function getDueItems(rows, currentTime) {
         /** @type {any[]} */
@@ -121,7 +123,7 @@ var AnnouncementCore = (function() {
      * Get statistics about announcements from rows
      * 
      * @param {any[]} rows - Array of RowCore domain objects
-     * @returns {Object} Statistics object
+     * @returns {{total: number, pending: number, failed: number, sent: number}} Statistics object
      */
     function getStatistics(rows) {
         const stats = {
@@ -300,7 +302,7 @@ var AnnouncementCore = (function() {
      * Looks for "Subject: {text}" at start of document
      * 
      * @param {string} template - Template text
-     * @returns {Object} Object with subject and body
+     * @returns {{subject: string | null, body: string}} Object with subject and body
      */
     function extractSubject(template) {
         const subjectMatch = template.match(/^Subject:\s*(.+?)$/m);

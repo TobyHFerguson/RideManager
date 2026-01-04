@@ -23,28 +23,32 @@ if (typeof require !== 'undefined') {
 var RowCore = (function() {
     'use strict';
 
+    /**
+     * @typedef {Object} RowCoreParams
+     * @property {Date} startDate - Start date/time of the ride
+     * @property {number} [duration] - Duration in hours (for calculating end time)
+     * @property {number} [defaultDuration] - Default duration if not specified
+     * @property {string} group - Ride group (e.g., "Sat A", "Sun B")
+     * @property {string} routeCell - Route hyperlink formula or text
+     * @property {string} rideCell - Ride hyperlink formula or text
+     * @property {string} rideLeaders - Comma-separated leader names
+     * @property {string} googleEventId - Google Calendar Event ID
+     * @property {string} location - Meeting location name
+     * @property {string} address - Full address of meeting location
+     * @property {string} [announcement] - Announcement document URL
+     * @property {Date} [sendAt] - Scheduled send date/time
+     * @property {string} [status] - Announcement status
+     * @property {number} [attempts] - Number of send attempts
+     * @property {string} [lastError] - Last error message
+     * @property {Date} [lastAttemptAt] - Timestamp of last send attempt
+     * @property {number} rowNum - Spreadsheet row number (1-based)
+     * @property {Function} [onDirty] - Optional callback when row becomes dirty (called with this RowCore)
+     */
+
     class RowCore {
         /**
          * Create a RowCore from plain domain data
-         * @param {Object} params - Domain properties (camelCase)
-         * @param {Date} params.startDate - Start date/time of the ride
-         * @param {number} [params.duration] - Duration in hours (for calculating end time)
-         * @param {number} [params.defaultDuration] - Default duration if not specified
-         * @param {string} params.group - Ride group (e.g., "Sat A", "Sun B")
-         * @param {string} params.routeCell - Route hyperlink formula or text
-         * @param {string} params.rideCell - Ride hyperlink formula or text
-         * @param {string} params.rideLeaders - Comma-separated leader names
-         * @param {string} params.googleEventId - Google Calendar Event ID
-         * @param {string} params.location - Meeting location name
-         * @param {string} params.address - Full address of meeting location
-         * @param {string} [params.announcement] - Announcement document URL
-         * @param {Date} [params.sendAt] - Scheduled send date/time
-         * @param {string} [params.status] - Announcement status
-         * @param {number} [params.attempts] - Number of send attempts
-         * @param {string} [params.lastError] - Last error message
-         * @param {Date} [params.lastAttemptAt] - Timestamp of last send attempt
-         * @param {number} params.rowNum - Spreadsheet row number (1-based)
-         * @param {Function} [params.onDirty] - Optional callback when row becomes dirty (called with this RowCore)
+         * @param {RowCoreParams} params - Domain properties (camelCase)
          */
         constructor({
             startDate,

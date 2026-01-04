@@ -341,7 +341,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Get queue statistics for monitoring
-         * @returns {Object} Statistics object
+         * @returns {{total: number, pending: number, failed: number, sent: number}} Statistics object
          */
         getStatistics() {
             const adapter = new ScheduleAdapter();
@@ -1179,6 +1179,7 @@ var AnnouncementManager = (function () {
                 console.log(`AnnouncementManager: Sent immediate failure notification for row ${row.rowNum} to ${rsGroupEmail}`);
                 
                 // Log to UserLogger
+                // @ts-expect-error - UserLogger is global in GAS runtime
                 UserLogger.log('ANNOUNCEMENT_FAILURE_NOTIFICATION', `Row ${row.rowNum}, ${row.rideName}`, {
                     emailAddress: rsGroupEmail,
                     error: error,

@@ -57,7 +57,7 @@ var TriggerManager = (function() {
          * Idempotent: Safe to call multiple times
          * Owner-only operation
          * 
-         * @returns {Object} Installation result with summary
+         * @returns {{success: boolean, installed: number, existed: number, failed: number, details: Record<string, any>}} Installation result with summary
          */
         installAllTriggers() {
             this.requireOwner();
@@ -133,7 +133,7 @@ var TriggerManager = (function() {
          * Idempotent: Safe to call multiple times
          * Owner-only operation
          * 
-         * @returns {Object} Removal result with deletion counts
+         * @returns {{success: boolean, deletedCount: number, errors: any[]}} Removal result with deletion counts
          */
         removeAllTriggers() {
             this.requireOwner();
@@ -194,7 +194,7 @@ var TriggerManager = (function() {
          * Owner-only operation
          * 
          * @param {Date|number} sendTime - When the announcement should be sent (Date or timestamp)
-         * @returns {Object} {created: boolean, triggerId: string}
+         * @returns {{created: boolean, triggerId: string}} Result with created flag and trigger ID
          */
         scheduleAnnouncementTrigger(sendTime) {
             return this._scheduleTimedTrigger(
@@ -357,7 +357,7 @@ var TriggerManager = (function() {
          * Idempotent: Creates only if missing
          * @private
          * @param {string} triggerType - Trigger type from TriggerManagerCore.TRIGGER_TYPES
-         * @returns {Object} {installed: boolean, existed: boolean, triggerId: string}
+         * @returns {{installed: boolean, existed: boolean, triggerId: string}} Result with installation status
          */
         _ensureTrigger(triggerType) {
             const config = this.core.getTriggerConfig(triggerType);
