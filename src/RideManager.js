@@ -6,7 +6,6 @@ if (typeof require !== 'undefined') {
     // @ts-ignore
     const { getGroupNames } = require("./Groups");
     var dates = require('./common/dates');
-    var RideManagerCore = require('./RideManagerCore');
 }
 
 /**

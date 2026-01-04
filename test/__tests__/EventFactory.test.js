@@ -19,6 +19,9 @@ jest.mock('../../src/Globals', () => ({
 
 
 const managedEvent = require('../fixtures/managedEvent.js');
+const SCCCCEvent = require('../../src/SCCCCEvent');
+// Make SCCCCEvent available globally for EventFactory (mimics GAS environment)
+global.SCCCCEvent = SCCCCEvent;
 const EventFactory = require('../../src/EventFactory.js');
 const managedRwgpsEvent = require('../fixtures/managedRwgpsEvent.json').event;
 const organizers = [{ id: 302732, text: "Toby Ferguson" }];

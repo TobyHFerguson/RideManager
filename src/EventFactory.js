@@ -1,15 +1,16 @@
 // @ts-check
 /// <reference path="./gas-globals.d.ts" />
 /// <reference path="./Externals.d.ts" />
+// In Jest/Node.js: require modules for testing
 if (typeof require !== 'undefined') {
-    // @ts-ignore
-    (SCCCCEvent = require('./SCCCCEvent'));
     var dates = require('./common/dates');
     var { getGroupNames } = require('./Groups');
     // @ts-ignore
     var { getGlobals } = require('./Globals');
-    var { default: RowCore } = require('./RowCore');
 }
+
+// SCCCCEvent is accessed as a global - it's declared as a class in SCCCCEvent.js
+// and is globally available in both GAS (file concatenation) and Jest (test setup)
 
 /**
  * @typedef {import('./Externals').Organizer} Organizer

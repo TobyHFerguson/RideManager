@@ -22,7 +22,7 @@
 // Node.js compatibility
 // @ts-ignore - Node.js compatibility check for Jest tests
 if (typeof require !== 'undefined') {
-    var RWGPSMembersCore = require('./RWGPSMembersCore');
+    // RWGPSMembersCore is globally available via gas-globals.d.ts
 }
 
 class RWGPSMembersAdapter {

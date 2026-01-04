@@ -14,8 +14,7 @@
 
 // Node.js compatibility
 if (typeof require !== 'undefined') {
-    var AnnouncementCore = require('./AnnouncementCore');
-    var TriggerManager = require('./TriggerManager');
+    // Note: AnnouncementCore and TriggerManager are class declarations, globally available in GAS
 }
 
 /**

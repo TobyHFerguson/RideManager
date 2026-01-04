@@ -114,7 +114,7 @@
 
 if (typeof require !== 'undefined') {
     var HyperlinkUtils = require('./HyperlinkUtils.js');
-    var RowCore = require('./RowCore.js');
+    // RowCore is globally available via gas-globals.d.ts
 }
 
 const ScheduleAdapter = (function() {

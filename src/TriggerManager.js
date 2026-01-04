@@ -19,7 +19,7 @@
 
 // Node.js compatibility
 if (typeof require !== 'undefined') {
-    var TriggerManagerCore = require('./TriggerManagerCore');
+    // TriggerManagerCore is globally available via gas-globals.d.ts
 }
 
 class TriggerManager {
