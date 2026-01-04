@@ -251,8 +251,8 @@ function editRouteColumn_(event, adapter, scheduled) {
     }
   }
 
-  // Process the route edit (pure logic)
-  const { formula, isForeign } = RouteColumnEditor.processRouteEdit({
+  // Process the route edit (pure logic) - now returns RichText link object
+  const { link, isForeign } = RouteColumnEditor.processRouteEdit({
     inputValue,
     route,
     clubUserId: getGlobals().SCCCC_USER_ID,
@@ -260,8 +260,16 @@ function editRouteColumn_(event, adapter, scheduled) {
     userProvidedName
   });
 
-  // Write the formula (GAS operation)
-  event.range.setValue(formula);
+  // Write the RichText (GAS operation)
+  if (link) {
+    const richText = SpreadsheetApp.newRichTextValue()
+      .setText(link.text)
+      .setLinkUrl(link.url)
+      .build();
+    event.range.setRichTextValue(richText);
+  } else {
+    event.range.setValue('');
+  }
 
   // Import foreign routes (GAS operation)
   if (isForeign) {

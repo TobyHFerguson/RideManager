@@ -72,6 +72,64 @@ function parseHyperlinkFormula(formula) {
     }
   }
   
+  /**
+   * Convert HYPERLINK formulas to RichText by header names
+   * This is the reverse of convertRTVsToHyperlinksByHeaders
+   * Used for migration from formula-based to RichText-based hyperlinks
+   * @param {string[]} headerNames - Array of column header names to convert
+   */
+  /* istanbul ignore next - GAS-only function, cannot be tested in Jest */
+  function convertHyperlinksToRichTextByHeaders(headerNames) {
+    // Get the active sheet
+    var sheet = SpreadsheetApp.getActiveSheet();
+    var headerRow = 1; // Assuming headers are in the first row
+  
+    // Get the last column with data
+    var lastColumn = sheet.getLastColumn();
+  
+    // Get the header values
+    var headerValues = sheet.getRange(headerRow, 1, 1, lastColumn).getValues()[0];
+  
+    // Iterate through provided header names
+    for (var i = 0; i < headerNames.length; i++) {
+      var headerName = headerNames[i];
+      var columnIndex = headerValues.indexOf(headerName) + 1; // +1 for 1-based indexing
+  
+      // Check if header is found
+      if (columnIndex > 0) {
+        // Get the last row with data in the current column
+        var lastRow = sheet.getLastRow();
+        
+        // Get the range for the current column (excluding the header row)
+        var range = sheet.getRange(headerRow + 1, columnIndex, lastRow - headerRow);
+        var formulas = range.getFormulas();
+  
+        // Iterate through each cell in the column
+        for (var j = 0; j < formulas.length; j++) {
+          var formula = formulas[j][0];
+  
+          // Check if it's a HYPERLINK formula
+          if (formula && formula.toLowerCase().startsWith('=hyperlink')) {
+            var parsed = parseHyperlinkFormula(formula);
+            
+            // Only create RichText if we successfully parsed URL and name
+            if (parsed.url && parsed.name) {
+              var richText = SpreadsheetApp.newRichTextValue()
+                .setText(parsed.name)
+                .setLinkUrl(parsed.url)
+                .build();
+              
+              var newCell = sheet.getRange(j + headerRow + 1, columnIndex);
+              newCell.setRichTextValue(richText);
+            }
+          }
+        }
+      } else {
+        Logger.log(`Header "${headerName}" not found.`);
+      }
+    }
+  }
+
   // Example usage:
   /* istanbul ignore next - GAS-only test function */
   function testConvert() {
@@ -79,12 +137,21 @@ function parseHyperlinkFormula(formula) {
     convertRTVsToHyperlinksByHeaders(["Ride", "Route"]); // Replace with your actual header names
   }
 
+  // Example usage for migration:
+  /* istanbul ignore next - GAS-only test function */
+  function testConvertToRichText() {
+    // Convert formulas to RichText - used during migration
+    convertHyperlinksToRichTextByHeaders(["Ride", "Route"]);
+  }
+
 // Export for GAS (global)
 var HyperlinkUtils = {
     parseHyperlinkFormula: parseHyperlinkFormula,
     createHyperlinkFormula: createHyperlinkFormula,
     convertRTVsToHyperlinksByHeaders: convertRTVsToHyperlinksByHeaders,
-    testConvert: testConvert
+    convertHyperlinksToRichTextByHeaders: convertHyperlinksToRichTextByHeaders,
+    testConvert: testConvert,
+    testConvertToRichText: testConvertToRichText
 };
 
 // Export for testing
