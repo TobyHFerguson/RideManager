@@ -1,31 +1,40 @@
 /**
+ * Route import configuration
+ */
+export interface RouteImportConfig {
+    url: string;
+    expiry: string;
+    tags: string[];
+    name?: string;
+}
+
+/**
+ * Calendar event data
+ */
+export interface CalendarEventData {
+    name: string;
+    start: Date;
+    end: Date;
+}
+
+/**
  * RideManagerCore - Pure JavaScript business logic for ride management
  * All functions are testable without GAS dependencies
  */
-declare namespace RideManagerCore {
+declare class RideManagerCore {
     /**
      * Extracts event ID from an event URL
      * @param eventUrl - The event URL (e.g., "https://ridewithgps.com/events/12345-event-name")
      * @returns The extracted event ID (e.g., "12345")
      */
-    function extractEventID(eventUrl: string): string;
+    static extractEventID(eventUrl: string): string;
 
     /**
      * Extracts latitude and longitude from route data
      * @param route - Route object with first_lat and first_lng properties
      * @returns Location string in format "lat,lng" or empty string if route is null
      */
-    function extractLatLong(route: any): string;
-
-    /**
-     * Route import configuration
-     */
-    interface RouteImportConfig {
-        url: string;
-        expiry: string;
-        tags: string[];
-        name?: string;
-    }
+    static extractLatLong(route: any): string;
 
     /**
      * Prepares route import configuration for RWGPS
@@ -35,7 +44,7 @@ declare namespace RideManagerCore {
      * @param formatDate - Function to format date as MMDDYYYY (dates.MMDDYYYY)
      * @returns Route configuration object with url, expiry, tags, and optional name
      */
-    function prepareRouteImport(
+    static prepareRouteImport(
         rowData: {
             routeURL: string;
             routeName: string;
@@ -56,7 +65,7 @@ declare namespace RideManagerCore {
      * @param groupNames - Array of valid group names
      * @returns True if event name contains a group identifier
      */
-    function isManagedEventName(eventName: string, groupNames: string[]): boolean;
+    static isManagedEventName(eventName: string, groupNames: string[]): boolean;
 
     /**
      * Extracts group name from event name
@@ -64,7 +73,7 @@ declare namespace RideManagerCore {
      * @param groupNames - Array of valid group names
      * @returns The group name if found, null otherwise
      */
-    function extractGroupName(eventName: string, groupNames: string[]): string | null;
+    static extractGroupName(eventName: string, groupNames: string[]): string | null;
 
     /**
      * Validates if event name ends with square bracket (debug check for Issue 22)
@@ -74,7 +83,7 @@ declare namespace RideManagerCore {
      * @param source - Source of the event name (e.g., "RWGPS", "newEvent")
      * @throws {Error} If event name ends with square bracket
      */
-    function validateEventNameFormat(
+    static validateEventNameFormat(
         eventName: string,
         rowNum: number,
         originalName: string,
@@ -82,21 +91,12 @@ declare namespace RideManagerCore {
     ): void;
 
     /**
-     * Calendar event data
-     */
-    interface CalendarEventData {
-        name: string;
-        start: Date;
-        end: Date;
-    }
-
-    /**
      * Prepares calendar event data from row and ride event
      * @param rideEvent - Ride event object
      * @param rowData - Row data
      * @returns Calendar event data with name, start, end
      */
-    function prepareCalendarEventData(
+    static prepareCalendarEventData(
         rideEvent: {
             name?: string;
             start_time?: string | Date;

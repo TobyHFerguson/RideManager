@@ -32,68 +32,67 @@ function convertToDate(date) {
  * Orchestration layer for ride operations
  * Implements validate → confirm → execute pattern for all operations
  */
-var RideCoordinator = (function() {
-    const RideCoordinator = {
-        /**
-         * Schedule rides operation
-         * @param {RowCoreInstance[]} rows - Rows to schedule
-         * @param {RWGPS} rwgps - RWGPS service
-         * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
-         * @param {boolean} [force] - Skip user confirmation
-         */
-        scheduleRides(rows, rwgps, adapter, force = false) {
-            try {
-                // 1. Validate
-                // NOTE: validateForScheduling exists in ValidationCore (see ValidationCore.d.ts:59, test coverage: TBD)
-                // TypeScript error is false positive due to namespace export pattern
-                const validation = ValidationCore.validateForScheduling(rows, {
-                    groupNames: getGroupNames(),
-                    getRoute: getRoute,
-                    clubUserId: getGlobals().SCCCC_USER_ID,
-                    managedEventName: SCCCCEvent.managedEventName,
-                    convertDate: convertToDate
-                });
+class RideCoordinator {
+    /**
+     * Schedule rides operation
+     * @param {RowCoreInstance[]} rows - Rows to schedule
+     * @param {RWGPS} rwgps - RWGPS service
+     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {boolean} [force] - Skip user confirmation
+     */
+    static scheduleRides(rows, rwgps, adapter, force = false) {
+        try {
+            // 1. Validate
+            // NOTE: validateForScheduling exists in ValidationCore (see ValidationCore.d.ts:59, test coverage: TBD)
+            // TypeScript error is false positive due to namespace export pattern
+            const validation = ValidationCore.validateForScheduling(rows, {
+                groupNames: getGroupNames(),
+                getRoute: getRoute,
+                clubUserId: getGlobals().SCCCC_USER_ID,
+                managedEventName: SCCCCEvent.managedEventName,
+                convertDate: convertToDate
+            });
 
-                // 2. Get user confirmation
-                // NOTE: confirmOperation exists in UIHelper (see UIHelper.d.ts:53, implementation: UIHelper.js:25)
-                const confirmation = UIHelper.confirmOperation({
-                    operationName: 'Schedule Rides',
-                    rows,
-                    validation,
-                    force
-                });
+            // 2. Get user confirmation
+            // NOTE: confirmOperation exists in UIHelper (see UIHelper.d.ts:53, implementation: UIHelper.js:25)
+            const confirmation = UIHelper.confirmOperation({
+                operationName: 'Schedule Rides',
+                rows,
+                validation,
+                force
+            });
 
-                if (!confirmation.confirmed) {
-                    return;
-                }
+            if (!confirmation.confirmed) {
+                return;
+            }
 
-                // 3. Execute operation
-                RideManager.scheduleRows(confirmation.processableRows, rwgps);
+            // 3. Execute operation
+            RideManager.scheduleRows(confirmation.processableRows, rwgps);
 
-                // 4. Save changes to spreadsheet (before showing dialog)
-                adapter.save();
+            // 4. Save changes to spreadsheet (before showing dialog)
+            adapter.save();
 
-                // 5. Show success (after save completes)
-                // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69, implementation: UIHelper.js:86)
-                UIHelper.showSuccess(`Successfully scheduled ${confirmation.processableRows.length} ride(s).`);
+            // 5. Show success (after save completes)
+            // NOTE: showSuccess exists in UIHelper (see UIHelper.d.ts:69, implementation: UIHelper.js:86)
+            UIHelper.showSuccess(`Successfully scheduled ${confirmation.processableRows.length} ride(s).`);
 
-            } catch (error) {
+        } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.scheduleRides error:', err);
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74, implementation: UIHelper.js:90)
                 UIHelper.showError('Schedule Failed', err);
                 throw err;
             }
-        },
+    }
 
-        /**
-         * Cancel rides operation
-         * @param {RowCoreInstance[]} rows - Rows to cancel
-         * @param {RWGPS} rwgps - RWGPS service
-         * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
-         * @param {boolean} [force] - Skip user confirmation
-         */
-        cancelRides(rows, rwgps, adapter, force = false) {
+    /**
+     * Cancel rides operation
+     * @param {RowCoreInstance[]} rows - Rows to cancel
+     * @param {RWGPS} rwgps - RWGPS service
+     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {boolean} [force] - Skip user confirmation
+     */
+    static cancelRides(rows, rwgps, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForCancellation exists in ValidationCore (see ValidationCore.d.ts:68, implementation: ValidationCore.js)
@@ -205,16 +204,16 @@ var RideCoordinator = (function() {
                 UIHelper.showError('Cancellation Failed', err);
                 throw err;
             }
-        },
+    }
 
-        /**
-         * Update rides operation
-         * @param {RowCoreInstance[]} rows - Rows to update
-         * @param {RWGPS} rwgps - RWGPS service
-         * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
-         * @param {boolean} [force] - Skip user confirmation
-         */
-        updateRides(rows, rwgps, adapter, force = false) {
+    /**
+     * Update rides operation
+     * @param {RowCoreInstance[]} rows - Rows to update
+     * @param {RWGPS} rwgps - RWGPS service
+     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {boolean} [force] - Skip user confirmation
+     */
+    static updateRides(rows, rwgps, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForUpdate exists in ValidationCore (see ValidationCore.d.ts:77)
@@ -256,16 +255,16 @@ var RideCoordinator = (function() {
                 UIHelper.showError('Update Failed', err);
                 throw err;
             }
-        },
+    }
 
-        /**
-         * Reinstate rides operation
-         * @param {RowCoreInstance[]} rows - Rows to reinstate
-         * @param {RWGPS} rwgps - RWGPS service
-         * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
-         * @param {boolean} [force] - Skip user confirmation
-         */
-        reinstateRides(rows, rwgps, adapter, force = false) {
+    /**
+     * Reinstate rides operation
+     * @param {RowCoreInstance[]} rows - Rows to reinstate
+     * @param {RWGPS} rwgps - RWGPS service
+     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {boolean} [force] - Skip user confirmation
+     */
+    static reinstateRides(rows, rwgps, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForReinstatement exists in ValidationCore (see ValidationCore.d.ts:86)
@@ -377,16 +376,16 @@ var RideCoordinator = (function() {
                 UIHelper.showError('Reinstatement Failed', err);
                 throw err;
             }
-        },
+    }
 
-        /**
-         * Unschedule rides operation
-         * @param {RowCoreInstance[]} rows - Rows to unschedule
-         * @param {RWGPS} rwgps - RWGPS service
-         * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
-         * @param {boolean} [force] - Skip user confirmation
-         */
-        unscheduleRides(rows, rwgps, adapter, force = false) {
+    /**
+     * Unschedule rides operation
+     * @param {RowCoreInstance[]} rows - Rows to unschedule
+     * @param {RWGPS} rwgps - RWGPS service
+     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {boolean} [force] - Skip user confirmation
+     */
+    static unscheduleRides(rows, rwgps, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForUnschedule exists in ValidationCore (see ValidationCore.d.ts:95)
@@ -425,16 +424,16 @@ var RideCoordinator = (function() {
                 UIHelper.showError('Unschedule Failed', err);
                 throw err;
             }
-        },
+    }
 
-        /**
-         * Import routes operation
-         * @param {RowCoreInstance[]} rows - Rows to import
-         * @param {RWGPS} rwgps - RWGPS service
-         * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
-         * @param {boolean} [force] - Skip user confirmation
-         */
-        importRoutes(rows, rwgps, adapter, force = false) {
+    /**
+     * Import routes operation
+     * @param {RowCoreInstance[]} rows - Rows to import
+     * @param {RWGPS} rwgps - RWGPS service
+     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {boolean} [force] - Skip user confirmation
+     */
+    static importRoutes(rows, rwgps, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForRouteImport exists in ValidationCore (see ValidationCore.d.ts:104)
@@ -475,11 +474,8 @@ var RideCoordinator = (function() {
                 UIHelper.showError('Import Failed', err);
                 throw err;
             }
-        }
-    };
-
-    return RideCoordinator;
-})();
+    }
+}
 
 if (typeof module !== 'undefined') {
     module.exports = RideCoordinator;

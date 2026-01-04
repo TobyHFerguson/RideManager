@@ -5,11 +5,11 @@ import type { RWGPS } from './Externals';
 /**
  * Orchestration layer for ride operations
  */
-declare namespace RideCoordinator {
+declare class RideCoordinator {
     /**
      * Schedule rides operation
      */
-    function scheduleRides(
+    static scheduleRides(
         rows: InstanceType<typeof RowCore>[],
         rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
@@ -19,7 +19,7 @@ declare namespace RideCoordinator {
     /**
      * Cancel rides operation
      */
-    function cancelRides(
+    static cancelRides(
         rows: InstanceType<typeof RowCore>[],
         rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
@@ -29,7 +29,7 @@ declare namespace RideCoordinator {
     /**
      * Update rides operation
      */
-    function updateRides(
+    static updateRides(
         rows: InstanceType<typeof RowCore>[],
         rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
@@ -39,7 +39,7 @@ declare namespace RideCoordinator {
     /**
      * Reinstate rides operation
      */
-    function reinstateRides(
+    static reinstateRides(
         rows: InstanceType<typeof RowCore>[],
         rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
@@ -49,7 +49,7 @@ declare namespace RideCoordinator {
     /**
      * Unschedule rides operation
      */
-    function unscheduleRides(
+    static unscheduleRides(
         rows: InstanceType<typeof RowCore>[],
         rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
@@ -59,7 +59,7 @@ declare namespace RideCoordinator {
     /**
      * Import routes operation
      */
-    function importRoutes(
+    static importRoutes(
         rows: InstanceType<typeof RowCore>[],
         rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
