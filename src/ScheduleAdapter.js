@@ -153,7 +153,7 @@ const ScheduleAdapter = (function() {
                 [globals.GOOGLEEVENTIDCOLUMNNAME]: 'googleEventIdCell',
                 [globals.LOCATIONCOLUMNNAME]: 'location',
                 [globals.ADDRESSCOLUMNNAME]: 'address',
-                // Announcement columns (no Globals needed - column names have no spaces)
+                // Announcement columns
                 'Announcement': 'announcement',
                 'SendAt': 'sendAt',
                 'Status': 'status',

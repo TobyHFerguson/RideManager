@@ -52,8 +52,7 @@ var AnnouncementManager = (function () {
                 const docUrl = newDoc.getUrl();
                 
                 // Get document title to create RichText link (following GoogleEventId pattern)
-                const doc = DocumentApp.openById(newDoc.getId());
-                const docTitle = doc.getName();
+                const docTitle = newDoc.getName();
                 
                 // Set announcement with RichText link showing document title
                 row.setAnnouncement(docUrl, docTitle);
