@@ -27,7 +27,7 @@ import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
 import type RWGPSMembersCoreClass from './RWGPSMembersCore';
 import type ValidationCoreClass from './ValidationCore';
 import type UIHelperClass from './UIHelper';
-import type RideCoordinatorNamespace from './RideCoordinator';
+import type RideCoordinatorClass from './RideCoordinator';
 import type UserLoggerCoreClass from './UserLoggerCore';
 
 // Declare all module exports as global variables for GAS runtime
@@ -54,7 +54,7 @@ declare global {
     const RideManagerCore: typeof RideManagerCoreClass;
     const AnnouncementCore: typeof AnnouncementCoreClass;
     const RWGPSMembersCore: typeof RWGPSMembersCoreClass;
-    const RideCoordinator: typeof RideCoordinatorNamespace;
+    const RideCoordinator: typeof RideCoordinatorClass;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;
