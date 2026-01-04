@@ -683,6 +683,445 @@ See GitHub Issue #XXX for tracking conversion of legacy modules (RideManagerCore
 - MUST keep pure JavaScript business logic separate from GAS persistence layer
 - **Rule**: Any modification to Schedule/Row MUST move toward this architecture, not maintain current coupling
 
+#### RichText Hyperlinks (Route, Ride, GoogleEventId Columns)
+
+**CRITICAL**: These columns use native GAS RichText hyperlinks, NOT HYPERLINK formulas.
+
+**Creating RichText Hyperlinks**:
+
+```javascript
+// Pattern: SpreadsheetApp.newRichTextValue()
+const richText = SpreadsheetApp.newRichTextValue()
+    .setText('Display Text')
+    .setLinkUrl('https://example.com/url')
+    .build();
+
+cell.setRichTextValue(richText);
+```
+
+**Example from RowCore**:
+```javascript
+// When GoogleEventId is set, create RichText hyperlink
+set GoogleEventId(value) {
+    if (value && this._data.Group && this._data['Date Time']) {
+        const calendarId = getGroupSpecs()[this._data.Group.toUpperCase()]?.GoogleCalendarId;
+        if (calendarId) {
+            const calendarUrl = GoogleEventCore.buildCalendarUrl(calendarId, this._data['Date Time']);
+            const richText = SpreadsheetApp.newRichTextValue()
+                .setText(String(value))
+                .setLinkUrl(calendarUrl)
+                .build();
+            this._setField('GoogleEventId', richText);
+            return;
+        }
+    }
+    this._setField('GoogleEventId', value);
+}
+```
+
+**Reading RichText Hyperlinks**:
+
+```javascript
+const richText = cell.getRichTextValue();
+const displayText = richText.getText();
+const url = richText.getLinkUrl(); // null if no link
+
+// Check if cell has hyperlink
+if (richText && richText.getLinkUrl()) {
+    console.log('Cell has link:', richText.getLinkUrl());
+}
+```
+
+**Why RichText Instead of HYPERLINK Formulas**:
+
+- ✅ **Better performance**: No formula recalculation overhead
+- ✅ **Cleaner data structure**: No formula parsing needed
+- ✅ **Native GAS support**: Built-in API
+- ✅ **Version history**: Shows actual text changes, not formula changes
+- ✅ **Cell-level writes**: Can update individual cells without touching formulas
+
+**Columns Using RichText**:
+
+1. **Route** - Links to RWGPS route page (`https://ridewithgps.com/routes/XXXXXX`)
+2. **Ride** - Links to RWGPS event page (`https://ridewithgps.com/events/XXXXXX`)
+3. **GoogleEventId** - Links to Google Calendar agenda view for the ride date
+
+**Migration Strategy**:
+
+When converting from HYPERLINK formulas to RichText:
+- Create one-time migration script (see "One-Time Migration Scripts" section)
+- Convert existing formulas to RichText hyperlinks
+- Update RowCore property setters to create RichText
+- Update ScheduleAdapter to handle RichText values
+
+**See Also**:
+- `docs/MIGRATION_FIDDLER_TO_RICHTEXT.md` - Complete migration documentation
+- `scripts/migrate-google-event-ids.js` - Example migration script
+
+#### One-Time Migration Scripts
+
+**Pattern**: When changing data formats (e.g., plain text → RichText hyperlinks), create idempotent migration scripts.
+
+**Migration Script Structure**:
+
+```javascript
+/**
+ * migrate-feature-name.js
+ * 
+ * One-time migration utility: [Brief description of what's being migrated]
+ * 
+ * USAGE:
+ * ======
+ * 1. Deploy this script to GAS (via npm run dev:push)
+ * 2. Open Script Editor in GAS
+ * 3. Run `migrateFeatureName()` function
+ * 4. Verify changes in spreadsheet
+ * 5. Deploy updated core/adapter code
+ * 
+ * SAFETY:
+ * =======
+ * - Non-destructive: Only converts, never deletes
+ * - Idempotent: Can be run multiple times safely
+ * - Logging: Detailed console output
+ * - Error handling: Continues on individual failures
+ */
+
+/* istanbul ignore file - GAS-only migration script */
+
+function migrateFeatureName() {
+    console.log('=== Starting Migration ===');
+    
+    try {
+        // 1. Get sheet and validate
+        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Consolidated Rides');
+        if (!sheet) {
+            throw new Error('Sheet not found');
+        }
+        
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            console.log('No data rows to process');
+            return;
+        }
+        
+        // 2. Find columns by header name (1-based indexing)
+        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+        const targetColIndex = headers.indexOf('ColumnName') + 1;
+        
+        if (targetColIndex === 0) {
+            throw new Error('Could not find "ColumnName" column');
+        }
+        
+        console.log(`Found column at index ${targetColIndex}`);
+        console.log(`Processing ${lastRow - 1} data rows...`);
+        
+        // 3. Get existing data (bulk read for performance)
+        const dataRange = sheet.getRange(2, targetColIndex, lastRow - 1, 1);
+        const values = dataRange.getValues();
+        const richTextValues = dataRange.getRichTextValues(); // For idempotency check
+        
+        let converted = 0;
+        let skipped = 0;
+        let errors = 0;
+        
+        // 4. Process each row
+        for (let i = 0; i < values.length; i++) {
+            const value = values[i][0];
+            const richText = richTextValues[i][0];
+            const rowNum = i + 2; // 1-based, +1 for header
+            
+            try {
+                // Skip empty cells
+                if (!value || value === '') {
+                    skipped++;
+                    continue;
+                }
+                
+                // Idempotent: Skip if already migrated
+                if (richText && richText.getLinkUrl()) {
+                    console.log(`Row ${rowNum}: Already migrated, skipping`);
+                    skipped++;
+                    continue;
+                }
+                
+                // Convert data to new format
+                const newValue = convertToNewFormat(value);
+                
+                // Write back to cell
+                const cell = sheet.getRange(rowNum, targetColIndex);
+                cell.setRichTextValue(newValue);
+                
+                converted++;
+                if (converted % 10 === 0) {
+                    console.log(`  Converted ${converted} rows...`);
+                }
+                
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                console.error(`Row ${rowNum}: ${err.message}`);
+                errors++;
+            }
+        }
+        
+        // 5. Summary report
+        console.log('\n=== Migration Complete ===');
+        console.log(`Converted: ${converted}`);
+        console.log(`Skipped: ${skipped}`);
+        console.log(`Errors: ${errors}`);
+        console.log('\nPlease verify changes in spreadsheet.');
+        
+        if (errors > 0) {
+            console.warn('\nWARNING: Some cells failed. Check console log.');
+        }
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error('FATAL ERROR during migration:', err.message);
+        throw error;
+    }
+}
+
+/**
+ * Helper: Convert data to new format
+ * (Keep helper functions in same file for GAS deployment)
+ */
+function convertToNewFormat(oldValue) {
+    // Conversion logic here
+    return newValue;
+}
+```
+
+**Key Properties of Migration Scripts**:
+
+1. **Idempotent**: Can run multiple times safely
+   - Check if already migrated before converting
+   - Skip cells that already have the new format
+   - Example: Check `richText.getLinkUrl()` for existing hyperlinks
+
+2. **Non-destructive**: Only converts, never deletes
+   - Preserve original data structure
+   - Only add/modify specific fields
+   - Don't touch unrelated columns
+
+3. **Detailed logging**: Console output for debugging
+   - Log progress every N rows (e.g., every 10)
+   - Log skipped rows with reasons
+   - Log errors with row numbers and details
+   - Provide summary statistics at end
+
+4. **Error handling**: Continues on individual failures
+   - Try-catch around each row processing
+   - Log error but continue to next row
+   - Report total errors at end
+   - Don't fail entire migration for one bad row
+
+5. **Progress tracking**: Shows it's working
+   - Log milestone counts (e.g., "Converted 50 rows...")
+   - Prevents timeout concerns for long-running scripts
+   - Helps estimate completion time
+
+**Real Example: Google Event ID Migration**:
+
+From `scripts/migrate-google-event-ids.js`:
+
+```javascript
+// Idempotency check
+if (richText && richText.getLinkUrl()) {
+    console.log(`Row ${rowNum}: Already has RichText link, skipping`);
+    skipped++;
+    continue;
+}
+
+// Data validation before conversion
+if (!group || group === '') {
+    console.warn(`Row ${rowNum}: Missing group, skipping`);
+    skipped++;
+    continue;
+}
+
+// Build new format using Core logic
+const calendarUrl = buildCalendarUrl(calendarId, date);
+const richTextValue = SpreadsheetApp.newRichTextValue()
+    .setText(String(eventId))
+    .setLinkUrl(calendarUrl)
+    .build();
+
+// Write to cell
+cell.setRichTextValue(richTextValue);
+```
+
+**Migration Script Checklist**:
+
+When creating a migration script:
+
+- ✅ Add `/* istanbul ignore file - GAS-only migration script */` at top
+- ✅ Include detailed USAGE and SAFETY comments
+- ✅ Find columns by header name (not hardcoded index)
+- ✅ Implement idempotency check (skip already-migrated)
+- ✅ Validate data before conversion (skip invalid rows)
+- ✅ Use try-catch per row (continue on errors)
+- ✅ Log progress every N rows
+- ✅ Provide summary statistics
+- ✅ Keep helper functions inline (GAS deployment requirement)
+- ✅ Test on small dataset first
+- ✅ Run in dev environment before production
+
+**Deployment Process**:
+
+1. **Development**:
+   ```bash
+   npm run dev:push  # Deploy migration script
+   ```
+
+2. **Run in GAS**:
+   - Open Script Editor
+   - Select migration function
+   - Click "Run"
+   - Monitor execution logs
+
+3. **Verify**:
+   - Check spreadsheet manually
+   - Verify sample rows converted correctly
+   - Check for unexpected side effects
+
+4. **Production** (if needed):
+   ```bash
+   npm run prod:push  # Deploy to production
+   ```
+
+5. **Cleanup** (optional):
+   - After successful migration, can remove script
+   - Or keep for documentation/reference
+
+#### Google Calendar Embed URLs
+
+**Pattern**: Link to calendar in AGENDA mode for specific date.
+
+**buildCalendarUrl Function**:
+
+```javascript
+/**
+ * Build Google Calendar embed URL showing specific date in agenda view
+ * 
+ * @param {string} calendarId - Calendar ID (e.g., 'groupname@gmail.com')
+ * @param {Date} date - Date to display in agenda view
+ * @returns {string} Calendar embed URL
+ */
+function buildCalendarUrl(calendarId, date) {
+    // Format date as YYYYMMDD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+    
+    // Build URL with query parameters (manual encoding for GAS compatibility)
+    // URLSearchParams not available in Google Apps Script
+    const params = [
+        `src=${encodeURIComponent(calendarId)}`,
+        'mode=AGENDA',
+        `ctz=${encodeURIComponent('America/Los_Angeles')}`,
+        `dates=${dateStr}%2F${dateStr}` // Manual encoding of / as %2F
+    ];
+    
+    return `https://calendar.google.com/calendar/embed?${params.join('&')}`;
+}
+```
+
+**Used In**:
+
+1. **GoogleEventCore.buildCalendarUrl()** - Core implementation (tested in Jest)
+2. **RowCore.GoogleEventId setter** - Creates RichText when GoogleEventId is set
+3. **Migration scripts** - Convert existing plain text IDs to hyperlinks
+
+**URL Parameters Explained**:
+
+| Parameter | Value | Purpose |
+|-----------|-------|---------||
+| `src` | `calendarId` | Which calendar to display (URL-encoded) |
+| `mode` | `AGENDA` | Show list view (not month calendar) |
+| `ctz` | `America/Los_Angeles` | Calendar timezone |
+| `dates` | `YYYYMMDD/YYYYMMDD` | Highlight specific date range |
+
+**Key Details**:
+
+- ✅ **`mode=AGENDA`** - Shows list view, easier to find specific event
+- ✅ **`dates=YYYYMMDD/YYYYMMDD`** - Single day range highlights the ride date
+- ✅ **`ctz=America/Los_Angeles`** - Sets timezone to Pacific (club default)
+- ✅ **Manual encoding** - Uses `encodeURIComponent()` (GAS-compatible)
+- ❌ **Cannot use URLSearchParams** - Not available in GAS V8 runtime
+
+**Example URLs**:
+
+```javascript
+// Example: SCCCC Thursday Fun Ride on Dec 5, 2025
+const calendarId = 'scccc.thursday@gmail.com';
+const date = new Date('2025-12-05');
+const url = buildCalendarUrl(calendarId, date);
+
+// Result:
+// https://calendar.google.com/calendar/embed?
+//   src=scccc.thursday%40gmail.com
+//   &mode=AGENDA
+//   &ctz=America%2FLos_Angeles
+//   &dates=20251205%2F20251205
+```
+
+**Testing Strategy**:
+
+**Core Module** (tested in Jest):
+```javascript
+// GoogleEventCore.test.js
+describe('buildCalendarUrl', () => {
+    it('should build calendar URL with correct parameters', () => {
+        const calendarId = 'test@gmail.com';
+        const date = new Date('2025-12-05');
+        
+        const url = GoogleEventCore.buildCalendarUrl(calendarId, date);
+        
+        expect(url).toContain('src=test%40gmail.com');
+        expect(url).toContain('mode=AGENDA');
+        expect(url).toContain('dates=20251205%2F20251205');
+    });
+});
+```
+
+**Adapter Module** (tested manually in GAS):
+- Verify links open correct calendar
+- Verify date is highlighted
+- Verify agenda view displays
+
+**Common Issues**:
+
+**Problem**: Links don't open to correct date
+```javascript
+// ❌ WRONG - Using UTC date string
+const date = new Date('2025-12-05T00:00:00Z'); // UTC midnight
+// In PST timezone, this is 2025-12-04 4:00 PM
+
+// ✅ CORRECT - Using local date
+const date = new Date('2025-12-05'); // Local midnight
+```
+
+**Problem**: Calendar not found
+```javascript
+// ❌ WRONG - Incorrect calendar ID format
+const calendarId = 'groupname'; // Missing @gmail.com
+
+// ✅ CORRECT - Full email address
+const calendarId = 'groupname@gmail.com';
+```
+
+**Problem**: URL encoding issues
+```javascript
+// ❌ WRONG - Using URLSearchParams (not available in GAS)
+const params = new URLSearchParams({ src: calendarId });
+const url = `https://calendar.google.com/calendar/embed?${params.toString()}`;
+
+// ✅ CORRECT - Manual encoding with encodeURIComponent
+const params = [`src=${encodeURIComponent(calendarId)}`];
+const url = `https://calendar.google.com/calendar/embed?${params.join('&')}`;
+```
+
 #### Module Export/Import Pattern
 Due to GAS limitations, the code uses a conditional module pattern:
 
@@ -1931,6 +2370,313 @@ This repository uses the [RWGPSLib(https://github.com/TobyHFerguson/RWGPSLib) to
 
 ## Google Calendar Integration
 This repository uses the Google Calendar API to create and manage calendar events corresponding to scheduled rides.
+
+## Common GAS + clasp Pain Points (For Future Reference)
+
+These are patterns you may encounter as the codebase grows. Added for reference.
+
+### 1. GAS Execution Quotas and Timeouts
+
+**Problem**: Scripts have 6-minute maximum execution time.
+
+**Pattern**: Chunking for long-running operations
+```javascript
+class ProcessingManager {
+    static CHUNK_SIZE = 50; // Process 50 items at a time
+    static MAX_EXECUTION_TIME = 5 * 60 * 1000; // 5 minutes (留 buffer)
+    
+    processInChunks(items) {
+        const startTime = Date.now();
+        
+        for (let i = 0; i < items.length; i += ProcessingManager.CHUNK_SIZE) {
+            // Check if approaching timeout
+            if (Date.now() - startTime > ProcessingManager.MAX_EXECUTION_TIME) {
+                // Save progress to PropertiesService
+                this._saveProgress(i);
+                // Schedule continuation trigger
+                this._scheduleContinuation();
+                return { completed: i, total: items.length };
+            }
+            
+            const chunk = items.slice(i, i + ProcessingManager.CHUNK_SIZE);
+            this._processChunk(chunk);
+        }
+        
+        return { completed: items.length, total: items.length };
+    }
+}
+```
+
+**Testing Pattern**:
+```javascript
+// Core logic (tested in Jest)
+class ProcessorCore {
+    static shouldStop(startTime, maxTime = 5 * 60 * 1000) {
+        return Date.now() - startTime > maxTime;
+    }
+    
+    static calculateProgress(current, total) {
+        return { completed: current, total, percentage: (current / total * 100).toFixed(1) };
+    }
+}
+
+// GAS adapter (uses Core logic)
+class Processor {
+    processAll() {
+        const startTime = Date.now();
+        const items = this._getItems();
+        
+        for (let i = 0; i < items.length; i++) {
+            if (ProcessorCore.shouldStop(startTime)) {
+                this._saveProgress(i);
+                return ProcessorCore.calculateProgress(i, items.length);
+            }
+            this._processItem(items[i]);
+        }
+        
+        return ProcessorCore.calculateProgress(items.length, items.length);
+    }
+}
+```
+
+### 2. Lock Service for Concurrent Access
+
+**Problem**: Multiple triggers can fire simultaneously (e.g., onEdit + time-based trigger).
+
+**Pattern**: Serialize execution with LockService
+```javascript
+// Pattern: Wrap ALL trigger functions
+function onEditSafe(event) {
+    const lock = LockService.getScriptLock();
+    try {
+        // Try to acquire lock (wait up to 30 seconds)
+        if (!lock.tryLock(30000)) {
+            console.log('Another execution in progress, skipping');
+            return;
+        }
+        
+        // Process event
+        onEdit(event);
+        
+    } finally {
+        // Always release lock
+        lock.releaseLock();
+    }
+}
+
+// Alternative: waitLock (blocks until available)
+function onEditBlocking(event) {
+    const lock = LockService.getScriptLock();
+    try {
+        lock.waitLock(30000); // Wait up to 30 seconds
+        onEdit(event);
+    } catch (error) {
+        console.warn('Could not acquire lock:', error.message);
+    } finally {
+        lock.releaseLock();
+    }
+}
+```
+
+**Testing**: Mock LockService in Jest
+```javascript
+// In test
+global.LockService = {
+    getScriptLock: () => ({
+        tryLock: () => true,
+        releaseLock: () => {}
+    })
+};
+```
+
+### 3. PropertiesService Patterns
+
+**Current Usage**: Formula storage in ScheduleAdapter, trigger coordination in TriggerManager.
+
+**Limits**:
+- 500KB per property
+- 50 properties max per scope
+- Atomic updates, but reads may be stale
+
+**Pattern**: Cache + Properties
+```javascript
+class PropertyCache {
+    /**
+     * Get property with cache layer
+     * @param {string} key - Property key
+     * @param {number} ttl - Cache TTL in seconds (default 600 = 10 minutes)
+     * @returns {any} Property value or null
+     */
+    static get(key, ttl = 600) {
+        // Check cache first
+        const cache = CacheService.getScriptCache();
+        let value = cache.get(key);
+        
+        if (!value) {
+            // Cache miss - read from properties
+            const props = PropertiesService.getScriptProperties();
+            value = props.getProperty(key);
+            
+            if (value) {
+                // Store in cache for next time
+                cache.put(key, value, ttl);
+            }
+        }
+        
+        return value ? JSON.parse(value) : null;
+    }
+    
+    /**
+     * Set property with cache invalidation
+     */
+    static set(key, value) {
+        const json = JSON.stringify(value);
+        
+        // Write to properties
+        const props = PropertiesService.getScriptProperties();
+        props.setProperty(key, json);
+        
+        // Update cache
+        const cache = CacheService.getScriptCache();
+        cache.put(key, json, 600);
+    }
+}
+```
+
+### 4. Exponential Backoff for External APIs
+
+**Pattern**: Retry with exponential backoff
+```javascript
+class APIClient {
+    /**
+     * Retry operation with exponential backoff
+     * @param {Function} operation - Operation to retry
+     * @param {number} maxRetries - Maximum retry attempts (default 3)
+     * @returns {any} Operation result
+     */
+    static retryWithBackoff(operation, maxRetries = 3) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                return operation();
+            } catch (error) {
+                // Rethrow on last attempt
+                if (i === maxRetries - 1) {
+                    throw error;
+                }
+                
+                // Calculate backoff delay: 1s, 2s, 4s, 8s, ...
+                const delay = Math.pow(2, i) * 1000;
+                console.log(`Attempt ${i + 1} failed, retrying in ${delay}ms...`);
+                
+                // GAS sleep (blocks execution)
+                Utilities.sleep(delay);
+            }
+        }
+    }
+}
+
+// Usage
+const result = APIClient.retryWithBackoff(() => {
+    return UrlFetchApp.fetch(url);
+});
+```
+
+**Testing**: Mock Utilities.sleep
+```javascript
+global.Utilities = {
+    sleep: (ms) => { /* no-op in tests */ }
+};
+```
+
+### 5. Manifest File (appsscript.json) Management
+
+**Location**: `appsscript.json` in project root
+
+**Key Sections**:
+```json
+{
+  "timeZone": "America/Los_Angeles",
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Calendar",
+        "serviceId": "calendar",
+        "version": "v3"
+      }
+    ],
+    "libraries": [
+      {
+        "userSymbol": "RWGPSLib",
+        "libraryId": "1X...",
+        "version": "1"
+      }
+    ]
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/script.scriptapp"
+  ]
+}
+```
+
+**Important Settings**:
+- `timeZone`: Affects `Session.getScriptTimeZone()` and date handling
+- `runtimeVersion`: "V8" enables modern JavaScript (arrow functions, const/let, etc.)
+- `oauthScopes`: Required permissions (users must authorize)
+- `exceptionLogging`: "STACKDRIVER" enables detailed error logs
+
+**When to Update**:
+- Adding new GAS services (Calendar, Drive, Gmail, etc.)
+- Adding external libraries
+- Changing timezone
+- Requiring new OAuth scopes
+
+### 6. Testing GAS-Specific Date Behavior
+
+**Problem**: GAS uses `Session.getScriptTimeZone()`, Jest uses system timezone.
+
+**Pattern**: Document timezone assumptions
+```javascript
+// In Core module
+class DateCore {
+    /**
+     * Format date for display
+     * NOTE: Uses LOCAL timezone (GAS: Session.getScriptTimeZone(), Tests: system TZ)
+     * 
+     * @param {Date} date - Date to format
+     * @returns {string} Formatted date string
+     */
+    static format(date) {
+        // Local timezone formatting
+        return date.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+}
+
+// In test - use local time format (NO 'Z' suffix)
+describe('DateCore', () => {
+    it('should format date in local timezone', () => {
+        // ✅ CORRECT - Local time (no Z)
+        const date = new Date('2025-12-05T18:00:00'); // 6 PM local
+        expect(DateCore.format(date)).toBe('Dec 5, 2025, 6:00 PM');
+        
+        // ❌ WRONG - UTC time (with Z)
+        // const date = new Date('2025-12-05T18:00:00Z'); // 6 PM UTC
+        // In PST, this would be 10 AM, causing test to fail
+    });
+});
+```
+
+**See Also**: "CRITICAL: Timezone Handling" section in copilot-instructions.md
 
 ## Code Generation Guidelines
 
