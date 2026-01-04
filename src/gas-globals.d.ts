@@ -22,7 +22,7 @@ import type SCCCCEventClass from './SCCCCEvent';
 import type EventFactoryNamespace from './EventFactory';
 import type RideManagerNamespace from './RideManager';
 import type RideManagerCore from './RideManagerCore';
-import type AnnouncementCoreNamespace from './AnnouncementCore';
+import type AnnouncementCoreClass from './AnnouncementCore';
 import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
 import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
 import type ValidationCoreClass from './ValidationCore';
@@ -52,7 +52,7 @@ declare global {
     const EventFactory: typeof EventFactoryNamespace;
     const RideManager: typeof RideManagerNamespace;
     const RideManagerCore: typeof RideManagerCore;
-    const AnnouncementCore: typeof AnnouncementCoreNamespace;
+    const AnnouncementCore: typeof AnnouncementCoreClass;
     const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
     const RideCoordinator: typeof RideCoordinatorNamespace;
     
