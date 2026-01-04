@@ -25,14 +25,11 @@ if (typeof require !== 'undefined') {
     var RWGPSMembersCore = require('./RWGPSMembersCore');
 }
 
-var RWGPSMembersAdapter = (function() {
-    'use strict';
-
-    class RWGPSMembersAdapter {
-        /**
-         * Creates a new RWGPSMembersAdapter
-         * @param {import('./Externals').RWGPS} rwgps Object from RWGPSLib
-         * @param {string} [sheetName='RWGPS Members'] - Name of the sheet to manage
+class RWGPSMembersAdapter {
+    /**
+     * Creates a new RWGPSMembersAdapter
+     * @param {import('./Externals').RWGPS} rwgps Object from RWGPSLib
+     * @param {string} [sheetName='RWGPS Members'] - Name of the sheet to manage
          */
         constructor(rwgps, sheetName = 'RWGPS Members') {
             if (!rwgps) {
@@ -153,10 +150,7 @@ var RWGPSMembersAdapter = (function() {
             }
             return false;
         }
-    }
-
-    return RWGPSMembersAdapter;
-})();
+}
 
 // Node.js/Jest export
 if (typeof module !== 'undefined') {

@@ -9,9 +9,7 @@
  * - Send time calculations
  * - Statistics and formatting
  */
-var AnnouncementCore = (function() {
-    'use strict';
-
+class AnnouncementCore {
     /**
      * Calculate the send time for a ride announcement
      * Send at 6:00 PM, 2 calendar days before the ride date
@@ -24,7 +22,7 @@ var AnnouncementCore = (function() {
      * @param {string} [timezone='America/Los_Angeles'] - Timezone parameter (currently unused, for future enhancement)
      * @returns {Date} The scheduled send time (6 PM local time, 2 days before ride)
      */
-    function calculateSendTime(rideDate, timezone = 'America/Los_Angeles') {
+    static calculateSendTime(rideDate, timezone = 'America/Los_Angeles') {
         const ride = new Date(rideDate);
         
         // Create a date 2 days before the ride
@@ -58,7 +56,7 @@ var AnnouncementCore = (function() {
      * @param {Function} getCurrentTime - Function to get current timestamp
      * @returns {{id: string, rideURL: string, documentId: string, sendTime: number, rsEmail: string, status: string, attemptCount: number, enqueuedAt: number, lastAttemptAt: number | null, rowNum: number, rideName: string, createdAt: number, lastError: string | null, reminderSent: boolean}} Queue item with all properties
      */
-    function createQueueItem(rideURL, documentId, sendTime, rsEmail, rowNum, rideName, generateId, getCurrentTime) {
+    static createQueueItem(rideURL, documentId, sendTime, rsEmail, rowNum, rideName, generateId, getCurrentTime) {
         const now = getCurrentTime();
         const send = new Date(sendTime).getTime();
         
@@ -89,7 +87,7 @@ var AnnouncementCore = (function() {
      * @param {number} currentTime - Current timestamp
      * @returns {any[]} Array of rows due for sending
      */
-    function getDueItems(rows, currentTime) {
+    static getDueItems(rows, currentTime) {
         /** @type {any[]} */
         const dueToSend = [];
         
@@ -125,7 +123,7 @@ var AnnouncementCore = (function() {
      * @param {any[]} rows - Array of RowCore domain objects
      * @returns {{total: number, pending: number, failed: number, sent: number}} Statistics object
      */
-    function getStatistics(rows) {
+    static getStatistics(rows) {
         const stats = {
             total: 0,
             pending: 0,
@@ -154,7 +152,7 @@ var AnnouncementCore = (function() {
      * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number} | null} [route] - Optional route object from RWGPS
      * @returns {Record<string, any>} Enriched row data with calculated fields
      */
-    function enrichRowData(rowData, route) {
+    static enrichRowData(rowData, route) {
         /** @type {any} */
         const enriched = { ...rowData };
         
@@ -273,12 +271,12 @@ var AnnouncementCore = (function() {
      * @param {{distance?: number, elevation_gain?: number, first_lat?: number, first_lng?: number} | null} [route] - Optional route object from RWGPS
      * @returns {{expandedText: string, missingFields: string[]}} Object with expandedText and missingFields
      */
-    function expandTemplate(template, rowData, route = null) {
+    static expandTemplate(template, rowData, route = null) {
         /** @type {string[]} */
         const missingFields = [];
         
         // Enrich row data with calculated fields before expansion
-        const enrichedData = enrichRowData(rowData, route);
+        const enrichedData = AnnouncementCore.enrichRowData(rowData, route);
         
         const expandedText = template.replace(/{([^}]+)}/g, (/** @type {string} */ match, /** @type {string} */ fieldName) => {
             const value = enrichedData[fieldName];
@@ -304,7 +302,7 @@ var AnnouncementCore = (function() {
      * @param {string} template - Template text
      * @returns {{subject: string | null, body: string}} Object with subject and body
      */
-    function extractSubject(template) {
+    static extractSubject(template) {
         const subjectMatch = template.match(/^Subject:\s*(.+?)$/m);
         
         if (subjectMatch) {
@@ -323,7 +321,7 @@ var AnnouncementCore = (function() {
      * @param {string} rideName - New ride name
      * @returns {string} New document name
      */
-    function calculateAnnouncementDocName(rideName) {
+    static calculateAnnouncementDocName(rideName) {
         return `RA-${rideName}`;
     }
 
@@ -336,7 +334,7 @@ var AnnouncementCore = (function() {
      * @param {string} [timezone='America/Los_Angeles'] - Timezone for calculation
      * @returns {{needsDocumentRename: boolean, newDocumentName: string | null, needsSendAtUpdate: boolean, calculatedSendAt: Date | null}} Update decision object
      */
-    function calculateAnnouncementUpdates(currentAnnouncement, newRideData, timezone = 'America/Los_Angeles') {
+    static calculateAnnouncementUpdates(currentAnnouncement, newRideData, timezone = 'America/Los_Angeles') {
         const updates = {
             needsDocumentRename: false,
             newDocumentName: null,
@@ -345,7 +343,7 @@ var AnnouncementCore = (function() {
         };
 
         // Check if document name needs update
-        const newDocName = calculateAnnouncementDocName(newRideData.rideName);
+        const newDocName = AnnouncementCore.calculateAnnouncementDocName(newRideData.rideName);
         if (currentAnnouncement.documentName !== newDocName) {
             updates.needsDocumentRename = true;
             // @ts-expect-error
@@ -354,24 +352,11 @@ var AnnouncementCore = (function() {
 
         // Calculate new sendAt based on updated ride date
         // @ts-expect-error
-        updates.calculatedSendAt = calculateSendTime(newRideData.rideDate, timezone);
+        updates.calculatedSendAt = AnnouncementCore.calculateSendTime(newRideData.rideDate, timezone);
 
         return updates;
     }
-
-    // Public API
-    return {
-        calculateSendTime,
-        createQueueItem,
-        getDueItems,
-        getStatistics,
-        enrichRowData,
-        expandTemplate,
-        extractSubject,
-        calculateAnnouncementDocName,
-        calculateAnnouncementUpdates
-    };
-})();
+}
 
 // Export for Node.js/Jest
 if (typeof module !== 'undefined') {

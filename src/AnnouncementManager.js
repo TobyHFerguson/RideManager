@@ -27,7 +27,6 @@ var AnnouncementManager = (function () {
     class AnnouncementManager {
         constructor() {
             // TriggerManager is a class - instantiate it
-            // @ts-expect-error - TriggerManager is global in GAS runtime, VS Code sees module type
             this.triggerManager = new TriggerManager();
         }
 
@@ -80,7 +79,6 @@ var AnnouncementManager = (function () {
 
                 // Calculate send time using core logic
                 const timezone = Session.getScriptTimeZone();
-                // @ts-expect-error - AnnouncementCore is a namespace object, TypeScript sees module type
                 const sendTime = AnnouncementCore.calculateSendTime(row.startDate, timezone);
                 const sendDate = new Date(sendTime);
                 console.log(`AnnouncementManager: Calculated send time: ${sendDate}`);
@@ -189,7 +187,6 @@ var AnnouncementManager = (function () {
                 html = this._removeInstructionsFromHtml(html);
 
                 // Expand template fields in the HTML (with route data for enrichment)
-                // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
                 const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
                 html = expandResult.expandedText;
 
@@ -226,13 +223,11 @@ var AnnouncementManager = (function () {
 
             if (allRows.length === 0) {
                 console.log('AnnouncementManager: No rows in spreadsheet');
-                // @ts-expect-error - TriggerManager is global namespace but VS Code sees module import type
                 this._removeTrigger();
                 return { sent: 0, failed: 0, remaining: 0 };
             }
 
             const now = new Date().getTime();
-            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const dueToSend = AnnouncementCore.getDueItems(allRows, now);
 
             let sent = 0;
@@ -272,7 +267,6 @@ var AnnouncementManager = (function () {
             this._scheduleNextAnnouncement();
 
             // Get statistics for return
-            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const stats = AnnouncementCore.getStatistics(allRows);
 
             return {
@@ -346,7 +340,6 @@ var AnnouncementManager = (function () {
         getStatistics() {
             const adapter = new ScheduleAdapter();
             const allRows = adapter.loadAll();
-            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             return AnnouncementCore.getStatistics(allRows);
         }
 
@@ -513,7 +506,6 @@ var AnnouncementManager = (function () {
 
                 // Calculate what updates are needed
                 const timezone = Session.getScriptTimeZone();
-                // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
                 const updates = AnnouncementCore.calculateAnnouncementUpdates(
                     {
                         documentName: currentDocName
@@ -1380,7 +1372,6 @@ var AnnouncementManager = (function () {
 
             // Expand template fields in the HTML (with route data for enrichment)
             // Note: expandTemplate internally calls enrichRowData which adds RideLink, DateTime, etc.
-            // @ts-expect-error - AnnouncementCore is global namespace but VS Code sees module import type
             const expandResult = AnnouncementCore.expandTemplate(html, rowData, route);
             html = expandResult.expandedText;
 

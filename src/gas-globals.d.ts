@@ -21,13 +21,13 @@ import type { Externals as ExternalsType } from './Externals';
 import type SCCCCEventClass from './SCCCCEvent';
 import type EventFactoryNamespace from './EventFactory';
 import type RideManagerNamespace from './RideManager';
-import type RideManagerCore from './RideManagerCore';
-import type AnnouncementCoreNamespace from './AnnouncementCore';
+import type RideManagerCoreClass from './RideManagerCore';
+import type AnnouncementCoreClass from './AnnouncementCore';
 import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
-import type RWGPSMembersCoreNamespace from './RWGPSMembersCore';
+import type RWGPSMembersCoreClass from './RWGPSMembersCore';
 import type ValidationCoreClass from './ValidationCore';
 import type UIHelperClass from './UIHelper';
-import type RideCoordinatorNamespace from './RideCoordinator';
+import type RideCoordinatorClass from './RideCoordinator';
 import type UserLoggerCoreClass from './UserLoggerCore';
 
 // Declare all module exports as global variables for GAS runtime
@@ -51,10 +51,10 @@ declare global {
     const Exports: ExportsType; // This is the interface, not typeof
     const EventFactory: typeof EventFactoryNamespace;
     const RideManager: typeof RideManagerNamespace;
-    const RideManagerCore: typeof RideManagerCore;
-    const AnnouncementCore: typeof AnnouncementCoreNamespace;
-    const RWGPSMembersCore: typeof RWGPSMembersCoreNamespace;
-    const RideCoordinator: typeof RideCoordinatorNamespace;
+    const RideManagerCore: typeof RideManagerCoreClass;
+    const AnnouncementCore: typeof AnnouncementCoreClass;
+    const RWGPSMembersCore: typeof RWGPSMembersCoreClass;
+    const RideCoordinator: typeof RideCoordinatorClass;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;

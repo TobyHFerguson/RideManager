@@ -20,24 +20,21 @@ if (typeof require !== 'undefined') {
  * - ScheduleAdapter = Anti-corruption layer (maps spreadsheet ↔ domain)
  */
 
-var RowCore = (function() {
-    'use strict';
-
-    /**
-     * @typedef {Object} RowCoreParams
-     * @property {Date} startDate - Start date/time of the ride
-     * @property {number} [duration] - Duration in hours (for calculating end time)
-     * @property {number} [defaultDuration] - Default duration if not specified
-     * @property {string} group - Ride group (e.g., "Sat A", "Sun B")
-     * @property {string} routeCell - Route hyperlink formula or text
-     * @property {string} rideCell - Ride hyperlink formula or text
-     * @property {string} rideLeaders - Comma-separated leader names
-     * @property {string} googleEventId - Google Calendar Event ID
-     * @property {string} location - Meeting location name
-     * @property {string} address - Full address of meeting location
-     * @property {string} [announcement] - Announcement document URL
-     * @property {Date} [sendAt] - Scheduled send date/time
-     * @property {string} [status] - Announcement status
+/**
+ * @typedef {Object} RowCoreParams
+ * @property {Date} startDate - Start date/time of the ride
+ * @property {number} [duration] - Duration in hours (for calculating end time)
+ * @property {number} [defaultDuration] - Default duration if not specified
+ * @property {string} group - Ride group (e.g., "Sat A", "Sun B")
+ * @property {string} routeCell - Route hyperlink formula or text
+ * @property {string} rideCell - Ride hyperlink formula or text
+ * @property {string} rideLeaders - Comma-separated leader names
+ * @property {string} googleEventId - Google Calendar Event ID
+ * @property {string} location - Meeting location name
+ * @property {string} address - Full address of meeting location
+ * @property {string} [announcement] - Announcement document URL
+ * @property {Date} [sendAt] - Scheduled send date/time
+ * @property {string} [status] - Announcement status
      * @property {number} [attempts] - Number of send attempts
      * @property {string} [lastError] - Last error message
      * @property {Date} [lastAttemptAt] - Timestamp of last send attempt
@@ -355,10 +352,7 @@ var RowCore = (function() {
         markClean() {
             this._dirtyFields.clear();
         }
-    }
-
-    return RowCore;
-})();
+}
 
 if (typeof module !== 'undefined') {
     module.exports = RowCore;

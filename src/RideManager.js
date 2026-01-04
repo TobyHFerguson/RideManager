@@ -30,7 +30,6 @@ const RideManager = (function () {
     function _extractEventID(event_url) {
         // NOTE: extractEventID exists in RideManagerCore (see RideManagerCore.js:18, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern (see copilot-instructions.md section 14)
-        // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
         return RideManagerCore.extractEventID(event_url);
     }
     /**
@@ -51,7 +50,6 @@ const RideManager = (function () {
         const route = getRoute(row.routeURL);
         // NOTE: extractLatLong exists in RideManagerCore (see RideManagerCore.js:33, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
         return RideManagerCore.extractLatLong(route);
     }
 
@@ -102,7 +100,6 @@ const RideManager = (function () {
         };
         // NOTE: prepareRouteImport exists in RideManagerCore (see RideManagerCore.js:46, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
         const route = RideManagerCore.prepareRouteImport(
             rowData,
             getGlobals(),
@@ -127,7 +124,6 @@ const RideManager = (function () {
     function updateEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             GoogleCalendarManager.updateEvent(
@@ -168,7 +164,6 @@ const RideManager = (function () {
     function createEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             const eventId = GoogleCalendarManager.createEvent(
@@ -335,16 +330,13 @@ const RideManager = (function () {
         let rideEvent
         // NOTE: extractGroupName exists in RideManagerCore (see RideManagerCore.js:95, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
         const originalGroup = RideManagerCore.extractGroupName(row.rideName, names);
         // NOTE: isManagedEventName exists in RideManagerCore (see RideManagerCore.js:107, test coverage: 100%)
-        // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
         if (!RideManagerCore.isManagedEventName(row.rideName, names)) {
             rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
             // DEBUG ISSUE 22
             // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
             // TypeScript error is false positive due to namespace export pattern
-            // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
             RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'RWGPS');
         } else {
             const event_id = _extractEventID(row.rideURL);
@@ -355,7 +347,6 @@ const RideManager = (function () {
             // DEBUG ISSUE 22
             // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
             // TypeScript error is false positive due to namespace export pattern
-            // @ts-expect-error - TypeScript can't resolve namespace methods through module imports
             RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'newEvent');
             const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
             rwgps.setRouteExpiration(row.routeURL, expiryDate, true);

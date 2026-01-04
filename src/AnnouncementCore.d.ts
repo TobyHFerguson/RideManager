@@ -82,7 +82,7 @@ export interface FormattedAnnouncementItem {
 /**
  * AnnouncementCore module containing all pure JavaScript business logic
  */
-declare namespace AnnouncementCore {
+declare class AnnouncementCore {
     /**
      * Calculate when announcement should be sent
      * Returns 6 PM local time, 2 calendar days before ride date
@@ -91,7 +91,7 @@ declare namespace AnnouncementCore {
      * @param timezone - IANA timezone identifier (e.g., 'America/Los_Angeles')
      * @returns Date object for send time
      */
-    function calculateSendTime(rideDate: Date | string, timezone: string): Date;
+    static calculateSendTime(rideDate: Date | string, timezone: string): Date;
 
     /**
      * Create a new announcement queue item
@@ -106,7 +106,7 @@ declare namespace AnnouncementCore {
      * @param getCurrentTime - Function to get current timestamp
      * @returns New queue item
      */
-    function createQueueItem(
+    static createQueueItem(
         rideURL: string,
         documentId: string,
         sendTime: Date | number,
@@ -124,7 +124,7 @@ declare namespace AnnouncementCore {
      * @param currentTime - Current timestamp
      * @returns Array of rows due to send (within 1 hour window)
      */
-    function getDueItems(rows: any[], currentTime: number): any[];
+    static getDueItems(rows: any[], currentTime: number): any[];
 
     /**
      * Get announcement statistics from rows
@@ -132,7 +132,7 @@ declare namespace AnnouncementCore {
      * @param rows - Array of Row objects
      * @returns Statistics object
      */
-    function getStatistics(rows: any[]): AnnouncementStatistics;
+    static getStatistics(rows: any[]): AnnouncementStatistics;
 
     /**
      * Expand template by replacing {FieldName} placeholders with rowData values
@@ -143,7 +143,7 @@ declare namespace AnnouncementCore {
      * @param route - Optional RWGPS route object with distance, elevation_gain, first_lat, first_lng
      * @returns Expanded text and array of missing field names
      */
-    function expandTemplate(template: string, rowData: Record<string, any>, route?: any | null): TemplateExpansionResult;
+    static expandTemplate(template: string, rowData: Record<string, any>, route?: any | null): TemplateExpansionResult;
 
     /**
      * Extract subject line from template
@@ -152,7 +152,7 @@ declare namespace AnnouncementCore {
      * @param template - Template text (possibly with Subject line)
      * @returns Subject and body (body is template with subject removed)
      */
-    function extractSubject(template: string): EmailContent;
+    static extractSubject(template: string): EmailContent;
 
     /**
      * Calculate new announcement document name based on ride name
@@ -161,7 +161,7 @@ declare namespace AnnouncementCore {
      * @param rideName - New ride name
      * @returns New document name
      */
-    function calculateAnnouncementDocName(rideName: string): string;
+    static calculateAnnouncementDocName(rideName: string): string;
 
     /**
      * Determine what updates are needed for an announcement when ride is updated
@@ -172,7 +172,7 @@ declare namespace AnnouncementCore {
      * @param timezone - IANA timezone identifier (e.g., 'America/Los_Angeles')
      * @returns Update decision object
      */
-    function calculateAnnouncementUpdates(
+    static calculateAnnouncementUpdates(
         currentAnnouncement: {
             documentName: string;
         },
