@@ -14,35 +14,33 @@ if (typeof require !== 'undefined') {
     // No dependencies - pure JavaScript
 }
 
-var TriggerManagerCore = (function() {
-    
-    // Trigger configuration constants
-    const TRIGGER_TYPES = {
-        ON_OPEN: 'onOpen',
-        ON_EDIT: 'onEdit',
-        DAILY_ANNOUNCEMENT: 'dailyAnnouncement',
-        ANNOUNCEMENT_SCHEDULED: 'announcementScheduled',
-        DAILY_RWGPS_MEMBERS: 'dailyRWGPSMembersDownload'
-    };
-    
-    const HANDLER_FUNCTIONS = {
-        [TRIGGER_TYPES.ON_OPEN]: 'onOpen',
-        [TRIGGER_TYPES.ON_EDIT]: 'editHandler',
-        [TRIGGER_TYPES.DAILY_ANNOUNCEMENT]: 'dailyAnnouncementCheck',
-        [TRIGGER_TYPES.ANNOUNCEMENT_SCHEDULED]: 'announcementTrigger',
-        [TRIGGER_TYPES.DAILY_RWGPS_MEMBERS]: 'dailyRWGPSMembersDownload'
-    };
-    
-    const PROPERTY_KEYS = {
-        ANNOUNCEMENT_NEXT_TRIGGER_TIME: 'ANNOUNCEMENT_NEXT_TRIGGER_TIME',
-        ANNOUNCEMENT_TRIGGER_ID: 'ANNOUNCEMENT_TRIGGER_ID',
-        DAILY_ANNOUNCEMENT_TRIGGER_ID: 'DAILY_ANNOUNCEMENT_TRIGGER_ID',
-        DAILY_RWGPS_MEMBERS_TRIGGER_ID: 'DAILY_RWGPS_MEMBERS_TRIGGER_ID',
-        ON_OPEN_TRIGGER_ID: 'ON_OPEN_TRIGGER_ID',
-        ON_EDIT_TRIGGER_ID: 'ON_EDIT_TRIGGER_ID'
-    };
-    
-    class TriggerManagerCore {
+// Trigger configuration constants
+const TRIGGER_TYPES = {
+    ON_OPEN: 'onOpen',
+    ON_EDIT: 'onEdit',
+    DAILY_ANNOUNCEMENT: 'dailyAnnouncement',
+    ANNOUNCEMENT_SCHEDULED: 'announcementScheduled',
+    DAILY_RWGPS_MEMBERS: 'dailyRWGPSMembersDownload'
+};
+
+const HANDLER_FUNCTIONS = {
+    [TRIGGER_TYPES.ON_OPEN]: 'onOpen',
+    [TRIGGER_TYPES.ON_EDIT]: 'editHandler',
+    [TRIGGER_TYPES.DAILY_ANNOUNCEMENT]: 'dailyAnnouncementCheck',
+    [TRIGGER_TYPES.ANNOUNCEMENT_SCHEDULED]: 'announcementTrigger',
+    [TRIGGER_TYPES.DAILY_RWGPS_MEMBERS]: 'dailyRWGPSMembersDownload'
+};
+
+const PROPERTY_KEYS = {
+    ANNOUNCEMENT_NEXT_TRIGGER_TIME: 'ANNOUNCEMENT_NEXT_TRIGGER_TIME',
+    ANNOUNCEMENT_TRIGGER_ID: 'ANNOUNCEMENT_TRIGGER_ID',
+    DAILY_ANNOUNCEMENT_TRIGGER_ID: 'DAILY_ANNOUNCEMENT_TRIGGER_ID',
+    DAILY_RWGPS_MEMBERS_TRIGGER_ID: 'DAILY_RWGPS_MEMBERS_TRIGGER_ID',
+    ON_OPEN_TRIGGER_ID: 'ON_OPEN_TRIGGER_ID',
+    ON_EDIT_TRIGGER_ID: 'ON_EDIT_TRIGGER_ID'
+};
+
+class TriggerManagerCore {
         /**
          * Get trigger configuration for a specific type
          * @param {string} triggerType - One of TRIGGER_TYPES values
@@ -138,7 +136,7 @@ var TriggerManagerCore = (function() {
      * @returns {{shouldSchedule: boolean, reason: string}} Scheduling decision
      */
     static shouldScheduleTrigger(triggerType, existingTriggerTime, newTime) {
-        const config = this.getTriggerConfig(triggerType);
+        const config = TriggerManagerCore.getTriggerConfig(triggerType);
         
         if (!config.timePropertyKey) {
             return {
@@ -177,7 +175,7 @@ var TriggerManagerCore = (function() {
      * @returns {Object} {shouldRemove: boolean, reason: string}
      */
     static shouldRemoveTrigger(triggerType, hasWork) {
-        const config = this.getTriggerConfig(triggerType);
+        const config = TriggerManagerCore.getTriggerConfig(triggerType);
             
             // Scheduled triggers should be removed when no work pending
             if (config.schedule && config.schedule.type === 'at') {
@@ -273,10 +271,7 @@ var TriggerManagerCore = (function() {
         static get PROPERTY_KEYS() {
             return PROPERTY_KEYS;
         }
-    }
-    
-    return TriggerManagerCore;
-})();
+}
 
 // Node.js compatibility
 if (typeof module !== 'undefined') {
