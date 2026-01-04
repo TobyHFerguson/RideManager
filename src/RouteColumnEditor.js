@@ -56,13 +56,24 @@ function determineRouteName(route, clubUserId, foreignPrefix, userProvidedName) 
 }
 
 /**
- * Build a hyperlink formula string
+ * Build a hyperlink formula string (legacy support for migration)
+ * @deprecated Use buildRichTextLink instead for new code
  * @param {string} url - The URL
  * @param {string} name - The display name
  * @returns {string} HYPERLINK formula
  */
 function buildHyperlinkFormula(url, name) {
     return `=hyperlink("${url}", "${name}")`;
+}
+
+/**
+ * Build a RichText link object
+ * @param {string} url - The URL
+ * @param {string} name - The display name
+ * @returns {{text: string, url: string}} RichText link object
+ */
+function buildRichTextLink(url, name) {
+    return { text: name, url: url };
 }
 
 /**
@@ -75,7 +86,7 @@ function buildHyperlinkFormula(url, name) {
  * @param {number} params.clubUserId - Club's user ID
  * @param {string} params.foreignPrefix - Prefix for foreign routes
  * @param {string} [params.userProvidedName] - Optional user-provided name
- * @returns {{formula: string|null, isForeign: boolean}} Formula to set and foreign status
+ * @returns {{link: {text: string, url: string}|null, isForeign: boolean}} RichText link object and foreign status
  */
 function processRouteEdit(params) {
     const { inputValue, route, clubUserId, foreignPrefix, userProvidedName } = params;
@@ -84,7 +95,7 @@ function processRouteEdit(params) {
     
     // Empty/cleared route
     if (!url) {
-        return { formula: null, isForeign: false };
+        return { link: null, isForeign: false };
     }
 
     // Determine name
@@ -95,17 +106,18 @@ function processRouteEdit(params) {
         userProvidedName
     );
 
-    // Build formula
-    const formula = buildHyperlinkFormula(url, name);
+    // Build RichText link
+    const link = buildRichTextLink(url, name);
     
-    return { formula, isForeign };
+    return { link, isForeign };
 }
 
 // Export for GAS (global)
 var RouteColumnEditor = {
     parseRouteInput: parseRouteInput,
     determineRouteName: determineRouteName,
-    buildHyperlinkFormula: buildHyperlinkFormula,
+    buildHyperlinkFormula: buildHyperlinkFormula, // Legacy for migration
+    buildRichTextLink: buildRichTextLink,
     processRouteEdit: processRouteEdit
 };
 

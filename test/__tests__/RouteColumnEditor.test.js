@@ -4,6 +4,7 @@ const {
     parseRouteInput,
     determineRouteName,
     buildHyperlinkFormula,
+    buildRichTextLink,
     processRouteEdit
 } = require('../../src/RouteColumnEditor');
 
@@ -96,7 +97,7 @@ describe('RouteColumnEditor', () => {
         });
     });
 
-    describe('buildHyperlinkFormula', () => {
+    describe('buildHyperlinkFormula (legacy)', () => {
         it('should build correct formula', () => {
             const formula = buildHyperlinkFormula(
                 'https://ridewithgps.com/routes/12345',
@@ -106,11 +107,24 @@ describe('RouteColumnEditor', () => {
         });
     });
 
+    describe('buildRichTextLink', () => {
+        it('should build RichText link object', () => {
+            const link = buildRichTextLink(
+                'https://ridewithgps.com/routes/12345',
+                'Test Route'
+            );
+            expect(link).toEqual({
+                text: 'Test Route',
+                url: 'https://ridewithgps.com/routes/12345'
+            });
+        });
+    });
+
     describe('processRouteEdit', () => {
         const CLUB_USER_ID = 12345;
         const FOREIGN_PREFIX = 'External:';
 
-        it('should return null formula for empty input', () => {
+        it('should return null link for empty input', () => {
             const result = processRouteEdit({
                 inputValue: '',
                 route: { user_id: CLUB_USER_ID, name: 'Test' },
@@ -119,12 +133,12 @@ describe('RouteColumnEditor', () => {
             });
 
             expect(result).toEqual({
-                formula: null,
+                link: null,
                 isForeign: false
             });
         });
 
-        it('should create formula for club route from plain URL', () => {
+        it('should create RichText link for club route from plain URL', () => {
             const result = processRouteEdit({
                 inputValue: 'https://ridewithgps.com/routes/12345',
                 route: { user_id: CLUB_USER_ID, name: 'Club Ride' },
@@ -133,12 +147,12 @@ describe('RouteColumnEditor', () => {
             });
 
             expect(result).toEqual({
-                formula: '=hyperlink("https://ridewithgps.com/routes/12345", "Club Ride")',
+                link: { text: 'Club Ride', url: 'https://ridewithgps.com/routes/12345' },
                 isForeign: false
             });
         });
 
-        it('should create formula for foreign route with prefix', () => {
+        it('should create RichText link for foreign route with prefix', () => {
             const result = processRouteEdit({
                 inputValue: 'https://ridewithgps.com/routes/99999',
                 route: { user_id: 99999, name: 'Other Ride' },
@@ -147,7 +161,7 @@ describe('RouteColumnEditor', () => {
             });
 
             expect(result).toEqual({
-                formula: '=hyperlink("https://ridewithgps.com/routes/99999", "External: Other Ride")',
+                link: { text: 'External: Other Ride', url: 'https://ridewithgps.com/routes/99999' },
                 isForeign: true
             });
         });
@@ -162,7 +176,7 @@ describe('RouteColumnEditor', () => {
             });
 
             expect(result).toEqual({
-                formula: '=hyperlink("https://ridewithgps.com/routes/99999", "Custom Route Name")',
+                link: { text: 'Custom Route Name', url: 'https://ridewithgps.com/routes/99999' },
                 isForeign: true
             });
         });
@@ -176,7 +190,7 @@ describe('RouteColumnEditor', () => {
             });
 
             expect(result).toEqual({
-                formula: '=hyperlink("https://ridewithgps.com/routes/12345", "New Name")',
+                link: { text: 'New Name', url: 'https://ridewithgps.com/routes/12345' },
                 isForeign: false
             });
         });
