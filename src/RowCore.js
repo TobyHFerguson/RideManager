@@ -30,7 +30,7 @@ if (typeof require !== 'undefined') {
  * @property {string | {text: string, url: string}} routeCell - Route hyperlink (URL string, object, or formula)
  * @property {string | {text: string, url: string}} rideCell - Ride hyperlink (URL string, object, or formula)
  * @property {string} rideLeaders - Comma-separated leader names
- * @property {string} googleEventId - Google Calendar Event ID
+ * @property {string | {text: string, url: string}} googleEventIdCell - Google Calendar Event ID as RichText link
  * @property {string} location - Meeting location name
  * @property {string} address - Full address of meeting location
  * @property {string} [announcement] - Announcement document URL
@@ -56,7 +56,7 @@ if (typeof require !== 'undefined') {
             routeCell,
             rideCell,
             rideLeaders,
-            googleEventId,
+            googleEventIdCell,
             location,
             address,
             announcement,
@@ -74,13 +74,13 @@ if (typeof require !== 'undefined') {
             this.defaultDuration = defaultDuration;
             this.group = group;
             
-            // Normalize routeCell and rideCell to {text, url} format
+            // Normalize routeCell, rideCell, and googleEventIdCell to {text, url} format
             // Supports: string (legacy formula or URL), {text, url} object, or empty
             this.routeCell = this._normalizeLinkCell(routeCell);
             this.rideCell = this._normalizeLinkCell(rideCell);
+            this.googleEventIdCell = this._normalizeLinkCell(googleEventIdCell);
             
             this.rideLeaders = rideLeaders || '';
-            this.googleEventId = googleEventId || '';
             this.location = location || '';
             this.address = address || '';
             
@@ -206,6 +206,17 @@ if (typeof require !== 'undefined') {
             return '';
         }
 
+        /**
+         * Extract Google Calendar Event ID from RichText link
+         * @returns {string}
+         */
+        get googleEventId() {
+            if (typeof this.googleEventIdCell === 'object' && this.googleEventIdCell.text) {
+                return this.googleEventIdCell.text;
+            }
+            return '';
+        }
+
         // ===== BUSINESS LOGIC METHODS =====
 
         /**
@@ -297,12 +308,23 @@ if (typeof require !== 'undefined') {
         }
 
         /**
-         * Set Google Calendar Event ID
+         * Set Google Calendar Event ID as RichText link
+         * @param {string} text - Event ID (display text)
+         * @param {string} url - Calendar URL
+         */
+        setGoogleEventIdLink(text, url) {
+            this.googleEventIdCell = { text, url };
+            this.markDirty('googleEventIdCell');
+        }
+        
+        /**
+         * Set Google Calendar Event ID (backward compatibility - plain text)
+         * @deprecated Use setGoogleEventIdLink instead for RichText support
          * @param {string} id - Event ID
          */
         setGoogleEventId(id) {
-            this.googleEventId = id;
-            this.markDirty('googleEventId');
+            this.googleEventIdCell = { text: id, url: '' };
+            this.markDirty('googleEventIdCell');
         }
 
         /**

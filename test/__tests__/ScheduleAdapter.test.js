@@ -52,7 +52,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             });
             
             // Make multiple changes
-            row.setGoogleEventId('event123');
+            row.setGoogleEventIdLink('event123', 'https://calendar.google.com/calendar/embed?src=test');
             row.setRideLink('Test Ride', 'https://ridewithgps.com/events/456');
             row.setAnnouncement('https://docs.google.com/doc/789');
             
@@ -61,7 +61,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             expect(dirtyRows.has(row)).toBe(true);
             
             // All three fields should be marked dirty
-            expect(row.getDirtyFields().has('googleEventId')).toBe(true);
+            expect(row.getDirtyFields().has('googleEventIdCell')).toBe(true);
             expect(row.getDirtyFields().has('rideCell')).toBe(true);
             expect(row.getDirtyFields().has('announcement')).toBe(true);
         });
@@ -89,7 +89,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             expect(row.isDirty()).toBe(false);
             
             // 2. Modify some fields
-            row.setGoogleEventId('event123');
+            row.setGoogleEventIdLink('event123', 'https://calendar.google.com/calendar/embed?src=test');
             row.setStatus('pending');
             
             // 3. Row should be dirty and tracked
@@ -99,7 +99,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             // 4. Get dirty fields for writing
             const dirtyFields = row.getDirtyFields();
             expect(dirtyFields.size).toBe(2);
-            expect(dirtyFields.has('googleEventId')).toBe(true);
+            expect(dirtyFields.has('googleEventIdCell')).toBe(true);
             expect(dirtyFields.has('status')).toBe(true);
             
             // 5. After writing, mark clean
@@ -155,8 +155,8 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             });
             
             // Modify some rows
-            row1.setGoogleEventId('event1');
-            row2.setGoogleEventId('event2');
+            row1.setGoogleEventIdLink('event1', '');
+            row2.setGoogleEventIdLink('event2', '');
             // row3 is not modified
             
             // Simulate adapter.save() - collect all dirty cells
@@ -173,8 +173,8 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             
             expect(dirtyCells.length).toBe(2); // Only 2 rows were modified
             expect(dirtyCells).toEqual([
-                { rowNum: 5, fieldName: 'googleEventId', value: 'event1' },
-                { rowNum: 6, fieldName: 'googleEventId', value: 'event2' }
+                { rowNum: 5, fieldName: 'googleEventIdCell', value: {text: 'event1', url: ''} },
+                { rowNum: 6, fieldName: 'googleEventIdCell', value: {text: 'event2', url: ''} }
             ]);
         });
     });
@@ -290,7 +290,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             });
             
             // Modify fields
-            row.setGoogleEventId('event123');
+            row.setGoogleEventIdLink('event123', 'https://calendar.google.com/calendar/embed?src=test');
             row.setAnnouncement('https://docs.google.com/doc/789');
             row.setStatus('pending');
             
@@ -307,8 +307,9 @@ describe('ScheduleAdapter Integration with RowCore', () => {
                 }
             });
             
+            // googleEventIdCell is written as RichText by ScheduleAdapter.save(), not as plain value
+            // So it doesn't appear in cellWrites (only Announcement and Status do)
             expect(cellWrites).toEqual([
-                { rowNum: 5, columnName: 'Google Event ID', value: 'event123' },
                 { rowNum: 5, columnName: 'Announcement', value: 'https://docs.google.com/doc/789' },
                 { rowNum: 5, columnName: 'Status', value: 'pending' }
             ]);

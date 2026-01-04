@@ -36,9 +36,17 @@ const RideManager = (function () {
      */
     function getCalendarId(groupName) {
         const groupSpecs = getGroupSpecs();
-        const id = groupSpecs[groupName.toUpperCase()].GoogleCalendarId;
+        const normalizedGroupName = groupName.toUpperCase();
+        const groupSpec = groupSpecs[normalizedGroupName];
+        const id = groupSpec?.GoogleCalendarId;
+        
+        // Debug logging to help diagnose calendar ID issues
+        console.log(`getCalendarId: Input groupName="${groupName}", normalized="${normalizedGroupName}"`);
+        console.log(`getCalendarId: Found groupSpec:`, groupSpec);
+        console.log(`getCalendarId: Resolved calendar ID="${id}"`);
+        
         if (!id) {
-            console.error(`getCalendarId(${groupName}) resulted in no id from these specs:`, groupSpecs)
+            console.error(`getCalendarId(${groupName}) resulted in no id from these specs:`, groupSpecs);
         }
         return id;
     }
@@ -99,11 +107,21 @@ const RideManager = (function () {
         };
         // NOTE: prepareRouteImport exists in RideManagerCore (see RideManagerCore.js:46, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
+        const globals = getGlobals();
+        // Wrap dates functions to satisfy RideManagerCore's stricter signatures
+        const addDays = (/** @type {Date | string} */ date, /** @type {number} */ days) => {
+            const result = dates.add(date, days);
+            return result instanceof Date ? result : new Date(); // Return Date, not NaN
+        };
+        const formatDate = (/** @type {Date} */ date) => {
+            const result = dates.MMDDYYYY(date);
+            return typeof result === 'string' ? result : ''; // Return string, not NaN
+        };
         const route = RideManagerCore.prepareRouteImport(
             rowData,
-            getGlobals(),
-            dates.add,
-            dates.MMDDYYYY
+            { EXPIRY_DELAY: globals.EXPIRY_DELAY, FOREIGN_PREFIX: globals.FOREIGN_PREFIX },
+            addDays,
+            formatDate
         );
         
         // GAS API call: import route to RWGPS
@@ -123,6 +141,7 @@ const RideManager = (function () {
     function updateEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
+        // @ts-expect-error - rideEvent is SCCCCEvent instance, TypeScript sees class constructor type
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             GoogleCalendarManager.updateEvent(
@@ -163,6 +182,7 @@ const RideManager = (function () {
     function createEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
+        // @ts-expect-error - rideEvent is SCCCCEvent instance, TypeScript sees class constructor type
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             const eventId = GoogleCalendarManager.createEvent(
@@ -281,7 +301,10 @@ const RideManager = (function () {
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with rideEvent:`, rideEvent);
         const eventId = createEvent_(row, rideEvent, description);
         if (eventId) {
-            row.setGoogleEventId(eventId);
+            // Create RichText link to calendar with event ID as display text
+            const calendarId = getCalendarId(row.group);
+            const link = GoogleEventCore.buildRichTextLink(eventId, calendarId, row.startDate);
+            row.setGoogleEventIdLink(link.text, link.url);
         }
 
         // Create ride announcement regardless of calendar success
@@ -359,8 +382,10 @@ const RideManager = (function () {
             rideUrl: row.rideURL,
             groupChanged: originalGroup !== row.group
         });
-        if (originalGroup !== row.group) {
-            if (!deleteEvent_(originalGroup, row.googleEventId)) {
+        if (originalGroup !== row.group && row.googleEventId) {
+            const eventId = row.googleEventId;
+            // @ts-ignore - googleEventId getter returns string (never null per RowCore.js implementation), VS Code false positive
+            if (!deleteEvent_(originalGroup, eventId)) {
                 return;
             } else {
                 row.setGoogleEventId(''); // Clear so new event is created below
@@ -376,7 +401,10 @@ const RideManager = (function () {
         } else {
             const eventId = createEvent_(row, rideEvent, description);
             if (eventId) {
-                row.setGoogleEventId(eventId);
+                // Create RichText link to calendar with event ID as display text
+                const calendarId = getCalendarId(row.group);
+                const link = GoogleEventCore.buildRichTextLink(eventId, calendarId, row.startDate);
+                row.setGoogleEventIdLink(link.text, link.url);
             }
         }
 

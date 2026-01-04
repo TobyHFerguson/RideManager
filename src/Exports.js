@@ -34,6 +34,9 @@ var Exports = {
     get ValidationCore() {
         return ValidationCore;
     },
+    get GoogleEventCore() {
+        return GoogleEventCore;
+    },
     get RideCoordinator() {
         return RideCoordinator;
     },

@@ -78,6 +78,7 @@ function createMenu_() {
     .addSeparator()
     .addItem('Install Triggers', installTriggers_.name)
     .addItem('Get App Version', showAppVersion_.name)
+    .addItem('Clear Cache', clearCache_.name)
     .addToUi();
 }
 
@@ -94,6 +95,17 @@ function showAppVersion_() {
 
   // Display the app version in an alert box.
   ui.alert('App Version', 'Current App Version: ' + appVersion, ui.ButtonSet.OK);
+}
+
+/**
+ * Clears all document caches (Globals, Groups, PersonalTemplates).
+ * This function is called when the 'Clear Cache' menu item is clicked.
+ * Use this after updating the Groups sheet or Globals sheet to force reload.
+ */
+function clearCache_() {
+  Exports.CacheManager.clearCache();
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('Cache Cleared', 'All caches (Globals, Groups, PersonalTemplates) have been cleared and will reload from sheets on next use.', ui.ButtonSet.OK);
 }
 
 function cancelSelectedRides_() {

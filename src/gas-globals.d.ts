@@ -29,6 +29,8 @@ import type ValidationCoreClass from './ValidationCore';
 import type UIHelperClass from './UIHelper';
 import type RideCoordinatorClass from './RideCoordinator';
 import type UserLoggerCoreClass from './UserLoggerCore';
+import type UserLoggerType from './UserLogger';
+import type * as GoogleEventCoreModule from './GoogleEventCore';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
@@ -45,6 +47,7 @@ declare global {
     const ValidationCore: typeof ValidationCoreClass;
     const UIHelper: typeof UIHelperClass;
     const UserLoggerCore: typeof UserLoggerCoreClass;
+    const GoogleEventCore: typeof GoogleEventCoreModule;
     
     // Objects/Namespaces - singleton instances or frozen objects
     const MenuFunctions: MenuFunctionsType;
@@ -55,6 +58,7 @@ declare global {
     const AnnouncementCore: typeof AnnouncementCoreClass;
     const RWGPSMembersCore: typeof RWGPSMembersCoreClass;
     const RideCoordinator: typeof RideCoordinatorClass;
+    const UserLogger: typeof UserLoggerType;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;

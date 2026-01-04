@@ -8,8 +8,11 @@
  * - Handles all spreadsheet I/O using Load → Work → Save pattern
  */
 
-import RowCore from './RowCore';
+import RowCoreClass from './RowCore';
 import Row from './Row';
+
+/** Instance type of RowCore */
+type RowCore = InstanceType<typeof RowCoreClass>;
 
 /**
  * Adapter for schedule spreadsheet operations

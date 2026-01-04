@@ -73,6 +73,13 @@ declare function linkSelectedRouteUrls_(): void;
 declare function showAppVersion_(): void;
 
 /**
+ * Clear all document caches (menu function)
+ * Clears Globals, Groups, and PersonalTemplates caches
+ * @private
+ */
+declare function clearCache_(): void;
+
+/**
  * Initialize global configuration
  * @private
  */

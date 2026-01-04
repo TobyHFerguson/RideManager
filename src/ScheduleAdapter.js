@@ -2,6 +2,10 @@
 /// <reference path="./gas-globals.d.ts" />
 
 /**
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ */
+
+/**
  * ScheduleAdapter - Anti-corruption layer between spreadsheet and domain model
  * 
  * This adapter implements the Hexagonal/Ports & Adapters architecture pattern:
@@ -19,13 +23,13 @@
  *    - Load: Spreadsheet data (column names) → RowCore instances (camelCase properties)
  *    - Save: RowCore dirty fields (camelCase) → Spreadsheet columns (Globals names)
  * 
- * 3. **RichText Hyperlinks**: Route and Ride columns use native GAS RichText for hyperlinks
+ * 3. **RichText Hyperlinks**: Route, Ride, and GoogleEventId columns use native GAS RichText for hyperlinks
  *    - Load: Extracts both text and URL from RichText, stores as {text, url} object in RowCore
  *    - Save: Creates RichText hyperlinks from {text, url} objects using SpreadsheetApp.newRichTextValue()
  *    - No formula overlays or PropertiesService storage needed
  * 
  * 4. **Automatic Dirty Tracking**: Tracks which RowCore instances have been modified via
- *    injected onDirty callback. When a RowCore is modified (via setters like setGoogleEventId()),
+ *    injected onDirty callback. When a RowCore is modified (via setters like setGoogleEventIdLink()),
  *    it automatically notifies the adapter, which adds it to the dirtyRows Set. This enables:
  *    - Cell-level writes (only modified cells are written to spreadsheet)
  *    - Preserves meaningful version history in spreadsheet (shows exactly what changed)
@@ -68,7 +72,7 @@
  * - "Route"              → routeCell  (RichText {text, url} object)
  * - "Ride"               → rideCell   (RichText {text, url} object)
  * - "Ride Leaders"       → rideLeaders
- * - "Google Event ID"    → googleEventId
+ * - "GoogleEventId"    → googleEventIdCell (RichText {text, url} object)
  * - "Location"           → location
  * - "Address"            → address
  * - "Announcement"       → announcement
@@ -146,7 +150,7 @@ const ScheduleAdapter = (function() {
                 [globals.ROUTECOLUMNNAME]: 'routeCell',
                 [globals.RIDECOLUMNNAME]: 'rideCell',
                 [globals.RIDELEADERCOLUMNNAME]: 'rideLeaders',
-                [globals.GOOGLEEVENTIDCOLUMNNAME]: 'googleEventId',
+                [globals.GOOGLEEVENTIDCOLUMNNAME]: 'googleEventIdCell',
                 [globals.LOCATIONCOLUMNNAME]: 'location',
                 [globals.ADDRESSCOLUMNNAME]: 'address',
                 // Announcement columns (no Globals needed - column names have no spaces)
@@ -175,16 +179,19 @@ const ScheduleAdapter = (function() {
 
         /**
          * Load all data from the spreadsheet (with caching)
-         * @returns {RowCore[]} Array of RowCore instances
+         * @returns {RowCoreInstance[]} Array of RowCore instances
          */
         loadAll() {
             this._ensureDataLoaded();
+            if (!this._cachedData) {
+                return [];
+            }
             return this._cachedData.map((/** @type {any} */ row, /** @type {number} */ index) => this._createRowCore(row, index + 2));
         }
 
         /**
          * Load selected rows from the spreadsheet (with caching)
-         * @returns {RowCore[]} Array of selected RowCore instances
+         * @returns {RowCoreInstance[]} Array of selected RowCore instances
          */
         loadSelected() {
             const selection = this.sheet.getSelection();
@@ -201,7 +208,11 @@ const ScheduleAdapter = (function() {
             const ranges = this._convertCellRangesToRowRanges(rangeList);
             const allData = this._cachedData;
             
-            /** @type {RowCore[]} */
+            if (!allData) {
+                return [];
+            }
+            
+            /** @type {RowCoreInstance[]} */
             const selectedRows = [];
             ranges.forEach((/** @type {GoogleAppsScript.Spreadsheet.Range} */ range) => {
                 const startRow = range.getRow();
@@ -222,12 +233,16 @@ const ScheduleAdapter = (function() {
         /**
          * Load rows younger than (after) the specified date (with caching)
          * @param {Date} date - The cutoff date
-         * @returns {RowCore[]} Array of RowCore instances after the date
+         * @returns {RowCoreInstance[]} Array of RowCore instances after the date
          */
         loadYoungerRows(date) {
             this._ensureDataLoaded();
             const allData = this._cachedData;
             const startDateColumn = getGlobals().STARTDATETIMECOLUMNNAME;
+            
+            if (!allData) {
+                return [];
+            }
             
             return allData
                 .map((/** @type {any} */ row, /** @type {number} */ index) => ({ data: row, rowNum: index + 2 }))
@@ -240,12 +255,12 @@ const ScheduleAdapter = (function() {
 
         /**
          * Load the last row in the spreadsheet (with caching)
-         * @returns {RowCore|null} The last RowCore instance or null if no data
+         * @returns {RowCoreInstance|null} The last RowCore instance or null if no data
          */
         loadLastRow() {
             this._ensureDataLoaded();
             const allData = this._cachedData;
-            if (allData.length === 0) {
+            if (!allData || allData.length === 0) {
                 return null;
             }
             const lastIndex = allData.length - 1;
@@ -274,6 +289,7 @@ const ScheduleAdapter = (function() {
             const globals = getGlobals();
             const routeColumnName = globals.ROUTECOLUMNNAME;
             const rideColumnName = globals.RIDECOLUMNNAME;
+            const googleEventIdColumnName = globals.GOOGLEEVENTIDCOLUMNNAME;
 
             // Write each dirty row's dirty fields
             this.dirtyRows.forEach(row => {
@@ -295,8 +311,8 @@ const ScheduleAdapter = (function() {
                     const value = row[domainProp];
                     
                     try {
-                        // Special handling for Route/Ride columns with RichText
-                        if ((columnName === routeColumnName || columnName === rideColumnName) && 
+                        // Special handling for Route/Ride/GoogleEventId columns with RichText
+                        if ((columnName === routeColumnName || columnName === rideColumnName || columnName === googleEventIdColumnName) && 
                             value && typeof value === 'object' && 'text' in value && 'url' in value) {
                             // Create RichText hyperlink
                             const richTextValue = SpreadsheetApp.newRichTextValue()
@@ -415,21 +431,24 @@ const ScheduleAdapter = (function() {
             // Get all values in one batch
             const values = this.sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
             
-            // Get RichText values for Route and Ride columns
+            // Get RichText values for Route, Ride, and GoogleEventId columns
             const routeColumnName = getGlobals().ROUTECOLUMNNAME;
             const rideColumnName = getGlobals().RIDECOLUMNNAME;
+            const googleEventIdColumnName = getGlobals().GOOGLEEVENTIDCOLUMNNAME;
             const routeColIndex = this._getColumnIndex(routeColumnName);
             const rideColIndex = this._getColumnIndex(rideColumnName);
+            const googleEventIdColIndex = this._getColumnIndex(googleEventIdColumnName);
             
             const richTextValues = this.sheet.getRange(2, 1, lastRow - 1, lastCol).getRichTextValues();
             
             // Convert to array of objects (Fiddler-like format)
             return values.map((row, i) => {
+                /** @type {Record<string, any>} */
                 const obj = {};
                 
                 this.columnNames.forEach((columnName, j) => {
-                    // For Route and Ride columns, store both text and URL from RichText
-                    if (j === routeColIndex || j === rideColIndex) {
+                    // For Route, Ride, and GoogleEventId columns, store both text and URL from RichText
+                    if (j === routeColIndex || j === rideColIndex || j === googleEventIdColIndex) {
                         const richText = richTextValues[i][j];
                         if (richText && richText.getText()) {
                             const url = richText.getLinkUrl();
@@ -477,7 +496,6 @@ const ScheduleAdapter = (function() {
                 this.dirtyRows.add(row);
             };
             
-            // @ts-expect-error - RowCore is a constructor but TypeScript sees it as module export
             return new RowCore(domainData);
         }
 

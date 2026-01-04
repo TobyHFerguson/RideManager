@@ -155,9 +155,9 @@ declare namespace dates {
    * Adds a specified number of days to a given date.
    * @param date The starting date.
    * @param days The number of days to add.
-   * @returns A new Date object with the added days.
+   * @returns A new Date object with the added days, or NaN if invalid.
    */
-  function add(date: Date, days: number): Date;
+  function add(date: Date | string | number, days: number): Date | typeof NaN;
 
   /**
    * Formats a given Date object into a 'MM/DD' string.

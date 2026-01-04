@@ -1,5 +1,38 @@
 # Copilot Instructions
 
+## ⚠️ STOP: Before Writing ANY Code
+
+**MANDATORY Pre-Coding Checklist - Follow in EXACT ORDER:**
+
+1. ✅ **Identify pure logic** (calculations, URL building, data transformations, validation rules)
+   - Is there pure logic that can be tested in Jest without GAS?
+   - If NO → Skip to step 5 (GAS-only code)
+   - If YES → Continue to step 2
+
+2. ✅ **Write tests FIRST** (before any implementation code)
+   - Create `test/__tests__/*Core.test.js`
+   - Write test cases for expected behavior
+   - Tests will FAIL initially (code doesn't exist yet)
+   - **DO NOT write implementation yet**
+
+3. ✅ **Now implement the Core module**
+   - Create `src/*Core.js` with pure JavaScript logic
+   - Make the tests pass
+   - Run: `npm test -- --coverage --collectCoverageFrom='src/*Core.js'`
+
+4. ✅ **Verify 100% test coverage**
+   - Check terminal output: All coverage must be 100%
+   - Statements: 100%, Branches: 100%, Functions: 100%, Lines: 100%
+   - **DO NOT PROCEED until coverage is 100%**
+
+5. ✅ **Only THEN create/modify GAS adapter files**
+   - Adapter should only call Core logic and GAS APIs
+   - No business logic in adapters
+
+**If you skip step 2 and write implementation first, STOP immediately and write tests.**
+
+---
+
 ## Quick Start (READ THIS FIRST)
 
 **AUDIENCE**: These instructions apply to:
@@ -45,6 +78,7 @@ npm test && npm run typecheck && npm run validate-exports
 6. ✅ **MANDATORY**: Verify ZERO type errors (chat: use `get_errors` tool; agents: run `npm run typecheck`)
 7. ✅ **ZERO TOLERANCE**: NEVER use `@param {any}` - use proper types to catch errors at compile-time, not runtime
 8. ✅ **CREATE TYPES FIRST**: Always create `.d.ts` files BEFORE writing implementation code
+9. ✅ **RICHTEXT HYPERLINKS**: Route, Ride, and GoogleEventId columns use native GAS RichText (NOT HYPERLINK formulas). See `docs/MIGRATION_FIDDLER_TO_RICHTEXT.md` for details.
 
 **Architecture Pattern**:
 ```javascript
@@ -80,6 +114,103 @@ class AnnouncementManager {
 ```
 
 **If you violate these rules**, code will be rejected or break in production.
+
+## 🚫 CRITICAL: Google Apps Script API Limitations
+
+**MANDATORY**: This codebase runs in Google Apps Script V8 runtime, which has LIMITED JavaScript API support. Many modern browser/Node.js APIs are NOT available.
+
+### ❌ FORBIDDEN APIs (Will cause runtime errors in GAS):
+
+**Modern JavaScript APIs NOT available in GAS**:
+- ❌ `URLSearchParams` - Not available (use manual URL encoding with `encodeURIComponent()`)
+- ❌ `fetch()` - Not available (use `UrlFetchApp.fetch()`)
+- ❌ `localStorage` / `sessionStorage` - Not available (use `PropertiesService`)
+- ❌ `window` / `document` / DOM APIs - Not available (server-side only)
+- ❌ `setTimeout` / `setInterval` - Not available (use time-based triggers)
+- ❌ `WebSocket` - Not available
+- ❌ `FormData` - Not available
+- ❌ `AbortController` - Not available
+- ❌ Most Node.js APIs - Not available
+
+**Modern ES6+ Features with LIMITED support**:
+- ⚠️ `import` / `export` - Not available (use GAS's module system with global `var`)
+- ⚠️ `async` / `await` - Available but limited (GAS uses synchronous model)
+- ⚠️ Top-level `await` - Not available
+- ⚠️ Dynamic `import()` - Not available
+
+### ✅ ALWAYS USE GAS-Compatible Alternatives:
+
+| ❌ Forbidden | ✅ GAS Alternative | Example |
+|-------------|-------------------|---------|
+| `URLSearchParams` | Manual encoding with `encodeURIComponent()` | `const params = ['src=' + encodeURIComponent(id)]; url + '?' + params.join('&')` |
+| `fetch(url)` | `UrlFetchApp.fetch(url)` | `const response = UrlFetchApp.fetch(url); const data = JSON.parse(response.getContentText());` |
+| `localStorage.setItem()` | `PropertiesService.getUserProperties()` | `PropertiesService.getUserProperties().setProperty(key, value)` |
+| `setTimeout(fn, ms)` | `Utilities.sleep(ms)` or time-based trigger | `Utilities.sleep(5000); // 5 seconds` |
+| `console.log()` | `Logger.log()` (GAS logs) | `Logger.log('message')` |
+
+### 🔍 How to Verify GAS Compatibility:
+
+**BEFORE using ANY API not in this codebase:**
+1. ✅ Check [Google Apps Script Reference](https://developers.google.com/apps-script/reference) first
+2. ✅ Search existing codebase: `grep -r "APIName" src/` to see if it's already used
+3. ✅ If in doubt, assume it's NOT available and use GAS equivalent
+4. ✅ Test in GAS environment immediately after writing code
+
+**Red Flags** (API likely not available in GAS):
+- 🚩 Recently added to JavaScript (ES2020+)
+- 🚩 Browser-specific API (window, document, navigator)
+- 🚩 Node.js-specific API (fs, path, process)
+- 🚩 Requires network/async capabilities (WebSocket, WebRTC)
+
+### 💡 Golden Rule for Core Modules:
+
+**Even though Core modules are "pure JavaScript"**, they must STILL be GAS-compatible because:
+1. They run in GAS during deployment
+2. They're tested in Node.js but executed in GAS
+3. GAS has fewer APIs than Node.js
+
+**Safe APIs for Core modules**:
+- ✅ Basic JavaScript: `Array`, `Object`, `String`, `Number`, `Date`, `Math`, `JSON`, `RegExp`
+- ✅ ES6+ features: arrow functions, `const`/`let`, template literals, destructuring, spread operator
+- ✅ Standard methods: `Array.map/filter/reduce`, `String.replace/split`, `Object.keys/values`
+- ✅ `encodeURIComponent()` / `decodeURIComponent()` for URL encoding
+
+**Example of proper GAS-compatible Core module**:
+```javascript
+// ✅ CORRECT - Uses only GAS-compatible APIs
+class GoogleEventCore {
+    static buildCalendarUrl(calendarId, rideDate) {
+        const year = rideDate.getFullYear();
+        const month = String(rideDate.getMonth() + 1).padStart(2, '0');
+        const day = String(rideDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${day}`;
+        
+        // Manual URL encoding (GAS-compatible)
+        const params = [
+            `src=${encodeURIComponent(calendarId)}`,
+            'mode=AGENDA',
+            `ctz=${encodeURIComponent('America/Los_Angeles')}`,
+            `dates=${dateStr}%2F${dateStr}`
+        ];
+        
+        return `https://calendar.google.com/calendar/embed?${params.join('&')}`;
+    }
+}
+
+// ❌ WRONG - Uses URLSearchParams (not available in GAS)
+class GoogleEventCore {
+    static buildCalendarUrl(calendarId, rideDate) {
+        // ...
+        const params = new URLSearchParams({  // ❌ Runtime error in GAS!
+            src: calendarId,
+            mode: 'AGENDA'
+        });
+        return `https://calendar.google.com/calendar/embed?${params.toString()}`;
+    }
+}
+```
+
+**REMEMBER**: If you're writing code that will run in GAS (even Core modules), verify every API is GAS-compatible. When in doubt, use basic JavaScript only.
 
 ## CRITICAL: Type Safety - Zero Tolerance for `{any}` and `{Object}`
 

@@ -15,7 +15,7 @@ describe('RowCore', () => {
                 routeCell: '=HYPERLINK("https://ridewithgps.com/routes/123","Epic Route")',
                 rideCell: '=HYPERLINK("https://ridewithgps.com/events/456","Epic Ride")',
                 rideLeaders: 'John Doe, Jane Smith',
-                googleEventId: 'event123',
+                googleEventIdCell: {text: 'event123', url: 'https://calendar.google.com/calendar/event?eid=event123'},
                 location: 'Central Park',
                 address: '123 Main St',
                 announcement: 'https://docs.google.com/doc/123',
@@ -35,7 +35,7 @@ describe('RowCore', () => {
             expect(row.routeCell).toEqual({text: 'Epic Route', url: 'https://ridewithgps.com/routes/123'});
             expect(row.rideCell).toEqual({text: 'Epic Ride', url: 'https://ridewithgps.com/events/456'});
             expect(row.rideLeaders).toBe('John Doe, Jane Smith');
-            expect(row.googleEventId).toBe('event123');
+            expect(row.googleEventId).toBe('event123'); // Uses getter that extracts text from googleEventIdCell
             expect(row.location).toBe('Central Park');
             expect(row.address).toBe('123 Main St');
             expect(row.announcement).toBe('https://docs.google.com/doc/123');
@@ -576,7 +576,7 @@ describe('RowCore', () => {
     });
 
     describe('setter methods', () => {
-        it('setGoogleEventId should set value and mark dirty', () => {
+        it('setGoogleEventIdLink should set value and mark dirty', () => {
             const row = new RowCore({
                 startDate: new Date('2026-02-01T10:00:00'),
                 group: 'Sat A',
@@ -589,10 +589,11 @@ describe('RowCore', () => {
                 rowNum: 5
             });
             
-            row.setGoogleEventId('event123');
+            row.setGoogleEventIdLink('event123', 'https://calendar.google.com/calendar/embed?src=test');
             
-            expect(row.googleEventId).toBe('event123');
-            expect(row.getDirtyFields().has('googleEventId')).toBe(true);
+            expect(row.googleEventId).toBe('event123'); // Getter extracts text
+            expect(row.googleEventIdCell).toEqual({text: 'event123', url: 'https://calendar.google.com/calendar/embed?src=test'});
+            expect(row.getDirtyFields().has('googleEventIdCell')).toBe(true);
         });
 
         it('setAnnouncement should set value and mark dirty', () => {

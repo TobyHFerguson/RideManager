@@ -32,8 +32,8 @@ interface RowCoreParams {
     rideCell: string;
     /** Comma-separated leader names */
     rideLeaders: string;
-    /** Google Calendar Event ID */
-    googleEventId: string;
+    /** Google Calendar Event ID as RichText link */
+    googleEventIdCell: string | {text: string, url: string};
     /** Meeting location name */
     location: string;
     /** Full address of meeting location */
@@ -79,8 +79,8 @@ declare class RowCore {
     rideCell: string;
     /** Comma-separated leader names */
     rideLeaders: string;
-    /** Google Calendar Event ID */
-    googleEventId: string;
+    /** Google Calendar Event ID as RichText link */
+    googleEventIdCell: string | {text: string, url: string};
     /** Meeting location name */
     location: string;
     /** Full address of meeting location */
@@ -134,6 +134,9 @@ declare class RowCore {
 
     /** Extract ride URL from hyperlink formula */
     get rideURL(): string;
+
+    /** Extract Google Calendar Event ID from RichText link */
+    get googleEventId(): string;
 
     // ===== BUSINESS LOGIC METHODS =====
 
@@ -189,7 +192,15 @@ declare class RowCore {
     clearAnnouncement(): void;
 
     /**
-     * Set Google Calendar Event ID
+     * Set Google Calendar Event ID as RichText link
+     * @param text - Event ID (display text)
+     * @param url - Calendar URL
+     */
+    setGoogleEventIdLink(text: string, url: string): void;
+
+    /**
+     * Set Google Calendar Event ID (backward compatibility - plain text)
+     * @deprecated Use setGoogleEventIdLink instead for RichText support
      * @param id - Event ID
      */
     setGoogleEventId(id: string): void;
