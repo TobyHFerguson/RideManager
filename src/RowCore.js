@@ -33,7 +33,7 @@ if (typeof require !== 'undefined') {
  * @property {string | {text: string, url: string}} googleEventIdCell - Google Calendar Event ID as RichText link
  * @property {string} location - Meeting location name
  * @property {string} address - Full address of meeting location
- * @property {string} [announcement] - Announcement document URL
+ * @property {string | {text: string, url: string}} [announcement] - Announcement document (RichText {text, url} object or URL string for backward compat)
  * @property {Date} [sendAt] - Scheduled send date/time
  * @property {string} [status] - Announcement status
      * @property {number} [attempts] - Number of send attempts
@@ -84,8 +84,8 @@ if (typeof require !== 'undefined') {
             this.location = location || '';
             this.address = address || '';
             
-            // Announcement properties
-            this.announcement = announcement || '';
+            // Announcement properties (announcement is RichText {text, url} object)
+            this.announcement = this._normalizeLinkCell(announcement) || { text: '', url: '' };
             this.sendAt = sendAt;
             this.status = status || '';
             this.attempts = attempts || 0;
@@ -216,6 +216,28 @@ if (typeof require !== 'undefined') {
             }
             return '';
         }
+        
+        /**
+         * Get announcement document URL
+         * @returns {string} Announcement document URL
+         */
+        get announcementUrl() {
+            if (typeof this.announcement === 'object' && this.announcement.url) {
+                return this.announcement.url;
+            }
+            return '';
+        }
+        
+        /**
+         * Get announcement document title
+         * @returns {string} Announcement document title/display text
+         */
+        get announcementText() {
+            if (typeof this.announcement === 'object' && this.announcement.text) {
+                return this.announcement.text;
+            }
+            return '';
+        }
 
         // ===== BUSINESS LOGIC METHODS =====
 
@@ -291,7 +313,7 @@ if (typeof require !== 'undefined') {
          * This is the proper way to "remove" an announcement from a row
          */
         clearAnnouncement() {
-            this.announcement = '';
+            this.announcement = { text: '', url: '' };
             this.sendAt = undefined;
             this.status = '';
             this.attempts = 0;
@@ -329,21 +351,20 @@ if (typeof require !== 'undefined') {
 
         /**
          * Set announcement document with RichText hyperlink
-         * Pattern: Same as setGoogleEventIdLink (lines 310-318)
+         * Follows same pattern as setGoogleEventIdLink (lines 315-318)
          * @param {string} docUrl - Document URL
          * @param {string} [displayText] - Document title to display (defaults to URL if not provided)
          */
         setAnnouncement(docUrl, displayText) {
             if (docUrl) {
-                // Create RichText hyperlink with document title as display text
-                const richText = SpreadsheetApp.newRichTextValue()
-                    .setText(displayText || docUrl)
-                    .setLinkUrl(docUrl)
-                    .build();
-                this.announcement = richText;
+                // Store as {text, url} object for RichText rendering by ScheduleAdapter
+                this.announcement = {
+                    text: displayText || docUrl,
+                    url: docUrl
+                };
             } else {
                 // Allow clearing the announcement
-                this.announcement = docUrl;
+                this.announcement = { text: '', url: '' };
             }
             this.markDirty('announcement');
         }

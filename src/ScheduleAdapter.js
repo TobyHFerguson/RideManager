@@ -311,8 +311,9 @@ const ScheduleAdapter = (function() {
                     const value = row[domainProp];
                     
                     try {
-                        // Special handling for Route/Ride/GoogleEventId columns with RichText
-                        if ((columnName === routeColumnName || columnName === rideColumnName || columnName === googleEventIdColumnName) && 
+                        // Special handling for Route/Ride/GoogleEventId/Announcement columns with RichText
+                        if ((columnName === routeColumnName || columnName === rideColumnName || 
+                             columnName === googleEventIdColumnName || columnName === 'Announcement') && 
                             value && typeof value === 'object' && 'text' in value && 'url' in value) {
                             // Create RichText hyperlink
                             const richTextValue = SpreadsheetApp.newRichTextValue()
@@ -431,13 +432,15 @@ const ScheduleAdapter = (function() {
             // Get all values in one batch
             const values = this.sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
             
-            // Get RichText values for Route, Ride, and GoogleEventId columns
+            // Get RichText values for Route, Ride, GoogleEventId, and Announcement columns
             const routeColumnName = getGlobals().ROUTECOLUMNNAME;
             const rideColumnName = getGlobals().RIDECOLUMNNAME;
             const googleEventIdColumnName = getGlobals().GOOGLEEVENTIDCOLUMNNAME;
+            const announcementColumnName = 'Announcement'; // Fixed column name (no spaces)
             const routeColIndex = this._getColumnIndex(routeColumnName);
             const rideColIndex = this._getColumnIndex(rideColumnName);
             const googleEventIdColIndex = this._getColumnIndex(googleEventIdColumnName);
+            const announcementColIndex = this._getColumnIndex(announcementColumnName);
             
             const richTextValues = this.sheet.getRange(2, 1, lastRow - 1, lastCol).getRichTextValues();
             
@@ -447,8 +450,8 @@ const ScheduleAdapter = (function() {
                 const obj = {};
                 
                 this.columnNames.forEach((columnName, j) => {
-                    // For Route, Ride, and GoogleEventId columns, store both text and URL from RichText
-                    if (j === routeColIndex || j === rideColIndex || j === googleEventIdColIndex) {
+                    // For Route, Ride, GoogleEventId, and Announcement columns, store both text and URL from RichText
+                    if (j === routeColIndex || j === rideColIndex || j === googleEventIdColIndex || j === announcementColIndex) {
                         const richText = richTextValues[i][j];
                         if (richText && richText.getText()) {
                             const url = richText.getLinkUrl();
@@ -456,8 +459,14 @@ const ScheduleAdapter = (function() {
                             // Store as object with text and url
                             obj[columnName] = { text, url: url || '' };
                         } else {
-                            // Empty cell or plain text
-                            obj[columnName] = { text: row[j] || '', url: '' };
+                            // Empty cell or plain text - handle backward compatibility
+                            const cellValue = row[j];
+                            if (cellValue && typeof cellValue === 'string' && cellValue.trim()) {
+                                // Plain text URL (backward compatibility for migration)
+                                obj[columnName] = { text: cellValue, url: cellValue };
+                            } else {
+                                obj[columnName] = { text: '', url: '' };
+                            }
                         }
                     } else {
                         obj[columnName] = row[j];

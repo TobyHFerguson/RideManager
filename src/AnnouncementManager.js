@@ -150,7 +150,7 @@ var AnnouncementManager = (function () {
                 }
 
                 // Extract document ID from announcement URL
-                const docUrl = row.announcement;
+                const docUrl = row.announcementUrl;
                 const documentId = this._extractDocId(docUrl);
                 if (!documentId) {
                     throw new Error(`Invalid announcement URL: ${docUrl}`);
@@ -302,7 +302,7 @@ var AnnouncementManager = (function () {
                 const adapter = new ScheduleAdapter();
                 const allRows = adapter.loadAll();
                 const rideUrlSet = new Set(rideUrls);
-                const rowsToRemove = allRows.filter(r => r.announcement && rideUrlSet.has(r.rideURL));
+                const rowsToRemove = allRows.filter(r => r.announcementUrl && rideUrlSet.has(r.rideURL));
 
                 if (rowsToRemove.length === 0) {
                     console.log(`AnnouncementManager: No announcements found for ${rideUrls.length} ride(s)`);
@@ -356,7 +356,7 @@ var AnnouncementManager = (function () {
             try {
                 const adapter = new ScheduleAdapter();
                 const allRows = adapter.loadAll();
-                const rowsWithAnnouncements = allRows.filter(r => r.announcement);
+                const rowsWithAnnouncements = allRows.filter(r => r.announcementUrl);
                 const count = rowsWithAnnouncements.length;
 
                 if (count === 0) {
@@ -369,7 +369,7 @@ var AnnouncementManager = (function () {
                 let failedCount = 0;
                 rowsWithAnnouncements.forEach(row => {
                     try {
-                        const documentId = this._extractDocId(row.announcement);
+                        const documentId = this._extractDocId(row.announcementUrl);
                         if (documentId) {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);
@@ -410,7 +410,7 @@ var AnnouncementManager = (function () {
         handleCancellation(row, sendEmail, reason = '') {
             try {
                 // Check if announcement exists
-                if (!row.announcement || !row.status) {
+                if (!row.announcementUrl || !row.status) {
                     console.log(`AnnouncementManager.handleCancellation: No announcement for row ${row.rowNum}, skipping`);
                     return { announcementSent: false };
                 }
@@ -448,7 +448,7 @@ var AnnouncementManager = (function () {
         handleReinstatement(row, sendEmail, reason = '') {
             try {
                 // Check if announcement exists
-                if (!row.announcement || !row.status) {
+                if (!row.announcementUrl || !row.status) {
                     console.log(`AnnouncementManager.handleReinstatement: No announcement for row ${row.rowNum}, skipping`);
                     return { announcementSent: false };
                 }
@@ -487,7 +487,7 @@ var AnnouncementManager = (function () {
         updateAnnouncement(row) {
             try {
                 // Check if row has announcement - if not, create one
-                if (!row.announcement || !row.status) {
+                if (!row.announcementUrl || !row.status) {
                     console.log(`AnnouncementManager.updateAnnouncement: No announcement for row ${row.rowNum}, creating one`);
                     try {
                         this.createAnnouncement(row);
@@ -501,9 +501,9 @@ var AnnouncementManager = (function () {
                 }
 
                 // Get current announcement document name
-                const documentId = this._extractDocId(row.announcement);
+                const documentId = this._extractDocId(row.announcementUrl);
                 if (!documentId) {
-                    throw new Error(`Invalid announcement URL: ${row.announcement}`);
+                    throw new Error(`Invalid announcement URL: ${row.announcementUrl}`);
                 }
 
                 const doc = DriveApp.getFileById(documentId);
@@ -1166,7 +1166,7 @@ var AnnouncementManager = (function () {
                 const body = `The scheduled announcement for ride "${row.rideName}" (Row ${row.rowNum}) failed to send.\n\n` +
                     `Error: ${error}\n\n` +
                     `Please review the announcement and manually retry by updating the ride in the spreadsheet.\n` +
-                    `Document: ${row.announcement}`;
+                    `Document: ${row.announcementUrl}`;
 
                 GmailApp.sendEmail(rsGroupEmail, subject, body, {
                     name: 'Ride Scheduler',
@@ -1208,7 +1208,7 @@ var AnnouncementManager = (function () {
 
                 // Find earliest pending announcement
                 const pendingRows = allRows.filter(r =>
-                    r.announcement &&
+                    r.announcementUrl &&
                     r.status === 'pending' &&
                     r.sendAt
                 );

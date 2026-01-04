@@ -87,8 +87,8 @@ declare class RowCore {
     address: string;
     
     // Announcement properties
-    /** Announcement document URL */
-    announcement: string;
+    /** Announcement document (RichText {text, url} object) */
+    announcement: {text: string, url: string};
     /** Scheduled send date/time */
     sendAt?: Date;
     /** Announcement status: 'pending' | 'sent' | 'failed' | 'abandoned' */
@@ -137,6 +137,12 @@ declare class RowCore {
 
     /** Extract Google Calendar Event ID from RichText link */
     get googleEventId(): string;
+    
+    /** Get announcement document URL */
+    get announcementUrl(): string;
+    
+    /** Get announcement document title/display text */
+    get announcementText(): string;
 
     // ===== BUSINESS LOGIC METHODS =====
 
