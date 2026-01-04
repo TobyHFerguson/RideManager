@@ -22,12 +22,10 @@ if (typeof require !== 'undefined') {
     var TriggerManagerCore = require('./TriggerManagerCore');
 }
 
-var TriggerManager = (function() {
-    
-    class TriggerManager {
-        constructor() {
-            this.docProps = PropertiesService.getDocumentProperties();
-            this.core = TriggerManagerCore;
+class TriggerManager {
+    constructor() {
+        this.docProps = PropertiesService.getDocumentProperties();
+        this.core = TriggerManagerCore;
         }
         
         /**
@@ -448,10 +446,7 @@ var TriggerManager = (function() {
             
             return count;
         }
-    }
-    
-    return TriggerManager;
-})();
+}
 
 // Node.js compatibility
 if (typeof module !== 'undefined') {
