@@ -316,7 +316,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
     });
     
     describe('Formula Handling', () => {
-        it('should preserve formula format when writing back', () => {
+        it('should store RichText link data when writing back', () => {
             const row = new RowCore({
                 startDate: new Date('2026-02-01T10:00:00'),
                 group: 'Sat A',
@@ -329,17 +329,15 @@ describe('ScheduleAdapter Integration with RowCore', () => {
                 rowNum: 5
             });
             
-            // Set a ride link (creates HYPERLINK formula)
+            // Set a ride link (now creates {text, url} object for RichText)
             row.setRideLink('Epic Ride', 'https://ridewithgps.com/events/456');
             
-            // The rideCell should contain a formula string
-            // Note: HyperlinkUtils adds a space after the comma
-            expect(row.rideCell).toBe('=HYPERLINK("https://ridewithgps.com/events/456", "Epic Ride")');
-            expect(row.rideCell.startsWith('=')).toBe(true);
+            // The rideCell should contain {text, url} object
+            expect(row.rideCell).toEqual({text: 'Epic Ride', url: 'https://ridewithgps.com/events/456'});
             
-            // When writing back, adapter.save() should detect formula and use setFormula()
-            const isFormula = row.rideCell.startsWith('=');
-            expect(isFormula).toBe(true);
+            // When writing back, adapter.save() should detect object and create RichText
+            const isRichTextData = row.rideCell && typeof row.rideCell === 'object' && 'text' in row.rideCell && 'url' in row.rideCell;
+            expect(isRichTextData).toBe(true);
         });
         
         it('should handle non-formula values correctly', () => {

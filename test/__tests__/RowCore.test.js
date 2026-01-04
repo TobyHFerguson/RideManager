@@ -31,8 +31,9 @@ describe('RowCore', () => {
             expect(row.duration).toBe(3);
             expect(row.defaultDuration).toBe(2);
             expect(row.group).toBe('Sat A');
-            expect(row.routeCell).toBe('=HYPERLINK("https://ridewithgps.com/routes/123","Epic Route")');
-            expect(row.rideCell).toBe('=HYPERLINK("https://ridewithgps.com/events/456","Epic Ride")');
+            // routeCell and rideCell are now {text, url} objects after normalization
+            expect(row.routeCell).toEqual({text: 'Epic Route', url: 'https://ridewithgps.com/routes/123'});
+            expect(row.rideCell).toEqual({text: 'Epic Ride', url: 'https://ridewithgps.com/events/456'});
             expect(row.rideLeaders).toBe('John Doe, Jane Smith');
             expect(row.googleEventId).toBe('event123');
             expect(row.location).toBe('Central Park');
@@ -59,8 +60,9 @@ describe('RowCore', () => {
                 rowNum: 5
             });
             
-            expect(row.routeCell).toBe('');
-            expect(row.rideCell).toBe('');
+            // Empty strings are normalized to {text: '', url: ''}
+            expect(row.routeCell).toEqual({text: '', url: ''});
+            expect(row.rideCell).toEqual({text: '', url: ''});
             expect(row.rideLeaders).toBe('');
             expect(row.googleEventId).toBe('');
             expect(row.location).toBe('');
@@ -165,11 +167,12 @@ describe('RowCore', () => {
                     rowNum: 5
                 });
                 
+                // After normalization, formula is converted to {text, url} object
                 expect(row.routeName).toBe('Epic Route');
                 expect(row.routeURL).toBe('https://ridewithgps.com/routes/123');
             });
             
-            it('should return empty strings for non-formula text', () => {
+            it('should return plain text as both text and url for non-formula text', () => {
                 const row = new RowCore({
                     startDate: new Date('2026-02-01T10:00:00'),
                     group: 'Sat A',
@@ -182,9 +185,9 @@ describe('RowCore', () => {
                     rowNum: 5
                 });
                 
-                // HyperlinkUtils returns empty strings when there's no formula
-                expect(row.routeName).toBe('');
-                expect(row.routeURL).toBe('');
+                // Plain text is treated as URL with same text (normalized to {text, url})
+                expect(row.routeName).toBe('Just plain text');
+                expect(row.routeURL).toBe('Just plain text');
             });
         });
 
@@ -268,11 +271,12 @@ describe('RowCore', () => {
                     rowNum: 5
                 });
                 
+                // After normalization, formula is converted to {text, url} object
                 expect(row.rideName).toBe('Epic Ride');
                 expect(row.rideURL).toBe('https://ridewithgps.com/events/456');
             });
             
-            it('should return empty strings for non-formula text', () => {
+            it('should return plain text as both text and url for non-formula text', () => {
                 const row = new RowCore({
                     startDate: new Date('2026-02-01T10:00:00'),
                     group: 'Sat A',
@@ -285,9 +289,9 @@ describe('RowCore', () => {
                     rowNum: 5
                 });
                 
-                // HyperlinkUtils returns empty strings when there's no formula
-                expect(row.rideName).toBe('');
-                expect(row.rideURL).toBe('');
+                // Plain text is treated as URL with same text (normalized to {text, url})
+                expect(row.rideName).toBe('Just plain text');
+                expect(row.rideURL).toBe('Just plain text');
             });
         });
     });
@@ -346,7 +350,7 @@ describe('RowCore', () => {
                 const row = new RowCore({
                     startDate: new Date('2026-02-01T10:00:00'),
                     group: 'Sat A',
-                    routeCell: 'Just text without URL',
+                    routeCell: '', // Empty route means no URL
                     rideCell: '',
                     rideLeaders: '',
                     googleEventId: '',
@@ -432,7 +436,7 @@ describe('RowCore', () => {
 
     describe('link manipulation methods', () => {
         describe('setRideLink', () => {
-            it('should create hyperlink formula and mark dirty', () => {
+            it('should store {text, url} object and mark dirty', () => {
                 const row = new RowCore({
                     startDate: new Date('2026-02-01T10:00:00'),
                     group: 'Sat A',
@@ -447,8 +451,8 @@ describe('RowCore', () => {
                 
                 row.setRideLink('Test Ride', 'https://ridewithgps.com/events/123');
                 
-                // Note: HyperlinkUtils.createHyperlinkFormula includes space after comma
-                expect(row.rideCell).toBe('=HYPERLINK("https://ridewithgps.com/events/123", "Test Ride")');
+                // Now stores as {text, url} object for RichText
+                expect(row.rideCell).toEqual({text: 'Test Ride', url: 'https://ridewithgps.com/events/123'});
                 expect(row.getDirtyFields().has('rideCell')).toBe(true);
             });
         });
@@ -469,13 +473,14 @@ describe('RowCore', () => {
                 
                 row.deleteRideLink();
                 
-                expect(row.rideCell).toBe('');
+                // Now stores as empty {text, url} object
+                expect(row.rideCell).toEqual({text: '', url: ''});
                 expect(row.getDirtyFields().has('rideCell')).toBe(true);
             });
         });
 
         describe('setRouteLink', () => {
-            it('should create hyperlink formula and mark dirty', () => {
+            it('should store {text, url} object and mark dirty', () => {
                 const row = new RowCore({
                     startDate: new Date('2026-02-01T10:00:00'),
                     group: 'Sat A',
@@ -490,8 +495,8 @@ describe('RowCore', () => {
                 
                 row.setRouteLink('Test Route', 'https://ridewithgps.com/routes/456');
                 
-                // Note: HyperlinkUtils.createHyperlinkFormula includes space after comma
-                expect(row.routeCell).toBe('=HYPERLINK("https://ridewithgps.com/routes/456", "Test Route")');
+                // Now stores as {text, url} object for RichText
+                expect(row.routeCell).toEqual({text: 'Test Route', url: 'https://ridewithgps.com/routes/456'});
                 expect(row.getDirtyFields().has('routeCell')).toBe(true);
             });
         });
@@ -515,16 +520,16 @@ describe('RowCore', () => {
                 const originalURL = row.rideURL;
                 
                 // Simulate formula being cleared
-                row.rideCell = '';
-                // Can't restore because the cell was cleared - this actually creates empty formula
+                row.rideCell = { text: '', url: '' };
+                // Can't restore because the cell was cleared - this creates empty link
                 row.restoreRideLink();
                 
-                // After clearing, name and URL are gone, so this creates an empty hyperlink
-                expect(row.rideCell).toBe('=HYPERLINK("", "")');
+                // After clearing, name and URL are gone, so this creates empty link
+                expect(row.rideCell).toEqual({text: '', url: ''});
                 
                 // To truly restore, we'd need to use the saved values
                 row.setRideLink(originalName, originalURL);
-                expect(row.rideCell).toBe('=HYPERLINK("https://ridewithgps.com/events/123", "Test Ride")');
+                expect(row.rideCell).toEqual({text: 'Test Ride', url: 'https://ridewithgps.com/events/123'});
             });
         });
     });
