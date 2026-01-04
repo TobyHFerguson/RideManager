@@ -1,5 +1,6 @@
 // @ts-check
 
+// RowCore needs HyperlinkUtils for backward compatibility (formula parsing)
 if (typeof require !== 'undefined') {
     var HyperlinkUtils = require('./HyperlinkUtils.js');
 }
@@ -26,8 +27,8 @@ if (typeof require !== 'undefined') {
  * @property {number} [duration] - Duration in hours (for calculating end time)
  * @property {number} [defaultDuration] - Default duration if not specified
  * @property {string} group - Ride group (e.g., "Sat A", "Sun B")
- * @property {string} routeCell - Route hyperlink formula or text
- * @property {string} rideCell - Ride hyperlink formula or text
+ * @property {string | {text: string, url: string}} routeCell - Route hyperlink (URL string, object, or formula)
+ * @property {string | {text: string, url: string}} rideCell - Ride hyperlink (URL string, object, or formula)
  * @property {string} rideLeaders - Comma-separated leader names
  * @property {string} googleEventId - Google Calendar Event ID
  * @property {string} location - Meeting location name
@@ -72,8 +73,12 @@ if (typeof require !== 'undefined') {
             this.duration = duration;
             this.defaultDuration = defaultDuration;
             this.group = group;
-            this.routeCell = routeCell || '';
-            this.rideCell = rideCell || '';
+            
+            // Normalize routeCell and rideCell to {text, url} format
+            // Supports: string (legacy formula or URL), {text, url} object, or empty
+            this.routeCell = this._normalizeLinkCell(routeCell);
+            this.rideCell = this._normalizeLinkCell(rideCell);
+            
             this.rideLeaders = rideLeaders || '';
             this.googleEventId = googleEventId || '';
             this.location = location || '';
@@ -96,6 +101,39 @@ if (typeof require !== 'undefined') {
             // Optional callback to notify when row becomes dirty
             this._onDirty = onDirty;
         }
+        
+        /**
+         * Normalize a link cell to {text, url} format
+         * Handles multiple input formats for backward compatibility
+         * @private
+         * @param {string | {text: string, url: string} | any} cell - Input value
+         * @returns {{text: string, url: string}} Normalized format
+         */
+        _normalizeLinkCell(cell) {
+            // Already in correct format
+            if (cell && typeof cell === 'object' && 'text' in cell && 'url' in cell) {
+                return { text: cell.text || '', url: cell.url || '' };
+            }
+            
+            // Legacy formula format (for backward compatibility during migration)
+            if (typeof cell === 'string' && cell.toLowerCase().startsWith('=hyperlink')) {
+                // Need HyperlinkUtils for backward compatibility
+                if (typeof HyperlinkUtils !== 'undefined') {
+                    const { url, name } = HyperlinkUtils.parseHyperlinkFormula(cell);
+                    return { text: name, url: url };
+                }
+                // Fallback if HyperlinkUtils not available
+                return { text: cell, url: '' };
+            }
+            
+            // Plain URL string (treat as URL with same text)
+            if (typeof cell === 'string' && cell) {
+                return { text: cell, url: cell };
+            }
+            
+            // Empty or invalid
+            return { text: '', url: '' };
+        }
 
         // ===== COMPUTED PROPERTIES (GETTERS) =====
 
@@ -117,21 +155,25 @@ if (typeof require !== 'undefined') {
         }
 
         /**
-         * Extract route name from hyperlink formula or return text
+         * Extract route name from hyperlink
          * @returns {string}
          */
         get routeName() {
-            const { name } = HyperlinkUtils.parseHyperlinkFormula(this.routeCell);
-            return name;
+            if (typeof this.routeCell === 'object' && this.routeCell.text) {
+                return this.routeCell.text;
+            }
+            return '';
         }
 
         /**
-         * Extract route URL from hyperlink formula
+         * Extract route URL from hyperlink
          * @returns {string}
          */
         get routeURL() {
-            const { url } = HyperlinkUtils.parseHyperlinkFormula(this.routeCell);
-            return url;
+            if (typeof this.routeCell === 'object' && this.routeCell.url) {
+                return this.routeCell.url;
+            }
+            return '';
         }
 
         /**
@@ -143,21 +185,25 @@ if (typeof require !== 'undefined') {
         }
 
         /**
-         * Extract ride name from hyperlink formula or return text
+         * Extract ride name from hyperlink
          * @returns {string}
          */
         get rideName() {
-            const { name } = HyperlinkUtils.parseHyperlinkFormula(this.rideCell);
-            return name;
+            if (typeof this.rideCell === 'object' && this.rideCell.text) {
+                return this.rideCell.text;
+            }
+            return '';
         }
 
         /**
-         * Extract ride URL from hyperlink formula
+         * Extract ride URL from hyperlink
          * @returns {string}
          */
         get rideURL() {
-            const { url } = HyperlinkUtils.parseHyperlinkFormula(this.rideCell);
-            return url;
+            if (typeof this.rideCell === 'object' && this.rideCell.url) {
+                return this.rideCell.url;
+            }
+            return '';
         }
 
         // ===== BUSINESS LOGIC METHODS =====
@@ -191,12 +237,12 @@ if (typeof require !== 'undefined') {
 
         /**
          * Set the ride link (name and URL)
-         * Creates a HYPERLINK formula
+         * Stores as {text, url} object for RichText creation
          * @param {string} name - Display name
          * @param {string} url - URL
          */
         setRideLink(name, url) {
-            this.rideCell = HyperlinkUtils.createHyperlinkFormula(name, url);
+            this.rideCell = { text: name, url: url };
             this.markDirty('rideCell');
         }
 
@@ -204,18 +250,18 @@ if (typeof require !== 'undefined') {
          * Delete the ride link
          */
         deleteRideLink() {
-            this.rideCell = '';
+            this.rideCell = { text: '', url: '' };
             this.markDirty('rideCell');
         }
 
         /**
          * Set the route link (name and URL)
-         * Creates a HYPERLINK formula
+         * Stores as {text, url} object for RichText creation
          * @param {string} name - Display name
          * @param {string} url - URL
          */
         setRouteLink(name, url) {
-            this.routeCell = HyperlinkUtils.createHyperlinkFormula(name, url);
+            this.routeCell = { text: name, url: url };
             this.markDirty('routeCell');
         }
 

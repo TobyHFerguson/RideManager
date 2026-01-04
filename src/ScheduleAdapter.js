@@ -5,9 +5,10 @@
  * ScheduleAdapter - Anti-corruption layer between spreadsheet and domain model
  * 
  * This adapter implements the Hexagonal/Ports & Adapters architecture pattern:
- * - Separates GAS dependencies (SpreadsheetApp, bmPreFiddler) from pure domain logic
+ * - Separates GAS dependencies (SpreadsheetApp) from pure domain logic
  * - Maps between spreadsheet structure (column names from Globals) and RowCore domain model
  * - Handles all spreadsheet I/O using Load → Work → Save pattern
+ * - Uses native GAS RichText for hyperlinks (no external dependencies)
  * 
  * KEY RESPONSIBILITIES:
  * ====================
@@ -18,8 +19,10 @@
  *    - Load: Spreadsheet data (column names) → RowCore instances (camelCase properties)
  *    - Save: RowCore dirty fields (camelCase) → Spreadsheet columns (Globals names)
  * 
- * 3. **Formula Preservation**: Route and Ride columns use HYPERLINK formulas which are
- *    overlaid during load so domain code sees formula strings, not displayed values
+ * 3. **RichText Hyperlinks**: Route and Ride columns use native GAS RichText for hyperlinks
+ *    - Load: Extracts both text and URL from RichText, stores as {text, url} object in RowCore
+ *    - Save: Creates RichText hyperlinks from {text, url} objects using SpreadsheetApp.newRichTextValue()
+ *    - No formula overlays or PropertiesService storage needed
  * 
  * 4. **Automatic Dirty Tracking**: Tracks which RowCore instances have been modified via
  *    injected onDirty callback. When a RowCore is modified (via setters like setGoogleEventId()),
@@ -62,8 +65,8 @@
  * - "Start Date/Time"    → startDate
  * - "Duration"           → duration
  * - "Group"              → group
- * - "Route"              → routeCell  (HYPERLINK formula)
- * - "Ride"               → rideCell   (HYPERLINK formula)
+ * - "Route"              → routeCell  (RichText {text, url} object)
+ * - "Ride"               → rideCell   (RichText {text, url} object)
  * - "Ride Leaders"       → rideLeaders
  * - "Google Event ID"    → googleEventId
  * - "Location"           → location
@@ -110,12 +113,11 @@
  * - All business logic works on in-memory RowCore objects
  * - Single batch save writes only modified cells
  * - For N row updates: 1 load + N modifications + 1 save (not N × [load + modify + save])
+ * - Native GAS arrays (no external dependencies like bmPreFiddler)
  */
 
-if (typeof require !== 'undefined') {
-    var HyperlinkUtils = require('./HyperlinkUtils.js');
-    // RowCore is globally available via gas-globals.d.ts
-}
+// RowCore is globally available via gas-globals.d.ts
+// No longer need HyperlinkUtils for runtime - only for migration
 
 const ScheduleAdapter = (function() {
     'use strict';
@@ -131,12 +133,6 @@ const ScheduleAdapter = (function() {
             if (!this.sheet) {
                 throw new Error(`Sheet "${sheetName}" not found`);
             }
-            
-            // Initialize Fiddler for data I/O
-            this.fiddler = bmPreFiddler.PreFiddler().getFiddler({
-                sheetName: sheetName,
-                createIfMissing: false
-            });
             
             // Get column names from header row
             this.columnNames = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
@@ -265,13 +261,19 @@ const ScheduleAdapter = (function() {
          * 
          * Maps RowCore domain properties back to spreadsheet columns using domainToColumn map.
          * 
-         * CRITICAL: Formulas in Route/Ride columns are handled specially:
-         * - If a formula column is dirty, we write the formula (not the value)
+         * CRITICAL: Route/Ride columns are handled specially:
+         * - If the value is an object with {text, url}, create RichText
+         * - If the value is a string starting with '=', set as formula (for formulas in other columns)
+         * - Otherwise, set as regular value
          */
         save() {
             if (this.dirtyRows.size === 0) {
                 return;
             }
+
+            const globals = getGlobals();
+            const routeColumnName = globals.ROUTECOLUMNNAME;
+            const rideColumnName = globals.RIDECOLUMNNAME;
 
             // Write each dirty row's dirty fields
             this.dirtyRows.forEach(row => {
@@ -293,10 +295,22 @@ const ScheduleAdapter = (function() {
                     const value = row[domainProp];
                     
                     try {
-                        // If it's a formula (starts with '='), set as formula, else as value
-                        if (value && typeof value === 'string' && value.startsWith('=')) {
+                        // Special handling for Route/Ride columns with RichText
+                        if ((columnName === routeColumnName || columnName === rideColumnName) && 
+                            value && typeof value === 'object' && 'text' in value && 'url' in value) {
+                            // Create RichText hyperlink
+                            const richTextValue = SpreadsheetApp.newRichTextValue()
+                                .setText(value.text || '')
+                                .setLinkUrl(value.url || null)
+                                .build();
+                            cell.setRichTextValue(richTextValue);
+                        }
+                        // Handle formulas (for other columns that might use formulas)
+                        else if (value && typeof value === 'string' && value.startsWith('=')) {
                             cell.setFormula(value);
-                        } else {
+                        }
+                        // Regular value
+                        else {
                             cell.setValue(value);
                         }
                     } catch (error) {
@@ -373,43 +387,65 @@ const ScheduleAdapter = (function() {
 
         /**
          * Ensure data is loaded and cached
-         * Overlays stored formulas onto the data so Route and Ride columns
-         * contain formula strings (values starting with '=') instead of displayed values
+         * Loads data from spreadsheet using native GAS arrays
+         * Extracts RichText URLs for Route and Ride columns
          * @private
          */
         _ensureDataLoaded() {
             if (!this._cachedData) {
-                this._cachedData = this.fiddler.getData();
-                this._overlayFormulas();
+                this._cachedData = this._loadDataFromSheet();
             }
         }
 
         /**
-         * Overlay stored formulas onto cached data
-         * Replaces Route and Ride column values with their formula strings
+         * Load data from spreadsheet using native GAS operations
+         * Returns array of objects with column names as keys
          * @private
+         * @returns {Array<Object<string, any>>} Array of row objects
          */
-        _overlayFormulas() {
-            const rideColumnName = getGlobals().RIDECOLUMNNAME;
-            const routeColumnName = getGlobals().ROUTECOLUMNNAME;
-            const rideColumnIndex = this._getColumnIndex(rideColumnName) + 1;
-            const routeColumnIndex = this._getColumnIndex(routeColumnName) + 1;
-            
-            // Get all formulas in batch for both columns
+        _loadDataFromSheet() {
             const lastRow = this.sheet.getLastRow();
-            if (lastRow < 2) return;
+            const lastCol = this.sheet.getLastColumn();
             
-            const rideFormulas = this.sheet.getRange(2, rideColumnIndex, lastRow - 1, 1).getFormulas();
-            const routeFormulas = this.sheet.getRange(2, routeColumnIndex, lastRow - 1, 1).getFormulas();
+            // No data rows
+            if (lastRow < 2) {
+                return [];
+            }
             
-            // Overlay formulas onto cached data
-            this._cachedData.forEach((/** @type {any} */ row, /** @type {number} */ index) => {
-                if (rideFormulas[index] && rideFormulas[index][0]) {
-                    row[rideColumnName] = rideFormulas[index][0];
-                }
-                if (routeFormulas[index] && routeFormulas[index][0]) {
-                    row[routeColumnName] = routeFormulas[index][0];
-                }
+            // Get all values in one batch
+            const values = this.sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+            
+            // Get RichText values for Route and Ride columns
+            const routeColumnName = getGlobals().ROUTECOLUMNNAME;
+            const rideColumnName = getGlobals().RIDECOLUMNNAME;
+            const routeColIndex = this._getColumnIndex(routeColumnName);
+            const rideColIndex = this._getColumnIndex(rideColumnName);
+            
+            const richTextValues = this.sheet.getRange(2, 1, lastRow - 1, lastCol).getRichTextValues();
+            
+            // Convert to array of objects (Fiddler-like format)
+            return values.map((row, i) => {
+                const obj = {};
+                
+                this.columnNames.forEach((columnName, j) => {
+                    // For Route and Ride columns, store both text and URL from RichText
+                    if (j === routeColIndex || j === rideColIndex) {
+                        const richText = richTextValues[i][j];
+                        if (richText && richText.getText()) {
+                            const url = richText.getLinkUrl();
+                            const text = richText.getText();
+                            // Store as object with text and url
+                            obj[columnName] = { text, url: url || '' };
+                        } else {
+                            // Empty cell or plain text
+                            obj[columnName] = { text: row[j] || '', url: '' };
+                        }
+                    } else {
+                        obj[columnName] = row[j];
+                    }
+                });
+                
+                return obj;
             });
         }
 
