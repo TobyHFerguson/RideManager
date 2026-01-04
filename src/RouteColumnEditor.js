@@ -34,8 +34,6 @@ function parseRouteInput(input) {
 /**
  * Determine the display name for a route
  * @param {{user_id: number, name: string}} route - Route object from RWGPS
- * @param {number} route.user_id - User ID of route owner
- * @param {string} route.name - Route name
  * @param {number} clubUserId - Club's RWGPS user ID
  * @param {string} foreignPrefix - Prefix for foreign routes
  * @param {string} [userProvidedName] - Optional user-provided name (for foreign routes)
@@ -56,7 +54,8 @@ function determineRouteName(route, clubUserId, foreignPrefix, userProvidedName) 
 }
 
 /**
- * Build a hyperlink formula string
+ * Build a hyperlink formula string (legacy support for migration)
+ * @deprecated Use buildRichTextLink instead for new code
  * @param {string} url - The URL
  * @param {string} name - The display name
  * @returns {string} HYPERLINK formula
@@ -66,25 +65,31 @@ function buildHyperlinkFormula(url, name) {
 }
 
 /**
+ * Build a RichText link object
+ * @param {string} url - The URL
+ * @param {string} name - The display name
+ * @returns {{text: string, url: string}} RichText link object
+ */
+function buildRichTextLink(url, name) {
+    return { text: name, url: url };
+}
+
+/**
  * Process route column edit - pure logic
  * @param {{inputValue: string | null, route: {user_id: number, name: string}, clubUserId: number, foreignPrefix: string, userProvidedName?: string}} params
- * @param {string|null} params.inputValue - Raw input value
- * @param {{user_id: number, name: string}} params.route - Route data from RWGPS
- * @param {number} params.route.user_id - Route owner ID
- * @param {string} params.route.name - Route name
- * @param {number} params.clubUserId - Club's user ID
- * @param {string} params.foreignPrefix - Prefix for foreign routes
- * @param {string} [params.userProvidedName] - Optional user-provided name
- * @returns {{formula: string|null, isForeign: boolean}} Formula to set and foreign status
+
+ * @returns {{link: {text: string, url: string}|null, isForeign: boolean}} RichText link object and foreign status
  */
 function processRouteEdit(params) {
     const { inputValue, route, clubUserId, foreignPrefix, userProvidedName } = params;
-    
+    if (inputValue === null) {
+        return { link: null, isForeign: false };
+    }
     const { url } = parseRouteInput(inputValue);
     
     // Empty/cleared route
     if (!url) {
-        return { formula: null, isForeign: false };
+        return { link: null, isForeign: false };
     }
 
     // Determine name
@@ -95,17 +100,18 @@ function processRouteEdit(params) {
         userProvidedName
     );
 
-    // Build formula
-    const formula = buildHyperlinkFormula(url, name);
+    // Build RichText link
+    const link = buildRichTextLink(url, name);
     
-    return { formula, isForeign };
+    return { link, isForeign };
 }
 
 // Export for GAS (global)
 var RouteColumnEditor = {
     parseRouteInput: parseRouteInput,
     determineRouteName: determineRouteName,
-    buildHyperlinkFormula: buildHyperlinkFormula,
+    buildHyperlinkFormula: buildHyperlinkFormula, // Legacy for migration
+    buildRichTextLink: buildRichTextLink,
     processRouteEdit: processRouteEdit
 };
 
