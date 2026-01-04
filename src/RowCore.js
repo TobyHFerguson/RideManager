@@ -328,11 +328,23 @@ if (typeof require !== 'undefined') {
         }
 
         /**
-         * Set announcement document URL
+         * Set announcement document with RichText hyperlink
+         * Pattern: Same as setGoogleEventIdLink (lines 310-318)
          * @param {string} docUrl - Document URL
+         * @param {string} [displayText] - Document title to display (defaults to URL if not provided)
          */
-        setAnnouncement(docUrl) {
-            this.announcement = docUrl;
+        setAnnouncement(docUrl, displayText) {
+            if (docUrl) {
+                // Create RichText hyperlink with document title as display text
+                const richText = SpreadsheetApp.newRichTextValue()
+                    .setText(displayText || docUrl)
+                    .setLinkUrl(docUrl)
+                    .build();
+                this.announcement = richText;
+            } else {
+                // Allow clearing the announcement
+                this.announcement = docUrl;
+            }
             this.markDirty('announcement');
         }
 

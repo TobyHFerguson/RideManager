@@ -206,10 +206,11 @@ declare class RowCore {
     setGoogleEventId(id: string): void;
 
     /**
-     * Set announcement document URL
+     * Set announcement document with RichText hyperlink
      * @param docUrl - Document URL
+     * @param displayText - Document title to display (optional, defaults to URL)
      */
-    setAnnouncement(docUrl: string): void;
+    setAnnouncement(docUrl: string, displayText?: string): void;
 
     /**
      * Set scheduled send date/time

@@ -50,8 +50,14 @@ var AnnouncementManager = (function () {
 
                 const newDoc = this._copyTemplate(templateInfo, row);
                 const docUrl = newDoc.getUrl();
-                row.setAnnouncement(docUrl);
-                console.log(`AnnouncementManager: Created document ${docUrl} from ${templateInfo.type} template (${templateId})`);
+                
+                // Get document title to create RichText link (following GoogleEventId pattern)
+                const doc = DocumentApp.openById(newDoc.getId());
+                const docTitle = doc.getName();
+                
+                // Set announcement with RichText link showing document title
+                row.setAnnouncement(docUrl, docTitle);
+                console.log(`AnnouncementManager: Created document "${docTitle}" at ${docUrl} from ${templateInfo.type} template (${templateId})`);
 
                 // Set permissions: RS group can edit
                 const rsGroupEmail = getGlobals().RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail();
