@@ -5,9 +5,10 @@
  * ScheduleAdapter - Anti-corruption layer between spreadsheet and domain model
  * 
  * This adapter implements the Hexagonal/Ports & Adapters architecture pattern:
- * - Separates GAS dependencies (SpreadsheetApp, bmPreFiddler) from pure domain logic
+ * - Separates GAS dependencies (SpreadsheetApp) from pure domain logic
  * - Maps between spreadsheet structure (column names from Globals) and RowCore domain model
  * - Handles all spreadsheet I/O using Load → Work → Save pattern
+ * - Uses native GAS RichText for hyperlinks (no external dependencies)
  * 
  * KEY RESPONSIBILITIES:
  * ====================
@@ -18,8 +19,10 @@
  *    - Load: Spreadsheet data (column names) → RowCore instances (camelCase properties)
  *    - Save: RowCore dirty fields (camelCase) → Spreadsheet columns (Globals names)
  * 
- * 3. **Formula Preservation**: Route and Ride columns use HYPERLINK formulas which are
- *    overlaid during load so domain code sees formula strings, not displayed values
+ * 3. **RichText Hyperlinks**: Route and Ride columns use native GAS RichText for hyperlinks
+ *    - Load: Extracts both text and URL from RichText, stores as {text, url} object in RowCore
+ *    - Save: Creates RichText hyperlinks from {text, url} objects using SpreadsheetApp.newRichTextValue()
+ *    - No formula overlays or PropertiesService storage needed
  * 
  * 4. **Automatic Dirty Tracking**: Tracks which RowCore instances have been modified via
  *    injected onDirty callback. When a RowCore is modified (via setters like setGoogleEventId()),
@@ -62,8 +65,8 @@
  * - "Start Date/Time"    → startDate
  * - "Duration"           → duration
  * - "Group"              → group
- * - "Route"              → routeCell  (HYPERLINK formula)
- * - "Ride"               → rideCell   (HYPERLINK formula)
+ * - "Route"              → routeCell  (RichText {text, url} object)
+ * - "Ride"               → rideCell   (RichText {text, url} object)
  * - "Ride Leaders"       → rideLeaders
  * - "Google Event ID"    → googleEventId
  * - "Location"           → location
@@ -110,6 +113,7 @@
  * - All business logic works on in-memory RowCore objects
  * - Single batch save writes only modified cells
  * - For N row updates: 1 load + N modifications + 1 save (not N × [load + modify + save])
+ * - Native GAS arrays (no external dependencies like bmPreFiddler)
  */
 
 // RowCore is globally available via gas-globals.d.ts
