@@ -101,7 +101,7 @@ function extractActualProperties(moduleExport, moduleName) {
 }
 
 /**
- * Parse .d.ts file to extract declared properties/methods
+ * Parse .d.ts file to extract declared properties/methods (class only, not interfaces)
  * This is a simple regex-based parser - not comprehensive but good enough
  * @param {string} dtsPath - Path to .d.ts file
  * @returns {Set<string>} Set of declared property/method names
@@ -112,21 +112,47 @@ function extractDeclaredProperties(dtsPath) {
     try {
         const content = fs.readFileSync(dtsPath, 'utf8');
         
+        // Find the class declaration block and extract only its content
+        // Try all possible class declaration patterns
+        let classContent;
+        
+        // Pattern 1: declare class
+        const declareMatch = content.match(/declare class \w+\s*\{([\s\S]*?)\n\}/);
+        if (declareMatch) {
+            classContent = declareMatch[1];
+        } else {
+            // Pattern 2: export class (without default)
+            const exportMatch = content.match(/export class \w+\s*\{([\s\S]*?)\n\}/);
+            if (exportMatch) {
+                classContent = exportMatch[1];
+            } else {
+                // Pattern 3: export default class
+                const defaultExportMatch = content.match(/export default class \w+\s*\{([\s\S]*?)\n\}/);
+                if (defaultExportMatch) {
+                    classContent = defaultExportMatch[1];
+                } else {
+                    console.warn(`Warning: No class declaration found in ${dtsPath}`);
+                    return properties;
+                }
+            }
+        }
+        
         // Match instance methods/properties: methodName(...) or get propertyName()
-        const instanceMatches = content.matchAll(/^\s+(?:get\s+)?(\w+)\s*\(/gm);
+        const instanceMatches = classContent.matchAll(/^\s+(?:get\s+)?(\w+)\s*\(/gm);
         for (const match of instanceMatches) {
             properties.add(match[1]);
         }
         
         // Match static methods: static methodName(...)
-        const staticMatches = content.matchAll(/^\s+static\s+(\w+)\s*\(/gm);
+        const staticMatches = classContent.matchAll(/^\s+static\s+(\w+)\s*\(/gm);
         for (const match of staticMatches) {
             properties.add(`static ${match[1]}`);
         }
         
         // Match property declarations: propertyName: type; 
-        // Must be on a single line and end with semicolon to distinguish from method parameters
-        const propMatches = content.matchAll(/^\s+(?:readonly\s+)?(\w+):\s+[^;\n]+;/gm);
+        // Must be on a single line, end with semicolon, and be at class member level (not nested in method signatures)
+        // Avoid properties inside method parameter types or return types
+        const propMatches = classContent.matchAll(/^\s{4,8}(?:readonly\s+)?(\w+):\s+[^;\n\(\{]+;/gm);
         for (const match of propMatches) {
             properties.add(match[1]);
         }
