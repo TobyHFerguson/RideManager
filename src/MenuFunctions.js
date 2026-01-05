@@ -3,7 +3,6 @@
 if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
-const head = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERSION') || ' ');
 
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
@@ -14,8 +13,10 @@ const head = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERS
  */
 
 function getRWGPSLib_() {
+  // Read property fresh each time to support runtime version switching
+  const version = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERSION') || ' ').trim();
   let lib;
-  switch (head.trim()) {
+  switch (version) {
     case '12':
       lib = RWGPSLib12;
       break;
