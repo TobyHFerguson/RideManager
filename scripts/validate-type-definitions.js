@@ -177,7 +177,15 @@ function validateModule(moduleName) {
         if (!actualProps.has(prop) && !knownGetters.includes(prop)) {
             // Special handling for properties (not methods) - they may be declared but accessed differently
             if (!prop.includes('(')) { // Not a method
-                warnings.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js (may be a property or getter)`);
+                // CRITICAL: Property type mismatches should be errors, not warnings
+                // These indicate actual type safety issues that can cause runtime problems
+                if (prop === 'constructor' || prop.startsWith('_')) {
+                    // constructor and private properties are expected to not be enumerable
+                    warnings.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js (may be a property or getter)`);
+                } else {
+                    // Public properties missing from implementation are ERRORS
+                    errors.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js - possible type mismatch`);
+                }
             } else {
                 errors.push(`${moduleName}: Method "${prop}" declared in .d.ts but not found in .js`);
             }
@@ -241,8 +249,10 @@ function main() {
     }
     
     if (totalWarnings > 0) {
-        console.log('⚠️  Warnings found. Review manually to ensure correctness.\n');
-        return 0; // Don't fail CI on warnings
+        console.log('⚠️  Warnings found. Some warnings may indicate type safety issues.\n');
+        console.log('💡 Tip: Review warnings for property type mismatches that could cause runtime errors.\n');
+        // Allow warnings to pass for now, but make them visible
+        return 0; 
     }
     
     return 0;
