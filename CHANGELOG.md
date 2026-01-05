@@ -12,6 +12,17 @@ This project uses **Calendar Versioning**: `YYYY.mm.dd[-suffix]`
 
 ## [Unreleased]
 
+### RWGPSLib Internalization (Issues #165, #175)
+- **NEW**: Internal RWGPS implementation as alternative to external RWGPSLib
+- Created `RWGPSCore.js` with pure JavaScript business logic (100% test coverage: 50 tests)
+- Created `RWGPSAdapter.js` as thin GAS wrapper for UrlFetchApp calls
+- Implements Core/Adapter pattern for maintainability and testability
+- **Drop-in replacement**: Same interface as external RWGPSLib, zero code changes required
+- **Opt-in migration**: Set `RWGPSLIB_VERSION='internal'` to use new implementation
+- **Backward compatible**: External RWGPSLib continues to work by default
+- Features: Web session auth, organizer lookup, event/route operations, batch delete
+- Documentation: See `docs/RWGPSLIB_MIGRATION.md` for migration guide
+
 ### Type Safety Improvements
 - **CRITICAL FIX**: Replaced all unjustified `Record<string, any>` types with proper typedefs
 - Created `ValidationOptions` typedefs with specific property types for ValidationCore
