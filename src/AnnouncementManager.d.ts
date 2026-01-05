@@ -162,13 +162,6 @@ declare class AnnouncementManager {
     processQueue(): ProcessResult;
 
     /**
-     * Get formatted view of scheduled announcements for UI display
-     * 
-     * @returns Formatted text for display in alert dialog
-     */
-    viewScheduled(): string;
-
-    /**
      * Get queue statistics for monitoring
      * 
      * @returns Statistics object

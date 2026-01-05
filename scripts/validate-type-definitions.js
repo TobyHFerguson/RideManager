@@ -34,7 +34,15 @@ const GETTER_PROPERTIES = {
     RowCore: [
         'startTime', 'endTime', 'routeName', 'routeURL', 'leaders',
         'rideName', 'rideURL', 'googleEventId', 'announcementURL', 'announcementText',
-        'announcement' // backward compat getter
+        'announcement', // backward compat getter
+        // Instance properties set in constructor (not enumerable in static analysis)
+        'startDate', 'duration', 'defaultDuration', 'group', 'routeCell', 'rideCell', 
+        'rideLeaders', 'googleEventIdCell', 'location', 'address', 'announcementCell',
+        'sendAt', 'status', 'attempts', 'lastError', 'lastAttemptAt', 'rowNum'
+    ],
+    ScheduleAdapter: [
+        // Instance properties set in constructor
+        'sheetName'
     ]
 };
 
@@ -93,7 +101,7 @@ function extractActualProperties(moduleExport, moduleName) {
 }
 
 /**
- * Parse .d.ts file to extract declared properties/methods
+ * Parse .d.ts file to extract declared properties/methods (class only, not interfaces)
  * This is a simple regex-based parser - not comprehensive but good enough
  * @param {string} dtsPath - Path to .d.ts file
  * @returns {Set<string>} Set of declared property/method names
@@ -104,20 +112,47 @@ function extractDeclaredProperties(dtsPath) {
     try {
         const content = fs.readFileSync(dtsPath, 'utf8');
         
+        // Find the class declaration block and extract only its content
+        // Try all possible class declaration patterns
+        let classContent;
+        
+        // Pattern 1: declare class
+        const declareMatch = content.match(/declare class \w+\s*\{([\s\S]*?)\n\}/);
+        if (declareMatch) {
+            classContent = declareMatch[1];
+        } else {
+            // Pattern 2: export class (without default)
+            const exportMatch = content.match(/export class \w+\s*\{([\s\S]*?)\n\}/);
+            if (exportMatch) {
+                classContent = exportMatch[1];
+            } else {
+                // Pattern 3: export default class
+                const defaultExportMatch = content.match(/export default class \w+\s*\{([\s\S]*?)\n\}/);
+                if (defaultExportMatch) {
+                    classContent = defaultExportMatch[1];
+                } else {
+                    console.warn(`Warning: No class declaration found in ${dtsPath}`);
+                    return properties;
+                }
+            }
+        }
+        
         // Match instance methods/properties: methodName(...) or get propertyName()
-        const instanceMatches = content.matchAll(/^\s+(?:get\s+)?(\w+)\s*\(/gm);
+        const instanceMatches = classContent.matchAll(/^\s+(?:get\s+)?(\w+)\s*\(/gm);
         for (const match of instanceMatches) {
             properties.add(match[1]);
         }
         
         // Match static methods: static methodName(...)
-        const staticMatches = content.matchAll(/^\s+static\s+(\w+)\s*\(/gm);
+        const staticMatches = classContent.matchAll(/^\s+static\s+(\w+)\s*\(/gm);
         for (const match of staticMatches) {
             properties.add(`static ${match[1]}`);
         }
         
-        // Match property declarations: propertyName: type;
-        const propMatches = content.matchAll(/^\s+(?:readonly\s+)?(\w+):\s+/gm);
+        // Match property declarations: propertyName: type; 
+        // Must be on a single line, end with semicolon, and be at class member level (not nested in method signatures)
+        // Avoid properties inside method parameter types or return types
+        const propMatches = classContent.matchAll(/^\s{4,8}(?:readonly\s+)?(\w+):\s+[^;\n\(\{]+;/gm);
         for (const match of propMatches) {
             properties.add(match[1]);
         }
@@ -177,7 +212,15 @@ function validateModule(moduleName) {
         if (!actualProps.has(prop) && !knownGetters.includes(prop)) {
             // Special handling for properties (not methods) - they may be declared but accessed differently
             if (!prop.includes('(')) { // Not a method
-                warnings.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js (may be a property or getter)`);
+                // CRITICAL: Property type mismatches should be errors, not warnings
+                // These indicate actual type safety issues that can cause runtime problems
+                if (prop === 'constructor' || prop.startsWith('_')) {
+                    // constructor and private properties are expected to not be enumerable
+                    warnings.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js (may be a property or getter)`);
+                } else {
+                    // Public properties missing from implementation are ERRORS
+                    errors.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js - possible type mismatch`);
+                }
             } else {
                 errors.push(`${moduleName}: Method "${prop}" declared in .d.ts but not found in .js`);
             }
@@ -241,8 +284,10 @@ function main() {
     }
     
     if (totalWarnings > 0) {
-        console.log('⚠️  Warnings found. Review manually to ensure correctness.\n');
-        return 0; // Don't fail CI on warnings
+        console.log('⚠️  Warnings found. Some warnings may indicate type safety issues.\n');
+        console.log('💡 Tip: Review warnings for property type mismatches that could cause runtime errors.\n');
+        // Allow warnings to pass for now, but make them visible
+        return 0; 
     }
     
     return 0;
