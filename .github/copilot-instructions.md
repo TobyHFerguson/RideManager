@@ -746,6 +746,16 @@ if (richText && richText.getLinkUrl()) {
 2. **Ride** - Links to RWGPS event page (`https://ridewithgps.com/events/XXXXXX`)
 3. **GoogleEventId** - Links to Google Calendar agenda view for the ride date
 
+**Naming convention for RichText-backed columns**:
+
+- **Rule**: Domain properties that correspond to RichText spreadsheet columns MUST use the `Cell` suffix (camelCase) in the domain model. Example mappings:
+    - Spreadsheet column `Route`    → domain property `routeCell`
+    - Spreadsheet column `Ride`     → domain property `rideCell`
+    - Spreadsheet column `GoogleEventId` → domain property `googleEventIdCell`
+    - Spreadsheet column `Announcement`  → domain property `announcementCell`
+
+This makes the intent explicit (value is a `{text,url}` RichText object) and prevents accidental plain-value persistence when adapter logic maps domain properties back to spreadsheet columns.
+
 **Migration Strategy**:
 
 When converting from HYPERLINK formulas to RichText:

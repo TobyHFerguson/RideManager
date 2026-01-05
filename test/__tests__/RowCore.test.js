@@ -18,7 +18,7 @@ describe('RowCore', () => {
                 googleEventIdCell: {text: 'event123', url: 'https://calendar.google.com/calendar/event?eid=event123'},
                 location: 'Central Park',
                 address: '123 Main St',
-                announcement: 'https://docs.google.com/doc/123',
+                announcementCell: {text: 'doc', url: 'https://docs.google.com/doc/123'},
                 sendAt,
                 status: 'pending',
                 attempts: 1,
@@ -38,7 +38,7 @@ describe('RowCore', () => {
             expect(row.googleEventId).toBe('event123'); // Uses getter that extracts text from googleEventIdCell
             expect(row.location).toBe('Central Park');
             expect(row.address).toBe('123 Main St');
-            expect(row.announcement).toBe('https://docs.google.com/doc/123');
+            expect(row.announcement).toEqual({text: 'doc', url: 'https://docs.google.com/doc/123'});
             expect(row.sendAt).toEqual(sendAt);
             expect(row.status).toBe('pending');
             expect(row.attempts).toBe(1);
@@ -67,7 +67,7 @@ describe('RowCore', () => {
             expect(row.googleEventId).toBe('');
             expect(row.location).toBe('');
             expect(row.address).toBe('');
-            expect(row.announcement).toBe('');
+            expect(row.announcement).toEqual({text: '', url: ''});
             expect(row.sendAt).toBeUndefined();
             expect(row.status).toBe('');
             expect(row.attempts).toBe(0);
@@ -546,7 +546,7 @@ describe('RowCore', () => {
                     googleEventId: '',
                     location: '',
                     address: '',
-                    announcement: 'https://docs.google.com/doc/123',
+                    announcementCell: {text:'Route', url: 'https://docs.google.com/doc/123'},
                     sendAt: new Date('2026-01-30T18:00:00'),
                     status: 'sent',
                     attempts: 1,
@@ -557,7 +557,7 @@ describe('RowCore', () => {
                 
                 row.clearAnnouncement();
                 
-                expect(row.announcement).toBe('');
+                expect(row.announcement).toEqual({text: '', url: ''});
                 expect(row.sendAt).toBeUndefined();
                 expect(row.status).toBe('');
                 expect(row.attempts).toBe(0);
@@ -565,7 +565,7 @@ describe('RowCore', () => {
                 expect(row.lastAttemptAt).toBeUndefined();
                 
                 const dirtyFields = row.getDirtyFields();
-                expect(dirtyFields.has('announcement')).toBe(true);
+                expect(dirtyFields.has('announcementCell')).toBe(true);
                 expect(dirtyFields.has('sendAt')).toBe(true);
                 expect(dirtyFields.has('status')).toBe(true);
                 expect(dirtyFields.has('attempts')).toBe(true);
@@ -609,10 +609,10 @@ describe('RowCore', () => {
                 rowNum: 5
             });
             
-            row.setAnnouncement('https://docs.google.com/doc/123');
+            row.setAnnouncement( 'https://docs.google.com/doc/123', 'doc',);
             
-            expect(row.announcement).toBe('https://docs.google.com/doc/123');
-            expect(row.getDirtyFields().has('announcement')).toBe(true);
+            expect(row.announcementCell).toEqual({text: 'doc', url: 'https://docs.google.com/doc/123'});
+            expect(row.getDirtyFields().has('announcementCell')).toBe(true);
         });
 
         it('setSendAt should set value and mark dirty', () => {

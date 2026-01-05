@@ -39,7 +39,7 @@ interface RowCoreParams {
     /** Full address of meeting location */
     address: string;
     /** Announcement document URL */
-    announcement?: string;
+    announcementCell?: string;
     /** Scheduled send date/time */
     sendAt?: Date;
     /** Announcement status */
@@ -87,8 +87,8 @@ declare class RowCore {
     address: string;
     
     // Announcement properties
-    /** Announcement document URL */
-    announcement: string;
+    /** Announcement document (RichText {text, url} object) */
+    announcementCell: {text: string, url: string};
     /** Scheduled send date/time */
     sendAt?: Date;
     /** Announcement status: 'pending' | 'sent' | 'failed' | 'abandoned' */
@@ -137,6 +137,12 @@ declare class RowCore {
 
     /** Extract Google Calendar Event ID from RichText link */
     get googleEventId(): string;
+    
+    /** Get announcement document URL */
+    get announcementUrl(): string;
+    
+    /** Get announcement document title/display text */
+    get announcementText(): string;
 
     // ===== BUSINESS LOGIC METHODS =====
 
@@ -206,10 +212,11 @@ declare class RowCore {
     setGoogleEventId(id: string): void;
 
     /**
-     * Set announcement document URL
+     * Set announcement document with RichText hyperlink
      * @param docUrl - Document URL
+     * @param displayText - Document title to display (optional, defaults to URL)
      */
-    setAnnouncement(docUrl: string): void;
+    setAnnouncement(docUrl: string, displayText?: string): void;
 
     /**
      * Set scheduled send date/time
