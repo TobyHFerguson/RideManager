@@ -34,7 +34,11 @@ const GETTER_PROPERTIES = {
     RowCore: [
         'startTime', 'endTime', 'routeName', 'routeURL', 'leaders',
         'rideName', 'rideURL', 'googleEventId', 'announcementURL', 'announcementText',
-        'announcement' // backward compat getter
+        'announcement', // backward compat getter
+        // Instance properties set in constructor (not enumerable in static analysis)
+        'startDate', 'duration', 'defaultDuration', 'group', 'routeCell', 'rideCell', 
+        'rideLeaders', 'googleEventIdCell', 'location', 'address', 'announcementCell',
+        'sendAt', 'status', 'attempts', 'lastError', 'lastAttemptAt', 'rowNum'
     ]
 };
 

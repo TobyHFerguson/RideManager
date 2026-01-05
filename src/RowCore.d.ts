@@ -26,20 +26,20 @@ interface RowCoreParams {
     defaultDuration?: number;
     /** Ride group (e.g., "Sat A", "Sun B") */
     group: string;
-    /** Route hyperlink formula or text */
-    routeCell: string;
-    /** Ride hyperlink formula or text */
-    rideCell: string;
+    /** Route hyperlink formula or RichText object */
+    routeCell: string | {text: string, url: string};
+    /** Ride hyperlink formula or RichText object */
+    rideCell: string | {text: string, url: string};
     /** Comma-separated leader names */
-    rideLeaders: string;
+    rideLeaders?: string;
     /** Google Calendar Event ID as RichText link */
-    googleEventIdCell: string | {text: string, url: string};
+    googleEventIdCell?: string | {text: string, url: string};
     /** Meeting location name */
-    location: string;
+    location?: string;
     /** Full address of meeting location */
-    address: string;
-    /** Announcement document URL */
-    announcementCell?: string;
+    address?: string;
+    /** Announcement document URL as RichText link */
+    announcementCell?: string | {text: string, url: string};
     /** Scheduled send date/time */
     sendAt?: Date;
     /** Announcement status */
@@ -48,6 +48,12 @@ interface RowCoreParams {
     attempts?: number;
     /** Last error message */
     lastError?: string;
+    /** Last attempt timestamp */
+    lastAttemptAt?: Date;
+    /** Row number in spreadsheet */
+    rowNum?: number;
+    /** Dirty field callback function */
+    onDirty?: (fieldName: string) => void;
     /** Timestamp of last send attempt */
     lastAttemptAt?: Date;
     /** Spreadsheet row number (1-based) */
@@ -73,14 +79,14 @@ declare class RowCore {
     defaultDuration?: number;
     /** Ride group (e.g., "Sat A", "Sun B") */
     group: string;
-    /** Route hyperlink formula or text */
-    routeCell: string;
-    /** Ride hyperlink formula or text */
-    rideCell: string;
+    /** Route hyperlink cell (RichText object with normalized {text, url}) */
+    routeCell: {text: string, url: string};
+    /** Ride hyperlink cell (RichText object with normalized {text, url}) */
+    rideCell: {text: string, url: string};
     /** Comma-separated leader names */
     rideLeaders: string;
-    /** Google Calendar Event ID as RichText link */
-    googleEventIdCell: string | {text: string, url: string};
+    /** Google Calendar Event ID cell (RichText object with normalized {text, url}) */
+    googleEventIdCell: {text: string, url: string};
     /** Meeting location name */
     location: string;
     /** Full address of meeting location */
@@ -102,7 +108,7 @@ declare class RowCore {
     
     // Metadata
     /** Spreadsheet row number (1-based) */
-    readonly rowNum: number;
+    rowNum?: number;
     
     /** Track dirty fields for persistence */
     private _dirtyFields: Set<string>;
