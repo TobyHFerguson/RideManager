@@ -45,7 +45,8 @@
 
 **CRITICAL Pre-Deployment Checks** (MANDATORY before EVERY code change):
 ```bash
-npm test && npm run typecheck && npm run validate-exports
+npm run validate-all
+# This runs: validate-exports → typecheck → validate-types → test
 ```
 
 **MANDATORY After EVERY Code Modification**:
@@ -54,13 +55,16 @@ npm test && npm run typecheck && npm run validate-exports
 1. ✅ Use `get_errors` tool to check VS Code reports ZERO problems
 2. ✅ If errors exist, FIX THEM before proceeding
 3. ✅ NEVER leave code with VS Code errors - they indicate bugs
+4. ✅ Run `npm run validate-types` to ensure `.d.ts` files match implementations
 
 **FOR AUTONOMOUS CODING AGENTS** (no `get_errors` tool):
 1. ✅ Run `npm run typecheck` after EVERY code change (ZERO errors required)
-2. ✅ Run `npm test` to verify tests pass
-3. ✅ Create `.d.ts` files FIRST before implementing new modules
-4. ✅ NEVER reference non-existent methods - verify method exists in `.d.ts` before calling
-5. ✅ Add proper JSDoc types to ALL function parameters (no implicit `any`)
+2. ✅ Run `npm run validate-types` after modifying ANY `.js` or `.d.ts` file
+3. ✅ Run `npm test` to verify tests pass
+4. ✅ Create `.d.ts` files FIRST before implementing new modules
+5. ✅ NEVER reference non-existent methods - verify method exists in `.d.ts` before calling
+6. ✅ Add proper JSDoc types to ALL function parameters (no implicit `any`)
+7. ✅ Update `.d.ts` when adding/modifying methods in `.js` files
 
 **Key Workflow Commands**:
 - `npm run dev:push` - Deploy to dev environment (with debug version)
@@ -1383,11 +1387,14 @@ npm test -- test/__tests__/ModuleName.test.js
 # Type check (ZERO errors required)
 npm run typecheck
 
+# Validate .d.ts files match implementations (CRITICAL!)
+npm run validate-types
+
 # Validate all modules in Exports.js are defined
 npm run validate-exports
 
-# Full pre-deployment validation
-npm run typecheck && npm run validate-exports && npm test
+# Full pre-deployment validation (runs all checks above + tests)
+npm run validate-all
 ```
 
 **Deployment Workflows**:
@@ -2907,8 +2914,10 @@ When modifying ANY code file, you MUST update all related artifacts:
 ### 2. Update TypeScript Declarations (MANDATORY)
 - ✅ Update corresponding `.d.ts` file for any modified JavaScript module
 - ✅ Add JSDoc comments to functions for better type inference
-- ✅ Verify types: `npm run typecheck`
+- ✅ Verify types match implementation: `npm run validate-types`
+- ✅ Verify no type errors: `npm run typecheck`
 - ❌ NEVER deploy without type correctness
+- ❌ NEVER let `.d.ts` files drift from `.js` implementations
 
 ### 3. Update Documentation (MANDATORY for User-Facing Changes)
 - ✅ Update relevant files in `docs/` folder if behavior changes
@@ -2920,7 +2929,7 @@ When modifying ANY code file, you MUST update all related artifacts:
 
 **FOR CHAT ASSISTANTS**:
 - ✅ **FIRST**: Check VS Code errors: `get_errors(['src/'])` - MUST be zero
-- ✅ Run full validation: `npm run typecheck && npm run validate-exports && npm test`
+- ✅ Run full validation: `npm run validate-all`
 - ✅ Deploy: `npm run dev:push` (or `prod:push` for production)
 - ✅ Verify deployment success
 - ✅ Test in GAS environment (manual testing of critical paths)
@@ -2929,7 +2938,7 @@ When modifying ANY code file, you MUST update all related artifacts:
 
 **FOR AUTONOMOUS CODING AGENTS**:
 - ✅ **FIRST**: Run typecheck: `npm run typecheck` - MUST show zero errors
-- ✅ Run full validation: `npm test && npm run validate-exports`
+- ✅ Run full validation: `npm run validate-all`
 - ✅ Verify all `.d.ts` files are up to date
 - ✅ Check that all called methods exist in `.d.ts` files
 - ❌ NEVER create PR with typecheck errors
@@ -2943,11 +2952,10 @@ When modifying ANY code file, you MUST update all related artifacts:
 4. ✅ Check again: get_errors(['src/triggers.js', 'src/triggers.d.ts']) -- must be zero
 5. ✅ Update TriggerManagerCore.test.js (if logic changed)
 6. ✅ Update docs/Announcement-OperatorManual.md (trigger lifecycle)
-7. ✅ Run npm test -- verify all pass
-8. ✅ Run npm run typecheck -- verify no errors
-9. ✅ Final check: get_errors(['src/']) -- must show ZERO errors
-10. ✅ Deploy: npm run dev:push
-11. ✅ Test in spreadsheet: verify triggers clean up
+7. ✅ Run npm run validate-all -- verify everything passes
+8. ✅ Final check: get_errors(['src/']) -- must show ZERO errors
+9. ✅ Deploy: npm run dev:push
+10. ✅ Test in spreadsheet: verify triggers clean up
 ```
 
 **Example Workflow (Autonomous Agents without `get_errors` tool)**:
@@ -2955,10 +2963,17 @@ When modifying ANY code file, you MUST update all related artifacts:
 1. ✅ Create ValidationCore.d.ts with ALL method signatures FIRST
 2. ✅ Implement ValidationCore.js with proper JSDoc types
 3. ✅ Run npm run typecheck -- MUST show zero errors
-4. ✅ Create UIHelper.d.ts with ALL method signatures
-5. ✅ Implement UIHelper.js with proper JSDoc types
-6. ✅ Run npm run typecheck again -- MUST show zero errors
-7. ✅ Create RideCoordinator.js that calls ValidationCore/UIHelper methods
+4. ✅ Run npm run validate-types -- verify .d.ts matches .js
+5. ✅ Create UIHelper.d.ts with ALL method signatures
+6. ✅ Implement UIHelper.js with proper JSDoc types
+7. ✅ Run npm run typecheck again -- MUST show zero errors
+8. ✅ Run npm run validate-types again -- verify definitions match
+9. ✅ Create RideCoordinator.js that calls ValidationCore/UIHelper methods
+10. ✅ Run npm run typecheck -- verify all methods exist
+11. ✅ Write tests for ValidationCore/UIHelper
+12. ✅ Run npm run validate-all -- verify everything passes
+13. ✅ Test in spreadsheet: verify triggers clean up
+```
 8. ✅ Run npm run typecheck -- verify all methods exist
 9. ✅ Write tests for ValidationCore/UIHelper
 10. ✅ Run npm test -- verify all pass

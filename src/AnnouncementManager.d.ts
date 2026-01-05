@@ -127,6 +127,22 @@ declare class AnnouncementManager {
      * @returns Number of announcements removed
      */
     removeByRideUrls(rideUrls: string[]): number;
+    
+    /**
+     * Remove announcement by single ride URL
+     * 
+     * @param rideUrl - Single ride URL
+     * @returns True if announcement was removed
+     */
+    removeByRideUrl(rideUrl: string): boolean;
+    
+    /**
+     * Clear all announcements (development/testing only)
+     * WARNING: Deletes ALL announcement data
+     * 
+     * @returns Number of announcements cleared
+     */
+    clearAll(): number;
 
     /**
      * Send an announcement email

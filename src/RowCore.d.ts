@@ -139,10 +139,13 @@ declare class RowCore {
     get googleEventId(): string;
     
     /** Get announcement document URL */
-    get announcementUrl(): string;
+    get announcementURL(): string;
     
     /** Get announcement document title/display text */
     get announcementText(): string;
+    
+    /** Get announcement as plain string (for compatibility) */
+    get announcement(): string;
 
     // ===== BUSINESS LOGIC METHODS =====
 

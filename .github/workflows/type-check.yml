@@ -1,0 +1,48 @@
+name: Type Check
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'src/**/*.js'
+      - 'src/**/*.d.ts'
+      - 'tsconfig.json'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'src/**/*.js'
+      - 'src/**/*.d.ts'
+      - 'tsconfig.json'
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run TypeScript type checking
+      run: npm run typecheck
+    
+    - name: Validate type definitions match implementations
+      run: node scripts/validate-type-definitions.js
+    
+    - name: Check for type safety violations
+      run: |
+        # Fail if any @ts-ignore or @ts-expect-error without proper comments
+        echo "Checking for undocumented type suppressions..."
+        if grep -r "@ts-ignore$" src/ || grep -r "@ts-expect-error$" src/; then
+          echo "❌ Found type suppression without explanation comment!"
+          echo "All @ts-ignore and @ts-expect-error must have explanatory comments."
+          exit 1
+        fi
+        echo "✅ All type suppressions have explanatory comments"
