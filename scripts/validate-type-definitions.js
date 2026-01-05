@@ -39,6 +39,10 @@ const GETTER_PROPERTIES = {
         'startDate', 'duration', 'defaultDuration', 'group', 'routeCell', 'rideCell', 
         'rideLeaders', 'googleEventIdCell', 'location', 'address', 'announcementCell',
         'sendAt', 'status', 'attempts', 'lastError', 'lastAttemptAt', 'rowNum'
+    ],
+    ScheduleAdapter: [
+        // Instance properties set in constructor
+        'sheetName'
     ]
 };
 
@@ -120,8 +124,9 @@ function extractDeclaredProperties(dtsPath) {
             properties.add(`static ${match[1]}`);
         }
         
-        // Match property declarations: propertyName: type;
-        const propMatches = content.matchAll(/^\s+(?:readonly\s+)?(\w+):\s+/gm);
+        // Match property declarations: propertyName: type; 
+        // Must be on a single line and end with semicolon to distinguish from method parameters
+        const propMatches = content.matchAll(/^\s+(?:readonly\s+)?(\w+):\s+[^;\n]+;/gm);
         for (const match of propMatches) {
             properties.add(match[1]);
         }
