@@ -53,7 +53,8 @@ function getRWGPSService_() {
 
 function getRWGPS() {
   // Use internal adapter if RWGPSLIB_VERSION is set to 'internal'
-  const version = head.trim();
+  // Note: Read property fresh each time, don't use cached `head` variable
+  const version = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERSION') || '').trim();
   if (version === 'internal') {
     return getRWGPSInternal();
   }
@@ -74,8 +75,8 @@ const MenuFunctions = (() => {
     const globals = getGlobals();
     globals["A_TEMPLATE"] = g2.A.TEMPLATE // Needed because RWGPSLib expects globals["A_TEMPLATE"]
 
-    const rwgpsService = getRWGPSService_();
-    const rwgps = getRWGPSLib_().newRWGPS(rwgpsService);
+    // Use getRWGPS() to automatically select internal or external implementation
+    const rwgps = getRWGPS();
     
     // Create adapter and load selected rows
     const adapter = new ScheduleAdapter();
