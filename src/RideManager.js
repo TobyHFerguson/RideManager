@@ -567,9 +567,16 @@ const RideManager = (function () {
                         console.error(`RideManager.unscheduleRows: Error clearing GoogleEventId:`, e);
                     }
                 }
+                
+                try {
+                    // Clear announcement fields from row
+                    row.clearAnnouncement();
+                } catch (error) {
+                    console.error(`RideManager.unscheduleRows: Error clearing announcement fields:`, error);
+                }
             });
 
-            // Step 3: Batch remove announcements
+            // Step 3: Batch remove announcements from queue
             /** @type {string[]} */
             const rideUrlsWithAnnouncements = rideData.map(data => data.rideUrl).filter(url => url !== null && url !== undefined);
             if (rideUrlsWithAnnouncements.length > 0) {

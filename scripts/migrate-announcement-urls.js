@@ -2,23 +2,25 @@
 /**
  * migrate-announcement-urls.js
  * 
- * One-time migration utility: Convert plain text Announcement URLs to RichText hyperlinks
+ * One-time migration utility: Update Announcement RichText hyperlinks to show document titles
  * 
- * This script converts existing announcement URLs in the "Announcement" column
- * from plain text to RichText hyperlinks that display the document title.
+ * This script updates existing announcement RichText hyperlinks in the "Announcement" column
+ * to display the document title instead of the document URL. The announcement column already
+ * contains RichText hyperlinks, but they show the URL as both the display text and the link.
+ * This migration updates them to show the document title as the display text.
  * 
  * USAGE:
  * ======
  * 1. Deploy this script to GAS (via npm run dev:push)
  * 2. Open Script Editor in GAS
  * 3. Run `migrateAnnouncementUrls()` function
- * 4. Verify all Announcement links show titles in spreadsheet
+ * 4. Verify all Announcement links show document titles (not URLs) in spreadsheet
  * 5. Deploy updated RowCore/AnnouncementManager code
  * 
  * SAFETY:
  * =======
- * - Non-destructive: Only converts non-empty URLs, leaves empty cells unchanged
- * - Idempotent: Can be run multiple times safely (checks for existing RichText links)
+ * - Non-destructive: Only updates display text, preserves URL links
+ * - Updates ALL announcement links to show document titles
  * - Logging: Detailed console output for debugging
  * - Error handling: Continues processing if individual cells fail
  * 
@@ -28,17 +30,17 @@
 /* istanbul ignore file - GAS-only migration script */
 
 /**
- * Main migration function: Convert plain text Announcement URLs to RichText hyperlinks
+ * Main migration function: Update Announcement RichText hyperlinks to show document titles
  * 
- * Processes the 'Consolidated Rides' sheet and converts the "Announcement" column
- * from plain text URLs to RichText hyperlinks displaying the document title.
+ * Processes the 'Consolidated Rides' sheet and updates the "Announcement" column
+ * RichText hyperlinks to display document titles instead of URLs.
  * 
  * @global
  * @function
  * @returns {void}
  */
 function migrateAnnouncementUrls() {
-    console.log('=== Starting Announcement URL → RichText Migration ===');
+    console.log('=== Starting Announcement RichText Migration (URL → Title) ===');
     
     try {
         // 1. Get sheet and validate
@@ -64,38 +66,32 @@ function migrateAnnouncementUrls() {
         console.log(`Found Announcement column at index ${announcementColIndex}`);
         console.log(`Processing ${lastRow - 1} data rows...`);
         
-        // 3. Get all data (bulk read for performance)
+        // 3. Get RichText values (announcements are already RichText hyperlinks)
         const dataRange = sheet.getRange(2, announcementColIndex, lastRow - 1, 1);
-        const values = dataRange.getValues();
-        const richTextValues = dataRange.getRichTextValues(); // For idempotency check
+        const richTextValues = dataRange.getRichTextValues();
         
         let converted = 0;
         let skipped = 0;
         let errors = 0;
         
         // 4. Process each row
-        for (let i = 0; i < values.length; i++) {
-            const docUrl = values[i][0];
+        for (let i = 0; i < richTextValues.length; i++) {
             const richText = richTextValues[i][0];
             const rowNum = i + 2; // 1-based, +1 for header
             
             try {
-                // Skip empty cells
-                if (!docUrl || docUrl === '') {
+                // Skip empty cells (no RichText or no link)
+                if (!richText || !richText.getLinkUrl()) {
                     skipped++;
                     continue;
                 }
                 
-                // Idempotent: Skip if already migrated (has RichText link)
-                if (richText && richText.getLinkUrl()) {
-                    console.log(`Row ${rowNum}: Already has RichText link, skipping`);
-                    skipped++;
-                    continue;
-                }
+                const currentText = richText.getText();
+                const docUrl = richText.getLinkUrl();
                 
                 // Extract document ID from URL
                 // Pattern: https://docs.google.com/document/d/{DOC_ID}/...
-                const match = String(docUrl).match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+                const match = docUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
                 if (!match) {
                     console.warn(`Row ${rowNum}: Invalid document URL format: ${docUrl}`);
                     errors++;
@@ -116,16 +112,17 @@ function migrateAnnouncementUrls() {
                     continue;
                 }
                 
-                // Create RichText hyperlink
+                // Create updated RichText hyperlink with title as display text
                 const richTextValue = SpreadsheetApp.newRichTextValue()
                     .setText(docTitle)
-                    .setLinkUrl(String(docUrl))
+                    .setLinkUrl(docUrl)
                     .build();
                 
                 // Write to cell
                 const cell = sheet.getRange(rowNum, announcementColIndex);
                 cell.setRichTextValue(richTextValue);
                 
+                console.log(`Row ${rowNum}: Updated "${currentText}" → "${docTitle}"`);
                 converted++;
                 if (converted % 10 === 0) {
                     console.log(`  Converted ${converted} rows...`);
@@ -143,7 +140,7 @@ function migrateAnnouncementUrls() {
         console.log(`Converted: ${converted}`);
         console.log(`Skipped: ${skipped}`);
         console.log(`Errors: ${errors}`);
-        console.log('\nPlease verify links in spreadsheet show document titles.');
+        console.log('\nPlease verify links in spreadsheet show document titles (not URLs).');
         
         if (errors > 0) {
             console.warn('\nWARNING: Some cells failed. Check console log for details.');
