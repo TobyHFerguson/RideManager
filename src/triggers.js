@@ -334,7 +334,7 @@ function testSendAnnouncement_() {
     }
 
     // Filter for rows with announcements
-    const rowsWithAnnouncements = selectedRows.filter((/** @type {RowCoreInstance} */ r) => r.announcement);
+    const rowsWithAnnouncements = selectedRows.filter((/** @type {RowCoreInstance} */ r) => r.announcementCell);
 
     if (rowsWithAnnouncements.length === 0) {
       const rowNumbers = selectedRows.map((/** @type {RowCoreInstance} */ r) => r.rowNum).join(', ');

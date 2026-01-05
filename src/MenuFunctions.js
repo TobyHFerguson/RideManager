@@ -129,7 +129,7 @@ const MenuFunctions = (() => {
         
         // Filter for rows with pending announcements
         const pendingRows = selectedRows.filter(row => 
-          row.announcement && 
+          row.announcementCell && 
           row.status === 'pending'
         );
         

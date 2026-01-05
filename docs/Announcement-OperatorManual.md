@@ -8,11 +8,12 @@
 ## Table of Contents
 1. [System Overview](#system-overview)
 2. [Monitoring Dashboard](#monitoring-dashboard)
-3. [Troubleshooting](#troubleshooting)
-4. [Manual Interventions](#manual-interventions)
-5. [Testing Procedures](#testing-procedures)
-6. [System Maintenance](#system-maintenance)
-7. [Common Issues and Fixes](#common-issues-and-fixes)
+3. [Migrating Existing Announcements to RichText](#migrating-existing-announcements-to-richtext)
+4. [Troubleshooting](#troubleshooting)
+5. [Manual Interventions](#manual-interventions)
+6. [Testing Procedures](#testing-procedures)
+7. [System Maintenance](#system-maintenance)
+8. [Common Issues and Fixes](#common-issues-and-fixes)
 
 ---
 
@@ -125,6 +126,56 @@ The Ride Announcement System is a fully automated email notification system for 
 - Must be reinstalled by **spreadsheet owner only**
 - Use **Ride Schedulers → Install Triggers** menu
 - See [System Maintenance](#system-maintenance) section for details
+
+---
+
+## Migrating Existing Announcements to RichText
+
+If you have existing announcements showing as plain URLs instead of clickable document titles, you need to run a one-time migration.
+
+### Prerequisites
+- Latest code deployed to GAS
+- Access to Script Editor
+- Permissions to read announcement documents
+
+### Migration Steps
+
+1. **Deploy latest code**:
+   ```bash
+   npm run dev:push
+   ```
+
+2. **Open Script Editor**:
+   - In Google Sheets: Extensions → Apps Script
+
+3. **Run migration function**:
+   - Select function dropdown: `migrateAnnouncementUrls`
+   - Click "Run" button
+   - Grant permissions if prompted
+
+4. **Monitor progress**:
+   - View → Execution log
+   - Watch for "Migration Complete" message
+   - Check converted/skipped/errors counts
+
+5. **Verify results**:
+   - Return to spreadsheet
+   - Announcement column should show document titles (not URLs)
+   - Click a few links to verify they open correct documents
+
+### Troubleshooting
+
+**Issue**: Some cells show errors in log
+- **Cause**: Invalid URL format or document access denied
+- **Solution**: Fix invalid URLs manually, ensure document sharing permissions
+
+**Issue**: Migration doesn't change anything
+- **Cause**: Already migrated (idempotent safety)
+- **Solution**: No action needed, announcements already use RichText
+
+**Issue**: Links broken after migration
+- **Cause**: Document permissions changed
+- **Solution**: Verify document sharing settings haven't changed
 
 ---
 

@@ -33,7 +33,7 @@ if (typeof require !== 'undefined') {
  * @property {string | {text: string, url: string}} googleEventIdCell - Google Calendar Event ID as RichText link
  * @property {string} location - Meeting location name
  * @property {string} address - Full address of meeting location
- * @property {string} [announcement] - Announcement document URL
+ * @property {string | {text: string, url: string}} [announcementCell] - Announcement document (RichText {text, url} object or URL string for backward compat)
  * @property {Date} [sendAt] - Scheduled send date/time
  * @property {string} [status] - Announcement status
      * @property {number} [attempts] - Number of send attempts
@@ -59,7 +59,7 @@ if (typeof require !== 'undefined') {
             googleEventIdCell,
             location,
             address,
-            announcement,
+            announcementCell,
             sendAt,
             status,
             attempts,
@@ -84,8 +84,8 @@ if (typeof require !== 'undefined') {
             this.location = location || '';
             this.address = address || '';
             
-            // Announcement properties
-            this.announcement = announcement || '';
+            // Announcement properties (announcementCell is RichText {text, url} object)
+            this.announcementCell = this._normalizeLinkCell(announcementCell) || { text: '', url: '' };
             this.sendAt = sendAt;
             this.status = status || '';
             this.attempts = attempts || 0;
@@ -216,6 +216,37 @@ if (typeof require !== 'undefined') {
             }
             return '';
         }
+        
+        /**
+         * Get announcement document URL
+         * @returns {string} Announcement document URL
+         */
+        get announcementURL() {
+            if (typeof this.announcementCell === 'object' && this.announcementCell.url) {
+                return this.announcementCell.url;
+            }
+            return '';
+        }
+        
+        /**
+         * Get announcement document title
+         * @returns {string} Announcement document title/display text
+         */
+        get announcementText() {
+            if (typeof this.announcementCell === 'object' && this.announcementCell.text) {
+                return this.announcementCell.text;
+            }
+            return '';
+        }
+        
+        /**
+         * Get announcement as RichText object (backward compatibility)
+         * @deprecated Use announcementCell directly
+         * @returns {{text: string, url: string}} RichText object
+         */
+        get announcement() {
+            return this.announcementCell;
+        }
 
         // ===== BUSINESS LOGIC METHODS =====
 
@@ -291,7 +322,7 @@ if (typeof require !== 'undefined') {
          * This is the proper way to "remove" an announcement from a row
          */
         clearAnnouncement() {
-            this.announcement = '';
+            this.announcementCell = { text: '', url: '' };
             this.sendAt = undefined;
             this.status = '';
             this.attempts = 0;
@@ -299,7 +330,7 @@ if (typeof require !== 'undefined') {
             this.lastAttemptAt = undefined;
             
             // Mark all announcement fields as dirty
-            this.markDirty('announcement');
+            this.markDirty('announcementCell');
             this.markDirty('sendAt');
             this.markDirty('status');
             this.markDirty('attempts');
@@ -328,12 +359,23 @@ if (typeof require !== 'undefined') {
         }
 
         /**
-         * Set announcement document URL
+         * Set announcement document with RichText hyperlink
+         * Follows same pattern as setGoogleEventIdLink (lines 315-318)
          * @param {string} docUrl - Document URL
+         * @param {string} [displayText] - Document title to display (defaults to URL if not provided)
          */
-        setAnnouncement(docUrl) {
-            this.announcement = docUrl;
-            this.markDirty('announcement');
+        setAnnouncement(docUrl, displayText) {
+            if (docUrl) {
+                // Store as {text, url} object for RichText rendering by ScheduleAdapter
+                this.announcementCell = {
+                    text: displayText || docUrl,
+                    url: docUrl
+                };
+            } else {
+                // Allow clearing the announcement
+                this.announcementCell = { text: '', url: '' };
+            }
+            this.markDirty('announcementCell');
         }
 
         /**
