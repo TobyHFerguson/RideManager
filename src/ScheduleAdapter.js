@@ -66,7 +66,7 @@
  * COLUMN MAPPING:
  * ===============
  * Spreadsheet Column (from Globals) → Domain Property (RowCore)
- * - "Start Date/Time"    → startDate
+ * - "Date Time"          → startDate
  * - "Duration"           → duration
  * - "Group"              → group
  * - "Route"              → routeCell  (RichText {text, url} object)
@@ -154,7 +154,7 @@ const ScheduleAdapter = (function() {
                 [globals.LOCATIONCOLUMNNAME]: 'location',
                 [globals.ADDRESSCOLUMNNAME]: 'address',
                 // Announcement columns
-                'Announcement': 'announcement',
+                'Announcement': 'announcementCell',
                 'SendAt': 'sendAt',
                 'Status': 'status',
                 'Attempts': 'attempts',

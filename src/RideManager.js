@@ -75,7 +75,7 @@ const RideManager = (function () {
         updateEvent_(row, rideEvent, description);
 
         // Handle announcement cancellation
-        if (row.announcement && row.status) {
+        if (row.announcementCell && row.status) {
             try {
                 const manager = new AnnouncementManager();
                 const result = manager.handleCancellation(row, sendEmail, reason);
@@ -254,7 +254,7 @@ const RideManager = (function () {
         const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
         updateEvent_(row, rideEvent, description)
         // Handle announcement reinstatement
-        if (row.announcement && row.status === 'cancelled') {
+        if (row.announcementCell && row.status === 'cancelled') {
             try {
                 const manager = new AnnouncementManager();
                 const result = manager.handleReinstatement(row, sendEmail, reason);
@@ -333,12 +333,12 @@ const RideManager = (function () {
         // Log to UserLogger
         const globals = getGlobals();
         const emailKey = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
-        const announcementEmail = row.announcement ? (globals[emailKey] || '(not configured)') : '(no announcement)';
+        const announcementEmail = row.announcementCell ? (globals[emailKey] || '(not configured)') : '(no announcement)';
         
         UserLogger.log('SCHEDULE_RIDE', `Row ${row.rowNum}, ${row.rideName}`, {
             rideUrl: new_event_url,
             googleEventId: eventId || '(creation failed)',
-            announcementCreated: !!row.announcement,
+            announcementCreated: !!row.announcementCell,
             announcementEmail: announcementEmail
         });
     }
@@ -590,7 +590,7 @@ const RideManager = (function () {
                 const nameType = r.rideName ? 'ride' : (r.routeName ? 'route' : 'unknown');
                 UserLogger.log('UNSCHEDULE_RIDE', `Row ${r.rowNum} (${nameType}: ${name})`, {
                     rideUrl: r.rideURL || '(not scheduled)',
-                    announcementRemoved: !!r.announcement
+                    announcementRemoved: !!r.announcementCell
                 });
             });
         },

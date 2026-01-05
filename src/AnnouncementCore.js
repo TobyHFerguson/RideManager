@@ -93,7 +93,7 @@ class AnnouncementCore {
         
         rows.forEach(row => {
             // Skip rows without announcement data
-            if (!row.announcement || !row.sendAt) {
+            if (!row.announcementCell || !row.sendAt) {
                 return;
             }
             
@@ -132,7 +132,7 @@ class AnnouncementCore {
         };
         
         rows.forEach(row => {
-            if (row.announcement) {
+            if (row.announcementCell) {
                 stats.total++;
                 const status = row.status || 'pending';
                 if (stats.hasOwnProperty(status)) {

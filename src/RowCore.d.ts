@@ -39,7 +39,7 @@ interface RowCoreParams {
     /** Full address of meeting location */
     address: string;
     /** Announcement document URL */
-    announcement?: string;
+    announcementCell?: string;
     /** Scheduled send date/time */
     sendAt?: Date;
     /** Announcement status */
@@ -88,7 +88,7 @@ declare class RowCore {
     
     // Announcement properties
     /** Announcement document (RichText {text, url} object) */
-    announcement: {text: string, url: string};
+    announcementCell: {text: string, url: string};
     /** Scheduled send date/time */
     sendAt?: Date;
     /** Announcement status: 'pending' | 'sent' | 'failed' | 'abandoned' */

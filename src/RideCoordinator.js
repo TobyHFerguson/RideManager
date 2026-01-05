@@ -104,7 +104,7 @@ class RideCoordinator {
                 // 2. Check for rows with announcements
                 const rowsWithAnnouncements = rows.filter(r => {
                     const v = validation.get(r);
-                    return v && v.errors.length === 0 && r.announcement && r.status;
+                    return v && v.errors.length === 0 && r.announcementCell && r.status;
                 });
 
                 // 3. Get user confirmation (with announcement handling if needed)
@@ -139,7 +139,7 @@ class RideCoordinator {
 
                     for (const row of confirmation.processableRows) {
                         try {
-                            if (!row.announcement || !row.status) {
+                            if (!row.announcementCell || !row.status) {
                                 // No announcement - simple cancellation
                                 RideManager.cancelRows([row], rwgps, false, '');
                                 cancelled++;
@@ -276,7 +276,7 @@ class RideCoordinator {
                 // 2. Check for rows with announcements
                 const rowsWithAnnouncements = rows.filter(r => {
                     const v = validation.get(r);
-                    return v && v.errors.length === 0 && r.announcement && r.status === 'cancelled';
+                    return v && v.errors.length === 0 && r.announcementCell && r.status === 'cancelled';
                 });
 
                 // 3. Get user confirmation (with announcement handling if needed)
@@ -311,7 +311,7 @@ class RideCoordinator {
 
                     for (const row of confirmation.processableRows) {
                         try {
-                            if (!row.announcement || !row.status || row.status !== 'cancelled') {
+                            if (!row.announcementCell || !row.status || row.status !== 'cancelled') {
                                 // No announcement - simple reinstatement
                                 RideManager.reinstateRows([row], rwgps, false, '');
                                 reinstated++;

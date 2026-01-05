@@ -311,7 +311,7 @@ var AnnouncementManager = (function () {
                 // Delete the announcement documents and clear row data
                 rowsToRemove.forEach(row => {
                     try {
-                        const documentId = this._extractDocId(row.announcement);
+                        const documentId = this._extractDocId(row.announcementCell);
                         if (documentId) {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);

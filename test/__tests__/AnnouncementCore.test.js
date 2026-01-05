@@ -71,8 +71,8 @@ describe('AnnouncementCore', () => {
         const now = new Date('2025-12-05T18:00:00').getTime();
         
         // Mock RowCore objects with camelCase properties
-        const createMockRow = (announcement, sendAt, status = 'pending') => ({
-            announcement: announcement,
+        const createMockRow = (announcementCell, sendAt, status = 'pending') => ({
+            announcementCell: announcementCell,
             sendAt: sendAt ? new Date(sendAt) : undefined,
             status: status,
             rideName: 'Test Ride',
@@ -88,8 +88,8 @@ describe('AnnouncementCore', () => {
 
             const dueToSend = AnnouncementCore.getDueItems(rows, now);
             expect(dueToSend).toHaveLength(2);
-            expect(dueToSend[0].announcement).toBe('http://doc1');
-            expect(dueToSend[1].announcement).toBe('http://doc3');
+            expect(dueToSend[0].announcementCell).toBe('http://doc1');
+            expect(dueToSend[1].announcementCell).toBe('http://doc3');
         });
 
         it('should NOT retry failed announcements automatically', () => {
@@ -114,7 +114,7 @@ describe('AnnouncementCore', () => {
 
             const dueToSend = AnnouncementCore.getDueItems(rows, now);
             expect(dueToSend).toHaveLength(1);
-            expect(dueToSend[0].announcement).toBe('http://doc2');
+            expect(dueToSend[0].announcementCell).toBe('http://doc2');
         });
 
         it('should handle empty rows array', () => {
@@ -124,8 +124,8 @@ describe('AnnouncementCore', () => {
     });
 
     describe('getStatistics', () => {
-        const createMockRow = (announcement, status = 'pending') => ({
-            announcement: announcement,
+        const createMockRow = (announcementCell, status = 'pending') => ({
+            announcementCell: announcementCell,
             status: status
         });
 

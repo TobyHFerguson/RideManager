@@ -63,7 +63,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             // All three fields should be marked dirty
             expect(row.getDirtyFields().has('googleEventIdCell')).toBe(true);
             expect(row.getDirtyFields().has('rideCell')).toBe(true);
-            expect(row.getDirtyFields().has('announcement')).toBe(true);
+            expect(row.getDirtyFields().has('announcementCell')).toBe(true);
         });
         
         it('should track dirty fields correctly for save operation', () => {
@@ -267,9 +267,9 @@ describe('ScheduleAdapter Integration with RowCore', () => {
         
         it('should transform domain data back to spreadsheet columns', () => {
             const domainToColumn = {
-                'startDate': 'Start Date/Time',
+                'startDate': 'Date Time',
                 'googleEventId': 'Google Event ID',
-                'announcement': 'Announcement',
+                'announcementCell': 'Announcement',
                 'status': 'Status'
             };
             
@@ -291,7 +291,7 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             
             // Modify fields
             row.setGoogleEventIdLink('event123', 'https://calendar.google.com/calendar/embed?src=test');
-            row.setAnnouncement('https://docs.google.com/doc/789');
+            row.setAnnouncement('https://docs.google.com/doc/789', 'doc');
             row.setStatus('pending');
             
             // Simulate what adapter.save() does - map dirty fields back to columns
@@ -299,18 +299,23 @@ describe('ScheduleAdapter Integration with RowCore', () => {
             row.getDirtyFields().forEach(domainProp => {
                 const columnName = domainToColumn[domainProp];
                 if (columnName) {
-                    cellWrites.push({
-                        rowNum: row.rowNum,
-                        columnName: columnName,
-                        value: row[domainProp]
-                    });
+                    const value = row[domainProp];
+                    // Filter out RichText objects (googleEventIdCell and announcementCell)
+                    // These are handled specially by ScheduleAdapter.save() as RichText
+                    const isRichTextObject = value && typeof value === 'object' && 'text' in value && 'url' in value;
+                    if (!isRichTextObject) {
+                        cellWrites.push({
+                            rowNum: row.rowNum,
+                            columnName: columnName,
+                            value: value
+                        });
+                    }
                 }
             });
             
-            // googleEventIdCell is written as RichText by ScheduleAdapter.save(), not as plain value
-            // So it doesn't appear in cellWrites (only Announcement and Status do)
+            // googleEventIdCell and announcementCell are written as RichText by ScheduleAdapter.save(), not as plain value
+            // So they don't appear in cellWrites - only Status does
             expect(cellWrites).toEqual([
-                { rowNum: 5, columnName: 'Announcement', value: 'https://docs.google.com/doc/789' },
                 { rowNum: 5, columnName: 'Status', value: 'pending' }
             ]);
         });
