@@ -190,7 +190,7 @@ var RWGPSCore = (function() {
          * @returns {string} Normalized name
          */
         static normalizeRideLeaderName(name) {
-            return name.toLowerCase().split(' ').join('');
+            return name.toLowerCase().replace(/\s+/g, '');
         }
 
         /**
