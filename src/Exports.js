@@ -93,6 +93,9 @@ var Exports = {
     },
     get RWGPSCore() {
         return RWGPSCore;
+    },
+    get RWGPSAdapter() {
+        return RWGPSAdapter;
     }
 };
 

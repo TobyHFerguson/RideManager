@@ -28,6 +28,18 @@ function getRWGPSLib_() {
   return lib;
 }
 
+/**
+ * Get RWGPS adapter using internal implementation
+ * @returns {InstanceType<typeof RWGPSAdapter>} RWGPS adapter instance
+ */
+function getRWGPSInternal() {
+  const g2 = getGroupSpecs();
+  const globals = getGlobals();
+  globals["A_TEMPLATE"] = g2.A.TEMPLATE;
+  
+  return new RWGPSAdapter(globals, PropertiesService.getScriptProperties());
+}
+
 function getGlobals_() {
   const g2 = getGroupSpecs();
   const globals = getGlobals();
@@ -40,6 +52,13 @@ function getRWGPSService_() {
 }
 
 function getRWGPS() {
+  // Use internal adapter if RWGPSLIB_VERSION is set to 'internal'
+  const version = head.trim();
+  if (version === 'internal') {
+    return getRWGPSInternal();
+  }
+  
+  // Otherwise use external library
   const rwgpsService = getRWGPSService_();
   return getRWGPSLib_().newRWGPS(rwgpsService); 
 }
