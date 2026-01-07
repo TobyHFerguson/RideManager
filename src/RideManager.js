@@ -350,16 +350,15 @@ const RideManager = (function () {
         const names = getGroupNames();
 
         let rideEvent
-        // NOTE: extractGroupName exists in RideManagerCore (see RideManagerCore.js:95, test coverage: 100%)
-        // TypeScript error is false positive due to namespace export pattern
-        const originalGroup = RideManagerCore.extractGroupName(row.rideName, names);
-        // NOTE: isManagedEventName exists in RideManagerCore (see RideManagerCore.js:107, test coverage: 100%)
-        if (!RideManagerCore.isManagedEventName(row.rideName, names)) {
+        // Use SCCCCEvent.getGroupName directly (the correct implementation)
+        const originalGroup = SCCCCEvent.getGroupName(row.rideName, names);
+        // Use SCCCCEvent.managedEventName directly (the correct implementation)
+        if (!SCCCCEvent.managedEventName(row.rideName, names)) {
             rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
             // DEBUG ISSUE 22
             // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
             // TypeScript error is false positive due to namespace export pattern
-            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'RWGPS');
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'RWGPS');
         } else {
             const event_id = _extractEventID(row.rideURL);
             rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
@@ -369,7 +368,7 @@ const RideManager = (function () {
             // DEBUG ISSUE 22
             // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
             // TypeScript error is false positive due to namespace export pattern
-            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum, row.rideName, 'newEvent');
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'newEvent');
             const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
             rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
         }

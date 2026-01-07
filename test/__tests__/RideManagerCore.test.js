@@ -179,51 +179,6 @@ describe('RideManagerCore', () => {
         });
     });
 
-    describe('isManagedEventName', () => {
-        const groupNames = ['Sat A', 'Sat B', 'Sun A', 'Wed'];
-
-        it('should return true for event with group name', () => {
-            expect(RideManagerCore.isManagedEventName('Sat A (1/15 10:00) [3] Epic Ride', groupNames)).toBe(true);
-        });
-
-        it('should return true for any matching group', () => {
-            expect(RideManagerCore.isManagedEventName('Sun A Ride', groupNames)).toBe(true);
-            expect(RideManagerCore.isManagedEventName('Wed Morning Ride', groupNames)).toBe(true);
-        });
-
-        it('should return false for unmanaged event', () => {
-            expect(RideManagerCore.isManagedEventName('Random Club Event', groupNames)).toBe(false);
-        });
-
-        it('should return false for empty event name', () => {
-            expect(RideManagerCore.isManagedEventName('', groupNames)).toBe(false);
-        });
-
-        it('should return false with empty group names', () => {
-            expect(RideManagerCore.isManagedEventName('Some Event', [])).toBe(false);
-        });
-    });
-
-    describe('extractGroupName', () => {
-        const groupNames = ['Sat A', 'Sat B', 'Sun A', 'Wed'];
-
-        it('should extract group name from event name', () => {
-            expect(RideManagerCore.extractGroupName('Sat A (1/15 10:00) [3] Epic Ride', groupNames)).toBe('Sat A');
-        });
-
-        it('should extract first matching group name', () => {
-            expect(RideManagerCore.extractGroupName('Sun A Morning Ride', groupNames)).toBe('Sun A');
-        });
-
-        it('should return null for unmanaged event', () => {
-            expect(RideManagerCore.extractGroupName('Random Club Event', groupNames)).toBeNull();
-        });
-
-        it('should return null for empty event name', () => {
-            expect(RideManagerCore.extractGroupName('', groupNames)).toBeNull();
-        });
-    });
-
     describe('validateEventNameFormat', () => {
         it('should not throw for valid event name', () => {
             expect(() => {

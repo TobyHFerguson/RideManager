@@ -61,38 +61,6 @@ class RideManagerCore {
     }
 
     /**
-     * Determines if an event name is managed (has group identifier)
-     * @param {string} eventName - The event name to check
-     * @param {string[]} groupNames - Array of valid group names
-     * @returns {boolean} True if event name contains a group identifier
-     */
-    static isManagedEventName(eventName, groupNames) {
-        // This logic is from SCCCCEvent.managedEventName
-        for (let i = 0; i < groupNames.length; i++) {
-            if (eventName.indexOf(groupNames[i]) !== -1) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Extracts group name from event name
-     * @param {string} eventName - The event name
-     * @param {string[]} groupNames - Array of valid group names
-     * @returns {string | null} The group name if found, null otherwise
-     */
-    static extractGroupName(eventName, groupNames) {
-        // This logic is from SCCCCEvent.getGroupName
-        for (let i = 0; i < groupNames.length; i++) {
-            if (eventName.indexOf(groupNames[i]) !== -1) {
-                return groupNames[i];
-            }
-        }
-        return null;
-    }
-
-    /**
      * Validates if event name ends with square bracket (debug check for Issue 22)
      * @param {string} eventName - The event name to validate
      * @param {number} rowNum - Row number for error message

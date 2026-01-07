@@ -59,24 +59,7 @@ declare class RideManagerCore {
         formatDate: (date: Date) => string
     ): RouteImportConfig;
 
-    /**
-     * Determines if an event name is managed (has group identifier)
-     * @param eventName - The event name to check
-     * @param groupNames - Array of valid group names
-     * @returns True if event name contains a group identifier
-     */
-    static isManagedEventName(eventName: string, groupNames: string[]): boolean;
-
-    /**
-     * Extracts group name from event name
-     * @param eventName - The event name
-     * @param groupNames - Array of valid group names
-     * @returns The group name if found, null otherwise
-     */
-    static extractGroupName(eventName: string, groupNames: string[]): string | null;
-
-    /**
-     * Validates if event name ends with square bracket (debug check for Issue 22)
+    /**\n     * Validates if event name ends with square bracket (debug check for Issue 22)
      * @param eventName - The event name to validate
      * @param rowNum - Row number for error message
      * @param originalName - Original name before processing
