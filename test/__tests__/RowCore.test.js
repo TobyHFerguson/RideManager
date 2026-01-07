@@ -240,7 +240,7 @@ describe('RowCore', () => {
                 expect(row.leaders).toEqual(['John Doe', 'Jane Smith']);
             });
             
-            it('should return empty array for empty string', () => {
+            it('should return \'To Be Determined\' for empty string', () => {
                 const row = new RowCore({
                     startDate: new Date('2026-02-01T10:00:00'),
                     group: 'Sat A',
@@ -253,7 +253,7 @@ describe('RowCore', () => {
                     rowNum: 5
                 });
                 
-                expect(row.leaders).toEqual([]);
+                expect(row.leaders).toEqual(['To Be Determined']);
             });
         });
 

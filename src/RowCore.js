@@ -178,10 +178,12 @@ if (typeof require !== 'undefined') {
 
         /**
          * Parse ride leaders into array
+         * Iff leaders is empty string, return ['To Be Determined']
          * @returns {string[]}
          */
         get leaders() {
-            return this.rideLeaders ? this.rideLeaders.split(',').map(rl => rl.trim()).filter(rl => rl) : [];
+            const leadersArray = this.rideLeaders ? this.rideLeaders.split(',').map(rl => rl.trim()).filter(rl => rl) : [];
+            return leadersArray.length > 0 ? leadersArray : ['To Be Determined'];
         }
 
         /**
