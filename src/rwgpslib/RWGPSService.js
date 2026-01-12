@@ -38,7 +38,7 @@ class RWGPSService {
             payload: payload,
             muteHttpExceptions: true
         }
-        return this.apiService.fetchUserData(url, options);
+        return this.apiService.fetchUserData(url, options, `${tag_action}_${resource}_tags`);
     }
 
     /**
@@ -151,7 +151,7 @@ class RWGPSService {
             payload: payload,
             followRedirects: false, // important to get the 302 redirect
         }
-        return this.apiService.fetchUserData(url, options);
+        return this.apiService.fetchUserData(url, options, 'copy_template');
     }
 
     /**
@@ -177,7 +177,7 @@ class RWGPSService {
                 method: 'delete',
             }
         })
-        const responses = this.apiService.fetchClubData(requests);
+        const responses = this.apiService.fetchClubData(requests, {}, 'delete_event');
         return (responses.length === 1) ? responses[0] : responses;
     }
 
@@ -202,7 +202,7 @@ class RWGPSService {
                 method: 'delete',
             }
         });
-        const responses = this.apiService.fetchClubData(requests);
+        const responses = this.apiService.fetchClubData(requests, {}, 'delete_route');
         return (responses.length === 1) ? responses[0] : responses;
     }
 
@@ -228,7 +228,7 @@ class RWGPSService {
             followRedirects: false,
             muteHttpExceptions: true
         }
-        return this.apiService.fetchUserData(event_url, options);
+        return this.apiService.fetchUserData(event_url, options, 'edit_event');
     }
 
     /**
@@ -257,7 +257,7 @@ class RWGPSService {
             return request;
         }
         const requests = eventEditObjects.map(eeo => createRequest(eeo));
-        const responses = this.apiService.fetchUserData(requests);
+        const responses = this.apiService.fetchUserData(requests, {}, 'edit_events');
         return responses;
     }
 
@@ -280,7 +280,7 @@ class RWGPSService {
      * @returns {object} the response object
      */
     get(url) {
-        return this.apiService.fetchPublicData(url);
+        return this.apiService.fetchPublicData(url, {}, 'get');
     }
 
     /**
@@ -304,7 +304,7 @@ class RWGPSService {
             return r;
         })
         console.log('Requests are:', requests);
-        return this.apiService.fetchUserData(requests);
+        return this.apiService.fetchUserData(requests, {}, 'getAll');
     }
 
     /**
@@ -313,7 +313,7 @@ class RWGPSService {
      */
     getClubMembers() {
         const url = `https://ridewithgps.com/clubs/47/table_members.json`;
-        return this.apiService.fetchUserData(url);
+        return this.apiService.fetchUserData(url, {}, 'getClubMembers');
     }
 
     /**
@@ -328,7 +328,7 @@ class RWGPSService {
         const id = this.extractIdFromUrl(url);
         const event_url = `https://ridewithgps.com/api/v1/events/${id}.json`;
         console.log('Event URL is:', event_url);
-        return this.apiService.fetchClubData(event_url);
+        return this.apiService.fetchClubData(event_url, {}, 'getEvent');
     }
 
     /**
@@ -351,7 +351,7 @@ class RWGPSService {
         const options = {
             payload: payload
         }
-        return this.apiService.fetchUserData(url, options);
+        return this.apiService.fetchUserData(url, options, 'getOrganizers');
     }
 
     /**
@@ -370,7 +370,7 @@ class RWGPSService {
         }
         const routeUrl = 'https://ridewithgps.com/api/v1/routes/' + this.extractIdFromUrl(url) + '.json';
         console.log('Route URL is:', routeUrl);
-        const response = this.apiService.fetchClubData(routeUrl, options);
+        const response = this.apiService.fetchClubData(routeUrl, options, 'getRoute');
         return response;
     }
 
@@ -395,7 +395,7 @@ class RWGPSService {
         const options = {
             payload: payload
         }
-        return this.apiService.fetchUserData(url, options);
+        return this.apiService.fetchUserData(url, options, 'importRoute');
     }
 
     /**

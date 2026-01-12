@@ -79,6 +79,10 @@ function createMenu_() {
     .addItem('Install Triggers', installTriggers_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addItem('Clear Cache', clearCache_.name)
+    .addSeparator()
+    .addSubMenu(ui.createMenu('Developer')
+      .addItem('Clear API Log', clearApiLog_.name)
+      .addItem('View API Log Stats', viewApiLogStats_.name))
     .addToUi();
 }
 
@@ -106,6 +110,45 @@ function clearCache_() {
   Exports.CacheManager.clearCache();
   var ui = SpreadsheetApp.getUi();
   ui.alert('Cache Cleared', 'All caches (Globals, Groups, PersonalTemplates) have been cleared and will reload from sheets on next use.', ui.ButtonSet.OK);
+}
+
+/**
+ * Clears all entries in the RWGPS API Log sheet.
+ * Developer menu function for API logging.
+ */
+function clearApiLog_() {
+  RWGPSApiLogger.clear();
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('API Log Cleared', 'The RWGPS API Log sheet has been cleared.', ui.ButtonSet.OK);
+}
+
+/**
+ * Shows statistics about the API log entries.
+ * Developer menu function for API logging.
+ */
+function viewApiLogStats_() {
+  var ui = SpreadsheetApp.getUi();
+  var entries = RWGPSApiLogger.getAll();
+  
+  if (entries.length === 0) {
+    ui.alert('API Log Stats', 'No API log entries found.\n\nPerform some operations to start capturing API traffic.', ui.ButtonSet.OK);
+    return;
+  }
+  
+  // Group by operation
+  var opCounts = {};
+  entries.forEach(function(entry) {
+    var op = entry.operation || 'unknown';
+    opCounts[op] = (opCounts[op] || 0) + 1;
+  });
+  
+  var stats = 'Total Entries: ' + entries.length + '\n\n';
+  stats += 'Operations:\n';
+  Object.keys(opCounts).sort().forEach(function(op) {
+    stats += '  ' + op + ': ' + opCounts[op] + '\n';
+  });
+  
+  ui.alert('API Log Stats', stats, ui.ButtonSet.OK);
 }
 
 function cancelSelectedRides_() {
