@@ -21,6 +21,7 @@
     "node_modules",
     "test",
     "coverage",
-    "src/**/*.example.js"
+    "src/**/*.example.js",
+    "src/rwgpslib/**/*"
   ]
 }

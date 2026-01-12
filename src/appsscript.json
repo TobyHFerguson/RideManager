@@ -5,24 +5,6 @@
   "dependencies": {
     "libraries": [
       {
-        "userSymbol": "RWGPSLib12",
-        "libraryId": "1LrtdhxRlvd3Ep5Z2M7KCrii6VlMiFLR8Q39X24y7qV-0DsBDl-76qivO",
-        "version": "12",
-        "developmentMode": false
-      },
-      {
-        "userSymbol": "RWGPSLib13",
-        "libraryId": "1LrtdhxRlvd3Ep5Z2M7KCrii6VlMiFLR8Q39X24y7qV-0DsBDl-76qivO",
-        "version": "13",
-        "developmentMode": false
-      },
-      {
-        "userSymbol": "RWGPSLib",
-        "libraryId": "1LrtdhxRlvd3Ep5Z2M7KCrii6VlMiFLR8Q39X24y7qV-0DsBDl-76qivO",
-        "version": "0",
-        "developmentMode": true
-      },
-      {
         "userSymbol": "dates",
         "version": "2",
         "libraryId": "1xKrJ6uL--imEHP9SkAyUIMhcrpI6cfPACJ_4Hb_XpsDbQof19W1y7qRE",

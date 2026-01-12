@@ -3,7 +3,6 @@
 if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
-const head = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERSION') || ' ');
 
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
@@ -14,18 +13,9 @@ const head = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERS
  */
 
 function getRWGPSLib_() {
-  let lib;
-  switch (head.trim()) {
-    case '12':
-      lib = RWGPSLib12;
-      break;
-    case '13':
-      lib = RWGPSLib13;
-      break;
-    default:
-      lib = RWGPSLib;
-  }
-  return lib;
+  // Use vendored RWGPSLib adapter instead of external library
+  // The adapter wraps the vendored RWGPS files and provides the same interface
+  return RWGPSLibAdapter;
 }
 
 function getGlobals_() {
