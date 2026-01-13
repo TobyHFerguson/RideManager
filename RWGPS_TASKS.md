@@ -159,11 +159,26 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] **TESTED IN GAS**: Event 445203 cancelled then reinstated (CANCELLED: prefix removed) successfully
 - [x] **VERIFIED**: Double-edit pattern working, name restored to original
 
-### Task 3.9: Implement copyTemplate
-- [ ] Read Schedule fixture for copy_template behavior
-- [ ] NOTE: Returns new event URL from Location header
-- [ ] Add tests
-- [ ] Commit: "Implement RWGPSClient.copyTemplate"
+### Task 3.9: Implement copyTemplate ✅
+- [x] Read Schedule fixture for copy_template behavior
+- [x] NOTE: POST returns 302 with new event URL in Location header
+- [x] Implement `copyTemplate(templateUrl, eventData)` method:
+  - POST to `/events/{id}/copy` with optional event data
+  - Extract new event URL from Location header
+  - Return `{success, eventUrl}` or `{success: false, error}`
+- [x] Add 6 Jest tests (478 total passing):
+  - Success path with Location header extraction
+  - Custom event data provided during copy
+  - Login failure
+  - Invalid template URL
+  - Non-302 status (400, 500, etc.)
+  - Missing Location header in 302 response
+- [x] Add TypeScript type definition with optional eventData parameter
+- [x] Commit: "Task 3.9: Implement copyTemplate method" (8f3f406)
+- [x] Add GAS integration test: testRWGPSClientCopyTemplate(templateId)
+- [ ] **DEPLOY & TEST**: Ready for GAS testing
+  - Use test: `testRWGPSClientCopyTemplate(404019)` (B Template)
+  - Test creates new event → verifies → deletes
 
 ### Task 3.10: Implement scheduleEvent
 - [ ] `scheduleEvent(templateUrl, eventData, organizerNames)` should:
