@@ -1095,6 +1095,210 @@ function testRWGPSClientImportRoute(routeId) {
     }
 }
 
+/**
+ * Task 4.1: Integration test for v1 API single-edit (no double-edit workaround)
+ * 
+ * Tests if v1 API needs the double-edit pattern or if single PUT works.
+ * This determines the strategy for Phase 4 migration.
+ * 
+ * Steps:
+ * 1. Get an existing event
+ * 2. Attempt single PUT to v1 API with all_day=0
+ * 3. Verify if start_time was set correctly
+ * 4. Document findings
+ * 
+ * @param {number} [eventId] - Event ID to test (default: 451900)
+ * @returns {{success: boolean, findings?: string[], error?: string}}
+ */
+function testTask4_1_V1ApiSingleEdit(eventId) {
+    console.log('====================================');
+    console.log('Task 4.1: Test v1 API Single-Edit');
+    console.log('====================================');
+    console.log(`Event ID: ${eventId || 'NOT PROVIDED - using default 451900'}`);
+    
+    if (!eventId) {
+        eventId = 451900; // Default test event from earlier tests
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get current event data
+        console.log(`\n📡 Step 1: Fetching current event data...`);
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Could not fetch event');
+            return { success: false, error: 'Could not fetch event: ' + getResult.error };
+        }
+        
+        const originalEvent = getResult.event;
+        console.log(`✅ Event fetched: ${originalEvent.name}`);
+        console.log(`   Original start_time: ${originalEvent.starts_at}`);
+        console.log(`   Original all_day: ${originalEvent.all_day}`);
+        
+        // STEP 2: Test v1 API single-edit
+        console.log(`\n📡 Step 2: Testing v1 API single PUT (no double-edit)...`);
+        
+        // Create test event data with modified name and time
+        const testTime = '2030-04-15T18:30:00.000Z'; // Specific test time
+        const testEventData = {
+            name: originalEvent.name + ' [V1 TEST]',
+            desc: originalEvent.desc || '',
+            starts_at: testTime,
+            all_day: '0'
+        };
+        
+        console.log(`   Testing with start_time: ${testTime}`);
+        console.log(`   Testing with all_day: 0 (single PUT only)`);
+        
+        const v1Result = client.testV1SingleEditEvent(eventUrl, testEventData);
+        
+        if (!v1Result.success) {
+            console.warn('⚠️  V1 API single PUT returned error');
+            console.warn(`   Error: ${v1Result.error}`);
+            
+            return {
+                success: false,
+                findings: [
+                    'V1 API single PUT failed - may still need double-edit',
+                    `Error: ${v1Result.error}`,
+                    'Recommendation: Test double-edit with v1 API endpoint'
+                ]
+            };
+        }
+        
+        console.log('✅ V1 API single PUT succeeded');
+        
+        if (v1Result.event) {
+            console.log(`   Event returned: ${v1Result.event.name}`);
+            console.log(`   New starts_at: ${v1Result.event.starts_at}`);
+            console.log(`   New all_day: ${v1Result.event.all_day}`);
+        }
+        
+        // STEP 3: Fetch and verify
+        console.log(`\n📡 Step 3: Verifying v1 API changes...`);
+        const verifyResult = client.getEvent(eventUrl);
+        
+        if (!verifyResult.success) {
+            console.warn('⚠️  Could not verify (fetch failed)');
+            return {
+                success: true,
+                findings: [
+                    'V1 API single PUT succeeded (no error)',
+                    'Could not verify via fetch (network issue)',
+                    'Recommendation: Check RWGPS directly for time change'
+                ]
+            };
+        }
+        
+        const updatedEvent = verifyResult.event;
+        console.log(`✅ Event verified`);
+        console.log(`   Updated starts_at: ${updatedEvent.starts_at}`);
+        console.log(`   Updated all_day: ${updatedEvent.all_day}`);
+        console.log(`   Updated name: ${updatedEvent.name}`);
+        
+        // STEP 4: Analyze findings
+        console.log(`\n📋 Analysis of v1 API Behavior:`);
+        
+        const findings = [];
+        
+        // Check if name was set correctly
+        if (updatedEvent.name.includes('[V1 TEST]')) {
+            console.log('   ✅ Name updated correctly');
+            findings.push('V1 API name field works with single PUT');
+        } else {
+            console.log('   ⚠️  Name may not have been updated');
+            findings.push('V1 API name field may not accept updates');
+        }
+        
+        // Check if time was set correctly
+        if (updatedEvent.starts_at === testTime) {
+            console.log('✅ Start time MATCHES test time exactly!');
+            console.log('   → V1 API DOES NOT need double-edit!');
+            findings.push('SUCCESS: v1 API single PUT sets start_time correctly!');
+            findings.push('RECOMMENDATION: Migrate to v1 API without double-edit workaround');
+        } else {
+            console.log('⚠️  Start time does NOT match test time');
+            console.log(`   Expected: ${testTime}`);
+            console.log(`   Got: ${updatedEvent.starts_at}`);
+            console.log('   → V1 API may still need double-edit or has different behavior');
+            findings.push('UNCERTAIN: v1 API start_time behavior needs investigation');
+            findings.push('Possible reasons: double-edit still needed, or time offset issue');
+        }
+        
+        // Check all_day flag
+        if (String(updatedEvent.all_day) === '0') {
+            console.log('✅ all_day flag set correctly');
+            findings.push('v1 API handles all_day=0 correctly');
+        } else {
+            console.log('⚠️  all_day flag not set correctly');
+            findings.push('v1 API may have issue with all_day field');
+        }
+        
+        // STEP 5: Cleanup
+        console.log(`\n📡 Step 5: Restoring original event...`);
+        
+        const restoreData = {
+            name: originalEvent.name,
+            desc: originalEvent.desc,
+            starts_at: originalEvent.starts_at,
+            all_day: originalEvent.all_day
+        };
+        
+        const restoreResult = client.testV1SingleEditEvent(eventUrl, restoreData);
+        
+        if (restoreResult.success) {
+            console.log('✅ Event restored to original state');
+        } else {
+            console.warn('⚠️  Could not restore event (may need manual restore)');
+            findings.push('Note: Event modification may need manual restoration');
+        }
+        
+        console.log('\n🎉 Task 4.1 complete!');
+        console.log('📊 Findings summary:');
+        findings.forEach((f, i) => {
+            console.log(`   ${i + 1}. ${f}`);
+        });
+        
+        return {
+            success: true,
+            findings: findings,
+            originalEvent: {
+                id: originalEvent.id,
+                name: originalEvent.name,
+                starts_at: originalEvent.starts_at
+            },
+            testResult: v1Result.success ? 'SUCCESS' : 'FAILED'
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        return { 
+            success: false, 
+            error: error.message,
+            findings: ['Test execution error - check logs']
+        };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [
