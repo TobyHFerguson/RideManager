@@ -120,14 +120,18 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] Add GAS integration test: testRWGPSClientGetEvent()
 - [x] **TESTED IN GAS**: Successfully fetched event 445203 with full details
 
-### Task 3.6: Implement editEvent
-- [ ] Read Update fixture for the double-edit pattern
-- [ ] Implement `editEvent(eventUrl, eventData)` in RWGPSClient
-- [ ] Include the all_day workaround (for now - we'll test removing it later)
-- [ ] Add tests using mock server
-- [ ] Commit: "Implement RWGPSClient.editEvent"
-- [ ] Add GAS integration test
-- [ ] **GAS TEST**: Update event name/description on real event
+### Task 3.6: Implement editEvent ✅
+- [x] Read Update fixture for the double-edit pattern
+- [x] Implement `editEvent(eventUrl, eventData)` in RWGPSClient
+- [x] Include the all_day workaround (double-edit: all_day=1, then all_day=0)
+- [x] Add buildEditEventPayload() and buildEditEventOptions() to Core
+- [x] Add tests using mock server (7 tests, 460 total passing)
+- [x] Created edit.json fixture (login + 2 PUTs)
+- [x] Commit: "Task 3.6: Implement editEvent with double-edit pattern" (18b74d5)
+- [x] Add GAS integration test: testRWGPSClientEditEvent()
+- [x] **TESTED IN GAS**: Event 445203 edited (added test marker) and restored successfully
+- [x] **VERIFIED**: Double-edit pattern (all_day=1, then all_day=0) works correctly
+- [x] Note: Converts organizers→organizer_tokens, routes→route_ids
 
 ### Task 3.7: Implement cancelEvent using getEvent + editEvent
 - [ ] `cancelEvent(eventUrl)` should:
