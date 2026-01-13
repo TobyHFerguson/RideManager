@@ -326,9 +326,15 @@ Replace web API calls with v1 API calls where possible.
   - Accepts same event data structure
   - OpenAPI spec confirms all_day field is supported
   - **Decision point**: Need to test in GAS to confirm if single PUT works
-- [ ] Run GAS test with v1 API to check if start_time is set correctly without double-edit
-- [ ] Document finding: Does v1 API need double-edit or is it web API only?
-- [ ] Commit: "Task 4.1: Add v1 API single-edit test"
+- [x] Add GAS integration test: testTask4_1_V1ApiSingleEdit(eventId)
+  - Uses event 451900 by default (no manual setup needed)
+  - Fetches event, tests single PUT, verifies time, restores original
+  - Comprehensive findings report on v1 API behavior
+- [ ] Run in GAS: `testTask4_1_V1ApiSingleEdit(451900)`
+  - Check console output for findings
+  - Decision: Can we migrate to v1 without double-edit?
+- [ ] Document finding in RWGPS_MIGRATION_GUIDE.md
+- [x] Commit: "Task 4.1: Add GAS integration test for v1 API single-edit" (fc4677b)
 
 ### Task 4.2: Replace web getEvent with v1 API
 - [ ] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
