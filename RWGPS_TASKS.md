@@ -111,12 +111,12 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] Fixed IIFE pattern compatibility for GAS (commit d6c9f2b)
 - [x] **TESTED IN GAS**: Unschedule operation confirmed working
 
-### Task 3.5: Implement getEvent
-- [ ] Read Cancel/Reinstate fixtures to see how getAll works
-- [ ] Implement `getEvent(eventUrl)` in RWGPSClient
-- [ ] Returns the event object (parsed JSON)
-- [ ] Add tests using mock server
-- [ ] Commit: "Implement RWGPSClient.getEvent"
+### Task 3.5: Implement getEvent ✅
+- [x] Read Cancel/Reinstate fixtures to see how getAll works
+- [x] Implement `getEvent(eventUrl)` in RWGPSClient
+- [x] Returns the event object (parsed JSON)
+- [x] Add tests using mock server (5 tests)
+- [x] Commit: "Implement RWGPSClient.getEvent" (22edfa8)
 
 ### Task 3.6: Implement editEvent
 - [ ] Read Update fixture for the double-edit pattern
