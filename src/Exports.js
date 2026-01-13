@@ -90,6 +90,12 @@ var Exports = {
     },
     get RWGPSMembersAdapter() {
         return RWGPSMembersAdapter;
+    },
+    get RWGPSClient() {
+        return RWGPSClient;
+    },
+    get RWGPSClientCore() {
+        return RWGPSClientCore;
     }
 };
 

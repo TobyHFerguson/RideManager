@@ -24,16 +24,38 @@ class RWGPS {
   constructor(rwgpsService) {
     this.globals = rwgpsService.globals;
     this.rwgpsService = rwgpsService;
+    
+    // Initialize RWGPSClient for new simplified operations
+    const credentialManager = rwgpsService.apiService.credentialManager;
+    this.rwgpsClient = new RWGPSClient({
+      apiKey: credentialManager.getApiKey(),
+      authToken: credentialManager.getAuthToken(),
+      username: credentialManager.getUsername(),
+      password: credentialManager.getPassword()
+    });
   }
 
   /**
+   * Delete events from RWGPS
    * 
    * @param {PublicEventUrl[]} event_urls event urls to be deleted
-   * @returns response from rwgps
-   * @throws Exception if there's an error
+   * @returns {void} Throws on error
+   * @throws {Error} if deletion fails
    */
   batch_delete_events(event_urls) {
-    return this.rwgpsService.batch_delete_events(event_urls);
+    // Use new RWGPSClient instead of legacy RWGPSService
+    if (!Array.isArray(event_urls)) {
+      event_urls = [event_urls];
+    }
+    
+    // Delete each event individually (matches old batch behavior)
+    for (const url of event_urls) {
+      const result = this.rwgpsClient.deleteEvent(url);
+      if (!result.success) {
+        // Match old error behavior - throw on failure
+        throw new Error(result.error || 'Failed to delete event');
+      }
+    }
   }
 
   /**
