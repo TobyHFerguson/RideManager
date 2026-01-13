@@ -23,10 +23,11 @@ export interface OperationResult {
 }
 
 /**
- * Schedule result with event URL
+ * Schedule result with event URL and event data
  */
 export interface ScheduleResult extends OperationResult {
     eventUrl?: string;
+    event?: any;
 }
 
 /**
@@ -161,6 +162,18 @@ declare class RWGPSClient {
      * @returns {ImportResult} Result with route URL
      */
     importRoute(routeUrl: string, options: any): ImportResult;
+
+    /**
+     * Look up an organizer by name
+     * @private
+     */
+    private _lookupOrganizer(eventUrl: string, organizerName: string): { success: boolean; organizer?: { id: number; text: string }; error?: string };
+
+    /**
+     * Remove tags from an event
+     * @private
+     */
+    private _removeEventTags(eventId: string, tags: string[]): { success: boolean; error?: string };
 
     /**
      * Get Basic Auth header

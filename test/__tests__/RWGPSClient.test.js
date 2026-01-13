@@ -667,4 +667,312 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('no Location header found');
         });
     });
+
+    describe('scheduleEvent', () => {
+        it('should schedule a new event from template', () => {
+            // Use mocks instead of fixture (fixture has complex multi-call flow)
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: true,
+                eventUrl: 'https://ridewithgps.com/events/444070-new-event'
+            });
+            jest.spyOn(client, '_lookupOrganizer').mockReturnValue({
+                success: true,
+                organizer: { id: 498406, text: 'Albert Saporta' }
+            });
+            jest.spyOn(client, 'editEvent').mockReturnValue({
+                success: true,
+                event: { 
+                    id: 444070, 
+                    name: 'Fri B (3/1 10:00) CCP - Test Ride',
+                    all_day: false,
+                    starts_at: '2030-03-01T10:00:00-08:00'
+                }
+            });
+            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
+
+            const templateUrl = 'https://ridewithgps.com/events/404019-b-template';
+            const eventData = {
+                name: 'Fri B (3/1 10:00) CCP - Test Ride',
+                desc: 'Ride Leader: Albert Saporta\n\nArrive 9:45 AM for a 10:00 AM rollout.',
+                starts_at: '2030-03-01T18:00:00.000Z',
+                visibility: 0,
+                route_ids: ['50969472']
+            };
+            const organizerNames = ['Albert Saporta'];
+
+            const result = client.scheduleEvent(templateUrl, eventData, organizerNames);
+
+            expect(result.success).toBe(true);
+            expect(result.eventUrl).toBe('https://ridewithgps.com/events/444070-new-event');
+            expect(result.event).toBeDefined();
+            expect(result.event.id).toBe(444070);
+        });
+
+        it('should pass organizer tokens to editEvent', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: true,
+                eventUrl: 'https://ridewithgps.com/events/444070'
+            });
+            jest.spyOn(client, '_lookupOrganizer').mockReturnValue({
+                success: true,
+                organizer: { id: 498406, text: 'Albert Saporta' }
+            });
+            const editSpy = jest.spyOn(client, 'editEvent').mockReturnValue({
+                success: true,
+                event: { id: 444070, name: 'Test' }
+            });
+            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
+
+            client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                ['Albert Saporta']
+            );
+
+            // Verify editEvent was called with organizer tokens
+            expect(editSpy).toHaveBeenCalledWith(
+                'https://ridewithgps.com/events/444070',
+                expect.objectContaining({
+                    organizer_tokens: ['498406']
+                })
+            );
+        });
+
+        it('should return error if login fails', () => {
+            // Don't load fixture - login will fail
+            const result = client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                ['John Doe']
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Login');
+        });
+
+        it('should return error if template copy fails', () => {
+            // Mock login success but copyTemplate failure
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: false,
+                error: 'Copy failed'
+            });
+
+            const result = client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                []
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('copy template');
+        });
+
+        it('should continue if organizer not found', () => {
+            // Mock successful flow but organizer lookup fails
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: true,
+                eventUrl: 'https://ridewithgps.com/events/444070'
+            });
+            jest.spyOn(client, '_lookupOrganizer').mockReturnValue({
+                success: false,
+                error: 'Organizer not found'
+            });
+            jest.spyOn(client, 'editEvent').mockReturnValue({
+                success: true,
+                event: { id: 444070, name: 'Test Event' }
+            });
+            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
+
+            const result = client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                ['Unknown Person']
+            );
+
+            // Should still succeed - organizer lookup failure is non-fatal
+            expect(result.success).toBe(true);
+        });
+
+        it('should delete new event if edit fails', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: true,
+                eventUrl: 'https://ridewithgps.com/events/444070'
+            });
+            jest.spyOn(client, 'editEvent').mockReturnValue({
+                success: false,
+                error: 'Edit failed'
+            });
+            const deleteSpy = jest.spyOn(client, 'deleteEvent').mockReturnValue({ success: true });
+
+            const result = client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                []
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('edit new event');
+            expect(deleteSpy).toHaveBeenCalledWith('https://ridewithgps.com/events/444070');
+        });
+
+        it('should still succeed if tag removal fails', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: true,
+                eventUrl: 'https://ridewithgps.com/events/444070'
+            });
+            jest.spyOn(client, 'editEvent').mockReturnValue({
+                success: true,
+                event: { id: 444070, name: 'Test Event' }
+            });
+            jest.spyOn(client, '_removeEventTags').mockReturnValue({
+                success: false,
+                error: 'Tag removal failed'
+            });
+
+            const result = client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                []
+            );
+
+            // Should still succeed - tag removal failure is non-fatal
+            expect(result.success).toBe(true);
+            expect(result.eventUrl).toBe('https://ridewithgps.com/events/444070');
+        });
+
+        it('should handle empty organizer names', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: true,
+                eventUrl: 'https://ridewithgps.com/events/444070'
+            });
+            jest.spyOn(client, 'editEvent').mockReturnValue({
+                success: true,
+                event: { id: 444070, name: 'Test Event' }
+            });
+            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
+
+            const result = client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                [] // Empty array
+            );
+
+            expect(result.success).toBe(true);
+        });
+
+        it('should handle null organizer names', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+                success: true,
+                eventUrl: 'https://ridewithgps.com/events/444070'
+            });
+            jest.spyOn(client, 'editEvent').mockReturnValue({
+                success: true,
+                event: { id: 444070, name: 'Test Event' }
+            });
+            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
+
+            const result = client.scheduleEvent(
+                'https://ridewithgps.com/events/404019',
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                null // null
+            );
+
+            expect(result.success).toBe(true);
+        });
+    });
+
+    describe('_lookupOrganizer', () => {
+        it('should look up organizer by name', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({
+                    results: [{ id: 498406, text: 'Albert Saporta' }]
+                })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client._lookupOrganizer(
+                'https://ridewithgps.com/events/404021',
+                'Albert Saporta'
+            );
+
+            expect(result.success).toBe(true);
+            expect(result.organizer).toEqual({ id: 498406, text: 'Albert Saporta' });
+        });
+
+        it('should return error for invalid event URL', () => {
+            client.webSessionCookie = 'test-cookie';
+
+            const result = client._lookupOrganizer('invalid-url', 'John Doe');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Invalid event URL');
+        });
+
+        it('should return error when organizer not found', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({
+                    results: [{ id: 123, text: 'Jane Smith' }]
+                })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client._lookupOrganizer(
+                'https://ridewithgps.com/events/404021',
+                'John Doe'
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('not found');
+        });
+    });
+
+    describe('_removeEventTags', () => {
+        it('should remove tags from event', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({ events: [] })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client._removeEventTags('444070', ['template']);
+
+            expect(result.success).toBe(true);
+        });
+
+        it('should return error on failure', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 400,
+                getContentText: () => 'Bad Request'
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client._removeEventTags('444070', ['template']);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('status 400');
+        });
+    });
 });

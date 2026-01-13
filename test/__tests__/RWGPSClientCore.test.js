@@ -154,4 +154,106 @@ describe('RWGPSClientCore', () => {
             expect(result.valid).toBe(true);
         });
     });
+
+    describe('buildOrganizerLookupOptions', () => {
+        it('should build organizer lookup request options', () => {
+            const options = RWGPSClientCore.buildOrganizerLookupOptions('test-cookie', 'John Doe');
+            
+            expect(options.method).toBe('POST');
+            expect(options.headers.Cookie).toBe('test-cookie');
+            expect(options.payload.term).toBe('John'); // Uses first name only
+            expect(options.payload.page).toBe(1);
+        });
+
+        it('should use first word of name as search term', () => {
+            const options = RWGPSClientCore.buildOrganizerLookupOptions('cookie', 'Albert Saporta');
+            
+            expect(options.payload.term).toBe('Albert');
+        });
+
+        it('should handle single-word names', () => {
+            const options = RWGPSClientCore.buildOrganizerLookupOptions('cookie', 'Madonna');
+            
+            expect(options.payload.term).toBe('Madonna');
+        });
+    });
+
+    describe('findMatchingOrganizer', () => {
+        it('should find exact match', () => {
+            const results = [
+                { id: 498406, text: 'Albert Saporta' },
+                { id: 123456, text: 'Albert Einstein' }
+            ];
+            
+            const match = RWGPSClientCore.findMatchingOrganizer(results, 'Albert Saporta');
+            
+            expect(match).toEqual({ id: 498406, text: 'Albert Saporta' });
+        });
+
+        it('should match case-insensitively', () => {
+            const results = [
+                { id: 498406, text: 'Albert Saporta' }
+            ];
+            
+            const match = RWGPSClientCore.findMatchingOrganizer(results, 'albert saporta');
+            
+            expect(match).toEqual({ id: 498406, text: 'Albert Saporta' });
+        });
+
+        it('should ignore whitespace differences', () => {
+            const results = [
+                { id: 498406, text: 'Albert  Saporta' }
+            ];
+            
+            const match = RWGPSClientCore.findMatchingOrganizer(results, 'Albert Saporta');
+            
+            expect(match).toEqual({ id: 498406, text: 'Albert  Saporta' });
+        });
+
+        it('should return null when no match found', () => {
+            const results = [
+                { id: 123456, text: 'John Doe' }
+            ];
+            
+            const match = RWGPSClientCore.findMatchingOrganizer(results, 'Jane Smith');
+            
+            expect(match).toBeNull();
+        });
+
+        it('should return null for empty results', () => {
+            const match = RWGPSClientCore.findMatchingOrganizer([], 'John Doe');
+            
+            expect(match).toBeNull();
+        });
+
+        it('should return null for null results', () => {
+            const match = RWGPSClientCore.findMatchingOrganizer(null, 'John Doe');
+            
+            expect(match).toBeNull();
+        });
+    });
+
+    describe('buildBatchTagOptions', () => {
+        it('should build tag removal options', () => {
+            const options = RWGPSClientCore.buildBatchTagOptions('test-cookie', '444070', 'remove', 'template');
+            
+            expect(options.method).toBe('POST');
+            expect(options.headers.Cookie).toBe('test-cookie');
+            expect(options.payload.tag_action).toBe('remove');
+            expect(options.payload.tag_names).toBe('template');
+            expect(options.payload.event_ids).toBe('444070');
+        });
+
+        it('should handle array of event IDs', () => {
+            const options = RWGPSClientCore.buildBatchTagOptions('cookie', ['444070', '444071'], 'add', 'B');
+            
+            expect(options.payload.event_ids).toBe('444070,444071');
+        });
+
+        it('should handle array of tag names', () => {
+            const options = RWGPSClientCore.buildBatchTagOptions('cookie', '444070', 'remove', ['template', 'draft']);
+            
+            expect(options.payload.tag_names).toBe('template,draft');
+        });
+    });
 });

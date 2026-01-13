@@ -220,6 +220,82 @@ var RWGPSClientCore = (function() {
             muteHttpExceptions: true
         };
     }
+
+    /**
+     * Build request options for organizer lookup (POST request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @param {string} organizerName - Organizer name to search for
+     * @returns {{method: string, headers: Record<string, string>, payload: Record<string, any>, muteHttpExceptions: boolean}} Request options
+     */
+    static buildOrganizerLookupOptions(sessionCookie, organizerName) {
+        // The API expects the first word (first name) as the search term
+        const searchTerm = organizerName.split(' ')[0];
+        return {
+            method: 'POST',
+            headers: {
+                'Cookie': sessionCookie,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            payload: {
+                term: searchTerm,
+                page: 1
+            },
+            muteHttpExceptions: true
+        };
+    }
+
+    /**
+     * Find matching organizer from API response
+     * 
+     * @param {Array<{id: number, text: string}>} results - API results array
+     * @param {string} organizerName - Full name to match
+     * @returns {{id: number, text: string} | null} Matching organizer or null
+     */
+    static findMatchingOrganizer(results, organizerName) {
+        if (!results || !Array.isArray(results)) {
+            return null;
+        }
+
+        // Normalize the search name for comparison
+        const normalizedName = organizerName.toLowerCase().split(' ').join('');
+        
+        const match = results.find((/** @type {{id: number, text: string}} */ result) => {
+            const resultNormalized = result.text.toLowerCase().split(' ').join('');
+            return resultNormalized === normalizedName;
+        });
+
+        return match || null;
+    }
+
+    /**
+     * Build request options for batch tag update (POST request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @param {string | string[]} eventIds - Event ID(s) to update
+     * @param {'add' | 'remove'} tagAction - Action to perform
+     * @param {string | string[]} tagNames - Tag name(s) to add/remove
+     * @returns {{method: string, headers: Record<string, string>, payload: Record<string, string>, muteHttpExceptions: boolean}} Request options
+     */
+    static buildBatchTagOptions(sessionCookie, eventIds, tagAction, tagNames) {
+        // Convert arrays to comma-separated strings if needed
+        const idsString = Array.isArray(eventIds) ? eventIds.join(',') : eventIds;
+        const tagsString = Array.isArray(tagNames) ? tagNames.join(',') : tagNames;
+
+        return {
+            method: 'POST',
+            headers: {
+                'Cookie': sessionCookie,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            payload: {
+                tag_action: tagAction,
+                tag_names: tagsString,
+                event_ids: idsString
+            },
+            muteHttpExceptions: true
+        };
+    }
 }
 
 return RWGPSClientCore;

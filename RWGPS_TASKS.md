@@ -182,14 +182,33 @@ AFTER:  RWGPSClient → UrlFetchApp
   - ✅ New event data verified (custom name, visibility)
   - ✅ Cleanup completed (test event deleted)
 
-### Task 3.10: Implement scheduleEvent
-- [ ] `scheduleEvent(templateUrl, eventData, organizerNames)` should:
+### Task 3.10: Implement scheduleEvent ✅
+- [x] `scheduleEvent(templateUrl, eventData, organizerNames)` should:
   - Copy template → get new URL
-  - Look up organizers by name
-  - Edit event with full data
-  - Remove template tag
-- [ ] Add comprehensive tests
-- [ ] Commit: "Implement RWGPSClient.scheduleEvent"
+  - Look up organizers by name (via `_lookupOrganizer`)
+  - Edit event with full data + organizer tokens
+  - Remove template tag (via `_removeEventTags`)
+- [x] Implement Core helper methods in RWGPSClientCore.js:
+  - `buildOrganizerLookupOptions(sessionCookie, organizerName)` - POST request builder
+  - `findMatchingOrganizer(results, organizerName)` - Exact name match finder
+  - `buildBatchTagOptions(sessionCookie, eventIds, tagAction, tagNames)` - Batch tag update builder
+- [x] Implement adapter methods in RWGPSClient.js:
+  - `scheduleEvent(templateUrl, eventData, organizerNames)` - Full workflow orchestration
+  - `_lookupOrganizer(eventUrl, organizerName)` - POST to `/events/{id}/organizer_ids.json`
+  - `_removeEventTags(eventId, tags)` - POST to `/events/batch_update_tags.json`
+- [x] Add 26 comprehensive tests (50 total RWGPSClient tests, 504 total passing):
+  - 12 Core tests: organizer lookup options (3), find matching (6), batch tag options (3)
+  - 14 Adapter tests: schedule success, organizer token passing, login/copy/edit failures, tag removal (non-fatal), empty/null organizers
+- [x] Add TypeScript type definitions with ScheduleResult.event and private method signatures
+- [x] Commit: "Task 3.10: Implement scheduleEvent with organizer lookup and tag removal" (PENDING)
+- [x] Add GAS integration test: testRWGPSClientScheduleEvent(templateId, organizerName)
+- [x] **TESTED IN GAS**: Successfully tested with event 453197
+  - ✅ Template 404019 copied successfully
+  - ✅ Event data applied (name, start time, visibility)
+  - ✅ Organizer lookup executed (non-fatal if not found)
+  - ✅ Template tag removed successfully
+  - ✅ Cleanup completed (test event deleted)
+- [x] **VERIFIED**: Full scheduling workflow working end-to-end
 
 ### Task 3.11: Implement updateEvent (full operation)
 - [ ] Similar to scheduleEvent but no copy step

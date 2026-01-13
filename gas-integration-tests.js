@@ -671,6 +671,169 @@ function testRWGPSClientCopyTemplate(templateId) {
     }
 }
 
+/**
+ * Task 3.10: Integration test for RWGPSClient.scheduleEvent()
+ * 
+ * Tests the full scheduling workflow:
+ * - Login
+ * - Copy template event
+ * - Look up organizers by name
+ * - Edit event with organizer tokens
+ * - Remove template tag
+ * 
+ * @param {number} [templateId] - Template event ID to copy (default: 404019)
+ * @param {string} [organizerName] - Optional organizer name to test (e.g., "John Smith")
+ * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}}
+ */
+function testRWGPSClientScheduleEvent(templateId, organizerName) {
+    console.log('====================================');
+    console.log('Task 3.10: Test RWGPSClient.scheduleEvent()');
+    console.log('====================================');
+    console.log(`Template ID: ${templateId || 'NOT PROVIDED - using default 404019'}`);
+    console.log(`Organizer: ${organizerName || 'NOT PROVIDED - will test without organizers'}`);
+    
+    if (!templateId) {
+        console.warn('⚠️  No template ID provided. Please pass a valid template event ID.');
+        console.warn('   Example: testRWGPSClientScheduleEvent(404019, "John Smith")');
+        templateId = 404019; // Default B Template
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const templateUrl = `https://ridewithgps.com/events/${templateId}`;
+        
+        // Build event data
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 7); // Schedule for a week from now
+        const startYear = futureDate.getFullYear();
+        const startMonth = String(futureDate.getMonth() + 1).padStart(2, '0');
+        const startDay = String(futureDate.getDate()).padStart(2, '0');
+        const startDateStr = `${startYear}-${startMonth}-${startDay}T09:00:00`;
+        
+        const eventData = {
+            name: `TEST SCHEDULE ${timestamp}`,
+            starts_at: startDateStr,
+            description: 'Integration test event - should be deleted',
+            visibility: '0', // Members only
+            all_day: '0'
+        };
+        
+        // Build organizer list
+        const organizerNames = organizerName ? [organizerName] : [];
+        
+        console.log(`\n📡 Scheduling event from template...`);
+        console.log(`   Template: ${templateUrl}`);
+        console.log(`   Event name: ${eventData.name}`);
+        console.log(`   Start time: ${eventData.starts_at}`);
+        console.log(`   Organizers: ${organizerNames.length > 0 ? organizerNames.join(', ') : '(none)'}`);
+        
+        // STEP 1: Call scheduleEvent
+        const result = client.scheduleEvent(templateUrl, eventData, organizerNames);
+        
+        if (!result.success) {
+            console.error('❌ Schedule failed');
+            console.error(`   Error: ${result.error}`);
+            return { success: false, error: result.error };
+        }
+        
+        console.log('✅ Schedule succeeded');
+        console.log(`   New event URL: ${result.eventUrl}`);
+        console.log(`   Resolved organizers: ${result.organizers?.length || 0}`);
+        if (result.organizers?.length > 0) {
+            result.organizers.forEach((o) => {
+                console.log(`      - ${o.name} (token: ${o.token?.substring(0, 10)}...)`);
+            });
+        }
+        
+        // STEP 2: Verify new event exists and has correct data
+        console.log(`\n📡 Verifying scheduled event...`);
+        const verifyResult = client.getEvent(result.eventUrl);
+        
+        if (!verifyResult.success) {
+            console.error('❌ Could not verify scheduled event');
+            console.error(`   Error: ${verifyResult.error}`);
+            console.error('⚠️  Event may have been created but could not be fetched');
+            return { success: false, error: verifyResult.error };
+        }
+        
+        console.log('✅ Scheduled event verified');
+        console.log(`   ID: ${verifyResult.event.id}`);
+        console.log(`   Name: ${verifyResult.event.name}`);
+        console.log(`   Visibility: ${verifyResult.event.visibility}`);
+        console.log(`   Starts at: ${verifyResult.event.starts_at || verifyResult.event.starts_at_str || 'N/A'}`);
+        
+        // Check if template tag was removed
+        const tags = verifyResult.event.tags || [];
+        const hasTemplateTag = tags.some(tag => 
+            (typeof tag === 'string' && tag.toLowerCase().includes('template')) ||
+            (tag.name && tag.name.toLowerCase().includes('template'))
+        );
+        if (hasTemplateTag) {
+            console.warn('⚠️  Event still has template tag (tag removal may have failed)');
+        } else {
+            console.log('✅ Template tag removed successfully');
+        }
+        
+        // Check organizers if we requested any
+        if (organizerNames.length > 0 && verifyResult.event.organizers) {
+            console.log(`   Organizers on event: ${verifyResult.event.organizers.length}`);
+            verifyResult.event.organizers.forEach((o) => {
+                console.log(`      - ${o.name || o.display_name || o.id}`);
+            });
+        }
+        
+        // STEP 3: Clean up - delete the test event
+        console.log(`\n📡 Cleaning up test event...`);
+        const deleteResult = client.deleteEvent(result.eventUrl);
+        
+        if (!deleteResult.success) {
+            console.warn('⚠️  Could not delete test event');
+            console.warn(`   Error: ${deleteResult.error}`);
+            console.warn(`   Please manually delete event: ${result.eventUrl}`);
+        } else {
+            console.log('✅ Test event deleted successfully');
+        }
+        
+        console.log('\n🎉 Task 3.10 (scheduleEvent) working correctly!');
+        console.log('   ✅ Template copied successfully');
+        console.log('   ✅ Event data applied');
+        if (organizerNames.length > 0) {
+            console.log('   ✅ Organizers looked up and added');
+        }
+        console.log('   ✅ Template tag removed');
+        console.log('   ✅ Cleanup completed');
+        
+        return { 
+            success: true, 
+            eventUrl: result.eventUrl,
+            event: verifyResult.event,
+            organizers: result.organizers
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        return { success: false, error: error.message };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [

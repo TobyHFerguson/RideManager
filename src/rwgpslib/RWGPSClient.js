@@ -132,14 +132,163 @@ var RWGPSClient = (function() {
     /**
      * Schedule a new event from template
      * 
+     * This method performs the full schedule workflow:
+     * 1. Login to establish web session
+     * 2. Copy template to create new event
+     * 3. Look up organizer IDs by name
+     * 4. Edit event with full data (using double-edit pattern)
+     * 5. Remove "template" tag from new event
+     * 
      * @param {string} templateUrl - Template event URL
-     * @param {any} eventData - Event data
-     * @param {string[]} organizerNames - Organizer names
-     * @returns {{success: boolean, eventUrl?: string, error?: string}} Result
+     * @param {any} eventData - Event data (name, desc, starts_at, etc.)
+     * @param {string[]} organizerNames - Array of organizer names to look up
+     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result
      */
     scheduleEvent(templateUrl, eventData, organizerNames) {
-        // TODO: Implement in Task 3.10
-        throw new Error('scheduleEvent not yet implemented');
+        try {
+            // Step 1: Login
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return {
+                    success: false,
+                    error: 'Login failed - could not establish web session'
+                };
+            }
+
+            // Step 2: Copy template
+            const copyResult = this.copyTemplate(templateUrl, {
+                name: eventData.name || 'NEW EVENT',
+                all_day: '0',
+                copy_routes: '0'
+            });
+
+            if (!copyResult.success) {
+                return {
+                    success: false,
+                    error: `Failed to copy template: ${copyResult.error}`
+                };
+            }
+
+            const newEventUrl = copyResult.eventUrl;
+            const newEventId = RWGPSClientCore.extractEventId(newEventUrl);
+
+            // Step 3: Look up organizers by name
+            const organizerTokens = [];
+            if (organizerNames && organizerNames.length > 0) {
+                for (const name of organizerNames) {
+                    const organizerResult = this._lookupOrganizer(templateUrl, name);
+                    if (organizerResult.success && organizerResult.organizer) {
+                        organizerTokens.push(String(organizerResult.organizer.id));
+                    }
+                    // If organizer not found, continue with empty (TBD will be used)
+                }
+            }
+
+            // Step 4: Edit event with full data
+            const fullEventData = {
+                ...eventData,
+                organizer_tokens: organizerTokens.length > 0 ? organizerTokens : eventData.organizer_tokens
+            };
+
+            const editResult = this.editEvent(newEventUrl, fullEventData);
+
+            if (!editResult.success) {
+                // Try to clean up by deleting the copied event
+                this.deleteEvent(newEventUrl);
+                return {
+                    success: false,
+                    error: `Failed to edit new event: ${editResult.error}`
+                };
+            }
+
+            // Step 5: Remove "template" tag
+            const untagResult = this._removeEventTags(newEventId, ['template']);
+            if (!untagResult.success) {
+                // Log warning but don't fail - event was created successfully
+                console.log(`Warning: Failed to remove template tag: ${untagResult.error}`);
+            }
+
+            return {
+                success: true,
+                eventUrl: newEventUrl,
+                event: editResult.event
+            };
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
+     * Look up an organizer by name
+     * 
+     * @param {string} eventUrl - Event URL to use for lookup (usually template URL)
+     * @param {string} organizerName - Full name of organizer
+     * @returns {{success: boolean, organizer?: {id: number, text: string}, error?: string}} Result
+     * @private
+     */
+    _lookupOrganizer(eventUrl, organizerName) {
+        try {
+            const eventId = RWGPSClientCore.extractEventId(eventUrl);
+            if (!eventId) {
+                return { success: false, error: 'Invalid event URL' };
+            }
+
+            const lookupUrl = `https://ridewithgps.com/events/${eventId}/organizer_ids.json`;
+            const options = RWGPSClientCore.buildOrganizerLookupOptions(this.webSessionCookie, organizerName);
+
+            const response = this._fetch(lookupUrl, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode !== 200) {
+                return { success: false, error: `Lookup failed with status ${statusCode}` };
+            }
+
+            const data = JSON.parse(response.getContentText());
+            const match = RWGPSClientCore.findMatchingOrganizer(data.results, organizerName);
+
+            if (match) {
+                return { success: true, organizer: match };
+            } else {
+                return { success: false, error: `Organizer not found: ${organizerName}` };
+            }
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
+     * Remove tags from an event
+     * 
+     * @param {string} eventId - Event ID
+     * @param {string[]} tags - Tag names to remove
+     * @returns {{success: boolean, error?: string}} Result
+     * @private
+     */
+    _removeEventTags(eventId, tags) {
+        try {
+            const url = 'https://ridewithgps.com/events/batch_update_tags.json';
+            const options = RWGPSClientCore.buildBatchTagOptions(this.webSessionCookie, eventId, 'remove', tags);
+
+            const response = this._fetch(url, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode === 200) {
+                return { success: true };
+            } else {
+                return { success: false, error: `Tag removal failed with status ${statusCode}` };
+            }
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
     }
 
     /**

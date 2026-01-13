@@ -106,6 +106,35 @@ declare class RWGPSClientCore {
      * @returns {RequestOptions} Request options
      */
     static buildEditEventOptions(sessionCookie: string, payload: any): RequestOptions;
+
+    /**
+     * Build request options for organizer lookup (POST request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @param {string} organizerName - Organizer name to search for
+     * @returns {RequestOptions} Request options
+     */
+    static buildOrganizerLookupOptions(sessionCookie: string, organizerName: string): RequestOptions;
+
+    /**
+     * Find matching organizer from API response
+     * 
+     * @param {Array<{id: number, text: string}>} results - API results array
+     * @param {string} organizerName - Full name to match
+     * @returns {{id: number, text: string} | null} Matching organizer or null
+     */
+    static findMatchingOrganizer(results: Array<{id: number, text: string}>, organizerName: string): {id: number, text: string} | null;
+
+    /**
+     * Build request options for batch tag update (POST request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @param {string | string[]} eventIds - Event ID(s) to update
+     * @param {'add' | 'remove'} tagAction - Action to perform
+     * @param {string | string[]} tagNames - Tag name(s) to add/remove
+     * @returns {RequestOptions} Request options
+     */
+    static buildBatchTagOptions(sessionCookie: string, eventIds: string | string[], tagAction: 'add' | 'remove', tagNames: string | string[]): RequestOptions;
 }
 
 export default RWGPSClientCore;
