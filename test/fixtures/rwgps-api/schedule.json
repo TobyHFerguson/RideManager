@@ -17,7 +17,7 @@
       "responseHeaders": {
         "Location": "https://ridewithgps.com/organizations/47-santa-cruz-county-cycling-club",
         "Content-Type": "text/html; charset=utf-8",
-        "Set-Cookie": "[REDACTED]"
+        "Set-Cookie": "_rwgps_3_session=mock-session-cookie-value; path=/; HttpOnly"
       },
       "response": "(session cookie received)"
     },
@@ -42,7 +42,7 @@
       "responseHeaders": {
         "Location": "https://ridewithgps.com/events/444070-copied-event",
         "Content-Type": "text/html; charset=utf-8",
-        "Set-Cookie": "[REDACTED]"
+        "Set-Cookie": "_rwgps_3_session=mock-session-cookie-value; path=/; HttpOnly"
       },
       "response": ""
     },

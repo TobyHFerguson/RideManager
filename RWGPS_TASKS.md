@@ -93,11 +93,12 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] Commit: "Move authentication to RWGPSClient"
 
 ### Task 3.3: Implement deleteEvent (simplest operation)
-- [ ] Read `test/fixtures/rwgps-api/unschedule.json` to understand the API calls
-- [ ] Implement `deleteEvent(eventUrl)` in RWGPSClient
-- [ ] It should: login → DELETE to v1 API → return success/failure
-- [ ] Add test in `test/__tests__/RWGPSClient.test.js` using mock server
-- [ ] Run all tests
+- [x] Read `test/fixtures/rwgps-api/unschedule.json` to understand the API calls
+- [x] Implement `deleteEvent(eventUrl)` in RWGPSClient
+- [x] It should: login → DELETE to v1 API → return success/failure
+- [x] Add test in `test/__tests__/RWGPSClient.test.js` using mock server (6 tests)
+- [x] Fix fixtures: Replace `[REDACTED]` cookies with real mock values
+- [x] Run all tests (448 pass)
 - [ ] Commit: "Implement RWGPSClient.deleteEvent"
 
 ### Task 3.4: Wire RWGPSClient.deleteEvent to existing code

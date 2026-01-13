@@ -37,7 +37,7 @@ class RWGPSClient {
     login() {
         const loginUrl = 'https://ridewithgps.com/organizations/47/sign_in';
         const options = {
-            method: 'post',
+            method: 'POST',  // Use uppercase to match fixtures
             headers: {
                 'user-email': this.username,
                 'user-password': this.password
@@ -116,9 +116,12 @@ class RWGPSClient {
             headers['Authorization'] = this._getBasicAuthHeader();
         }
 
+        // Normalize method to uppercase to match fixtures
+        const method = request.method ? request.method.toUpperCase() : 'GET';
+
         return {
             url: request.url,
-            method: request.method,
+            method: method,
             headers: headers,
             payload: request.payload,
             muteHttpExceptions: true
@@ -179,8 +182,46 @@ class RWGPSClient {
      * @returns {{success: boolean, error?: string}} Result
      */
     deleteEvent(eventUrl) {
-        // TODO: Implement in Task 3.3
-        throw new Error('deleteEvent not yet implemented');
+        try {
+            // Parse event URL to get ID
+            const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
+            
+            // Login to establish session (even though we use Basic Auth, login is required)
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return {
+                    success: false,
+                    error: 'Login failed - could not establish web session'
+                };
+            }
+            
+            // DELETE using v1 API with Basic Auth
+            const deleteUrl = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
+            const request = this._prepareRequest(
+                { url: deleteUrl, method: 'delete' },
+                'BASIC_AUTH'
+            );
+            
+            const response = this._fetch(request.url, request);
+            const statusCode = response.getResponseCode();
+            
+            // 204 No Content = success
+            if (statusCode === 204) {
+                return { success: true };
+            } else {
+                return {
+                    success: false,
+                    error: `Unexpected status code: ${statusCode}`
+                };
+            }
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
     }
 
     /**
