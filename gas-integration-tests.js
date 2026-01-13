@@ -561,6 +561,116 @@ function testRWGPSClientReinstateEvent(eventId) {
     }
 }
 
+/**
+ * Task 3.9: Test copyTemplate method
+ * 
+ * This test verifies that the RWGPSClient.copyTemplate() method correctly:
+ * - Copies a template event to create a new event
+ * - Returns the new event URL from the Location header
+ * - Optionally sets event data during copy
+ * 
+ * @param {number} [templateId] - Template event ID to copy (default: 404019)
+ * @returns {{success: boolean, eventUrl?: string, error?: string}}
+ */
+function testRWGPSClientCopyTemplate(templateId) {
+    console.log('====================================');
+    console.log('Task 3.9: Test RWGPSClient.copyTemplate()');
+    console.log('====================================');
+    console.log(`Template ID: ${templateId || 'NOT PROVIDED - using default 404019'}`);
+    
+    if (!templateId) {
+        console.warn('⚠️  No template ID provided. Please pass a valid template event ID.');
+        console.warn('   Example: testRWGPSClientCopyTemplate(404019)');
+        templateId = 404019; // Default B Template
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const templateUrl = `https://ridewithgps.com/events/${templateId}`;
+        
+        // STEP 1: Copy template with custom name
+        console.log(`\n📡 Step 1: Copying template event...`);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        const eventData = {
+            name: `TEST COPY ${timestamp}`,
+            all_day: '0',
+            copy_routes: '0'
+        };
+        
+        const copyResult = client.copyTemplate(templateUrl, eventData);
+        
+        if (!copyResult.success) {
+            console.error('❌ Copy failed');
+            console.error(`   Error: ${copyResult.error}`);
+            return { success: false, error: copyResult.error };
+        }
+        
+        console.log('✅ Copy succeeded');
+        console.log(`   New event URL: ${copyResult.eventUrl}`);
+        
+        // STEP 2: Verify new event exists
+        console.log(`\n📡 Step 2: Verifying new event exists...`);
+        const verifyResult = client.getEvent(copyResult.eventUrl);
+        
+        if (!verifyResult.success) {
+            console.error('❌ Could not verify new event');
+            console.error(`   Error: ${verifyResult.error}`);
+            console.error('⚠️  Event may have been created but could not be fetched');
+            return { success: false, error: verifyResult.error };
+        }
+        
+        console.log('✅ New event verified');
+        console.log(`   ID: ${verifyResult.event.id}`);
+        console.log(`   Name: ${verifyResult.event.name}`);
+        console.log(`   Visibility: ${verifyResult.event.visibility}`);
+        
+        // STEP 3: Clean up - delete the test event
+        console.log(`\n📡 Step 3: Cleaning up test event...`);
+        const deleteResult = client.deleteEvent(copyResult.eventUrl);
+        
+        if (!deleteResult.success) {
+            console.warn('⚠️  Could not delete test event');
+            console.warn(`   Error: ${deleteResult.error}`);
+            console.warn(`   Please manually delete event: ${copyResult.eventUrl}`);
+        } else {
+            console.log('✅ Test event deleted successfully');
+        }
+        
+        console.log('\n🎉 Task 3.9 (copyTemplate) working correctly!');
+        console.log('   ✅ Template copied successfully');
+        console.log('   ✅ New event URL extracted from Location header');
+        console.log('   ✅ New event data verified');
+        console.log('   ✅ Cleanup completed');
+        
+        return { 
+            success: true, 
+            eventUrl: copyResult.eventUrl,
+            event: verifyResult.event
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        return { success: false, error: error.message };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [

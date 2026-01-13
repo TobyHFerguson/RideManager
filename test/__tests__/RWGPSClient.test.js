@@ -558,4 +558,118 @@ describe('RWGPSClient', () => {
             client.editEvent = originalEditEvent;
         });
     });
+
+    describe('copyTemplate', () => {
+        it('should copy template and return new event URL', () => {
+            // Mock login
+            jest.spyOn(client, 'login').mockReturnValue({
+                success: true,
+                sessionCookie: 'mock-cookie'
+            });
+
+            // Mock fetch for copy (302 with Location header)
+            const mockResponse = {
+                getResponseCode: () => 302,
+                getHeaders: () => ({ 'Location': 'https://ridewithgps.com/events/444070-copied-event' })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client.copyTemplate('https://ridewithgps.com/events/404019-b-template');
+
+            expect(result.success).toBe(true);
+            expect(result.eventUrl).toBe('https://ridewithgps.com/events/444070-copied-event');
+            expect(client._fetch).toHaveBeenCalledWith(
+                'https://ridewithgps.com/events/404019/copy',
+                expect.objectContaining({
+                    method: 'POST',
+                    payload: expect.objectContaining({
+                        'event[name]': 'COPIED EVENT',
+                        'event[all_day]': '0',
+                        'event[copy_routes]': '0'
+                    })
+                })
+            );
+        });
+
+        it('should use provided event data when copying', () => {
+            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+            const mockResponse = {
+                getResponseCode: () => 302,
+                getHeaders: () => ({ 'Location': 'https://ridewithgps.com/events/444070' })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const eventData = {
+                name: 'Custom Event Name',
+                all_day: '1',
+                copy_routes: '1',
+                start_date: '2030-03-01',
+                start_time: '10:00'
+            };
+            const result = client.copyTemplate('https://ridewithgps.com/events/404019', eventData);
+
+            expect(result.success).toBe(true);
+            expect(client._fetch).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({
+                    payload: {
+                        'event[name]': 'Custom Event Name',
+                        'event[all_day]': '1',
+                        'event[copy_routes]': '1',
+                        'event[start_date]': '2030-03-01',
+                        'event[start_time]': '10:00'
+                    }
+                })
+            );
+        });
+
+        it('should return error when login fails', () => {
+            jest.spyOn(client, 'login').mockReturnValue({
+                success: false,
+                error: 'Login failed'
+            });
+
+            const result = client.copyTemplate('https://ridewithgps.com/events/404019');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Login failed');
+        });
+
+        it('should return error for invalid template URL', () => {
+            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+
+            const result = client.copyTemplate('invalid-url');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Invalid template URL');
+        });
+
+        it('should return error when copy fails (non-302 status)', () => {
+            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+            const mockResponse = {
+                getResponseCode: () => 400,
+                getHeaders: () => ({})
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client.copyTemplate('https://ridewithgps.com/events/404019');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Copy failed with status 400');
+        });
+
+        it('should return error when Location header is missing', () => {
+            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+            const mockResponse = {
+                getResponseCode: () => 302,
+                getHeaders: () => ({}) // No Location header
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client.copyTemplate('https://ridewithgps.com/events/404019');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('no Location header found');
+        });
+    });
 });

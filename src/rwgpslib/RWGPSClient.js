@@ -476,6 +476,72 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Copy a template event to create a new event
+     * 
+     * This method creates a new event by copying an existing template event.
+     * The RWGPS API returns a 302 redirect with the new event URL in the Location header.
+     * 
+     * @param {string} templateUrl - Template event URL (e.g., "https://ridewithgps.com/events/404019-b-template")
+     * @param {{name?: string, all_day?: string, copy_routes?: string, start_date?: string, start_time?: string}} [eventData] - Optional event data to set during copy
+     * @returns {{success: boolean, eventUrl?: string, error?: string}} Result with new event URL
+     */
+    copyTemplate(templateUrl, eventData = {}) {
+        try {
+            // Login first
+            const loginResult = this.login();
+            if (!loginResult.success) {
+                return { success: false, error: `Login failed: ${loginResult.error}` };
+            }
+
+            // Extract template ID
+            const templateId = RWGPSClientCore.extractEventId(templateUrl);
+            if (!templateId) {
+                return { success: false, error: 'Invalid template URL - could not extract event ID' };
+            }
+
+            // Build copy URL
+            const copyUrl = `https://ridewithgps.com/events/${templateId}/copy`;
+
+            // Build payload with event data
+            const payload = {
+                'event[name]': eventData.name || 'COPIED EVENT',
+                'event[all_day]': eventData.all_day || '0',
+                'event[copy_routes]': eventData.copy_routes || '0',
+                'event[start_date]': eventData.start_date || '',
+                'event[start_time]': eventData.start_time || ''
+            };
+
+            // Make copy request
+            const response = this._fetch(copyUrl, {
+                method: 'POST',
+                headers: {
+                    'Cookie': this.currentCookie,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                },
+                payload: payload,
+                muteHttpExceptions: true
+            });
+
+            const status = response.getResponseCode();
+
+            // Copy returns 302 redirect with Location header
+            if (status === 302) {
+                const location = response.getHeaders()['Location'] || response.getHeaders()['location'];
+                if (!location) {
+                    return { success: false, error: 'Copy succeeded but no Location header found' };
+                }
+                return { success: true, eventUrl: location };
+            } else {
+                return { success: false, error: `Copy failed with status ${status}` };
+            }
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: `Copy failed: ${err.message}` };
+        }
+    }
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL

@@ -136,6 +136,24 @@ declare class RWGPSClient {
     reinstateEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
 
     /**
+     * Copy a template event to create a new event
+     * 
+     * @param {string} templateUrl - Template event URL
+     * @param {object} [eventData] - Optional event data to set during copy
+     * @returns {{success: boolean, eventUrl?: string, error?: string}} Result with new event URL
+     */
+    copyTemplate(
+        templateUrl: string,
+        eventData?: {
+            name?: string;
+            all_day?: string;
+            copy_routes?: string;
+            start_date?: string;
+            start_time?: string;
+        }
+    ): { success: boolean; eventUrl?: string; error?: string };
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL
