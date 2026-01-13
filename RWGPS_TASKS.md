@@ -8,13 +8,51 @@
 4. **Mark completed** when done (change `[ ]` to `[x]`)
 5. **Commit after each task** with a descriptive message
 
+**IMPORTANT**: This task file enforces architectural patterns from `.github/copilot-instructions.md`. The rules below are MANDATORY for all code changes.
+
 ## Rules (CRITICAL)
 
+### Workflow Rules
 1. **ONE task at a time** - never skip ahead
 2. **Run tests after EVERY code change**: `npm test -- test/__tests__/RWGPSCharacterization.test.js`
 3. **If tests fail**: STOP. Do not continue. Either fix or ask for help.
 4. **If tests pass**: Commit immediately, then continue
 5. **Read the fixtures** in `test/fixtures/rwgps-api/` when you need to understand expected behavior
+
+### Architectural Rules (MANDATORY)
+
+**Core/Adapter Separation**:
+- **Core modules** (`*Core.js`): Pure JavaScript, NO GAS dependencies, 100% test coverage
+- **Adapter modules** (`*.js`): Thin wrappers, ONLY UrlFetchApp/GAS API calls, minimal logic
+- **Pattern**: Extract ALL business logic to Core, adapters only handle I/O
+
+**Test-First Development**:
+- **MUST write tests BEFORE implementation** (not after)
+- Tests will fail initially (code doesn't exist yet) - this is correct
+- Only implement after tests are written
+- Achieve 100% coverage: `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/*Core.js'`
+
+**Type Safety (Zero Tolerance)**:
+- **Create `.d.ts` files FIRST** before writing implementation
+- **Run `npm run typecheck` after EVERY change** - must show ZERO errors
+- **Use class pattern** with static methods (NOT namespace pattern)
+- **Explicit JSDoc types** on ALL parameters (no `@param {any}` or `@param {Object}`)
+- Use specific types: `@param {{field: string}} options` not `@param {Object} options`
+- Error handling: `catch (error)` → `const err = error instanceof Error ? error : new Error(String(error));`
+
+**Code Quality**:
+- Use `class ClassName { static method() {} }` pattern (full type checking)
+- NO `var ModuleName = (function() { return {...}; })()` pattern (creates type blind spots)
+- Add JSDoc to ALL functions with parameter types and return types
+- Example:
+  ```javascript
+  /**
+   * Delete an event
+   * @param {string} eventUrl - Full URL to event
+   * @returns {{success: boolean, error?: string}} Result object
+   */
+  static deleteEvent(eventUrl) { }
+  ```
 
 ## Current Status
 
@@ -33,11 +71,19 @@ AFTER:  RWGPSClient → UrlFetchApp
 ```
 
 ### Task 3.1: Create RWGPSClient skeleton
-- [ ] Create `src/rwgpslib/RWGPSClient.js` with empty class
-- [ ] Add constructor that takes credentials (apiKey, authToken, username, password)
-- [ ] Add empty method stubs for: `scheduleEvent()`, `updateEvent()`, `cancelEvent()`, `reinstateEvent()`, `deleteEvent()`, `importRoute()`
-- [ ] Run tests (should still pass - no behavior changed)
-- [ ] Commit: "Add RWGPSClient skeleton"
+- [ ] **Create `.d.ts` FIRST**: `src/rwgpslib/RWGPSClientCore.d.ts` with method signatures
+- [ ] **Write tests**: `test/__tests__/RWGPSClientCore.test.js` (will fail - no implementation yet)
+- [ ] **Create Core**: `src/rwgpslib/RWGPSClientCore.js` with class and static methods:
+  - `parseEventUrl(eventUrl)` - Extract event ID from URL
+  - `buildRequestOptions(method, payload)` - Build HTTP request options
+  - `validateEventData(eventData)` - Validate event fields
+- [ ] **Create Adapter**: `src/rwgpslib/RWGPSClient.js` (thin wrapper)
+  - Constructor takes credentials (apiKey, authToken, username, password)
+  - Method stubs: `scheduleEvent()`, `updateEvent()`, `cancelEvent()`, `reinstateEvent()`, `deleteEvent()`, `importRoute()`
+  - Each method delegates to Core for logic, uses UrlFetchApp for I/O
+- [ ] **Run typecheck**: `npm run typecheck` (must show ZERO errors)
+- [ ] **Run tests**: Should pass (Core logic tested, adapter stubs don't break anything)
+- [ ] **Commit**: "Add RWGPSClient skeleton with Core/Adapter separation"
 
 ### Task 3.2: Move authentication logic
 - [ ] Copy `login()` method from ApiService to RWGPSClient
