@@ -1,0 +1,261 @@
+# RWGPS Library Refactoring Tasks
+
+## How to Use This File
+
+1. **Start each session** by reading this file
+2. **Pick the next unchecked task** (marked with `[ ]`)
+3. **Follow the steps exactly** - run tests after each change
+4. **Mark completed** when done (change `[ ]` to `[x]`)
+5. **Commit after each task** with a descriptive message
+
+## Rules (CRITICAL)
+
+1. **ONE task at a time** - never skip ahead
+2. **Run tests after EVERY code change**: `npm test -- test/__tests__/RWGPSCharacterization.test.js`
+3. **If tests fail**: STOP. Do not continue. Either fix or ask for help.
+4. **If tests pass**: Commit immediately, then continue
+5. **Read the fixtures** in `test/fixtures/rwgps-api/` when you need to understand expected behavior
+
+## Current Status
+
+**Phase**: 3 - Simplify Architecture
+**Model recommendation**: Sonnet 4.5 or Opus 4.5
+
+---
+
+## Phase 3: Simplify Architecture
+
+### Goal
+Replace the layered structure with a single unified client:
+```
+BEFORE: RWGPS → RWGPSService → ApiService → UrlFetchApp
+AFTER:  RWGPSClient → UrlFetchApp
+```
+
+### Task 3.1: Create RWGPSClient skeleton
+- [ ] Create `src/rwgpslib/RWGPSClient.js` with empty class
+- [ ] Add constructor that takes credentials (apiKey, authToken, username, password)
+- [ ] Add empty method stubs for: `scheduleEvent()`, `updateEvent()`, `cancelEvent()`, `reinstateEvent()`, `deleteEvent()`, `importRoute()`
+- [ ] Run tests (should still pass - no behavior changed)
+- [ ] Commit: "Add RWGPSClient skeleton"
+
+### Task 3.2: Move authentication logic
+- [ ] Copy `login()` method from ApiService to RWGPSClient
+- [ ] Copy `_prepareRequest()` helper for Basic Auth
+- [ ] RWGPSClient should handle BOTH web session AND Basic Auth internally
+- [ ] Run tests
+- [ ] Commit: "Move authentication to RWGPSClient"
+
+### Task 3.3: Implement deleteEvent (simplest operation)
+- [ ] Read `test/fixtures/rwgps-api/unschedule.json` to understand the API calls
+- [ ] Implement `deleteEvent(eventUrl)` in RWGPSClient
+- [ ] It should: login → DELETE to v1 API → return success/failure
+- [ ] Add test in `test/__tests__/RWGPSClient.test.js` using mock server
+- [ ] Run all tests
+- [ ] Commit: "Implement RWGPSClient.deleteEvent"
+
+### Task 3.4: Wire RWGPSClient.deleteEvent to existing code
+- [ ] Find where `batch_delete_events` is called (grep for it)
+- [ ] Create adapter that calls RWGPSClient.deleteEvent instead
+- [ ] Run tests
+- [ ] Commit: "Wire RWGPSClient.deleteEvent to existing callers"
+
+### Task 3.5: Implement getEvent
+- [ ] Read Cancel/Reinstate fixtures to see how getAll works
+- [ ] Implement `getEvent(eventUrl)` in RWGPSClient
+- [ ] Returns the event object (parsed JSON)
+- [ ] Add tests using mock server
+- [ ] Commit: "Implement RWGPSClient.getEvent"
+
+### Task 3.6: Implement editEvent
+- [ ] Read Update fixture for the double-edit pattern
+- [ ] Implement `editEvent(eventUrl, eventData)` in RWGPSClient
+- [ ] Include the all_day workaround (for now - we'll test removing it later)
+- [ ] Add tests using mock server
+- [ ] Commit: "Implement RWGPSClient.editEvent"
+
+### Task 3.7: Implement cancelEvent using getEvent + editEvent
+- [ ] `cancelEvent(eventUrl)` should:
+  - Call `getEvent()` to fetch current data
+  - Add "CANCELLED: " prefix to name
+  - Call `editEvent()` with modified data
+- [ ] Verify behavior matches fixtures
+- [ ] Add tests
+- [ ] Commit: "Implement RWGPSClient.cancelEvent"
+
+### Task 3.8: Implement reinstateEvent
+- [ ] Similar to cancelEvent but removes "CANCELLED: " prefix
+- [ ] Add tests
+- [ ] Commit: "Implement RWGPSClient.reinstateEvent"
+
+### Task 3.9: Implement copyTemplate
+- [ ] Read Schedule fixture for copy_template behavior
+- [ ] NOTE: Returns new event URL from Location header
+- [ ] Add tests
+- [ ] Commit: "Implement RWGPSClient.copyTemplate"
+
+### Task 3.10: Implement scheduleEvent
+- [ ] `scheduleEvent(templateUrl, eventData, organizerNames)` should:
+  - Copy template → get new URL
+  - Look up organizers by name
+  - Edit event with full data
+  - Remove template tag
+- [ ] Add comprehensive tests
+- [ ] Commit: "Implement RWGPSClient.scheduleEvent"
+
+### Task 3.11: Implement updateEvent (full operation)
+- [ ] Similar to scheduleEvent but no copy step
+- [ ] Add tests
+- [ ] Commit: "Implement RWGPSClient.updateEvent"
+
+### Task 3.12: Implement importRoute
+- [ ] Read import-route fixture
+- [ ] Copy route → fetch details → add tags
+- [ ] Add tests
+- [ ] Commit: "Implement RWGPSClient.importRoute"
+
+### Phase 3 Complete Checkpoint
+- [ ] All 424+ tests pass
+- [ ] RWGPSClient has all 6 operations implemented
+- [ ] Old code still works (adapter layer in place)
+- [ ] Commit: "Phase 3 complete: RWGPSClient implemented"
+
+---
+
+## Phase 4: Migrate to v1 API
+
+**Model recommendation**: Haiku 4.5 for mechanical changes, Sonnet if tests fail
+
+### Goal
+Replace web API calls with v1 API calls where possible.
+
+### Task 4.1: Test if double-edit is needed for v1 API
+- [ ] Create a test that does single PUT to v1 API
+- [ ] Check if start time is set correctly without the all_day workaround
+- [ ] Document finding in RWGPS_MIGRATION_GUIDE.md
+- [ ] Commit: "Test: v1 API double-edit requirement"
+
+### Task 4.2: Replace web getEvent with v1 API
+- [ ] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
+- [ ] Run tests - verify response format matches
+- [ ] If format differs, add transformation
+- [ ] Commit: "Migrate getEvent to v1 API"
+
+### Task 4.3: Replace web editEvent with v1 API
+- [ ] Change `editEvent()` to use `PUT /api/v1/events/{id}.json`
+- [ ] If double-edit not needed (from Task 4.1), remove workaround
+- [ ] Run tests
+- [ ] Commit: "Migrate editEvent to v1 API"
+
+### Task 4.4: Replace copyTemplate with createEvent
+- [ ] v1 API has `POST /api/v1/events.json` to create events
+- [ ] May need to fetch template first to copy its settings
+- [ ] Run tests
+- [ ] Commit: "Replace copyTemplate with v1 createEvent"
+
+### Task 4.5: Handle batch_update_tags
+- [ ] DECISION POINT: Keep web API or implement individual tag calls?
+- [ ] If keeping web API, document why
+- [ ] If replacing, implement individual calls
+- [ ] Commit decision and implementation
+
+### Task 4.6: Verify getClubMembers still works
+- [ ] Already uses v1 API - just verify
+- [ ] Run tests
+- [ ] Commit: "Verify getClubMembers uses v1 API"
+
+### Phase 4 Complete Checkpoint
+- [ ] All tests pass
+- [ ] Most operations use v1 API
+- [ ] Document any operations that still need web API
+- [ ] Commit: "Phase 4 complete: Migrated to v1 API"
+
+---
+
+## Phase 5: Clean Up
+
+**Model recommendation**: Haiku 4.5
+
+### Goal
+Remove dead code, simplify structure.
+
+### Task 5.1: Remove RWGPS.js facade (if no longer needed)
+- [ ] Check if anything still imports RWGPS.js
+- [ ] If not, delete it
+- [ ] Run tests
+- [ ] Commit: "Remove unused RWGPS.js"
+
+### Task 5.2: Remove RWGPSService.js (if no longer needed)
+- [ ] Check imports
+- [ ] Delete if unused
+- [ ] Run tests
+- [ ] Commit: "Remove unused RWGPSService.js"
+
+### Task 5.3: Simplify ApiService.js
+- [ ] If only used for Basic Auth, simplify
+- [ ] Or merge into RWGPSClient
+- [ ] Run tests
+- [ ] Commit: "Simplify ApiService"
+
+### Task 5.4: Remove web session login (if no longer needed)
+- [ ] If all operations use v1 API, remove web login code
+- [ ] Run tests
+- [ ] Commit: "Remove web session authentication"
+
+### Task 5.5: Clean up CredentialManager
+- [ ] Remove unused credential types
+- [ ] Run tests
+- [ ] Commit: "Simplify CredentialManager"
+
+### Task 5.6: Update exports and types
+- [ ] Update RWGPSLibAdapter.js to use RWGPSClient
+- [ ] Update any type definitions
+- [ ] Run tests
+- [ ] Commit: "Update exports to use RWGPSClient"
+
+### Task 5.7: Final cleanup
+- [ ] Remove RWGPSApiLogger if no longer needed for production
+- [ ] Or keep it for debugging (your choice)
+- [ ] Run full test suite: `npm test`
+- [ ] Commit: "Phase 5 complete: Cleanup done"
+
+---
+
+## Final Verification
+
+- [ ] Run full test suite: `npm test` (all 424+ tests pass)
+- [ ] Run characterization tests: `npm test -- test/__tests__/RWGPSCharacterization.test.js`
+- [ ] Deploy to dev: `npm run dev:push`
+- [ ] Test all 6 operations manually in spreadsheet
+- [ ] If all work: `npm run prod:push`
+- [ ] Merge branch to master
+
+---
+
+## Quick Reference
+
+### Run Tests
+```bash
+# All tests
+npm test
+
+# Just characterization tests (fast check)
+npm test -- test/__tests__/RWGPSCharacterization.test.js
+
+# Just RWGPSClient tests
+npm test -- test/__tests__/RWGPSClient.test.js
+```
+
+### Fixture Files
+- `test/fixtures/rwgps-api/schedule.json` - 6 API calls
+- `test/fixtures/rwgps-api/update.json` - 4 API calls
+- `test/fixtures/rwgps-api/cancel.json` - 4 API calls
+- `test/fixtures/rwgps-api/reinstate.json` - 4 API calls
+- `test/fixtures/rwgps-api/unschedule.json` - 2 API calls
+- `test/fixtures/rwgps-api/import-route.json` - 4 API calls
+
+### Key Files
+- `src/rwgpslib/RWGPSClient.js` - New unified client (create this)
+- `src/rwgpslib/ApiService.js` - Current fetch handling
+- `src/rwgpslib/CredentialManager.js` - Credential storage
+- `test/mocks/RWGPSMockServer.js` - Mock server for tests
