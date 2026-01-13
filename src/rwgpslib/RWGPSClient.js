@@ -418,6 +418,64 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Reinstate a cancelled event (removes "CANCELLED: " prefix from name)
+     * 
+     * @param {string} eventUrl - Event URL
+     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     */
+    reinstateEvent(eventUrl) {
+        try {
+            // Get current event
+            const getResult = this.getEvent(eventUrl);
+            
+            if (!getResult.success) {
+                return {
+                    success: false,
+                    error: `Failed to get event: ${getResult.error}`
+                };
+            }
+            
+            const event = getResult.event;
+            
+            // Check if event is cancelled
+            if (!event.name || !event.name.startsWith('CANCELLED: ')) {
+                return {
+                    success: false,
+                    error: 'Event is not cancelled (name does not start with "CANCELLED: ")'
+                };
+            }
+            
+            // Remove "CANCELLED: " prefix from name
+            const modifiedEvent = {
+                ...event,
+                name: event.name.substring('CANCELLED: '.length)
+            };
+            
+            // Edit event with modified name
+            const editResult = this.editEvent(eventUrl, modifiedEvent);
+            
+            if (!editResult.success) {
+                return {
+                    success: false,
+                    error: `Failed to edit event: ${editResult.error}`
+                };
+            }
+            
+            return {
+                success: true,
+                event: editResult.event
+            };
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL

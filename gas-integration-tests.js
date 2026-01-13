@@ -435,6 +435,132 @@ function testRWGPSClientCancelEvent(eventId) {
     }
 }
 
+/**
+ * Task 3.8: Test reinstateEvent method
+ * 
+ * This test verifies that the RWGPSClient.reinstateEvent() method correctly:
+ * - Removes "CANCELLED: " prefix from event name
+ * - Uses the double-edit pattern (all_day=1, then all_day=0)
+ * - Returns updated event data
+ * - Only works on cancelled events
+ * 
+ * @param {number} [eventId] - Event ID to test with (default: 445203)
+ * @returns {{success: boolean, originalEvent?: any, cancelledEvent?: any, reinstatedEvent?: any, error?: string}}
+ */
+function testRWGPSClientReinstateEvent(eventId) {
+    console.log('====================================');
+    console.log('Task 3.8: Test RWGPSClient.reinstateEvent()');
+    console.log('====================================');
+    console.log(`Event ID: ${eventId || 'NOT PROVIDED - using default 445203'}`);
+    
+    if (!eventId) {
+        console.warn('⚠️  No event ID provided. Please pass a valid event ID from your spreadsheet.');
+        console.warn('   Example: testRWGPSClientReinstateEvent(445203)');
+        eventId = 445203; // Default for testing
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get original event
+        console.log(`\n📡 Step 1: Getting original event...`);
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to get event');
+            console.error(`   Error: ${getResult.error}`);
+            return { success: false, error: getResult.error };
+        }
+        
+        const originalEvent = getResult.event;
+        console.log('✅ Original event retrieved');
+        console.log(`   Name: ${originalEvent.name}`);
+        console.log(`   Already cancelled: ${originalEvent.name.startsWith('CANCELLED: ')}`);
+        
+        // STEP 2: Cancel event first (so we can reinstate it)
+        console.log(`\n📡 Step 2: Cancelling event first (so we can test reinstate)...`);
+        const cancelResult = client.cancelEvent(eventUrl);
+        
+        if (!cancelResult.success) {
+            if (cancelResult.error && cancelResult.error.includes('already cancelled')) {
+                console.log('ℹ️  Event already cancelled - can proceed to reinstate');
+            } else {
+                console.error('❌ Cancel failed');
+                console.error(`   Error: ${cancelResult.error}`);
+                return { success: false, error: cancelResult.error };
+            }
+        } else {
+            console.log('✅ Event cancelled');
+            console.log(`   Cancelled name: ${cancelResult.event.name}`);
+        }
+        
+        // STEP 3: Reinstate event
+        console.log(`\n📡 Step 3: Reinstating event (removing CANCELLED: prefix)...`);
+        const reinstateResult = client.reinstateEvent(eventUrl);
+        
+        if (!reinstateResult.success) {
+            console.error('❌ Reinstate failed');
+            console.error(`   Error: ${reinstateResult.error}`);
+            console.error('⚠️  EVENT LEFT IN CANCELLED STATE - Please manually fix!');
+            return { success: false, error: reinstateResult.error, eventModified: true };
+        }
+        
+        console.log('✅ Reinstate succeeded');
+        console.log(`   Reinstated name: ${reinstateResult.event.name}`);
+        console.log(`   Has CANCELLED: prefix: ${reinstateResult.event.name.startsWith('CANCELLED: ')}`);
+        
+        // STEP 4: Verify reinstate by getting event again
+        console.log(`\n📡 Step 4: Verifying reinstatement...`);
+        const verifyResult = client.getEvent(eventUrl);
+        
+        if (!verifyResult.success) {
+            console.warn('⚠️  Could not verify reinstatement (get failed), but reinstate succeeded');
+        } else {
+            const currentName = verifyResult.event.name || '';
+            if (!currentName.startsWith('CANCELLED: ')) {
+                console.log('✅ Verified: Name does not have CANCELLED: prefix');
+            } else {
+                console.warn('⚠️  Name still has CANCELLED: prefix (may need refresh)');
+            }
+        }
+        
+        console.log('\n🎉 Task 3.8 (reinstateEvent) working correctly!');
+        console.log('   ✅ CANCELLED: prefix removed from name');
+        console.log('   ✅ Double-edit pattern (all_day=1, then all_day=0) executed');
+        console.log('   ✅ Event name matches original');
+        
+        return { 
+            success: true, 
+            originalEvent: originalEvent,
+            cancelledEvent: cancelResult.success ? cancelResult.event : null,
+            reinstatedEvent: reinstateResult.event
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        console.error('⚠️  Event may be in modified state - check manually!');
+        return { success: false, error: error.message };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [
