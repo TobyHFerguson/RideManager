@@ -105,7 +105,9 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [ ] Find where `batch_delete_events` is called (grep for it)
 - [ ] Create adapter that calls RWGPSClient.deleteEvent instead
 - [ ] Run tests
-- [ ] Commit: "Wire RWGPSClient.deleteEvent to existing callers"
+- [x] Commit: "Wire RWGPSClient.deleteEvent to existing callers"
+- [x] First GAS deployment successful (commit 69cc412)
+- [x] Note: Fixed validate-exports to handle subdirectories and indented class declarations
 
 ### Task 3.5: Implement getEvent
 - [ ] Read Cancel/Reinstate fixtures to see how getAll works
