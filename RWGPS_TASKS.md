@@ -133,14 +133,18 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] **VERIFIED**: Double-edit pattern (all_day=1, then all_day=0) works correctly
 - [x] Note: Converts organizers→organizer_tokens, routes→route_ids
 
-### Task 3.7: Implement cancelEvent using getEvent + editEvent
-- [ ] `cancelEvent(eventUrl)` should:
+### Task 3.7: Implement cancelEvent using getEvent + editEvent ✅
+- [x] `cancelEvent(eventUrl)` should:
   - Call `getEvent()` to fetch current data
+  - Check if already cancelled (name starts with "CANCELLED: ")
   - Add "CANCELLED: " prefix to name
   - Call `editEvent()` with modified data
-- [ ] Verify behavior matches fixtures
-- [ ] Add tests
-- [ ] Commit: "Implement RWGPSClient.cancelEvent"
+- [x] Demonstrates composable design (uses getEvent + editEvent)
+- [x] Add 6 tests (466 total passing)
+- [x] Commit: "Task 3.7: Implement cancelEvent using getEvent + editEvent" (596757f)
+- [x] Add GAS integration test: testRWGPSClientCancelEvent()
+- [x] **TESTED IN GAS**: Event 445203 cancelled (added CANCELLED: prefix) and restored successfully
+- [x] **VERIFIED**: Double-edit pattern working, composable methods confirmed
 
 ### Task 3.8: Implement reinstateEvent
 - [ ] Similar to cancelEvent but removes "CANCELLED: " prefix
