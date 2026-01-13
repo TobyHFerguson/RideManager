@@ -120,6 +120,14 @@ declare class RWGPSClient {
     editEvent(eventUrl: string, eventData: any): { success: boolean; event?: any; error?: string };
 
     /**
+     * Cancel an event (adds "CANCELLED: " prefix to name)
+     * 
+     * @param {string} eventUrl - Event URL
+     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     */
+    cancelEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL

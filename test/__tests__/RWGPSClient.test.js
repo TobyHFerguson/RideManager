@@ -314,4 +314,126 @@ describe('RWGPSClient', () => {
             expect(putCalls[1].options.headers.Cookie).toContain('_rwgps_3_session=');
         });
     });
+
+    describe('cancelEvent', () => {
+        it('should add CANCELLED: prefix to event name', () => {
+            // Mock getEvent and editEvent to avoid fixture complexity
+            const originalGetEvent = client.getEvent;
+            const originalEditEvent = client.editEvent;
+
+            client.getEvent = () => ({
+                success: true,
+                event: {
+                    id: 444070,
+                    name: 'Test Event',
+                    desc: 'Test description'
+                }
+            });
+
+            let editedEvent;
+            client.editEvent = (/** @type {string} */ eventUrl, /** @type {any} */ eventData) => {
+                editedEvent = eventData;
+                return {
+                    success: true,
+                    event: eventData
+                };
+            };
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const result = client.cancelEvent(eventUrl);
+
+            expect(result.success).toBe(true);
+            expect(result.event).toBeDefined();
+            expect(editedEvent.name).toBe('CANCELLED: Test Event');
+
+            // Restore
+            client.getEvent = originalGetEvent;
+            client.editEvent = originalEditEvent;
+        });
+
+        it('should return error if event already cancelled', () => {
+            // Mock getEvent to return event with CANCELLED: prefix
+            const originalGetEvent = client.getEvent;
+            client.getEvent = () => ({
+                success: true,
+                event: {
+                    name: 'CANCELLED: Test Event',
+                    id: 444070
+                }
+            });
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const result = client.cancelEvent(eventUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('already cancelled');
+
+            // Restore
+            client.getEvent = originalGetEvent;
+        });
+
+        it('should return error if login fails', () => {
+            // Don't load fixture - login will fail
+            const eventUrl = 'https://ridewithgps.com/events/12345';
+            
+            const result = client.cancelEvent(eventUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Login');
+        });
+
+        it('should return error for invalid event URL', () => {
+            const result = client.cancelEvent('invalid-url');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Invalid event URL');
+        });
+
+        it('should return error if getEvent fails', () => {
+            // Mock getEvent to fail
+            const originalGetEvent = client.getEvent;
+            client.getEvent = () => ({
+                success: false,
+                error: 'Failed to fetch event'
+            });
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const result = client.cancelEvent(eventUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Failed to fetch event');
+
+            // Restore
+            client.getEvent = originalGetEvent;
+        });
+
+        it('should return error if editEvent fails', () => {
+            // Mock both methods
+            const originalGetEvent = client.getEvent;
+            const originalEditEvent = client.editEvent;
+
+            client.getEvent = () => ({
+                success: true,
+                event: {
+                    id: 444070,
+                    name: 'Test Event'
+                }
+            });
+
+            client.editEvent = () => ({
+                success: false,
+                error: 'Failed to edit event'
+            });
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const result = client.cancelEvent(eventUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Failed to edit event');
+
+            // Restore
+            client.getEvent = originalGetEvent;
+            client.editEvent = originalEditEvent;
+        });
+    });
 });

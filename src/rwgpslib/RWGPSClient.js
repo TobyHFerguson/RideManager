@@ -360,6 +360,64 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Cancel an event (adds "CANCELLED: " prefix to name)
+     * 
+     * @param {string} eventUrl - Event URL
+     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     */
+    cancelEvent(eventUrl) {
+        try {
+            // Get current event
+            const getResult = this.getEvent(eventUrl);
+            
+            if (!getResult.success) {
+                return {
+                    success: false,
+                    error: `Failed to get event: ${getResult.error}`
+                };
+            }
+            
+            const event = getResult.event;
+            
+            // Check if already cancelled
+            if (event.name && event.name.startsWith('CANCELLED: ')) {
+                return {
+                    success: false,
+                    error: 'Event is already cancelled'
+                };
+            }
+            
+            // Add "CANCELLED: " prefix to name
+            const modifiedEvent = {
+                ...event,
+                name: 'CANCELLED: ' + event.name
+            };
+            
+            // Edit event with modified name
+            const editResult = this.editEvent(eventUrl, modifiedEvent);
+            
+            if (!editResult.success) {
+                return {
+                    success: false,
+                    error: `Failed to edit event: ${editResult.error}`
+                };
+            }
+            
+            return {
+                success: true,
+                event: editResult.event
+            };
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL

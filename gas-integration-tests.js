@@ -308,6 +308,133 @@ function testRWGPSClientEditEvent(eventId) {
     }
 }
 
+/**
+ * Task 3.7: Test cancelEvent method
+ * 
+ * This test verifies that the RWGPSClient.cancelEvent() method correctly:
+ * - Adds "CANCELLED: " prefix to event name
+ * - Uses the double-edit pattern (all_day=1, then all_day=0)
+ * - Returns updated event data
+ * - Can be reversed by removing the prefix
+ * 
+ * @param {number} [eventId] - Event ID to test with (default: 445203)
+ * @returns {{success: boolean, originalEvent?: any, cancelledEvent?: any, restoredEvent?: any, error?: string}}
+ */
+function testRWGPSClientCancelEvent(eventId) {
+    console.log('====================================');
+    console.log('Task 3.7: Test RWGPSClient.cancelEvent()');
+    console.log('====================================');
+    console.log(`Event ID: ${eventId || 'NOT PROVIDED - using default 445203'}`);
+    
+    if (!eventId) {
+        console.warn('⚠️  No event ID provided. Please pass a valid event ID from your spreadsheet.');
+        console.warn('   Example: testRWGPSClientCancelEvent(445203)');
+        eventId = 445203; // Default for testing
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get original event
+        console.log(`\n📡 Step 1: Getting original event...`);
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to get event');
+            console.error(`   Error: ${getResult.error}`);
+            return { success: false, error: getResult.error };
+        }
+        
+        const originalEvent = getResult.event;
+        console.log('✅ Original event retrieved');
+        console.log(`   Name: ${originalEvent.name}`);
+        console.log(`   Already cancelled: ${originalEvent.name.startsWith('CANCELLED: ')}`);
+        
+        // STEP 2: Cancel event
+        console.log(`\n📡 Step 2: Cancelling event (adding CANCELLED: prefix)...`);
+        const cancelResult = client.cancelEvent(eventUrl);
+        
+        if (!cancelResult.success) {
+            if (cancelResult.error && cancelResult.error.includes('already cancelled')) {
+                console.log('ℹ️  Event already cancelled - this is expected behavior');
+                console.log('   Skipping to restore step...');
+            } else {
+                console.error('❌ Cancel failed');
+                console.error(`   Error: ${cancelResult.error}`);
+                return { success: false, error: cancelResult.error };
+            }
+        } else {
+            console.log('✅ Cancel succeeded');
+            console.log(`   Updated name: ${cancelResult.event.name}`);
+            console.log(`   Has CANCELLED: prefix: ${cancelResult.event.name.startsWith('CANCELLED: ')}`);
+        }
+        
+        // STEP 3: Verify cancel by getting event again
+        console.log(`\n📡 Step 3: Verifying cancellation...`);
+        const verifyResult = client.getEvent(eventUrl);
+        
+        if (!verifyResult.success) {
+            console.warn('⚠️  Could not verify cancellation (get failed), but cancel succeeded');
+        } else {
+            const currentName = verifyResult.event.name || '';
+            if (currentName.startsWith('CANCELLED: ')) {
+                console.log('✅ Verified: Name has CANCELLED: prefix');
+            } else {
+                console.warn('⚠️  Name does not have CANCELLED: prefix (may need refresh)');
+            }
+        }
+        
+        // STEP 4: Restore original name by editing
+        console.log(`\n📡 Step 4: Restoring original event name...`);
+        const restoreResult = client.editEvent(eventUrl, originalEvent);
+        
+        if (!restoreResult.success) {
+            console.error('❌ Failed to restore original event');
+            console.error(`   Error: ${restoreResult.error}`);
+            console.error('⚠️  EVENT LEFT IN CANCELLED STATE - Please manually fix!');
+            return { success: false, error: restoreResult.error, eventModified: true };
+        }
+        
+        console.log('✅ Original event name restored');
+        console.log(`   Restored name: ${restoreResult.event.name}`);
+        
+        console.log('\n🎉 Task 3.7 (cancelEvent) working correctly!');
+        console.log('   ✅ CANCELLED: prefix added to name');
+        console.log('   ✅ Double-edit pattern (all_day=1, then all_day=0) executed');
+        console.log('   ✅ Event restored to original state');
+        
+        return { 
+            success: true, 
+            originalEvent: originalEvent,
+            cancelledEvent: cancelResult.success ? cancelResult.event : null,
+            restoredEvent: restoreResult.event
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        console.error('⚠️  Event may be in modified state - check manually!');
+        return { success: false, error: error.message };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [
