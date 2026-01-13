@@ -282,7 +282,7 @@ AFTER:  RWGPSClient → UrlFetchApp
   - ⚠️ Note: User ID was undefined in test (globals.ClubUserId not set, but copy still succeeded)
   - ⚠️ Manual cleanup required (test route deleted manually)
 - [x] **VERIFIED**: Full import workflow working end-to-end
-- [ ] Commit: "Task 3.12: Implement importRoute with route copy and tagging" (READY FOR COMMIT)
+- [x] Commit: "Task 3.12: Implement importRoute" (d1b2c44)
 
 ### Phase 3 Complete Checkpoint ✅
 - [x] All 539 tests pass (was 513, added 26 new tests in Tasks 3.11 + 3.12)
@@ -300,7 +300,7 @@ AFTER:  RWGPSClient → UrlFetchApp
   - setRouteExpiration ✅ (GAS verified)
   - login ✅ (used by all web session operations)
 - [x] Old code still works (adapter layer in RideManager.js delegates to RWGPSClient)
-- [ ] Commit Phase 3 complete (Tasks 3.11-3.12): "Tasks 3.11-3.12: updateEvent and importRoute"
+- [x] Commit Phase 3 complete (Tasks 3.11-3.12): "Task 3.12: Implement importRoute" (d1b2c44)
 
 ---
 
