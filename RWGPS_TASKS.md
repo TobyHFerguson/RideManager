@@ -71,19 +71,19 @@ AFTER:  RWGPSClient → UrlFetchApp
 ```
 
 ### Task 3.1: Create RWGPSClient skeleton
-- [ ] **Create `.d.ts` FIRST**: `src/rwgpslib/RWGPSClientCore.d.ts` with method signatures
-- [ ] **Write tests**: `test/__tests__/RWGPSClientCore.test.js` (will fail - no implementation yet)
-- [ ] **Create Core**: `src/rwgpslib/RWGPSClientCore.js` with class and static methods:
+- [x] **Create `.d.ts` FIRST**: `src/rwgpslib/RWGPSClientCore.d.ts` with method signatures
+- [x] **Write tests**: `test/__tests__/RWGPSClientCore.test.js` (will fail - no implementation yet)
+- [x] **Create Core**: `src/rwgpslib/RWGPSClientCore.js` with class and static methods:
   - `parseEventUrl(eventUrl)` - Extract event ID from URL
   - `buildRequestOptions(method, payload)` - Build HTTP request options
   - `validateEventData(eventData)` - Validate event fields
-- [ ] **Create Adapter**: `src/rwgpslib/RWGPSClient.js` (thin wrapper)
+- [x] **Create Adapter**: `src/rwgpslib/RWGPSClient.js` (thin wrapper)
   - Constructor takes credentials (apiKey, authToken, username, password)
   - Method stubs: `scheduleEvent()`, `updateEvent()`, `cancelEvent()`, `reinstateEvent()`, `deleteEvent()`, `importRoute()`
   - Each method delegates to Core for logic, uses UrlFetchApp for I/O
-- [ ] **Run typecheck**: `npm run typecheck` (must show ZERO errors)
-- [ ] **Run tests**: Should pass (Core logic tested, adapter stubs don't break anything)
-- [ ] **Commit**: "Add RWGPSClient skeleton with Core/Adapter separation"
+- [x] **Run typecheck**: `npm run typecheck` (must show ZERO errors)
+- [x] **Run tests**: Should pass (Core logic tested, adapter stubs don't break anything)
+- [x] **Commit**: "Add RWGPSClient skeleton with Core/Adapter separation"
 
 ### Task 3.2: Move authentication logic
 - [ ] Copy `login()` method from ApiService to RWGPSClient
