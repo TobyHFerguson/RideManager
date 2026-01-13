@@ -493,14 +493,15 @@ var RWGPSClient = (function() {
                 return { success: false, error: 'Login failed - could not establish web session' };
             }
 
-            // Extract template ID
+            // Validate template URL
             const templateId = RWGPSClientCore.extractEventId(templateUrl);
             if (!templateId) {
                 return { success: false, error: 'Invalid template URL - could not extract event ID' };
             }
 
-            // Build copy URL (must include .json to get 302 redirect with Location header)
-            const copyUrl = `https://ridewithgps.com/events/${templateId}/copy.json`;
+            // Build copy URL - use the original URL with /copy appended (NOT .json)
+            // RWGPS returns 302 redirect with Location header for this endpoint
+            const copyUrl = templateUrl + '/copy';
 
             // Build payload with event data
             const payload = {
@@ -511,7 +512,7 @@ var RWGPSClient = (function() {
                 'event[start_time]': eventData.start_time || ''
             };
 
-            // Make copy request
+            // Make copy request - followRedirects: false is CRITICAL to get 302 with Location header
             const response = this._fetch(copyUrl, {
                 method: 'POST',
                 headers: {
@@ -519,6 +520,7 @@ var RWGPSClient = (function() {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                 },
                 payload: payload,
+                followRedirects: false,
                 muteHttpExceptions: true
             });
 

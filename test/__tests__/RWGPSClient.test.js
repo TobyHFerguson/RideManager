@@ -576,9 +576,10 @@ describe('RWGPSClient', () => {
             expect(result.success).toBe(true);
             expect(result.eventUrl).toBe('https://ridewithgps.com/events/444070-copied-event');
             expect(client._fetch).toHaveBeenCalledWith(
-                'https://ridewithgps.com/events/404019/copy.json',
+                'https://ridewithgps.com/events/404019-b-template/copy',
                 expect.objectContaining({
                     method: 'POST',
+                    followRedirects: false,
                     payload: expect.objectContaining({
                         'event[name]': 'COPIED EVENT',
                         'event[all_day]': '0',
