@@ -488,9 +488,9 @@ var RWGPSClient = (function() {
     copyTemplate(templateUrl, eventData = {}) {
         try {
             // Login first
-            const loginResult = this.login();
-            if (!loginResult.success) {
-                return { success: false, error: `Login failed: ${loginResult.error}` };
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return { success: false, error: 'Login failed - could not establish web session' };
             }
 
             // Extract template ID

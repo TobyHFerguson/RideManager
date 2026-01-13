@@ -562,10 +562,7 @@ describe('RWGPSClient', () => {
     describe('copyTemplate', () => {
         it('should copy template and return new event URL', () => {
             // Mock login
-            jest.spyOn(client, 'login').mockReturnValue({
-                success: true,
-                sessionCookie: 'mock-cookie'
-            });
+            jest.spyOn(client, 'login').mockReturnValue(true);
 
             // Mock fetch for copy (302 with Location header)
             const mockResponse = {
@@ -592,7 +589,7 @@ describe('RWGPSClient', () => {
         });
 
         it('should use provided event data when copying', () => {
-            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+            jest.spyOn(client, 'login').mockReturnValue(true);
             const mockResponse = {
                 getResponseCode: () => 302,
                 getHeaders: () => ({ 'Location': 'https://ridewithgps.com/events/444070' })
@@ -624,10 +621,7 @@ describe('RWGPSClient', () => {
         });
 
         it('should return error when login fails', () => {
-            jest.spyOn(client, 'login').mockReturnValue({
-                success: false,
-                error: 'Login failed'
-            });
+            jest.spyOn(client, 'login').mockReturnValue(false);
 
             const result = client.copyTemplate('https://ridewithgps.com/events/404019');
 
@@ -636,7 +630,7 @@ describe('RWGPSClient', () => {
         });
 
         it('should return error for invalid template URL', () => {
-            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+            jest.spyOn(client, 'login').mockReturnValue(true);
 
             const result = client.copyTemplate('invalid-url');
 
@@ -645,7 +639,7 @@ describe('RWGPSClient', () => {
         });
 
         it('should return error when copy fails (non-302 status)', () => {
-            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+            jest.spyOn(client, 'login').mockReturnValue(true);
             const mockResponse = {
                 getResponseCode: () => 400,
                 getHeaders: () => ({})
@@ -659,7 +653,7 @@ describe('RWGPSClient', () => {
         });
 
         it('should return error when Location header is missing', () => {
-            jest.spyOn(client, 'login').mockReturnValue({ success: true });
+            jest.spyOn(client, 'login').mockReturnValue(true);
             const mockResponse = {
                 getResponseCode: () => 302,
                 getHeaders: () => ({}) // No Location header
