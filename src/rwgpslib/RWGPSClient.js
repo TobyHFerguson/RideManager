@@ -960,7 +960,7 @@ var RWGPSClient = (function() {
             const options = {
                 method: 'PUT',
                 headers: {
-                    'Authorization': 'Basic ' + Utilities.base64Encode(this.username + ':' + this.password),
+                    'Authorization': this._getBasicAuthHeader(),  // Use apiKey:authToken (not username:password)
                     'Content-Type': 'application/json'
                 },
                 payload: JSON.stringify(payload),
