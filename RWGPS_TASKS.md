@@ -311,6 +311,24 @@ AFTER:  RWGPSClient → UrlFetchApp
 ### Goal
 Replace web API calls with v1 API calls where possible.
 
+### CRITICAL: v1 API Authentication
+**ALWAYS use apiKey:authToken for v1 API, NEVER username:password**
+
+The v1 REST API uses Basic Authentication with:
+- **Username**: `apiKey` (from credentials)
+- **Password**: `authToken` (from credentials)
+
+Example:
+```javascript
+// ✅ CORRECT - Use _getBasicAuthHeader() which encodes apiKey:authToken
+'Authorization': this._getBasicAuthHeader()
+
+// ❌ WRONG - Do NOT use username:password
+'Authorization': 'Basic ' + Utilities.base64Encode(this.username + ':' + this.password)
+```
+
+All v1 API endpoints (`/api/v1/*`) require this authentication pattern.
+
 ### Task 4.1: Test if double-edit is needed for v1 API
 - [x] Create testV1SingleEditEvent() method in RWGPSClient
   - Tests single PUT to v1 endpoint without workaround
