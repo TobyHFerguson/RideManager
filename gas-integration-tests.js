@@ -1181,8 +1181,10 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
             all_day: '0'
         };
         
-        console.log(`   Testing with start_time: ${testTime}`);
-        console.log(`   Testing with all_day: 0 (single PUT only)`);
+        console.log(`   Payload being sent to v1 API:`);
+        console.log(`      name: ${testEventData.name}`);
+        console.log(`      starts_at: ${testEventData.starts_at}`);
+        console.log(`      all_day: ${testEventData.all_day}`);
         
         const v1Result = client.testV1SingleEditEvent(eventUrl, testEventData);
         
@@ -1200,12 +1202,16 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
             };
         }
         
-        console.log('✅ V1 API single PUT succeeded');
+        console.log('✅ V1 API single PUT succeeded (HTTP 200)');
+        console.log('   V1 API response body:');
+        console.log(`      Full response: ${JSON.stringify(v1Result.event || {}, null, 2)}`);
         
         if (v1Result.event) {
-            console.log(`   Event returned: ${v1Result.event.name}`);
-            console.log(`   New starts_at: ${v1Result.event.starts_at}`);
-            console.log(`   New all_day: ${v1Result.event.all_day}`);
+            console.log(`   Event name in response: ${v1Result.event.name || 'undefined'}`);
+            console.log(`   Event starts_at in response: ${v1Result.event.starts_at || 'undefined'}`);
+            console.log(`   Event all_day in response: ${v1Result.event.all_day}`);
+        } else {
+            console.log('   ⚠️  No event object in v1 API response');
         }
         
         // STEP 3: Fetch and verify
@@ -1245,27 +1251,50 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
         }
         
         // Check if time was set correctly
-        if (updatedEvent.starts_at === testTime) {
-            console.log('✅ Start time MATCHES test time exactly!');
-            console.log('   → V1 API DOES NOT need double-edit!');
-            findings.push('SUCCESS: v1 API single PUT sets start_time correctly!');
-            findings.push('RECOMMENDATION: Migrate to v1 API without double-edit workaround');
-        } else {
-            console.log('⚠️  Start time does NOT match test time');
+        const timeMatches = updatedEvent.starts_at === testTime;
+        // Also check if it's close (within 1 hour tolerance for timezone issues)
+        const originalTime = new Date(originalEvent.starts_at).getTime();
+        const updatedTime = new Date(updatedEvent.starts_at).getTime();
+        const testTimeMs = new Date(testTime).getTime();
+        const timeChanged = Math.abs(updatedTime - originalTime) > 60000; // Changed by more than 1 minute
+        const testTimeCloseMatch = Math.abs(updatedTime - testTimeMs) < 3600000; // Within 1 hour
+        
+        if (timeMatches) {
+            console.log('   ✅ Start time MATCHES test time exactly!');
+            console.log(`   → V1 API DOES NOT need double-edit!`);
+            findings.push('✅ CONFIRMED: V1 API single PUT correctly sets start_time');
+            findings.push('Migration strategy: Can use single v1 PUT for time changes');
+        } else if (testTimeCloseMatch && timeChanged) {
+            console.log('   ⚠️  Start time changed but may have timezone offset');
             console.log(`   Expected: ${testTime}`);
             console.log(`   Got: ${updatedEvent.starts_at}`);
-            console.log('   → V1 API may still need double-edit or has different behavior');
-            findings.push('UNCERTAIN: v1 API start_time behavior needs investigation');
-            findings.push('Possible reasons: double-edit still needed, or time offset issue');
+            console.log(`   Difference: ${Math.abs(updatedTime - testTimeMs) / 60000} minutes`);
+            findings.push('⚠️ V1 API may apply timezone conversion to start_time');
+            findings.push('Need to test with timezone-aware payloads');
+        } else if (!timeChanged) {
+            console.log('   ❌ Start time did NOT change');
+            console.log(`   Expected: ${testTime}`);
+            console.log(`   Got: ${updatedEvent.starts_at} (same as original: ${originalEvent.starts_at})`);
+            console.log(`   → V1 API likely STILL NEEDS double-edit workaround`);
+            findings.push('❌ CRITICAL: V1 API single PUT does NOT set start_time');
+            findings.push('V1 API still requires double-edit workaround (like web API)');
+            findings.push('Migration strategy: Must use double PUT for time changes');
+        } else {
+            console.log('   ⚠️  Start time does NOT match test time');
+            console.log(`   Expected: ${testTime}`);
+            console.log(`   Got: ${updatedEvent.starts_at}`);
+            findings.push('⚠️ V1 API start_time behavior unclear - needs more testing');
         }
         
         // Check all_day flag
-        if (String(updatedEvent.all_day) === '0') {
-            console.log('✅ all_day flag set correctly');
-            findings.push('v1 API handles all_day=0 correctly');
+        const allDayValue = updatedEvent.all_day;
+        if (allDayValue === false || allDayValue === 0 || allDayValue === '0') {
+            console.log('   ✅ all_day flag set correctly (false/0)');
+            findings.push('V1 API all_day field works correctly');
         } else {
-            console.log('⚠️  all_day flag not set correctly');
-            findings.push('v1 API may have issue with all_day field');
+            console.log(`   ⚠️  all_day flag not set correctly`);
+            console.log(`   Expected: 0 or false, Got: ${allDayValue}`);
+            findings.push('V1 API may have issue with all_day field');
         }
         
         // STEP 5: Cleanup
@@ -1292,6 +1321,18 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
         findings.forEach((f, i) => {
             console.log(`   ${i + 1}. ${f}`);
         });
+        
+        console.log('\n📝 CONCLUSION:');
+        if (findings.some(f => f.includes('CRITICAL') || f.includes('NOT set start_time'))) {
+            console.log('   ❌ V1 API REQUIRES double-edit workaround (same as web API)');
+            console.log('   → Phase 4 migration must keep double-PUT pattern for time changes');
+        } else if (findings.some(f => f.includes('CONFIRMED'))) {
+            console.log('   ✅ V1 API works with single PUT - no double-edit needed!');
+            console.log('   → Phase 4 migration can simplify to single PUT');
+        } else {
+            console.log('   ⚠️  Inconclusive - needs more investigation');
+            console.log('   → Consider testing with different payload formats');
+        }
         
         return {
             success: true,
