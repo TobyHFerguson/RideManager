@@ -329,7 +329,31 @@ Example:
 
 All v1 API endpoints (`/api/v1/*`) require this authentication pattern.
 
-### Task 4.1: Test if double-edit is needed for v1 API
+### CRITICAL: v1 API Date/Time Behavior
+**v1 API uses separate `start_date` and `start_time` fields in response, NOT `starts_at`**
+
+The v1 API response format differs from web API:
+```json
+{
+  "start_date": "2030-03-01",  // Separate date field
+  "start_time": "11:00",       // Separate time field
+  "all_day": false
+  // NO starts_at field in response
+}
+```
+
+**CRITICAL Finding (Task 4.1 GAS Testing):**
+- ✅ Name field updates correctly with single PUT
+- ❌ **start_time does NOT update with single PUT** - requires double-edit workaround
+- ✅ all_day field works correctly
+- **CONCLUSION**: V1 API still requires double-edit pattern (same as web API)
+
+**Migration Impact:**
+- Phase 4 must keep double-PUT pattern for time changes
+- First PUT with `all_day: '1'` to reset
+- Second PUT with actual `start_date`, `start_time`, and `all_day: '0'`
+
+### Task 4.1: Test if double-edit is needed for v1 API ✅ COMPLETE
 - [x] Create testV1SingleEditEvent() method in RWGPSClient
   - Tests single PUT to v1 endpoint without workaround
   - Uses Basic Auth instead of web session cookie
@@ -343,29 +367,44 @@ All v1 API endpoints (`/api/v1/*`) require this authentication pattern.
   - Uses Basic Auth (instead of web session cookie)
   - Accepts same event data structure
   - OpenAPI spec confirms all_day field is supported
-  - **Decision point**: Need to test in GAS to confirm if single PUT works
 - [x] Add GAS integration test: testTask4_1_V1ApiSingleEdit(eventId)
   - Uses event 445203 by default (successfully used in Task 3.11)
   - Fetches event, tests single PUT, verifies time, restores original
   - Comprehensive findings report on v1 API behavior
   - Improved error handling and troubleshooting guidance
-- [ ] Run in GAS: `testTask4_1_V1ApiSingleEdit()` or `testTask4_1_V1ApiSingleEdit(445203)`
-  - Check console output for findings
-  - Decision: Can we migrate to v1 without double-edit?
-- [ ] Document finding in RWGPS_MIGRATION_GUIDE.md
-- [x] Commit: "Task 4.1: Add GAS integration test for v1 API single-edit" (fc4677b)
+- [x] Run in GAS: `testTask4_1_V1ApiSingleEdit()`
+  - **RESULT**: Name updated ✅, Time unchanged ❌
+  - **FINDING**: V1 API REQUIRES double-edit (same as web API)
+  - Event 445203: Time stayed at original despite single PUT
+- [x] Document findings in this file (see CRITICAL section above)
+- [x] Commits:
+  - fc4677b: Add GAS integration test
+  - f22a760: Improve error handling
+  - 81ea3da: Fix v1 API auth (apiKey:authToken)
+  - 4e92695: Enhance test logging and analysis
+
+**TASK COMPLETE - Key Finding**: V1 API migration must keep double-PUT pattern for time changes.
 
 ### Task 4.2: Replace web getEvent with v1 API
 - [ ] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
+- [ ] **CRITICAL**: Transform v1 response format to match web API format
+  - v1 uses: `start_date` (string) + `start_time` (string) + `time_zone`
+  - Web uses: `starts_at` (ISO 8601 timestamp)
+  - Must convert: `start_date + start_time + time_zone` → `starts_at`
 - [ ] Run tests - verify response format matches
-- [ ] If format differs, add transformation
 - [ ] Commit: "Migrate getEvent to v1 API"
 
 ### Task 4.3: Replace web editEvent with v1 API
 - [ ] Change `editEvent()` to use `PUT /api/v1/events/{id}.json`
-- [ ] If double-edit not needed (from Task 4.1), remove workaround
+- [ ] **MUST keep double-edit workaround** (confirmed by Task 4.1)
+  - First PUT: `all_day: '1'` to reset time
+  - Second PUT: actual `start_date`, `start_time`, `all_day: '0'`
+- [ ] **CRITICAL**: Transform payload format for v1 API
+  - Input has: `starts_at` (ISO 8601 timestamp)
+  - v1 needs: `start_date` (YYYY-MM-DD) + `start_time` (HH:MM)
+  - Must convert: `starts_at` → `start_date + start_time`
 - [ ] Run tests
-- [ ] Commit: "Migrate editEvent to v1 API"
+- [ ] Commit: "Migrate editEvent to v1 API with double-edit"
 
 ### Task 4.4: Replace copyTemplate with createEvent
 - [ ] v1 API has `POST /api/v1/events.json` to create events
