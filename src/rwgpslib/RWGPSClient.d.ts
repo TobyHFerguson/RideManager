@@ -71,13 +71,14 @@ declare class RWGPSClient {
     scheduleEvent(templateUrl: string, eventData: any, organizerNames: string[]): ScheduleResult;
 
     /**
-     * Update an existing event
+     * Update an existing event with new data and optionally add organizers
      * 
      * @param {string} eventUrl - Event URL
      * @param {any} eventData - Updated event data
-     * @returns {OperationResult} Result
+     * @param {string[]} organizerNames - Optional array of organizer names to look up
+     * @returns {ScheduleResult} Result with event data and resolved organizers
      */
-    updateEvent(eventUrl: string, eventData: any): OperationResult;
+    updateEvent(eventUrl: string, eventData: any, organizerNames?: string[]): ScheduleResult;
 
     /**
      * Cancel an event (adds CANCELLED prefix)

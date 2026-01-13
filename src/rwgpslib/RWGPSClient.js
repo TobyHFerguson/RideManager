@@ -224,6 +224,77 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Update an existing event with new data and optionally add organizers
+     * 
+     * Workflow:
+     * 1. Login to establish web session
+     * 2. Look up organizers by name (optional)
+     * 3. Edit event with full data including organizer tokens
+     * 
+     * @param {string} eventUrl - Existing event URL
+     * @param {any} eventData - Event data (name, desc, starts_at, etc.)
+     * @param {string[]} organizerNames - Array of organizer names to look up (optional)
+     * @returns {{success: boolean, event?: any, organizers?: Array<{name: string, token: string}>, error?: string}} Result
+     */
+    updateEvent(eventUrl, eventData, organizerNames) {
+        try {
+            // Step 1: Login
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return {
+                    success: false,
+                    error: 'Login failed - could not establish web session'
+                };
+            }
+
+            // Step 2: Look up organizers by name (optional)
+            const resolvedOrganizers = [];
+            const organizerTokens = [];
+            if (organizerNames && organizerNames.length > 0) {
+                for (const name of organizerNames) {
+                    const organizerResult = this._lookupOrganizer(eventUrl, name);
+                    if (organizerResult.success && organizerResult.organizer) {
+                        organizerTokens.push(String(organizerResult.organizer.id));
+                        resolvedOrganizers.push({
+                            name: organizerResult.organizer.text,
+                            token: String(organizerResult.organizer.id)
+                        });
+                    }
+                    // If organizer not found, continue (non-fatal)
+                }
+            }
+
+            // Step 3: Edit event with full data
+            const fullEventData = {
+                ...eventData,
+                organizer_tokens: organizerTokens.length > 0 ? organizerTokens : eventData.organizer_tokens
+            };
+
+            const editResult = this.editEvent(eventUrl, fullEventData);
+
+            if (!editResult.success) {
+                return {
+                    success: false,
+                    error: `Failed to edit event: ${editResult.error}`
+                };
+            }
+
+            return {
+                success: true,
+                event: editResult.event,
+                organizers: resolvedOrganizers
+            };
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
      * Look up an organizer by name
      * 
      * @param {string} eventUrl - Event URL to use for lookup (usually template URL)
@@ -289,40 +360,6 @@ var RWGPSClient = (function() {
             const err = error instanceof Error ? error : new Error(String(error));
             return { success: false, error: err.message };
         }
-    }
-
-    /**
-     * Update an existing event
-     * 
-     * @param {string} eventUrl - Event URL
-     * @param {any} eventData - Updated event data
-     * @returns {{success: boolean, error?: string}} Result
-     */
-    updateEvent(eventUrl, eventData) {
-        // TODO: Implement in Task 3.11
-        throw new Error('updateEvent not yet implemented');
-    }
-
-    /**
-     * Cancel an event (adds CANCELLED prefix)
-     * 
-     * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, error?: string}} Result
-     */
-    cancelEvent(eventUrl) {
-        // TODO: Implement in Task 3.7
-        throw new Error('cancelEvent not yet implemented');
-    }
-
-    /**
-     * Reinstate a cancelled event (removes CANCELLED prefix)
-     * 
-     * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, error?: string}} Result
-     */
-    reinstateEvent(eventUrl) {
-        // TODO: Implement in Task 3.8
-        throw new Error('reinstateEvent not yet implemented');
     }
 
     /**

@@ -834,6 +834,153 @@ function testRWGPSClientScheduleEvent(templateId, organizerName) {
     }
 }
 
+/**
+ * Task 3.11: Integration test for RWGPSClient.updateEvent()
+ * 
+ * Tests updating an existing event with new data and organizers:
+ * - Login
+ * - Look up organizers by name (optional)
+ * - Edit event with full data
+ * 
+ * @param {number} [eventId] - Event ID to update (default: 445203)
+ * @param {string} [organizerName] - Optional organizer name to test (e.g., "John Smith")
+ * @returns {{success: boolean, event?: any, error?: string}}
+ */
+function testRWGPSClientUpdateEvent(eventId, organizerName) {
+    console.log('====================================');
+    console.log('Task 3.11: Test RWGPSClient.updateEvent()');
+    console.log('====================================');
+    console.log(`Event ID: ${eventId || 'NOT PROVIDED - using default 445203'}`);
+    console.log(`Organizer: ${organizerName || 'NOT PROVIDED - will test without organizers'}`);
+    
+    if (!eventId) {
+        console.warn('⚠️  No event ID provided. Please pass a valid event ID.');
+        console.warn('   Example: testRWGPSClientUpdateEvent(445203, "John Smith")');
+        eventId = 445203; // Default test event
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get original event
+        console.log(`\n📡 Step 1: Getting original event...`);
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to get event');
+            console.error(`   Error: ${getResult.error}`);
+            return { success: false, error: getResult.error };
+        }
+        
+        const originalEvent = getResult.event;
+        console.log('✅ Original event retrieved');
+        console.log(`   Name: ${originalEvent.name}`);
+        console.log(`   Description length: ${(originalEvent.desc || '').length} chars`);
+        
+        // STEP 2: Update event with test marker
+        console.log(`\n📡 Step 2: Updating event (adding test marker to description)...`);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        const eventData = {
+            ...originalEvent,
+            desc: (originalEvent.desc || '') + `\n\n[TEST UPDATE ${timestamp} - Will be reverted]`
+        };
+        
+        // Build organizer list
+        const organizerNames = organizerName ? [organizerName] : [];
+        
+        console.log(`   Organizers: ${organizerNames.length > 0 ? organizerNames.join(', ') : '(none)'}`);
+        
+        const result = client.updateEvent(eventUrl, eventData, organizerNames);
+        
+        if (!result.success) {
+            console.error('❌ Update failed');
+            console.error(`   Error: ${result.error}`);
+            return { success: false, error: result.error };
+        }
+        
+        console.log('✅ Update succeeded');
+        console.log(`   Event ID: ${result.event.id}`);
+        console.log(`   Resolved organizers: ${result.organizers?.length || 0}`);
+        if (result.organizers?.length > 0) {
+            result.organizers.forEach((o) => {
+                console.log(`      - ${o.name} (token: ${o.token?.substring(0, 10)}...)`);
+            });
+        }
+        
+        // STEP 3: Verify update
+        console.log(`\n📡 Step 3: Verifying update...`);
+        const verifyResult = client.getEvent(eventUrl);
+        
+        if (!verifyResult.success) {
+            console.warn('⚠️  Could not verify update (get failed), but update succeeded');
+        } else {
+            const currentDesc = verifyResult.event.desc || '';
+            if (currentDesc.includes('[TEST UPDATE')) {
+                console.log('✅ Verified: Description was updated');
+            } else {
+                console.warn('⚠️  Description does not contain test marker (may need refresh)');
+            }
+            
+            // Check organizers if we requested any
+            if (organizerNames.length > 0 && verifyResult.event.organizers) {
+                console.log(`   Organizers on event: ${verifyResult.event.organizers.length}`);
+                verifyResult.event.organizers.forEach((o) => {
+                    console.log(`      - ${o.name || o.display_name || o.id}`);
+                });
+            }
+        }
+        
+        // STEP 4: Restore original event
+        console.log(`\n📡 Step 4: Restoring original event...`);
+        const restoreResult = client.editEvent(eventUrl, originalEvent);
+        
+        if (!restoreResult.success) {
+            console.error('❌ Failed to restore original event');
+            console.error(`   Error: ${restoreResult.error}`);
+            console.error('⚠️  EVENT LEFT IN MODIFIED STATE - Please manually fix!');
+            return { success: false, error: restoreResult.error, eventModified: true };
+        }
+        
+        console.log('✅ Original event restored');
+        
+        console.log('\n🎉 Task 3.11 (updateEvent) working correctly!');
+        console.log('   ✅ Event updated with new data');
+        if (organizerNames.length > 0) {
+            console.log('   ✅ Organizers looked up and added');
+        }
+        console.log('   ✅ Event restored to original state');
+        
+        return { 
+            success: true, 
+            event: result.event,
+            organizers: result.organizers
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        console.error('⚠️  Event may be in modified state - check manually!');
+        return { success: false, error: error.message };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [

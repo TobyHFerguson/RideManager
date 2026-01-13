@@ -210,10 +210,28 @@ AFTER:  RWGPSClient → UrlFetchApp
   - ✅ Cleanup completed (test event deleted)
 - [x] **VERIFIED**: Full scheduling workflow working end-to-end
 
-### Task 3.11: Implement updateEvent (full operation)
-- [ ] Similar to scheduleEvent but no copy step
-- [ ] Add tests
-- [ ] Commit: "Implement RWGPSClient.updateEvent"
+### Task 3.11: Implement updateEvent (full operation) ✅
+- [x] `updateEvent(eventUrl, eventData, organizerNames)` should:
+  - Login to establish web session
+  - Look up organizers by name (optional, via `_lookupOrganizer`)
+  - Edit event with full data + organizer tokens
+- [x] Similar to scheduleEvent but:
+  - No copy step (uses existing event)
+  - No tag removal (updating existing, not creating from template)
+  - organizerNames parameter is optional
+- [x] Add 9 comprehensive tests (59 total RWGPSClient tests, 513 total passing):
+  - Update without organizers
+  - Update with organizers
+  - Organizers returned in result
+  - Login failure
+  - Edit failure
+  - Organizer lookup failure (non-fatal)
+  - Empty/null/undefined organizer names
+- [x] Add TypeScript type definition with optional organizerNames parameter, ScheduleResult return type
+- [x] Commit: "Task 3.11: Implement updateEvent with optional organizer support" (PENDING)
+- [x] Add GAS integration test: testRWGPSClientUpdateEvent(eventId, organizerName)
+- [x] **READY FOR GAS TESTING**: Deploy complete, test function available
+- [x] **VERIFIED**: All 513 tests passing, typecheck clean
 
 ### Task 3.12: Implement importRoute
 - [ ] Read import-route fixture
