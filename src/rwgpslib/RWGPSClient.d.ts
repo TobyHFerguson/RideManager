@@ -44,7 +44,7 @@ declare class RWGPSClient {
     private authToken: string;
     private username: string;
     private password: string;
-    private sessionCookies: string | null;
+    private webSessionCookie: string | null;
 
     /**
      * Create RWGPS client
@@ -52,6 +52,12 @@ declare class RWGPSClient {
      * @param {RWGPSCredentials} credentials - RWGPS credentials
      */
     constructor(credentials: RWGPSCredentials);
+
+    /**
+     * Login to RWGPS web session
+     * @returns {boolean} True if login successful
+     */
+    login(): boolean;
 
     /**
      * Schedule a new event from template
@@ -110,6 +116,21 @@ declare class RWGPSClient {
      * @private
      */
     private _getBasicAuthHeader(): string;
+
+    /**
+     * Update session cookie from response
+     * @private
+     */
+    private _updateCookieFromResponse(response: GoogleAppsScript.URL_Fetch.HTTPResponse): void;
+
+    /**
+     * Prepare request with authentication
+     * @private
+     */
+    private _prepareRequest(
+        request: { url: string; method?: string; headers?: Record<string, string>; payload?: string },
+        authType: 'WEB_SESSION' | 'BASIC_AUTH'
+    ): any;
 
     /**
      * Execute HTTP request using UrlFetchApp

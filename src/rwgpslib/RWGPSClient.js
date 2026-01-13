@@ -25,7 +25,104 @@ class RWGPSClient {
         this.authToken = credentials.authToken;
         this.username = credentials.username;
         this.password = credentials.password;
-        this.sessionCookies = null; // For web session authentication
+        this.webSessionCookie = null; // For web session authentication
+    }
+
+    /**
+     * Login to RWGPS web session
+     * Establishes session cookie for web API operations
+     * 
+     * @returns {boolean} True if login successful (cookie received)
+     */
+    login() {
+        const loginUrl = 'https://ridewithgps.com/organizations/47/sign_in';
+        const options = {
+            method: 'post',
+            headers: {
+                'user-email': this.username,
+                'user-password': this.password
+            },
+            contentType: 'application/json',
+            followRedirects: false,
+            muteHttpExceptions: true
+        };
+
+        try {
+            const resp = this._fetch(loginUrl, options);
+            this._updateCookieFromResponse(resp);
+            return !!this.webSessionCookie;
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.log(`Login request failed: ${err.message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Update session cookie from response
+     * 
+     * @param {GoogleAppsScript.URL_Fetch.HTTPResponse} response - HTTP response
+     * @private
+     */
+    _updateCookieFromResponse(response) {
+        const headers = response.getAllHeaders();
+        let setCookieHeader = headers['Set-Cookie'];
+        
+        if (!setCookieHeader) {
+            return;
+        }
+
+        // Normalize to array
+        if (!Array.isArray(setCookieHeader)) {
+            setCookieHeader = [setCookieHeader];
+        }
+
+        for (const cookie of setCookieHeader) {
+            if (cookie.startsWith('_rwgps_3_session=')) {
+                const newCookie = cookie.split(';')[0];
+                if (this.webSessionCookie !== newCookie) {
+                    this.webSessionCookie = newCookie;
+                }
+                break;
+            }
+        }
+    }
+
+    /**
+     * Prepare request with authentication
+     * 
+     * @param {{url: string, method?: string, headers?: Record<string, string>, payload?: string}} request - Request options
+     * @param {'WEB_SESSION' | 'BASIC_AUTH'} authType - Authentication type
+     * @returns {{url: string, method: string, headers: Record<string, string>, payload?: string, muteHttpExceptions: boolean}} Prepared request
+     * @private
+     */
+    _prepareRequest(request, authType) {
+        const headers = request.headers || {};
+
+        // Set method based on payload if not specified
+        if (request.payload && !request.method) {
+            request.method = 'post';
+        } else if (!request.method) {
+            request.method = 'get';
+        }
+
+        if (authType === 'WEB_SESSION') {
+            if (!this.webSessionCookie) {
+                throw new Error('Web session not authenticated. Please log in first.');
+            }
+            headers['Cookie'] = this.webSessionCookie;
+            headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+        } else if (authType === 'BASIC_AUTH') {
+            headers['Authorization'] = this._getBasicAuthHeader();
+        }
+
+        return {
+            url: request.url,
+            method: request.method,
+            headers: headers,
+            payload: request.payload,
+            muteHttpExceptions: true
+        };
     }
 
     /**
@@ -112,7 +209,7 @@ class RWGPSClient {
      * Execute HTTP request using UrlFetchApp
      * 
      * @param {string} url - Request URL
-     * @param {{method: string, headers: Record<string, string>, payload?: string, muteHttpExceptions: boolean}} options - Request options
+     * @param {{method?: string, headers?: Record<string, string>, payload?: string, muteHttpExceptions?: boolean}} options - Request options
      * @returns {GoogleAppsScript.URL_Fetch.HTTPResponse} Response
      * @private
      */

@@ -86,11 +86,11 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] **Commit**: "Add RWGPSClient skeleton with Core/Adapter separation"
 
 ### Task 3.2: Move authentication logic
-- [ ] Copy `login()` method from ApiService to RWGPSClient
-- [ ] Copy `_prepareRequest()` helper for Basic Auth
-- [ ] RWGPSClient should handle BOTH web session AND Basic Auth internally
-- [ ] Run tests
-- [ ] Commit: "Move authentication to RWGPSClient"
+- [x] Copy `login()` method from ApiService to RWGPSClient
+- [x] Copy `_prepareRequest()` helper for Basic Auth
+- [x] RWGPSClient should handle BOTH web session AND Basic Auth internally
+- [x] Run tests
+- [x] Commit: "Move authentication to RWGPSClient"
 
 ### Task 3.3: Implement deleteEvent (simplest operation)
 - [ ] Read `test/fixtures/rwgps-api/unschedule.json` to understand the API calls
