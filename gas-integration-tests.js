@@ -1114,10 +1114,13 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
     console.log('====================================');
     console.log('Task 4.1: Test v1 API Single-Edit');
     console.log('====================================');
-    console.log(`Event ID: ${eventId || 'NOT PROVIDED - using default 451900'}`);
+    console.log(`Event ID: ${eventId || 'NOT PROVIDED - using default 445203'}`);
     
     if (!eventId) {
-        eventId = 451900; // Default test event from earlier tests
+        console.warn('⚠️  No event ID provided. Using default: 445203');
+        console.warn('   If this fails, provide a valid event ID:');
+        console.warn('   testTask4_1_V1ApiSingleEdit(YOUR_EVENT_ID)');
+        eventId = 445203; // Event used successfully in Task 3.11 updateEvent test
     }
     
     try {
@@ -1145,7 +1148,20 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
         
         if (!getResult.success) {
             console.error('❌ Could not fetch event');
-            return { success: false, error: 'Could not fetch event: ' + getResult.error };
+            console.error(`   Error: ${getResult.error || 'Unknown error'}`);
+            console.error(`   Event URL attempted: ${eventUrl}`);
+            console.error('');
+            console.error('💡 Troubleshooting:');
+            console.error('   1. Check if event exists: Visit the URL in browser');
+            console.error('   2. Check if event is accessible to authenticated user');
+            console.error('   3. Try a different event ID:');
+            console.error('      testTask4_1_V1ApiSingleEdit(YOUR_EVENT_ID)');
+            console.error('   4. Recent working event IDs: 445203, 444070');
+            return { 
+                success: false, 
+                error: 'Could not fetch event: ' + (getResult.error || 'Unknown error'),
+                suggestion: 'Try testTask4_1_V1ApiSingleEdit(445203) or another valid event ID'
+            };
         }
         
         const originalEvent = getResult.event;
