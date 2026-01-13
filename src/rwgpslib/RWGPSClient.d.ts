@@ -103,6 +103,23 @@ declare class RWGPSClient {
     deleteEvent(eventUrl: string): OperationResult;
 
     /**
+     * Get event details
+     * 
+     * @param {string} eventUrl - Event URL
+     * @returns {{success: boolean, event?: any, error?: string}} Result with event data
+     */
+    getEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
+
+    /**
+     * Edit an event (uses double-edit pattern: all_day=1, then all_day=0)
+     * 
+     * @param {string} eventUrl - Event URL
+     * @param {any} eventData - Event data object (from getEvent or modified)
+     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     */
+    editEvent(eventUrl: string, eventData: any): { success: boolean; event?: any; error?: string };
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL

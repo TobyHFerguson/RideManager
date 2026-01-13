@@ -285,6 +285,81 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Edit an event
+     * 
+     * CRITICAL: RWGPS API requires two sequential PUT requests (double-edit pattern)
+     * 1. First PUT with all_day=1 (workaround to clear existing time)
+     * 2. Second PUT with all_day=0 and actual event data
+     * 
+     * This workaround is required for the start time to be set correctly.
+     * 
+     * @param {string} eventUrl - Event URL
+     * @param {any} eventData - Event data object (from getEvent or modified)
+     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     */
+    editEvent(eventUrl, eventData) {
+        try {
+            // Parse event URL to get ID
+            const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
+            
+            // Login to establish session
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return {
+                    success: false,
+                    error: 'Login failed - could not establish web session'
+                };
+            }
+            
+            // Build PUT URL
+            const putUrl = `https://ridewithgps.com/events/${parsed.eventId}`;
+            
+            // FIRST PUT: Set all_day=1 (workaround)
+            const payload1 = RWGPSClientCore.buildEditEventPayload(eventData, '1');
+            const options1 = RWGPSClientCore.buildEditEventOptions(this.webSessionCookie, payload1);
+            
+            const response1 = this._fetch(putUrl, options1);
+            const statusCode1 = response1.getResponseCode();
+            
+            if (statusCode1 !== 200) {
+                return {
+                    success: false,
+                    error: `First edit failed with status code: ${statusCode1}`
+                };
+            }
+            
+            // SECOND PUT: Set all_day=0 with actual data
+            const payload2 = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+            const options2 = RWGPSClientCore.buildEditEventOptions(this.webSessionCookie, payload2);
+            
+            const response2 = this._fetch(putUrl, options2);
+            const statusCode2 = response2.getResponseCode();
+            
+            if (statusCode2 === 200) {
+                const responseText = response2.getContentText();
+                const data = JSON.parse(responseText);
+                
+                return {
+                    success: true,
+                    event: data
+                };
+            } else {
+                return {
+                    success: false,
+                    error: `Second edit failed with status code: ${statusCode2}`
+                };
+            }
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL

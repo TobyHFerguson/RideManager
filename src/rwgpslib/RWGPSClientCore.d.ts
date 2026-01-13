@@ -79,6 +79,33 @@ declare class RWGPSClientCore {
      * @returns {string | null} Event ID or null if not found
      */
     static extractEventId(url: string): string | null;
+
+    /**
+     * Build request options for getEvent (GET request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @returns {RequestOptions} Request options
+     */
+    static buildGetEventOptions(sessionCookie: string): RequestOptions;
+
+    /**
+     * Build payload for editEvent PUT request
+     * Handles conversion of event data to RWGPS API format
+     * 
+     * @param {any} eventData - Event data object (from getEvent or modified)
+     * @param {string | number} allDay - "0" or "1" for all_day flag (string required by API)
+     * @returns {any} Payload object for PUT request
+     */
+    static buildEditEventPayload(eventData: any, allDay: string | number): any;
+
+    /**
+     * Build request options for editEvent (PUT request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @param {any} payload - Event data payload
+     * @returns {RequestOptions} Request options
+     */
+    static buildEditEventOptions(sessionCookie: string, payload: any): RequestOptions;
 }
 
 export default RWGPSClientCore;

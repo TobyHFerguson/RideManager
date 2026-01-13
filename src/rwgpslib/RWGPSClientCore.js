@@ -159,6 +159,67 @@ var RWGPSClientCore = (function() {
             muteHttpExceptions: true
         };
     }
+
+    /**
+     * Build payload for editEvent PUT request
+     * Handles conversion of event data to RWGPS API format
+     * 
+     * @param {any} eventData - Event data object (from getEvent or modified)
+     * @param {string | number} allDay - "0" or "1" for all_day flag (string required by API)
+     * @returns {any} Payload object for PUT request
+     */
+    static buildEditEventPayload(eventData, allDay) {
+        const payload = {
+            all_day: String(allDay), // API requires string "0" or "1"
+            name: eventData.name,
+            desc: eventData.desc || eventData.description || '',
+            location: eventData.location || '',
+            start_date: eventData.start_date || eventData.starts_at,
+            start_time: eventData.start_time || eventData.starts_at,
+            visibility: eventData.visibility !== undefined ? eventData.visibility : 0,
+            auto_expire_participants: eventData.auto_expire_participants !== undefined ? 
+                String(eventData.auto_expire_participants) : "1"
+        };
+
+        // Handle organizers (convert objects to token IDs)
+        if (eventData.organizers && Array.isArray(eventData.organizers)) {
+            payload.organizer_tokens = eventData.organizers.map((/** @type {any} */ org) => String(org.id));
+        } else if (eventData.organizer_tokens) {
+            payload.organizer_tokens = eventData.organizer_tokens;
+        }
+
+        // Handle routes (convert objects to IDs)
+        if (eventData.routes && Array.isArray(eventData.routes)) {
+            payload.route_ids = eventData.routes.map((/** @type {any} */ route) => String(route.id));
+        } else if (eventData.route_ids) {
+            payload.route_ids = eventData.route_ids;
+        } else if (eventData.route_id) {
+            payload.route_ids = [String(eventData.route_id)];
+        }
+
+        return payload;
+    }
+
+    /**
+     * Build request options for editEvent (PUT request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @param {any} payload - Event data payload
+     * @returns {{method: string, headers: Record<string, string>, payload: string, muteHttpExceptions: boolean}} Request options
+     */
+    static buildEditEventOptions(sessionCookie, payload) {
+        return {
+            method: 'PUT',
+            headers: {
+                'Accept': 'application/json',
+                'Cookie': sessionCookie,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Content-Type': 'application/json'
+            },
+            payload: JSON.stringify(payload),
+            muteHttpExceptions: true
+        };
+    }
 }
 
 return RWGPSClientCore;

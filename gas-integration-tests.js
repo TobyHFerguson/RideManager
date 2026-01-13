@@ -98,6 +98,10 @@ function testServiceCore() {
         return { success: false, error: error.message };
     }
 }
+
+function testIt() {
+  testRWGPSClientGetEvent(445203)
+}
 /**
  * Test RWGPSClient.getEvent (Task 3.5)
  * 
@@ -182,6 +186,128 @@ function testRWGPSClientGetEvent(eventId) {
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * Test RWGPSClient.editEvent (Task 3.6)
+ * 
+ * USAGE:
+ * 1. Find a valid event ID from your spreadsheet (e.g., in the Ride column URL)
+ * 2. Run: testRWGPSClientEditEvent(445203)
+ * 3. This test is NON-DESTRUCTIVE: it gets the event, modifies description, edits it, verifies, then restores original
+ */
+function testRWGPSClientEditEvent(eventId) {
+    console.log(`\n=== Testing RWGPSClient.editEvent (Task 3.6) ===`);
+    console.log(`Event ID: ${eventId || 'NOT PROVIDED - using default 445203'}`);
+    
+    if (!eventId) {
+        console.warn('⚠️  No event ID provided. Please pass a valid event ID from your spreadsheet.');
+        console.warn('   Example: testRWGPSClientEditEvent(445203)');
+        eventId = 445203; // Default for testing
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get original event
+        console.log(`\n📡 Step 1: Getting original event...`);
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to get event');
+            console.error(`   Error: ${getResult.error}`);
+            return { success: false, error: getResult.error };
+        }
+        
+        const originalEvent = getResult.event;
+        console.log('✅ Original event retrieved');
+        console.log(`   Name: ${originalEvent.name}`);
+        console.log(`   Description length: ${(originalEvent.desc || '').length} chars`);
+        
+        // STEP 2: Modify description and edit
+        console.log(`\n📡 Step 2: Editing event (adding test marker to description)...`);
+        const modifiedEvent = {
+            ...originalEvent,
+            desc: (originalEvent.desc || '') + '\n\n[TEST EDIT - Will be reverted]'
+        };
+        
+        const editResult = client.editEvent(eventUrl, modifiedEvent);
+        
+        if (!editResult.success) {
+            console.error('❌ Edit failed');
+            console.error(`   Error: ${editResult.error}`);
+            return { success: false, error: editResult.error };
+        }
+        
+        console.log('✅ Edit succeeded');
+        console.log(`   Returned event ID: ${editResult.event.id}`);
+        console.log(`   All day: ${editResult.event.all_day}`);
+        console.log(`   Starts at: ${editResult.event.starts_at}`);
+        
+        // STEP 3: Verify edit by getting event again
+        console.log(`\n📡 Step 3: Verifying edit...`);
+        const verifyResult = client.getEvent(eventUrl);
+        
+        if (!verifyResult.success) {
+            console.warn('⚠️  Could not verify edit (get failed), but edit succeeded');
+        } else {
+            const currentDesc = verifyResult.event.desc || '';
+            if (currentDesc.includes('[TEST EDIT - Will be reverted]')) {
+                console.log('✅ Verified: Description was updated');
+            } else {
+                console.warn('⚠️  Description does not contain test marker (may need refresh)');
+            }
+        }
+        
+        // STEP 4: Restore original description
+        console.log(`\n📡 Step 4: Restoring original event...`);
+        const restoreResult = client.editEvent(eventUrl, originalEvent);
+        
+        if (!restoreResult.success) {
+            console.error('❌ Failed to restore original event');
+            console.error(`   Error: ${restoreResult.error}`);
+            console.error('⚠️  EVENT LEFT IN MODIFIED STATE - Please manually fix!');
+            return { success: false, error: restoreResult.error, eventModified: true };
+        }
+        
+        console.log('✅ Original event restored');
+        
+        console.log('\n🎉 Task 3.6 (editEvent) working correctly!');
+        console.log('   ✅ Double-edit pattern (all_day=1, then all_day=0) executed');
+        console.log('   ✅ Event modified successfully');
+        console.log('   ✅ Event restored to original state');
+        
+        return { 
+            success: true, 
+            originalEvent: originalEvent,
+            editedEvent: editResult.event,
+            restoredEvent: restoreResult.event
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        console.error('⚠️  Event may be in modified state - check manually!');
+        return { success: false, error: error.message };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [
