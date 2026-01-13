@@ -933,6 +933,63 @@ var RWGPSClient = (function() {
         /* istanbul ignore next */
         return UrlFetchApp.fetch(url, options);
     }
+
+    /**
+     * TEST: Edit event via v1 API with single PUT (no double-edit workaround)
+     * Used to test if v1 API requires the double-edit pattern
+     * 
+     * @param {string} eventUrl - Event URL
+     * @param {any} eventData - Event data
+     * @returns {{success: boolean, event?: any, error?: string}}
+     */
+    testV1SingleEditEvent(eventUrl, eventData) {
+        try {
+            const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
+            const v1Url = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
+            
+            // Build v1 API payload with single PUT
+            const payload = {
+                event: {
+                    name: eventData.name,
+                    description: eventData.desc,
+                    starts_at: eventData.starts_at,
+                    all_day: '0'  // Single PUT with all_day=0
+                }
+            };
+            
+            const options = {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Basic ' + Utilities.base64Encode(this.username + ':' + this.password),
+                    'Content-Type': 'application/json'
+                },
+                payload: JSON.stringify(payload),
+                muteHttpExceptions: true
+            };
+            
+            const response = this._fetch(v1Url, options);
+            const statusCode = response.getResponseCode();
+            
+            if (statusCode === 200) {
+                const data = JSON.parse(response.getContentText());
+                return {
+                    success: true,
+                    event: data.event || data
+                };
+            } else {
+                return {
+                    success: false,
+                    error: `V1 API edit failed with status ${statusCode}`
+                };
+            }
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
 }
 
 return RWGPSClient;

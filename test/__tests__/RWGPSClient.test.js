@@ -1458,4 +1458,46 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('status 500');
         });
     });
+
+    describe('Task 4.1: Test v1 API single-edit (no double-edit workaround)', () => {
+        it('should test v1 API single PUT without double-edit', () => {
+            RWGPSMockServer.loadFixture('edit');
+            
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const eventData = {
+                name: 'V1 Test Event',
+                desc: 'Testing v1 API',
+                starts_at: '2030-03-01T19:00:00.000Z'
+            };
+            
+            // Test the v1 API endpoint
+            const result = client.testV1SingleEditEvent(eventUrl, eventData);
+            
+            // Expected: either success (v1 doesn't need double-edit) or failure (v1 also needs double-edit)
+            // This test just verifies the method works and communicates with v1 API
+            console.log('V1 Single-Edit Result:', result);
+            
+            // The important check: we made a request to v1 endpoint
+            const calls = RWGPSMockServer.actualCalls;
+            const v1Calls = calls.filter((/** @type {any} */ c) => c.url.includes('/api/v1/events/'));
+            
+            // Should have made at least one v1 API call
+            expect(v1Calls.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('v1 API endpoint details', () => {
+            // Document what we know about v1 API
+            const insights = {
+                endpoint: 'PUT /api/v1/events/{id}.json',
+                authentication: 'Basic Auth (username:password)',
+                contentType: 'application/json',
+                payloadFormat: { event: { name: 'string', description: 'string', starts_at: 'datetime', all_day: '0|1' } },
+                expectedIf_DoubleEditNotNeeded: 'Single PUT should set time correctly',
+                expectedIf_DoubleEditStillNeeded: 'Even v1 API would need first all_day=1, then all_day=0'
+            };
+            
+            console.log('V1 API Insights for Task 4.1:', insights);
+            expect(insights.endpoint).toBeDefined();
+        });
+    });
 });

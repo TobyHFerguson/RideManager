@@ -230,6 +230,9 @@ declare class RWGPSClient {
      * @private
      */
     private _fetch(url: string, options: any): GoogleAppsScript.URL_Fetch.HTTPResponse;
-}
 
-export default RWGPSClient;
+    /**
+     * TEST: Edit event via v1 API with single PUT (no double-edit workaround)
+     * Used to test if v1 API requires the double-edit pattern
+     */
+    testV1SingleEditEvent(eventUrl: string, eventData: any): OperationResult & { event?: any };

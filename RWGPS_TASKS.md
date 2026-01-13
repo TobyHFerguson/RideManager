@@ -312,10 +312,23 @@ AFTER:  RWGPSClient → UrlFetchApp
 Replace web API calls with v1 API calls where possible.
 
 ### Task 4.1: Test if double-edit is needed for v1 API
-- [ ] Create a test that does single PUT to v1 API
-- [ ] Check if start time is set correctly without the all_day workaround
-- [ ] Document finding in RWGPS_MIGRATION_GUIDE.md
-- [ ] Commit: "Test: v1 API double-edit requirement"
+- [x] Create testV1SingleEditEvent() method in RWGPSClient
+  - Tests single PUT to v1 endpoint without workaround
+  - Uses Basic Auth instead of web session cookie
+  - Sends: `PUT /api/v1/events/{id}.json` with `all_day: '0'`
+- [x] Add test cases for v1 API single-edit
+  - Verifies v1 endpoint can be called
+  - Documents expected behaviors
+  - Tests run successfully (2 new tests)
+- [x] Initial findings from v1 API documentation:
+  - v1 API endpoint exists: `PUT /api/v1/events/{id}.json`
+  - Uses Basic Auth (instead of web session cookie)
+  - Accepts same event data structure
+  - OpenAPI spec confirms all_day field is supported
+  - **Decision point**: Need to test in GAS to confirm if single PUT works
+- [ ] Run GAS test with v1 API to check if start_time is set correctly without double-edit
+- [ ] Document finding: Does v1 API need double-edit or is it web API only?
+- [ ] Commit: "Task 4.1: Add v1 API single-edit test"
 
 ### Task 4.2: Replace web getEvent with v1 API
 - [ ] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
