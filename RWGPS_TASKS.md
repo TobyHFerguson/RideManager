@@ -146,10 +146,18 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] **TESTED IN GAS**: Event 445203 cancelled (added CANCELLED: prefix) and restored successfully
 - [x] **VERIFIED**: Double-edit pattern working, composable methods confirmed
 
-### Task 3.8: Implement reinstateEvent
-- [ ] Similar to cancelEvent but removes "CANCELLED: " prefix
-- [ ] Add tests
-- [ ] Commit: "Implement RWGPSClient.reinstateEvent"
+### Task 3.8: Implement reinstateEvent ✅
+- [x] `reinstateEvent(eventUrl)` should:
+  - Call `getEvent()` to fetch current data
+  - Check if event is cancelled (name starts with "CANCELLED: ")
+  - Remove "CANCELLED: " prefix from name
+  - Call `editEvent()` with modified data
+- [x] Demonstrates composable design (uses getEvent + editEvent)
+- [x] Add 6 tests (472 total passing)
+- [x] Commit: "Task 3.8: reinstateEvent implementation" (01efe98)
+- [x] Add GAS integration test: testRWGPSClientReinstateEvent()
+- [x] **TESTED IN GAS**: Event 445203 cancelled then reinstated (CANCELLED: prefix removed) successfully
+- [x] **VERIFIED**: Double-edit pattern working, name restored to original
 
 ### Task 3.9: Implement copyTemplate
 - [ ] Read Schedule fixture for copy_template behavior
