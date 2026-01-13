@@ -117,20 +117,20 @@ function testRWGPSClientGetEvent(eventId) {
     }
     
     try {
-        // Get credentials
+        // Get credentials using CredentialManager (not RWGPSCredentialManager)
         const scriptProps = PropertiesService.getScriptProperties();
-        const creds = RWGPSCredentialManager.getAllCredentials(scriptProps);
+        const credentialManager = new CredentialManager(scriptProps);
         
         console.log('✅ Credentials loaded');
-        console.log(`   Username: ${creds.username ? creds.username.substring(0, 10) + '...' : 'MISSING'}`);
-        console.log(`   API Key present: ${!!creds.apiKey}`);
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        console.log(`   API Key present: ${!!credentialManager.getApiKey()}`);
         
         // Create RWGPSClient
         const client = new RWGPSClient({
-            apiKey: creds.apiKey,
-            authToken: creds.authToken,
-            username: creds.username,
-            password: creds.password
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
         });
         
         console.log('✅ RWGPSClient instantiated');
