@@ -422,42 +422,42 @@ var RWGPSClient = (function() {
             // Parse event URL to get ID
             const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
             
-            // Login to establish session
-            const loginSuccess = this.login();
-            if (!loginSuccess) {
-                return {
-                    success: false,
-                    error: 'Login failed - could not establish web session'
-                };
-            }
-            
-            // GET event using web API (not v1 API)
-            const getUrl = `https://ridewithgps.com/events/${parsed.eventId}`;
-            const options = RWGPSClientCore.buildGetEventOptions(this.webSessionCookie);
+            // GET event using v1 API with Basic Auth (no login needed)
+            const getUrl = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
+            const options = {
+                method: 'GET',
+                headers: {
+                    'Authorization': this._getBasicAuthHeader(),
+                    'Accept': 'application/json'
+                },
+                muteHttpExceptions: true
+            };
             
             const response = this._fetch(getUrl, options);
             const statusCode = response.getResponseCode();
             
             if (statusCode === 200) {
                 const responseText = response.getContentText();
-                const data = JSON.parse(responseText);
+                const v1Event = JSON.parse(responseText);
                 
-                // The response contains {"event": {...}} wrapper
-                if (data && data.event) {
+                // Transform v1 API response to web API format for backward compatibility
+                const transformedEvent = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+                
+                if (transformedEvent) {
                     return {
                         success: true,
-                        event: data.event
+                        event: transformedEvent
                     };
                 } else {
                     return {
                         success: false,
-                        error: 'Unexpected response format: missing event property'
+                        error: 'Could not transform event data'
                     };
                 }
             } else {
                 return {
                     success: false,
-                    error: `Unexpected status code: ${statusCode}`
+                    error: `API returned status ${statusCode}`
                 };
             }
             

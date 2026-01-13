@@ -386,13 +386,13 @@ The v1 API response format differs from web API:
 **TASK COMPLETE - Key Finding**: V1 API migration must keep double-PUT pattern for time changes.
 
 ### Task 4.2: Replace web getEvent with v1 API
-- [x] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
-- [x] **CRITICAL**: Transform v1 response format to match web API format
+- [ ] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
+- [ ] **CRITICAL**: Transform v1 response format to match web API format
   - v1 uses: `start_date` (string) + `start_time` (string) + `time_zone`
   - Web uses: `starts_at` (ISO 8601 timestamp)
   - Must convert: `start_date + start_time + time_zone` → `starts_at`
-- [x] Run tests - verify response format matches
-- [x] Commit: "Migrate getEvent to v1 API"
+- [ ] Run tests - verify response format matches
+- [ ] Commit: "Migrate getEvent to v1 API"
 
 ### Task 4.3: Replace web editEvent with v1 API
 - [ ] Change `editEvent()` to use `PUT /api/v1/events/{id}.json`

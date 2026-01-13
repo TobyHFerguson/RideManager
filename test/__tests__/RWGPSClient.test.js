@@ -137,13 +137,13 @@ describe('RWGPSClient', () => {
             expect(result.error).toBeUndefined();
         });
 
-        it('should return error if login fails', () => {
-            // Don't load fixture - login will fail
+        it('should return error on API failure', () => {
+            // Don't load fixture - API call will fail
             const eventUrl = 'https://ridewithgps.com/events/12345';
             const result = client.getEvent(eventUrl);
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Login');
+            expect(result.error).toBeDefined();
         });
 
         it('should return error for invalid event URL', () => {
@@ -155,30 +155,29 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('Invalid event URL');
         });
 
-        it('should use web API endpoint (not v1)', () => {
+        it('should use v1 API endpoint', () => {
             RWGPSMockServer.loadFixture('cancel');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
             client.getEvent(eventUrl);
 
-            // Check the getAll call (second call after login)
+            // Check the v1 API call (no login needed for v1 API)
             const calls = RWGPSMockServer.actualCalls;
-            expect(calls.length).toBe(2);
-            expect(calls[1].url).toBe('https://ridewithgps.com/events/444070');
-            expect(calls[1].method).toBe('GET');
+            expect(calls.length).toBe(1);
+            expect(calls[0].url).toBe('https://ridewithgps.com/api/v1/events/444070.json');
+            expect(calls[0].method).toBe('GET');
         });
 
-        it('should include session cookie in request', () => {
+        it('should use Basic Auth with v1 API', () => {
             RWGPSMockServer.loadFixture('cancel');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
             client.getEvent(eventUrl);
 
-            // Check the getAll call has Cookie header
+            // Check the v1 API call has Authorization header
             const calls = RWGPSMockServer.actualCalls;
-            const getCall = calls[1];
-            expect(getCall.options.headers.Cookie).toBeDefined();
-            expect(getCall.options.headers.Cookie).toContain('_rwgps_3_session=');
+            expect(calls[0].options.headers.Authorization).toBeDefined();
+            expect(calls[0].options.headers.Authorization).toContain('Basic ');
         });
     });
 

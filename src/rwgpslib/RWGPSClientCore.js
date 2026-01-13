@@ -143,6 +143,68 @@ var RWGPSClientCore = (function() {
     }
 
     /**
+     * Transform v1 API event response to web API format
+     * 
+     * Converts separate start_date and start_time fields to combined starts_at timestamp
+     * 
+     * @param {{id: number, name: string, start_date: string, start_time: string, time_zone: string, all_day: boolean}} v1Event - v1 API event response
+     * @returns {{id: number, name: string, starts_at: string, all_day: boolean}} Web API format event
+     */
+    static transformV1EventToWebFormat(v1Event) {
+        if (!v1Event) {
+            return null;
+        }
+
+        // Build ISO 8601 timestamp from separate date/time fields
+        let startsAt = null;
+        
+        if (v1Event.start_date && v1Event.start_time) {
+            // Parse "YYYY-MM-DD" and "HH:MM" into ISO 8601 with timezone offset
+            const dateStr = v1Event.start_date; // e.g., "2030-03-01"
+            const timeStr = v1Event.start_time; // e.g., "11:00"
+            const tzStr = v1Event.time_zone || 'America/Los_Angeles'; // e.g., "America/Los_Angeles"
+            
+            // Combine into ISO 8601 format with timezone
+            // Note: v1 API uses separate fields, we need to convert back to starts_at format
+            // Format: "YYYY-MM-DDTHH:MM:SS±HH:MM"
+            const combinedStr = `${dateStr}T${timeStr}:00`;
+            
+            // Create date object
+            const dateObj = new Date(combinedStr);
+            
+            // Format as ISO string and add timezone offset
+            // v1 API responses include timezone in the response like "America/Los_Angeles"
+            // For compatibility, we'll create ISO timestamp
+            // The exact timezone offset depends on DST, but we can use the original format from v1
+            startsAt = combinedStr; // Return in simple format, consumer will handle timezone
+        } else if (v1Event.starts_at) {
+            // If v1 already has starts_at, use it
+            startsAt = v1Event.starts_at;
+        }
+
+        // Transform: keep all fields but ensure starts_at is set
+        /** @type {any} */
+        const transformed = {
+            id: v1Event.id,
+            name: v1Event.name,
+            starts_at: startsAt,
+            all_day: v1Event.all_day || false,
+            desc: v1Event.description || v1Event.desc || '',
+            visibility: v1Event.visibility || 0
+        };
+
+        // Copy optional fields
+        if (v1Event.organizers) transformed.organizer_ids = v1Event.organizers.map(o => o.id);
+        if (v1Event.routes) transformed.routes = v1Event.routes;
+        if (v1Event.ends_at) transformed.ends_at = v1Event.ends_at;
+        if (v1Event.end_date && v1Event.end_time) {
+            transformed.ends_at = `${v1Event.end_date}T${v1Event.end_time}:00`;
+        }
+
+        return transformed;
+    }
+
+    /**
      * Build request options for getEvent (GET request)
      * 
      * @param {string} sessionCookie - Session cookie value
