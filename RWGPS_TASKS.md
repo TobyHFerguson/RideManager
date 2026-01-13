@@ -385,14 +385,31 @@ The v1 API response format differs from web API:
 
 **TASK COMPLETE - Key Finding**: V1 API migration must keep double-PUT pattern for time changes.
 
-### Task 4.2: Replace web getEvent with v1 API
-- [ ] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
-- [ ] **CRITICAL**: Transform v1 response format to match web API format
-  - v1 uses: `start_date` (string) + `start_time` (string) + `time_zone`
+### Task 4.2: Replace web getEvent with v1 API ✅ COMPLETE
+- [x] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
+- [x] **Transform v1 response format to match web API format**
+  - v1 uses: `start_date` (string) + `start_time` (string) + `time_zone`  
   - Web uses: `starts_at` (ISO 8601 timestamp)
-  - Must convert: `start_date + start_time + time_zone` → `starts_at`
-- [ ] Run tests - verify response format matches
-- [ ] Commit: "Migrate getEvent to v1 API"
+  - Implementation: `transformV1EventToWebFormat()` in RWGPSClientCore
+  - Conversion: `start_date + start_time` → `starts_at` (ISO 8601)
+- [x] Run tests - all getEvent tests pass ✅
+- [x] Backward compatibility maintained - consumers get same format
+- [x] Commit: "Task 4.2: Migrate getEvent to v1 API with response transformation" (809b361)
+
+**Key Changes**:
+- Endpoint: `GET /events/{id}` → `GET /api/v1/events/{id}.json`
+- Auth: Web session cookie → Basic Auth (apiKey:authToken)
+- Response transformation handles different date/time format
+- No login required (v1 API uses Basic Auth)
+
+**Test Results**: 5 tests pass
+- ✅ successfully get event details
+- ✅ return error on API failure
+- ✅ return error for invalid event URL
+- ✅ use v1 API endpoint
+- ✅ use Basic Auth with v1 API
+
+**TASK COMPLETE**
 
 ### Task 4.3: Replace web editEvent with v1 API
 - [ ] Change `editEvent()` to use `PUT /api/v1/events/{id}.json`
