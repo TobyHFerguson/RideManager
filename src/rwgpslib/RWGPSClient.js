@@ -14,7 +14,8 @@ if (typeof require !== 'undefined') {
  * RWGPSClient - Unified RWGPS API client
  * Replaces: RWGPS → RWGPSService → ApiService architecture
  */
-class RWGPSClient {
+var RWGPSClient = (function() {
+    class RWGPSClient {
     /**
      * Create RWGPS client
      * 
@@ -260,6 +261,9 @@ class RWGPSClient {
         return UrlFetchApp.fetch(url, options);
     }
 }
+
+return RWGPSClient;
+})();
 
 /* istanbul ignore if - Node.js/Jest export */
 if (typeof module !== 'undefined') {

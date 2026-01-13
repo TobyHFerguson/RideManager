@@ -17,9 +17,13 @@ if (typeof require !== 'undefined') {
 }
 
 /**
- * RWGPSClientCore class - Pure JavaScript business logic
+ * RWGPSClientCore - Pure JavaScript business logic
  */
-class RWGPSClientCore {
+var RWGPSClientCore = (function() {
+    /**
+     * RWGPSClientCore class - Pure JavaScript business logic
+     */
+    class RWGPSClientCore {
     /**
      * Extract event ID from RWGPS event URL
      * 
@@ -138,6 +142,9 @@ class RWGPSClientCore {
         };
     }
 }
+
+return RWGPSClientCore;
+})();
 
 /* istanbul ignore if - Node.js/Jest export */
 if (typeof module !== 'undefined') {

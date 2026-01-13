@@ -124,7 +124,7 @@ globalDeclarations.forEach((declarations, identifier) => {
         if (uniqueFiles.size === 1) {
             // Same file - check if lines are consecutive (IIFE pattern: const X = ...; class X extends ...)
             const lines = declarations.map(d => d.line).sort((a, b) => a - b);
-            const isConsecutive = lines.every((line, i) => i === 0 || line - lines[i-1] <= 3);
+            const isConsecutive = lines.every((line, i) => i === 0 || line - lines[i-1] <= 5);
             if (isConsecutive) {
                 // This is likely the IIFE pattern (const followed by class), not an error
                 return;
