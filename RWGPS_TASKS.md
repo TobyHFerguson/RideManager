@@ -176,9 +176,11 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] Add TypeScript type definition with optional eventData parameter
 - [x] Commit: "Task 3.9: Implement copyTemplate method" (8f3f406)
 - [x] Add GAS integration test: testRWGPSClientCopyTemplate(templateId)
-- [ ] **DEPLOY & TEST**: Ready for GAS testing
-  - Use test: `testRWGPSClientCopyTemplate(404019)` (B Template)
-  - Test creates new event → verifies → deletes
+- [x] **TESTED IN GAS**: Successfully tested template copy with event 453057
+  - ✅ Template 404019 copied successfully
+  - ✅ New event URL extracted from Location header
+  - ✅ New event data verified (custom name, visibility)
+  - ✅ Cleanup completed (test event deleted)
 
 ### Task 3.10: Implement scheduleEvent
 - [ ] `scheduleEvent(templateUrl, eventData, organizerNames)` should:
