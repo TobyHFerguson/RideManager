@@ -576,7 +576,7 @@ describe('RWGPSClient', () => {
             expect(result.success).toBe(true);
             expect(result.eventUrl).toBe('https://ridewithgps.com/events/444070-copied-event');
             expect(client._fetch).toHaveBeenCalledWith(
-                'https://ridewithgps.com/events/404019/copy',
+                'https://ridewithgps.com/events/404019/copy.json',
                 expect.objectContaining({
                     method: 'POST',
                     payload: expect.objectContaining({

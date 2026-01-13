@@ -499,8 +499,8 @@ var RWGPSClient = (function() {
                 return { success: false, error: 'Invalid template URL - could not extract event ID' };
             }
 
-            // Build copy URL
-            const copyUrl = `https://ridewithgps.com/events/${templateId}/copy`;
+            // Build copy URL (must include .json to get 302 redirect with Location header)
+            const copyUrl = `https://ridewithgps.com/events/${templateId}/copy.json`;
 
             // Build payload with event data
             const payload = {
