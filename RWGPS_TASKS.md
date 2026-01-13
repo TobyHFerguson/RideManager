@@ -99,15 +99,17 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] Add test in `test/__tests__/RWGPSClient.test.js` using mock server (6 tests)
 - [x] Fix fixtures: Replace `[REDACTED]` cookies with real mock values
 - [x] Run all tests (448 pass)
-- [ ] Commit: "Implement RWGPSClient.deleteEvent"
+- [x] Commit: "Implement RWGPSClient.deleteEvent" (9f3164b)
 
-### Task 3.4: Wire RWGPSClient.deleteEvent to existing code
-- [ ] Find where `batch_delete_events` is called (grep for it)
-- [ ] Create adapter that calls RWGPSClient.deleteEvent instead
-- [ ] Run tests
-- [x] Commit: "Wire RWGPSClient.deleteEvent to existing callers"
+### Task 3.4: Wire RWGPSClient.deleteEvent to existing code ✅
+- [x] Find where `batch_delete_events` is called (grep for it)
+- [x] Create adapter that calls RWGPSClient.deleteEvent instead
+- [x] Run tests
+- [x] Commit: "Wire RWGPSClient.deleteEvent to existing callers" (19fde58)
 - [x] First GAS deployment successful (commit 69cc412)
 - [x] Note: Fixed validate-exports to handle subdirectories and indented class declarations
+- [x] Fixed IIFE pattern compatibility for GAS (commit d6c9f2b)
+- [x] **TESTED IN GAS**: Unschedule operation confirmed working
 
 ### Task 3.5: Implement getEvent
 - [ ] Read Cancel/Reinstate fixtures to see how getAll works
