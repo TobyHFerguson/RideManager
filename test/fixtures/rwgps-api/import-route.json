@@ -1,0 +1,115 @@
+{
+  "operation": "importRoute",
+  "description": "Import (copy) a route into the club library with tags and expiry",
+  "capturedAt": "2026-01-13T00:33:17.408Z",
+  "apiCalls": [
+    {
+      "operation": "login",
+      "url": "https://ridewithgps.com/organizations/47/sign_in",
+      "method": "POST",
+      "request": {
+        "headers": {
+          "user-email": "rides@santacruzcycling.org",
+          "user-password": "[REDACTED]"
+        }
+      },
+      "status": 302,
+      "responseHeaders": {
+        "Location": "https://ridewithgps.com/organizations/47-santa-cruz-county-cycling-club",
+        "Content-Type": "text/html; charset=utf-8",
+        "Set-Cookie": "[REDACTED]"
+      },
+      "response": "(session cookie received)"
+    },
+    {
+      "operation": "importRoute",
+      "description": "Copy route to club library",
+      "url": "https://ridewithgps.com/routes/53253553/copy.json",
+      "method": "POST",
+      "request": {
+        "headers": {
+          "Cookie": "[REDACTED]",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        "payload": {
+          "user_id": 621846,
+          "asset_type": "route",
+          "privacy_code": null,
+          "include_photos": false,
+          "url": "https://ridewithgps.com/routes/53253553",
+          "expiry": "1/31/2030",
+          "tags": ["B"],
+          "name": "DELETE ME"
+        }
+      },
+      "status": 200,
+      "response": {
+        "success": 1,
+        "url": "https://ridewithgps.com/routes/53715433",
+        "id": 53715433
+      }
+    },
+    {
+      "operation": "getRoute",
+      "description": "Fetch full route details using v1 API",
+      "url": "https://ridewithgps.com/api/v1/routes/53715433.json",
+      "method": "GET",
+      "request": {
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "[REDACTED]"
+        }
+      },
+      "status": 200,
+      "response": {
+        "route": {
+          "id": 53715433,
+          "user_id": 621846,
+          "url": "https://ridewithgps.com/api/v1/routes/53715433.json",
+          "html_url": "https://ridewithgps.com/routes/53715433",
+          "visibility": "public",
+          "name": "DELETE ME",
+          "description": "",
+          "locality": "Monterey",
+          "administrative_area": "CA",
+          "country_code": "US",
+          "distance": 46318,
+          "elevation_gain": 452,
+          "elevation_loss": 451,
+          "track_type": "loop",
+          "terrain": "rolling",
+          "difficulty": "easy",
+          "unpaved_pct": 21,
+          "surface": "mixed_surfaces"
+        }
+      }
+    },
+    {
+      "operation": "add_route_tags",
+      "description": "Add tags to the newly copied route",
+      "url": "https://ridewithgps.com/routes/batch_update_tags.json",
+      "method": "POST",
+      "request": {
+        "headers": {
+          "Cookie": "[REDACTED]",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        "payload": {
+          "tag_action": "add",
+          "tag_names": "B,expires: 1/31/2030",
+          "route_ids": "53715433"
+        }
+      },
+      "status": 200,
+      "response": {
+        "routes": [
+          {
+            "id": 53715433,
+            "name": "DELETE ME",
+            "tag_names": ["B", "expires: 1/31/2030"]
+          }
+        ]
+      }
+    }
+  ]
+}

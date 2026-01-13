@@ -12,7 +12,7 @@
 
 var RWGPSApiLogger = (function() {
     const SHEET_NAME = 'RWGPS API Log';
-    const HEADERS = ['Timestamp', 'Operation', 'URL', 'Method', 'Request Payload', 'Status', 'Response Body'];
+    const HEADERS = ['Timestamp', 'Operation', 'URL', 'Method', 'Request Payload', 'Status', 'Response Headers', 'Response Body'];
     const MAX_CELL_LENGTH = 50000; // Google Sheets cell limit
     
     /** @type {GoogleAppsScript.Spreadsheet.Sheet | null} */
@@ -32,6 +32,10 @@ var RWGPSApiLogger = (function() {
         _sheet = ss.getSheetByName(SHEET_NAME);
         
         if (!_sheet) {
+            // Remember the currently active sheet AND selection before creating log sheet
+            const originalSheet = ss.getActiveSheet();
+            const originalSelection = originalSheet ? originalSheet.getActiveRange() : null;
+            
             _sheet = ss.insertSheet(SHEET_NAME);
             // Set up headers
             _sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
@@ -45,7 +49,16 @@ var RWGPSApiLogger = (function() {
             _sheet.setColumnWidth(4, 60);  // Method
             _sheet.setColumnWidth(5, 400); // Request Payload
             _sheet.setColumnWidth(6, 60);  // Status
-            _sheet.setColumnWidth(7, 400); // Response Body
+            _sheet.setColumnWidth(7, 300); // Response Headers (for 302 Location, etc.)
+            _sheet.setColumnWidth(8, 400); // Response Body
+            
+            // Restore the original active sheet AND selection so row selection still works
+            if (originalSheet) {
+                ss.setActiveSheet(originalSheet);
+                if (originalSelection) {
+                    originalSheet.setActiveRange(originalSelection);
+                }
+            }
         }
         
         return _sheet;
@@ -111,6 +124,7 @@ var RWGPSApiLogger = (function() {
                 (method || 'GET').toUpperCase(),
                 _truncate(_sanitize(requestPayload)),
                 statusCode || '',
+                '',  // Response Headers (populated via logResponse for 302s)
                 _truncate(responseBody)
             ];
             
@@ -144,7 +158,8 @@ var RWGPSApiLogger = (function() {
                 (method || 'GET').toUpperCase(),
                 _truncate(_sanitize(requestPayload)),
                 '(pending)',
-                ''
+                '',  // Response Headers
+                ''   // Response Body
             ];
             
             sheet.appendRow(row);
@@ -161,14 +176,28 @@ var RWGPSApiLogger = (function() {
      * @param {number} rowNum 
      * @param {number} statusCode 
      * @param {any} responseBody 
+     * @param {Object} [responseHeaders] - Response headers (optional, captured for 302s)
      */
-    function logResponse(rowNum, statusCode, responseBody) {
+    function logResponse(rowNum, statusCode, responseBody, responseHeaders) {
         if (!_enabled || rowNum < 0) return;
         
         try {
             const sheet = _getSheet();
             sheet.getRange(rowNum, 6).setValue(statusCode);
-            sheet.getRange(rowNum, 7).setValue(_truncate(responseBody));
+            
+            // Capture response headers for redirects (302) - especially Location header
+            if (responseHeaders) {
+                // Only log important headers
+                const importantHeaders = {};
+                if (responseHeaders['Location']) importantHeaders['Location'] = responseHeaders['Location'];
+                if (responseHeaders['Content-Type']) importantHeaders['Content-Type'] = responseHeaders['Content-Type'];
+                // Sanitize cookies
+                if (responseHeaders['Set-Cookie']) importantHeaders['Set-Cookie'] = '[REDACTED]';
+                
+                sheet.getRange(rowNum, 7).setValue(_truncate(importantHeaders));
+            }
+            
+            sheet.getRange(rowNum, 8).setValue(_truncate(responseBody));
         } catch (error) {
             console.error('RWGPSApiLogger.logResponse error:', error);
         }

@@ -1,0 +1,164 @@
+{
+  "operation": "Schedule",
+  "description": "Schedule a new ride - copies template, sets up event with organizer, removes template tag",
+  "capturedAt": "2026-01-13T00:30:18.030Z",
+  "apiCalls": [
+    {
+      "operation": "login",
+      "url": "https://ridewithgps.com/organizations/47/sign_in",
+      "method": "POST",
+      "request": {
+        "headers": {
+          "user-email": "rides@santacruzcycling.org",
+          "user-password": "[REDACTED]"
+        }
+      },
+      "status": 302,
+      "responseHeaders": {
+        "Location": "https://ridewithgps.com/organizations/47-santa-cruz-county-cycling-club",
+        "Content-Type": "text/html; charset=utf-8",
+        "Set-Cookie": "[REDACTED]"
+      },
+      "response": "(session cookie received)"
+    },
+    {
+      "operation": "copy_template",
+      "url": "https://ridewithgps.com/events/404019-b-template/copy",
+      "method": "POST",
+      "request": {
+        "headers": {
+          "Cookie": "[REDACTED]",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        "payload": {
+          "event[name]": "COPIED EVENT",
+          "event[all_day]": "0",
+          "event[copy_routes]": "0",
+          "event[start_date]": "",
+          "event[start_time]": ""
+        }
+      },
+      "status": 302,
+      "responseHeaders": {
+        "Location": "https://ridewithgps.com/events/444070-copied-event",
+        "Content-Type": "text/html; charset=utf-8",
+        "Set-Cookie": "[REDACTED]"
+      },
+      "response": ""
+    },
+    {
+      "operation": "getOrganizers",
+      "url": "https://ridewithgps.com/events/404021-a-template/organizer_ids.json",
+      "method": "POST",
+      "request": {
+        "headers": {
+          "Cookie": "[REDACTED]",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        "payload": {
+          "term": "Albert",
+          "page": 1
+        }
+      },
+      "status": 200,
+      "response": {
+        "results": [
+          {"id": 498406, "text": "Albert Saporta"}
+        ]
+      }
+    },
+    {
+      "operation": "edit_event_1",
+      "description": "First edit - sets all_day=1 to work around RWGPS API quirk",
+      "url": "https://ridewithgps.com/events/444070",
+      "method": "PUT",
+      "request": {
+        "headers": {
+          "Accept": "application/json",
+          "Cookie": "[REDACTED]",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        "payload": {
+          "all_day": "1",
+          "auto_expire_participants": "1",
+          "desc": "Ride Leader: Albert Saporta\n\n\n\nArrive 9:45 AM for a 10:00 AM rollout.\n\nAll participants are assumed to have read and agreed to the clubs ride policy: https://www.sc3.club/rides/rides-policy\n\nNote: When using a browser use the \"Go to route\" link below to open up the route.",
+          "location": "",
+          "name": "Fri B (3/1 10:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+          "organizer_tokens": ["498406"],
+          "route_ids": ["50969472"],
+          "start_date": "2030-03-01T18:00:00.000Z",
+          "start_time": "2030-03-01T18:00:00.000Z",
+          "visibility": 0
+        }
+      },
+      "status": 200,
+      "response": {
+        "name": "Fri B (3/1 10:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+        "id": 444070,
+        "all_day": true,
+        "starts_at": "2030-03-01T00:00:00-08:00",
+        "organizer_ids": [498406]
+      }
+    },
+    {
+      "operation": "edit_event_2",
+      "description": "Second edit - sets all_day=0 to set actual start time",
+      "url": "https://ridewithgps.com/events/444070",
+      "method": "PUT",
+      "request": {
+        "headers": {
+          "Accept": "application/json",
+          "Cookie": "[REDACTED]",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        "payload": {
+          "all_day": "0",
+          "auto_expire_participants": "1",
+          "desc": "Ride Leader: Albert Saporta\n\n\n\nArrive 9:45 AM for a 10:00 AM rollout.\n\nAll participants are assumed to have read and agreed to the clubs ride policy: https://www.sc3.club/rides/rides-policy\n\nNote: When using a browser use the \"Go to route\" link below to open up the route.",
+          "location": "",
+          "name": "Fri B (3/1 10:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+          "organizer_tokens": ["498406"],
+          "route_ids": ["50969472"],
+          "start_date": "2030-03-01T18:00:00.000Z",
+          "start_time": "2030-03-01T18:00:00.000Z",
+          "visibility": 0
+        }
+      },
+      "status": 200,
+      "response": {
+        "name": "Fri B (3/1 10:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+        "id": 444070,
+        "all_day": false,
+        "starts_at": "2030-03-01T10:00:00-08:00",
+        "ends_at": "2030-03-01T23:59:59-08:00",
+        "organizer_ids": [498406]
+      }
+    },
+    {
+      "operation": "remove_event_tags",
+      "url": "https://ridewithgps.com/events/batch_update_tags.json",
+      "method": "POST",
+      "request": {
+        "headers": {
+          "Cookie": "[REDACTED]",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        },
+        "payload": {
+          "tag_action": "remove",
+          "tag_names": "template",
+          "event_ids": "444070"
+        }
+      },
+      "status": 200,
+      "response": {
+        "events": [
+          {
+            "id": 444070,
+            "name": "Fri B (3/1 10:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+            "tag_names": ["B"]
+          }
+        ]
+      }
+    }
+  ]
+}

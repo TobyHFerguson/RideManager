@@ -66,11 +66,15 @@ class ApiService {
             
             const resp = UrlFetchApp.fetch(loginUrl, options);
             this._updateCookieFromResponse(resp);
+            const statusCode = resp.getResponseCode();
+            // Capture response headers for 302 (Set-Cookie is sanitized in logger)
+            const responseHeaders = (statusCode === 302) ? resp.getAllHeaders() : null;
             
             RWGPSApiLogger.logResponse(
                 rowNum,
-                resp.getResponseCode(),
-                this.webSessionCookie ? '(session cookie received)' : '(no session cookie)'
+                statusCode,
+                this.webSessionCookie ? '(session cookie received)' : '(no session cookie)',
+                responseHeaders
             );
             
             return !!this.webSessionCookie;        // success if we got a cookie
@@ -98,10 +102,14 @@ class ApiService {
             const responses = UrlFetchApp.fetchAll(requests);
             responses.forEach((resp, idx) => {
                 this._updateCookieFromResponse(resp);
+                const statusCode = resp.getResponseCode();
+                // Capture response headers for redirects (302) - especially Location header
+                const responseHeaders = (statusCode === 302) ? resp.getAllHeaders() : null;
                 RWGPSApiLogger.logResponse(
                     rowNums[idx],
-                    resp.getResponseCode(),
-                    resp.getContentText()
+                    statusCode,
+                    resp.getContentText(),
+                    responseHeaders
                 );
             });
             return responses;
@@ -119,11 +127,15 @@ class ApiService {
             );
             
             const resp = UrlFetchApp.fetch(url, opts);
+            const statusCode = resp.getResponseCode();
+            // Capture response headers for redirects (302) - especially Location header
+            const responseHeaders = (statusCode === 302) ? resp.getAllHeaders() : null;
             
             RWGPSApiLogger.logResponse(
                 rowNum,
-                resp.getResponseCode(),
-                resp.getContentText()
+                statusCode,
+                resp.getContentText(),
+                responseHeaders
             );
             
             return resp;
