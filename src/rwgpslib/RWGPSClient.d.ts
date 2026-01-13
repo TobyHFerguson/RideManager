@@ -156,13 +156,41 @@ declare class RWGPSClient {
     ): { success: boolean; eventUrl?: string; error?: string };
 
     /**
-     * Import a route
+     * Import (copy) a route into the club library with tags
+     * 
+     * @param {string} routeUrl - Source route URL to copy
+     * @param {{name?: string, expiry?: string, tags?: string[], userId: number}} routeData - Route copy parameters
+     * @returns {{success: boolean, routeUrl?: string, route?: any, error?: string}} Result with route URL and data
+     */
+    importRoute(
+        routeUrl: string,
+        routeData: {
+            name?: string;
+            expiry?: string;
+            tags?: string[];
+            userId: number;
+        }
+    ): { success: boolean; routeUrl?: string; route?: any; error?: string };
+
+    /**
+     * Get route details via API v1
      * 
      * @param {string} routeUrl - Route URL
-     * @param {any} options - Import options
-     * @returns {ImportResult} Result with route URL
+     * @returns {{success: boolean, route?: any, error?: string}} Result
      */
-    importRoute(routeUrl: string, options: any): ImportResult;
+    getRoute(routeUrl: string): { success: boolean; route?: any; error?: string };
+
+    /**
+     * Copy a route to club library
+     * @private
+     */
+    private _copyRoute(routeUrl: string, routeData: any): { success: boolean; routeUrl?: string; error?: string };
+
+    /**
+     * Add tags to a route
+     * @private
+     */
+    private _addRouteTags(routeUrl: string, tags: string[]): { success: boolean; error?: string };
 
     /**
      * Look up an organizer by name

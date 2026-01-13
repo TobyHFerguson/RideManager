@@ -135,6 +135,31 @@ declare class RWGPSClientCore {
      * @returns {RequestOptions} Request options
      */
     static buildBatchTagOptions(sessionCookie: string, eventIds: string | string[], tagAction: 'add' | 'remove', tagNames: string | string[]): RequestOptions;
-}
 
-export default RWGPSClientCore;
+    /**
+     * Extract route ID from URL
+     * 
+     * @param {string} url - Route URL
+     * @returns {string | null} Route ID or null if not found
+     */
+    static extractRouteId(url: string): string | null;
+
+    /**
+     * Build route copy options
+     * 
+     * @param {string} sessionCookie - Session cookie
+     * @param {string} routeUrl - Source route URL
+     * @param {{name?: string, expiry?: string, tags?: string[], userId: number}} routeData - Route copy parameters
+     * @returns {RequestOptions} Request options
+     */
+    static buildRouteCopyOptions(sessionCookie: string, routeUrl: string, routeData: {name?: string, expiry?: string, tags?: string[], userId: number}): RequestOptions;
+
+    /**
+     * Build route tag options for batch update
+     * 
+     * @param {string} sessionCookie - Session cookie
+     * @param {string} routeId - Route ID
+     * @param {string[]} tags - Tags to add
+     * @returns {RequestOptions} Request options
+     */
+    static buildRouteTagOptions(sessionCookie: string, routeId: string, tags: string[]): RequestOptions;

@@ -256,4 +256,109 @@ describe('RWGPSClientCore', () => {
             expect(options.payload.tag_names).toBe('template,draft');
         });
     });
+
+    describe('extractRouteId', () => {
+        it('should extract route ID from URL', () => {
+            const id = RWGPSClientCore.extractRouteId('https://ridewithgps.com/routes/53253553');
+            expect(id).toBe('53253553');
+        });
+
+        it('should extract route ID from URL with slug', () => {
+            const id = RWGPSClientCore.extractRouteId('https://ridewithgps.com/routes/53253553-some-route-name');
+            expect(id).toBe('53253553');
+        });
+
+        it('should return null for invalid URL', () => {
+            expect(RWGPSClientCore.extractRouteId('invalid-url')).toBeNull();
+            expect(RWGPSClientCore.extractRouteId('')).toBeNull();
+            expect(RWGPSClientCore.extractRouteId(null)).toBeNull();
+        });
+
+        it('should return null for event URL', () => {
+            const id = RWGPSClientCore.extractRouteId('https://ridewithgps.com/events/444070');
+            expect(id).toBeNull();
+        });
+    });
+
+    describe('buildRouteCopyOptions', () => {
+        it('should build route copy options with minimal data', () => {
+            const sessionCookie = 'test-cookie';
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const options = RWGPSClientCore.buildRouteCopyOptions(sessionCookie, routeUrl, routeData);
+
+            expect(options.method).toBe('POST');
+            expect(options.headers.Cookie).toBe('test-cookie');
+            expect(options.contentType).toBe('application/json');
+            expect(options.muteHttpExceptions).toBe(true);
+
+            const payload = JSON.parse(options.payload);
+            expect(payload.user_id).toBe(621846);
+            expect(payload.asset_type).toBe('route');
+            expect(payload.privacy_code).toBeNull();
+            expect(payload.include_photos).toBe(false);
+            expect(payload.url).toBe(routeUrl);
+        });
+
+        it('should build route copy options with all optional fields', () => {
+            const sessionCookie = 'test-cookie';
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = {
+                userId: 621846,
+                name: 'My Route',
+                expiry: '1/31/2030',
+                tags: ['B', 'Club']
+            };
+
+            const options = RWGPSClientCore.buildRouteCopyOptions(sessionCookie, routeUrl, routeData);
+
+            const payload = JSON.parse(options.payload);
+            expect(payload.name).toBe('My Route');
+            expect(payload.expiry).toBe('1/31/2030');
+            expect(payload.tags).toEqual(['B', 'Club']);
+        });
+
+        it('should not include optional fields when not provided', () => {
+            const sessionCookie = 'test-cookie';
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const options = RWGPSClientCore.buildRouteCopyOptions(sessionCookie, routeUrl, routeData);
+
+            const payload = JSON.parse(options.payload);
+            expect(payload.name).toBeUndefined();
+            expect(payload.expiry).toBeUndefined();
+            expect(payload.tags).toBeUndefined();
+        });
+    });
+
+    describe('buildRouteTagOptions', () => {
+        it('should build route tag options', () => {
+            const sessionCookie = 'test-cookie';
+            const routeId = '53715433';
+            const tags = ['B', 'Club'];
+
+            const options = RWGPSClientCore.buildRouteTagOptions(sessionCookie, routeId, tags);
+
+            expect(options.method).toBe('POST');
+            expect(options.headers.Cookie).toBe('test-cookie');
+            expect(options.muteHttpExceptions).toBe(true);
+            expect(options.payload.tag_action).toBe('add');
+            expect(options.payload.tag_names).toBe('B,Club');
+            expect(options.payload.route_ids).toBe('53715433');
+        });
+
+        it('should handle single tag', () => {
+            const options = RWGPSClientCore.buildRouteTagOptions('cookie', '12345', ['B']);
+            
+            expect(options.payload.tag_names).toBe('B');
+        });
+
+        it('should handle empty tags array', () => {
+            const options = RWGPSClientCore.buildRouteTagOptions('cookie', '12345', []);
+            
+            expect(options.payload.tag_names).toBe('');
+        });
+    });
 });

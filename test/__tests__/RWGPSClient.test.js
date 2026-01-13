@@ -1160,4 +1160,302 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('status 400');
         });
     });
+
+    describe('importRoute', () => {
+        it('should successfully import route without tags', () => {
+            // Load fixture
+            RWGPSMockServer.loadFixture('import-route');
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = {
+                name: 'DELETE ME',
+                userId: 621846
+            };
+
+            const result = client.importRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(true);
+            expect(result.routeUrl).toBe('https://ridewithgps.com/routes/53715433');
+            expect(result.route).toBeDefined();
+            expect(result.route.id).toBe(53715433);
+            expect(result.route.name).toBe('DELETE ME');
+        });
+
+        it('should successfully import route with tags', () => {
+            // Load fixture
+            RWGPSMockServer.loadFixture('import-route');
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = {
+                name: 'DELETE ME',
+                expiry: '1/31/2030',
+                tags: ['B'],
+                userId: 621846
+            };
+
+            const result = client.importRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(true);
+            expect(result.routeUrl).toBe('https://ridewithgps.com/routes/53715433');
+            expect(result.route).toBeDefined();
+        });
+
+        it('should return error if login fails', () => {
+            // Mock login failure
+            jest.spyOn(client, 'login').mockReturnValue(false);
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const result = client.importRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Login failed');
+        });
+
+        it('should return error if copy fails', () => {
+            // Mock successful login
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+
+            // Mock copy failure
+            const mockResponse = {
+                getResponseCode: () => 400,
+                getContentText: () => 'Bad Request'
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const result = client.importRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Route copy failed');
+        });
+
+        it('should handle fetch failure after copy', () => {
+            // Mock successful login
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+
+            // Mock successful copy
+            const copyResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({
+                    success: 1,
+                    url: 'https://ridewithgps.com/routes/53715433'
+                })
+            };
+
+            // Mock failed get
+            const getResponse = {
+                getResponseCode: () => 404,
+                getContentText: () => 'Not Found'
+            };
+
+            let callCount = 0;
+            jest.spyOn(client, '_fetch').mockImplementation(() => {
+                callCount++;
+                return callCount === 1 ? copyResponse : getResponse;
+            });
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const result = client.importRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('fetch failed');
+            expect(result.routeUrl).toBe('https://ridewithgps.com/routes/53715433');
+        });
+
+        it('should continue if tag addition fails', () => {
+            // Load fixture
+            RWGPSMockServer.loadFixture('import-route');
+
+            // Mock console.warn to verify it's called
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = {
+                name: 'DELETE ME',
+                tags: ['B'],
+                userId: 621846
+            };
+
+            // Mock successful copy and get, but failed tag addition
+            const originalFetch = client._fetch.bind(client);
+            jest.spyOn(client, '_fetch').mockImplementation((url, options) => {
+                // Tag addition fails
+                if (url.includes('batch_update_tags')) {
+                    return {
+                        getResponseCode: () => 500,
+                        getContentText: () => 'Internal Server Error'
+                    };
+                }
+                // Use original fetch for other calls
+                return originalFetch(url, options);
+            });
+
+            const result = client.importRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(true); // Should still succeed
+            expect(result.routeUrl).toBeDefined();
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Tag addition failed'));
+
+            warnSpy.mockRestore();
+        });
+    });
+
+    describe('getRoute', () => {
+        it('should successfully get route details', () => {
+            const mockResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({
+                    route: {
+                        id: 53715433,
+                        name: 'Test Route',
+                        distance: 46318,
+                        elevation_gain: 452
+                    }
+                })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client.getRoute('https://ridewithgps.com/routes/53715433');
+
+            expect(result.success).toBe(true);
+            expect(result.route).toBeDefined();
+            expect(result.route.id).toBe(53715433);
+            expect(result.route.name).toBe('Test Route');
+        });
+
+        it('should return error for invalid URL', () => {
+            const result = client.getRoute('invalid-url');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Invalid route URL');
+        });
+
+        it('should return error on fetch failure', () => {
+            const mockResponse = {
+                getResponseCode: () => 404,
+                getContentText: () => 'Not Found'
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client.getRoute('https://ridewithgps.com/routes/53715433');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('status 404');
+        });
+    });
+
+    describe('_copyRoute', () => {
+        it('should successfully copy route', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({
+                    success: 1,
+                    url: 'https://ridewithgps.com/routes/53715433',
+                    id: 53715433
+                })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = {
+                name: 'Test Route',
+                userId: 621846
+            };
+
+            const result = client._copyRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(true);
+            expect(result.routeUrl).toBe('https://ridewithgps.com/routes/53715433');
+        });
+
+        it('should return error for invalid URL', () => {
+            client.webSessionCookie = 'test-cookie';
+            const result = client._copyRoute('invalid-url', { userId: 621846 });
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Invalid route URL');
+        });
+
+        it('should return error on copy failure', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 400,
+                getContentText: () => 'Bad Request'
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const result = client._copyRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('status 400');
+        });
+
+        it('should return error if response missing URL', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({ success: 1 }) // Missing url
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const result = client._copyRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Copy response missing URL');
+        });
+    });
+
+    describe('_addRouteTags', () => {
+        it('should successfully add tags', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 200,
+                getContentText: () => JSON.stringify({
+                    routes: [{ id: 53715433, name: 'Test Route', tag_names: ['B'] }]
+                })
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client._addRouteTags('https://ridewithgps.com/routes/53715433', ['B']);
+
+            expect(result.success).toBe(true);
+        });
+
+        it('should return error for invalid URL', () => {
+            client.webSessionCookie = 'test-cookie';
+            const result = client._addRouteTags('invalid-url', ['B']);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Invalid route URL');
+        });
+
+        it('should return error on failure', () => {
+            client.webSessionCookie = 'test-cookie';
+            const mockResponse = {
+                getResponseCode: () => 500,
+                getContentText: () => 'Internal Server Error'
+            };
+            jest.spyOn(client, '_fetch').mockReturnValue(mockResponse);
+
+            const result = client._addRouteTags('https://ridewithgps.com/routes/53715433', ['B']);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('status 500');
+        });
+    });
 });

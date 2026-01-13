@@ -730,15 +730,184 @@ var RWGPSClient = (function() {
     }
 
     /**
-     * Import a route
+     * Import (copy) a route into the club library with tags
+     * 
+     * Workflow:
+     * 1. Login to establish web session
+     * 2. Copy route to club library
+     * 3. Fetch full route details
+     * 4. Add tags to the route
+     * 
+     * @param {string} routeUrl - Source route URL to copy
+     * @param {{name?: string, expiry?: string, tags?: string[], userId: number}} routeData - Route copy parameters
+     * @returns {{success: boolean, routeUrl?: string, route?: any, error?: string}} Result with route URL and data
+     */
+    importRoute(routeUrl, routeData) {
+        try {
+            // Step 1: Login to establish web session
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return { success: false, error: 'Login failed' };
+            }
+
+            // Step 2: Copy route
+            const copyResult = this._copyRoute(routeUrl, routeData);
+            if (!copyResult.success) {
+                return { success: false, error: `Route copy failed: ${copyResult.error}` };
+            }
+
+            const newRouteUrl = copyResult.routeUrl;
+
+            // Step 3: Fetch full route details
+            const getResult = this.getRoute(newRouteUrl);
+            if (!getResult.success) {
+                return { 
+                    success: false, 
+                    error: `Route copy succeeded but fetch failed: ${getResult.error}`,
+                    routeUrl: newRouteUrl
+                };
+            }
+
+            // Step 4: Add tags (non-fatal if fails)
+            if (routeData.tags && routeData.tags.length > 0) {
+                const tagResult = this._addRouteTags(newRouteUrl, routeData.tags);
+                if (!tagResult.success) {
+                    console.warn(`Warning: Tag addition failed: ${tagResult.error}`);
+                }
+            }
+
+            return {
+                success: true,
+                routeUrl: newRouteUrl,
+                route: getResult.route
+            };
+
+        } catch (/** @type {any} */ error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
+     * Copy a route to club library
+     * 
+     * @param {string} routeUrl - Source route URL
+     * @param {{name?: string, expiry?: string, tags?: string[], userId: number}} routeData - Copy parameters
+     * @returns {{success: boolean, routeUrl?: string, error?: string}} Result
+     * @private
+     */
+    _copyRoute(routeUrl, routeData) {
+        try {
+            const routeId = RWGPSClientCore.extractRouteId(routeUrl);
+            if (!routeId) {
+                return { success: false, error: 'Invalid route URL' };
+            }
+
+            const copyUrl = `https://ridewithgps.com/routes/${routeId}/copy.json`;
+            const options = RWGPSClientCore.buildRouteCopyOptions(
+                this.webSessionCookie,
+                routeUrl,
+                routeData
+            );
+
+            const response = this._fetch(copyUrl, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode !== 200) {
+                return { success: false, error: `Copy failed with status ${statusCode}` };
+            }
+
+            const data = JSON.parse(response.getContentText());
+            
+            if (data.success && data.url) {
+                return { success: true, routeUrl: data.url };
+            } else {
+                return { success: false, error: 'Copy response missing URL' };
+            }
+
+        } catch (/** @type {any} */ error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
+     * Get route details via API v1
      * 
      * @param {string} routeUrl - Route URL
-     * @param {any} options - Import options
-     * @returns {{success: boolean, routeUrl?: string, error?: string}} Result
+     * @returns {{success: boolean, route?: any, error?: string}} Result
      */
-    importRoute(routeUrl, options) {
-        // TODO: Implement in Task 3.12
-        throw new Error('importRoute not yet implemented');
+    getRoute(routeUrl) {
+        try {
+            const routeId = RWGPSClientCore.extractRouteId(routeUrl);
+            if (!routeId) {
+                return { success: false, error: 'Invalid route URL' };
+            }
+
+            const apiUrl = `https://ridewithgps.com/api/v1/routes/${routeId}.json`;
+            const options = {
+                method: 'GET',
+                headers: {
+                    'Authorization': this._getBasicAuthHeader(),
+                    'Accept': 'application/json'
+                },
+                muteHttpExceptions: true
+            };
+
+            const response = this._fetch(apiUrl, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode !== 200) {
+                return { success: false, error: `Get route failed with status ${statusCode}` };
+            }
+
+            const data = JSON.parse(response.getContentText());
+            return { success: true, route: data.route };
+
+        } catch (/** @type {any} */ error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
+     * Add tags to a route
+     * 
+     * @param {string} routeUrl - Route URL
+     * @param {string[]} tags - Tags to add
+     * @returns {{success: boolean, error?: string}} Result
+     * @private
+     */
+    _addRouteTags(routeUrl, tags) {
+        try {
+            const routeId = RWGPSClientCore.extractRouteId(routeUrl);
+            if (!routeId) {
+                return { success: false, error: 'Invalid route URL' };
+            }
+
+            const tagUrl = 'https://ridewithgps.com/routes/batch_update_tags.json';
+            const options = RWGPSClientCore.buildRouteTagOptions(
+                this.webSessionCookie,
+                routeId,
+                tags
+            );
+
+            const response = this._fetch(tagUrl, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode !== 200) {
+                return { success: false, error: `Tag addition failed with status ${statusCode}` };
+            }
+
+            return { success: true };
+
+        } catch (/** @type {any} */ error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
     }
 
     /**

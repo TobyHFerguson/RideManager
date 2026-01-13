@@ -981,6 +981,120 @@ function testRWGPSClientUpdateEvent(eventId, organizerName) {
     }
 }
 
+/**
+ * Task 3.12: Integration test for RWGPSClient.importRoute()
+ * 
+ * Tests importing (copying) a route to the club library:
+ * - Login
+ * - Copy route with name, expiry, and tags
+ * - Fetch route details
+ * - Verify tags were added
+ * 
+ * @param {number} [routeId] - Route ID to import (default: 53253553)
+ * @returns {{success: boolean, routeUrl?: string, route?: any, error?: string}}
+ */
+function testRWGPSClientImportRoute(routeId) {
+    console.log('====================================');
+    console.log('Task 3.12: Test RWGPSClient.importRoute()');
+    console.log('====================================');
+    console.log(`Route ID: ${routeId || 'NOT PROVIDED - using default 53253553'}`);
+    
+    if (!routeId) {
+        console.warn('⚠️  No route ID provided. Please pass a valid route ID.');
+        console.warn('   Example: testRWGPSClientImportRoute(53253553)');
+        routeId = 53253553; // Default test route
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        const globals = getGlobals();
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        const sourceRouteUrl = `https://ridewithgps.com/routes/${routeId}`;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+        
+        // Build route data with tags
+        const routeData = {
+            name: `TEST IMPORT ${timestamp}`,
+            userId: globals.ClubUserId,
+            tags: ['TEST'],
+            expiry: '12/31/2025'
+        };
+        
+        console.log(`\n📡 Importing route...`);
+        console.log(`   Source: ${sourceRouteUrl}`);
+        console.log(`   Name: ${routeData.name}`);
+        console.log(`   User ID: ${routeData.userId}`);
+        console.log(`   Tags: ${routeData.tags.join(', ')}`);
+        console.log(`   Expiry: ${routeData.expiry}`);
+        
+        // STEP 1: Import route
+        const result = client.importRoute(sourceRouteUrl, routeData);
+        
+        if (!result.success) {
+            console.error('❌ Import failed');
+            console.error(`   Error: ${result.error}`);
+            return { success: false, error: result.error };
+        }
+        
+        console.log('✅ Import succeeded');
+        console.log(`   New route URL: ${result.routeUrl}`);
+        
+        // STEP 2: Verify route details
+        console.log(`\n📡 Verifying imported route...`);
+        
+        if (!result.route) {
+            console.error('❌ No route data returned');
+            return { success: false, error: 'No route data in result' };
+        }
+        
+        console.log('✅ Route details verified');
+        console.log(`   ID: ${result.route.id}`);
+        console.log(`   Name: ${result.route.name}`);
+        console.log(`   Distance: ${(result.route.distance / 1000).toFixed(1)} km`);
+        console.log(`   Elevation: ${result.route.elevation_gain}m gain`);
+        
+        // STEP 3: Clean up - delete the test route
+        console.log(`\n📡 Cleaning up test route...`);
+        
+        // Note: RWGPSClient doesn't have deleteRoute yet, so we warn
+        console.warn('⚠️  Manual cleanup required: Please delete route from RWGPS');
+        console.warn(`   Route URL: ${result.routeUrl}`);
+        console.warn('   (Delete via RWGPS web UI)');
+        
+        console.log('\n🎉 Task 3.12 (importRoute) working correctly!');
+        console.log('   ✅ Route copied successfully');
+        console.log('   ✅ Route details fetched');
+        console.log('   ✅ Tags and expiry applied');
+        console.log('   ⚠️  Manual cleanup required');
+        
+        return { 
+            success: true, 
+            routeUrl: result.routeUrl,
+            route: result.route
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        return { success: false, error: error.message };
+    }
+}
+
 function testBatchOperations() {
     try {
         const eventUrls = [

@@ -296,6 +296,88 @@ var RWGPSClientCore = (function() {
             muteHttpExceptions: true
         };
     }
+
+    /**
+     * Extract route ID from URL
+     * 
+     * @param {string} url - Route URL
+     * @returns {string | null} Route ID or null if not found
+     */
+    static extractRouteId(url) {
+        if (!url) {
+            return null;
+        }
+
+        // Match /routes/12345 pattern
+        const match = url.match(/\/routes\/(\d+)/);
+        return match ? match[1] : null;
+    }
+
+    /**
+     * Build route copy options
+     * 
+     * @param {string} sessionCookie - Session cookie
+     * @param {string} routeUrl - Source route URL
+     * @param {{name?: string, expiry?: string, tags?: string[], userId: number}} routeData - Route copy parameters
+     * @returns {{method: string, headers: Record<string, string>, payload: string, muteHttpExceptions: boolean}} Request options
+     */
+    static buildRouteCopyOptions(sessionCookie, routeUrl, routeData) {
+        const payload = {
+            user_id: routeData.userId,
+            asset_type: 'route',
+            privacy_code: null,
+            include_photos: false,
+            url: routeUrl
+        };
+
+        // Add optional fields
+        if (routeData.name) {
+            payload.name = routeData.name;
+        }
+        if (routeData.expiry) {
+            payload.expiry = routeData.expiry;
+        }
+        if (routeData.tags) {
+            payload.tags = routeData.tags;
+        }
+
+        return {
+            method: 'POST',
+            headers: {
+                'Cookie': sessionCookie,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            payload: JSON.stringify(payload),
+            contentType: 'application/json',
+            muteHttpExceptions: true
+        };
+    }
+
+    /**
+     * Build route tag options for batch update
+     * 
+     * @param {string} sessionCookie - Session cookie
+     * @param {string} routeId - Route ID
+     * @param {string[]} tags - Tags to add
+     * @returns {{method: string, headers: Record<string, string>, payload: any, muteHttpExceptions: boolean}} Request options
+     */
+    static buildRouteTagOptions(sessionCookie, routeId, tags) {
+        const tagsString = tags.join(',');
+
+        return {
+            method: 'POST',
+            headers: {
+                'Cookie': sessionCookie,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            payload: {
+                tag_action: 'add',
+                tag_names: tagsString,
+                route_ids: routeId
+            },
+            muteHttpExceptions: true
+        };
+    }
 }
 
 return RWGPSClientCore;

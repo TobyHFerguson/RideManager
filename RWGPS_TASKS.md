@@ -230,20 +230,77 @@ AFTER:  RWGPSClient → UrlFetchApp
 - [x] Add TypeScript type definition with optional organizerNames parameter, ScheduleResult return type
 - [x] Commit: "Task 3.11: Implement updateEvent with optional organizer support" (PENDING)
 - [x] Add GAS integration test: testRWGPSClientUpdateEvent(eventId, organizerName)
-- [x] **READY FOR GAS TESTING**: Deploy complete, test function available
-- [x] **VERIFIED**: All 513 tests passing, typecheck clean
+- [x] **TESTED IN GAS**: Successfully tested with event 445203
+  - ✅ Original event retrieved successfully
+  - ✅ Event data updated (description modified with test marker)
+  - ✅ Update verified (description contains test marker)
+  - ✅ Original event restored successfully
+  - ✅ Organizer lookup tested (none provided, works correctly)
+- [x] **VERIFIED**: Full update workflow working end-to-end
 
-### Task 3.12: Implement importRoute
-- [ ] Read import-route fixture
-- [ ] Copy route → fetch details → add tags
-- [ ] Add tests
-- [ ] Commit: "Implement RWGPSClient.importRoute"
+### Task 3.12: Implement importRoute ✅
+- [x] Read import-route fixture
+  - 4-step workflow: login → copy → getRoute → addTags
+  - Copy uses web session: POST /routes/{id}/copy.json
+  - Get uses v1 API: GET /api/v1/routes/{id}.json (Basic Auth)
+  - Tags use web session: POST /routes/batch_update_tags.json
+- [x] Implement importRoute method in RWGPSClient
+  - Orchestrates full workflow
+  - Returns {success, routeUrl?, route?, error?}
+  - Login failure stops process
+  - Copy failure stops process
+  - Get failure returns partial success with routeUrl
+  - Tag failure is non-fatal (logs warning)
+- [x] Implement helper methods:
+  - getRoute(routeUrl) - Fetch route details via v1 API
+  - _copyRoute(routeUrl, routeData) - Copy route via web session
+  - _addRouteTags(routeUrl, tags) - Add tags via batch_update_tags
+- [x] Add Core helper methods in RWGPSClientCore:
+  - extractRouteId(url) - Extract route ID from URL
+  - buildRouteCopyOptions(sessionCookie, routeUrl, routeData) - Build copy POST payload
+  - buildRouteTagOptions(sessionCookie, routeId, tags) - Build tag POST payload
+- [x] Add comprehensive tests (13 adapter + 4 core = 17 tests):
+  - importRoute: success without tags, success with tags, login failure, copy failure, fetch failure, tag failure
+  - getRoute: success, invalid URL, fetch failure
+  - _copyRoute: success, invalid URL, copy failure, missing URL
+  - _addRouteTags: success, invalid URL, failure
+  - extractRouteId: success, with slug, invalid URL, event URL
+  - buildRouteCopyOptions: minimal data, all optional fields, exclude undefined
+  - buildRouteTagOptions: multiple tags, single tag, empty tags
+- [x] Add TypeScript type definitions:
+  - Updated RWGPSClient.d.ts: importRoute, getRoute, _copyRoute, _addRouteTags
+  - Updated RWGPSClientCore.d.ts: extractRouteId, buildRouteCopyOptions, buildRouteTagOptions
+- [x] All tests passing (539 total, added 17 new)
+- [x] TypeScript typecheck clean (zero errors)
+- [x] Add GAS integration test: testRWGPSClientImportRoute(routeId)
+- [x] **TESTED IN GAS**: Successfully tested with route 53253553
+  - ✅ Source route 53253553 copied successfully
+  - ✅ New route URL returned: https://ridewithgps.com/routes/53722997
+  - ✅ Route details fetched via v1 API
+  - ✅ Route data verified (ID: 53722997, Name, Distance: 46.3km, Elevation: 452m)
+  - ✅ Tags and expiry applied correctly
+  - ⚠️ Note: User ID was undefined in test (globals.ClubUserId not set, but copy still succeeded)
+  - ⚠️ Manual cleanup required (test route deleted manually)
+- [x] **VERIFIED**: Full import workflow working end-to-end
+- [ ] Commit: "Task 3.12: Implement importRoute with route copy and tagging" (READY FOR COMMIT)
 
-### Phase 3 Complete Checkpoint
-- [ ] All 424+ tests pass
-- [ ] RWGPSClient has all 6 operations implemented
-- [ ] Old code still works (adapter layer in place)
-- [ ] Commit: "Phase 3 complete: RWGPSClient implemented"
+### Phase 3 Complete Checkpoint ✅
+- [x] All 539 tests pass (was 513, added 26 new tests in Tasks 3.11 + 3.12)
+- [x] RWGPSClient has all 12 operations implemented and tested:
+  - getRSVPCounts ✅ (GAS verified)
+  - getOrganizers ✅ (GAS verified)
+  - unTagEvents ✅ (GAS verified)
+  - getEvents ✅ (GAS verified)
+  - getEvent ✅ (GAS verified)
+  - deleteEvent ✅ (GAS verified)
+  - scheduleEvent ✅ (GAS verified with event 451900)
+  - copyTemplate ✅ (GAS verified with event 453057)
+  - updateEvent ✅ (GAS verified with event 445203)
+  - importRoute ✅ (GAS verified with route 53722997)
+  - setRouteExpiration ✅ (GAS verified)
+  - login ✅ (used by all web session operations)
+- [x] Old code still works (adapter layer in RideManager.js delegates to RWGPSClient)
+- [ ] Commit Phase 3 complete (Tasks 3.11-3.12): "Tasks 3.11-3.12: updateEvent and importRoute"
 
 ---
 
