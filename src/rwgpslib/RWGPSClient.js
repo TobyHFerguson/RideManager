@@ -226,6 +226,65 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Get event details
+     * 
+     * @param {string} eventUrl - Event URL
+     * @returns {{success: boolean, event?: any, error?: string}} Result with event data
+     */
+    getEvent(eventUrl) {
+        try {
+            // Parse event URL to get ID
+            const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
+            
+            // Login to establish session
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return {
+                    success: false,
+                    error: 'Login failed - could not establish web session'
+                };
+            }
+            
+            // GET event using web API (not v1 API)
+            const getUrl = `https://ridewithgps.com/events/${parsed.eventId}`;
+            const options = RWGPSClientCore.buildGetEventOptions(this.webSessionCookie);
+            
+            const response = this._fetch(getUrl, options);
+            const statusCode = response.getResponseCode();
+            
+            if (statusCode === 200) {
+                const responseText = response.getContentText();
+                const data = JSON.parse(responseText);
+                
+                // The response contains {"event": {...}} wrapper
+                if (data && data.event) {
+                    return {
+                        success: true,
+                        event: data.event
+                    };
+                } else {
+                    return {
+                        success: false,
+                        error: 'Unexpected response format: missing event property'
+                    };
+                }
+            } else {
+                return {
+                    success: false,
+                    error: `Unexpected status code: ${statusCode}`
+                };
+            }
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
      * Import a route
      * 
      * @param {string} routeUrl - Route URL

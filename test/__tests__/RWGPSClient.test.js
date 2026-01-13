@@ -120,4 +120,65 @@ describe('RWGPSClient', () => {
             expect(deleteCall.options.headers.Authorization).toContain('Basic ');
         });
     });
+
+    describe('getEvent', () => {
+        it('should successfully get event details', () => {
+            // Load cancel fixture which contains login + getAll
+            RWGPSMockServer.loadFixture('cancel');
+
+            // Use event ID matching fixture
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const result = client.getEvent(eventUrl);
+            
+            expect(result.success).toBe(true);
+            expect(result.event).toBeDefined();
+            expect(result.event.id).toBe(444070);
+            expect(result.event.name).toContain('Fri B');
+            expect(result.error).toBeUndefined();
+        });
+
+        it('should return error if login fails', () => {
+            // Don't load fixture - login will fail
+            const eventUrl = 'https://ridewithgps.com/events/12345';
+            const result = client.getEvent(eventUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Login');
+        });
+
+        it('should return error for invalid event URL', () => {
+            RWGPSMockServer.loadFixture('cancel');
+            
+            const result = client.getEvent('invalid-url');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Invalid event URL');
+        });
+
+        it('should use web API endpoint (not v1)', () => {
+            RWGPSMockServer.loadFixture('cancel');
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            client.getEvent(eventUrl);
+
+            // Check the getAll call (second call after login)
+            const calls = RWGPSMockServer.actualCalls;
+            expect(calls.length).toBe(2);
+            expect(calls[1].url).toBe('https://ridewithgps.com/events/444070');
+            expect(calls[1].method).toBe('GET');
+        });
+
+        it('should include session cookie in request', () => {
+            RWGPSMockServer.loadFixture('cancel');
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            client.getEvent(eventUrl);
+
+            // Check the getAll call has Cookie header
+            const calls = RWGPSMockServer.actualCalls;
+            const getCall = calls[1];
+            expect(getCall.options.headers.Cookie).toBeDefined();
+            expect(getCall.options.headers.Cookie).toContain('_rwgps_3_session=');
+        });
+    });
 });

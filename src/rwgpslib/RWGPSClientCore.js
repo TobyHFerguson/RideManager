@@ -141,6 +141,24 @@ var RWGPSClientCore = (function() {
             errors: errors
         };
     }
+
+    /**
+     * Build request options for getEvent (GET request)
+     * 
+     * @param {string} sessionCookie - Session cookie value
+     * @returns {{method: string, headers: Record<string, string>, muteHttpExceptions: boolean}} Request options
+     */
+    static buildGetEventOptions(sessionCookie) {
+        return {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Cookie': sessionCookie,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            muteHttpExceptions: true
+        };
+    }
 }
 
 return RWGPSClientCore;
