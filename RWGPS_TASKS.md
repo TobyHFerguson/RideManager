@@ -514,7 +514,7 @@ The v1 API response format differs from web API:
 
 **TASK COMPLETE**
 
-### Task 4.3: Replace web editEvent with v1 API (Native v1 Format) 🟡 IN PROGRESS
+### Task 4.3: Replace web editEvent with v1 API (Native v1 Format) ✅ COMPLETE
 
 **CHOSEN APPROACH: Option B - Native v1 Format with URL Interface**
 
@@ -542,36 +542,46 @@ const routeUrl = `https://ridewithgps.com/routes/${routeId}`;
 
 **Implementation Steps**:
 
-- [ ] **STEP 1: Update editEvent to accept v1 format natively**
+- [x] **STEP 1: Update editEvent to accept v1 format natively**
+  - Added: `buildV1EditEventPayload()` helper in RWGPSClientCore.js
+  - Added: `buildV1EditEventOptions()` helper for PUT request construction
   - Accept: `{name, description, start_date, start_time, organizer_ids, route_ids, ...}`
-  - Remove: Any input transformation (callers must provide v1 format)
-  - Endpoint: `PUT /api/v1/events/{id}.json` with Basic Auth
+  - Endpoint: `PUT /api/v1/events/{id}.json` with Basic Auth (no login required)
 
-- [ ] **STEP 2: Keep double-edit workaround** (confirmed by Task 4.1)
+- [x] **STEP 2: Keep double-edit workaround** (confirmed by Task 4.1)
   - First PUT: `all_day: '1'` to reset time
   - Second PUT: actual `start_date`, `start_time`, `all_day: '0'`
 
-- [ ] **STEP 3: Return v1 format response natively**
+- [x] **STEP 3: Return v1 format response natively**
   - Return: v1 format as-is (unwrap from `{"event": {...}}` only)
-  - Remove: `transformV1EventToWebFormat()` call
-  - Consumers will need to handle v1 format
+  - No transformation layer
 
-- [ ] **STEP 4: Update tests**
-  - Tests should provide v1 format input
-  - Tests should expect v1 format output
-  - Update fixture expectations
+- [x] **STEP 4: Update tests**
+  - Updated edit.json fixture to use v1 API format
+  - Updated cancel.json fixture with v1 response wrapping
+  - Tests provide v1 format input (description, start_date, start_time, organizer_ids)
+  - Tests expect v1 format output
+  - Updated cancelEvent/reinstateEvent tests for v1 API behavior (no login errors)
 
-- [ ] **STEP 5: Document breaking change**
+- [x] **STEP 5: Document breaking change**
   - editEvent now accepts/returns v1 format
   - Callers need to be updated in Phase 5
 
-- [ ] Run tests
-- [ ] Commit: "Task 4.3: Migrate editEvent to native v1 API format"
+- [x] Run tests - 77/77 pass ✅
+- [x] Commit: "Task 4.3: Migrate editEvent to native v1 API format" (0dc667c)
 
-**Breaking Change Note**: 
-This is an intentional breaking change. Phase 5 will update all callers.
+**Test Results**: 7 editEvent tests pass, 77 total tests pass
+- ✅ successfully edit an event using double-edit pattern
+- ✅ make two PUT requests (all_day=1, then all_day=0)
+- ✅ use v1 API with organizer_ids directly
+- ✅ use v1 API with route_ids directly
+- ✅ return error if API call fails
+- ✅ return error for invalid event URL
+- ✅ use Basic Auth in both PUT requests
 
-### Task 4.3.1: Revert Task 4.2 to native v1 format 🔜 NEXT
+**TASK COMPLETE**
+
+### Task 4.3.1: Revert Task 4.2 to native v1 format 🟡 IN PROGRESS
 - [ ] Update getEvent to return v1 format natively (remove transformV1EventToWebFormat)
 - [ ] Update tests to expect v1 format
 - [ ] Commit: "Task 4.3.1: getEvent returns native v1 format"
