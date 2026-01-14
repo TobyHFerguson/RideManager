@@ -7,11 +7,38 @@
  * Architecture:
  * - Logo image files stored in Google Drive folder "SCCCC Group Logos"
  * - LogoURL column contains Drive file URLs (persistent, user-manageable)
- * - Logo column displays thumbnail via CellImage (optional, for visual reference)
+ * - LogoURL hover preview shows logo image (no separate Logo column needed)
  * - One-time population from template events
  * - Self-healing: Automatically populates missing logos
  * - Users can update logos by replacing files in Drive folder
  */
+
+/**
+ * Test Drive access and trigger authorization dialog if needed
+ * 
+ * Run this function first if you get "Access denied: DriveApp" errors.
+ * It will prompt you to authorize Drive permissions.
+ * 
+ * @returns {{success: boolean, message: string}}
+ */
+function testDriveAccess() {
+    try {
+        // Try to access Drive
+        const folders = DriveApp.getFoldersByName('SCCCC Group Logos');
+        const folderCount = folders.hasNext() ? 1 : 0;
+        
+        return {
+            success: true,
+            message: `✅ Drive access granted. Found ${folderCount} matching folder(s).`
+        };
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        return {
+            success: false,
+            message: `❌ Drive access failed: ${err.message}. Please authorize Drive permissions.`
+        };
+    }
+}
 
 /**
  * Get or create the Drive folder for group logos
@@ -56,7 +83,7 @@ function uploadLogoToDrive(blob, fileName, folder) {
     // Create new file
     const file = folder.createFile(blob);
     file.setName(fileName);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    // Note: File inherits folder's sharing permissions - no need to set explicitly
     console.log(`  Created Drive file: ${file.getId()}`);
     return file.getUrl();
 }
@@ -70,14 +97,18 @@ function uploadLogoToDrive(blob, fileName, folder) {
  * 3. Downloads logo as blob
  * 4. Uploads blob to Drive folder
  * 5. Stores Drive URL in LogoURL column
- * 6. Optionally creates thumbnail in Logo column
  * 
  * Can be run multiple times safely (only updates missing logos)
+ * Note: LogoURL column provides hover preview - no separate Logo column needed
  * 
+ * @param {boolean} [force=false] - If true, repopulate all logos even if LogoURL already exists
  * @returns {{success: boolean, populated: number, skipped: number, errors: string[]}}
  */
-function populateGroupLogos() {
+function populateGroupLogos(force) {
     console.log('=== Populating Group Logos ===');
+    if (force) {
+        console.log('⚠️  FORCE MODE: Repopulating all logos');
+    }
     
     /** @type {{success: boolean, populated: number, skipped: number, errors: string[]}} */
     const results = {
@@ -118,7 +149,6 @@ function populateGroupLogos() {
         const groupColIndex = headers.indexOf('Group');
         const templateColIndex = headers.indexOf('TEMPLATE');
         const logoUrlColIndex = headers.indexOf('LogoURL');
-        const logoColIndex = headers.indexOf('Logo');
         
         if (logoUrlColIndex === -1) {
             const error = 'LogoURL column not found in Groups tab (required for Drive URLs). Please add it manually.';
@@ -136,9 +166,7 @@ function populateGroupLogos() {
             return results;
         }
         
-        const hasLogoColumn = logoColIndex !== -1;
         console.log(`LogoURL column found at column ${logoUrlColIndex + 1}`);
-        console.log(`Logo display column: ${hasLogoColumn ? `column ${logoColIndex + 1}` : 'not found (thumbnails disabled)'}`);
         
         // Get RWGPSClient
         const scriptProps = PropertiesService.getScriptProperties();
@@ -160,11 +188,15 @@ function populateGroupLogos() {
             
             console.log(`\nProcessing group ${groupName}...`);
             
-            // Skip if already has logo URL
-            if (existingLogoUrl && existingLogoUrl !== '') {
+            // Skip if already has logo URL (unless force mode)
+            if (!force && existingLogoUrl && existingLogoUrl !== '') {
                 console.log(`  ⏭ Group "${groupName}" already has logo URL, skipping`);
                 results.skipped++;
                 continue;
+            }
+            
+            if (force && existingLogoUrl) {
+                console.log(`  🔄 Force mode: Replacing existing logo URL`);
             }
             
             // Skip if no template URL
@@ -214,20 +246,8 @@ function populateGroupLogos() {
                 // Store Drive URL in LogoURL column
                 const logoUrlCell = sheet.getRange(rowNum, logoUrlColIndex + 1);
                 logoUrlCell.setValue(driveUrl);
-                console.log(`  ✓ Drive URL stored: ${driveUrl}`);
+                console.log(`  ✓ Drive URL stored for ${groupName}`);
                 
-                // Optionally create thumbnail in Logo column
-                if (hasLogoColumn) {
-                    console.log(`  Creating thumbnail in Logo column...`);
-                    const thumbnail = SpreadsheetApp.newCellImage()
-                        .setSourceUrl(driveUrl)
-                        .build();
-                    const logoCell = sheet.getRange(rowNum, logoColIndex + 1);
-                    logoCell.setValue(thumbnail);
-                    console.log(`  ✓ Thumbnail created`);
-                }
-                
-                console.log(`  ✓ Logo stored for ${groupName}`);
                 results.populated++;
                 
             } catch (error) {
