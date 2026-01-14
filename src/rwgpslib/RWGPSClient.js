@@ -542,6 +542,61 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Create a new event using v1 API
+     * 
+     * Uses POST /api/v1/events.json with Basic Auth to create a new event.
+     * 
+     * @param {{name: string, description?: string, start_date: string, start_time: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string}} eventData - Event data in v1 format
+     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
+     */
+    createEvent(eventData) {
+        try {
+            // Build v1 API URL for creating event
+            const v1PostUrl = 'https://ridewithgps.com/api/v1/events.json';
+
+            // Build Basic Auth header
+            const basicAuthHeader = RWGPSClientCore.buildBasicAuthHeader(this.apiKey, this.authToken);
+
+            // Build payload - same structure as editEvent but with all required fields
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            // Build POST request options
+            const options = RWGPSClientCore.buildV1CreateEventOptions(basicAuthHeader, payload);
+
+            // Make POST request
+            const response = this._fetch(v1PostUrl, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode === 201) {
+                const responseText = response.getContentText();
+                const responseData = JSON.parse(responseText);
+
+                // v1 API returns {"event": {...}}, unwrap
+                const event = responseData.event || responseData;
+
+                return {
+                    success: true,
+                    eventUrl: event.html_url || event.url,
+                    event: event
+                };
+            } else {
+                const responseText = response.getContentText();
+                return {
+                    success: false,
+                    error: `Create failed with status ${statusCode}: ${responseText}`
+                };
+            }
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: `Create failed: ${err.message}`
+            };
+        }
+    }
+
+    /**
      * Cancel an event (adds "CANCELLED: " prefix to name)
      * 
      * @param {string} eventUrl - Event URL

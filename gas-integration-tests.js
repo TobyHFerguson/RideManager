@@ -6,6 +6,214 @@
  */
 
 /**
+ * Experiment: Test if logo_url can be set when creating an event
+ * 
+ * This tests whether the v1 API allows setting logo_url directly when creating
+ * a new event, or if images must be uploaded separately.
+ * 
+ * @param {number} [templateId] - Template event to copy logo from (default: 444070)
+ * @param {number} [routeId] - Route ID to use (default: 50969472)
+ * @param {string} [organizerName] - Organizer name (default: 'Toby Ferguson')
+ */
+function testLogoUrlInCreateEvent(templateId, routeId, organizerName) {
+    console.log('====================================');
+    console.log('EXPERIMENT: Setting logo_url in createEvent');
+    console.log('====================================');
+    
+    if (!templateId) {
+        templateId = 404019;  // Default B template (has logo)
+    }
+    if (!routeId) {
+        routeId = 50969472;  // Default route
+    }
+    if (!organizerName) {
+        organizerName = 'Toby Ferguson';
+    }
+    
+    console.log('Parameters:');
+    console.log('  templateId:', templateId);
+    console.log('  routeId:', routeId);
+    console.log('  organizerName:', organizerName);
+    
+    try {
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        // Step 1: Get template logo_url
+        console.log(`\nStep 1: Fetching template event ${templateId} for logo_url...`);
+        const templateResult = client.getEvent(`https://ridewithgps.com/events/${templateId}`);
+        
+        // getEvent returns {success, event, eventUrl}
+        const template = templateResult.event;
+        const logoUrl = template.logo_url;
+        const bannerUrl = template.banner_url;
+        const photos = template.photos;
+        
+        console.log('✅ Template fetched');
+        console.log('   Event ID:', template.id);
+        console.log('   Event name:', template.name);
+        console.log('   logo_url:', logoUrl || '(none)');
+        console.log('   banner_url:', bannerUrl || '(none)');
+        console.log('   photos count:', photos ? photos.length : 0);
+        
+        if (!logoUrl) {
+            console.warn('⚠️  Template has no logo_url - test cannot proceed');
+            console.warn('   Try a different template ID that has a logo');
+            return { success: false, error: 'Template has no logo_url' };
+        }
+        
+        // Step 2: Get organizer ID from template owner
+        console.log(`\nStep 2: Getting organizer ID from template owner...`);
+        const organizerId = template.user_id;  // Use template owner as organizer
+        console.log('✅ Using template owner as organizer:', organizerId);
+        
+        // Step 3: Create event with logo_url
+        console.log('\nStep 3: Creating event with logo_url set...');
+        const eventData = {
+            name: `TEST Logo URL Experiment (${new Date().toISOString()})`,
+            description: 'Testing if logo_url can be set via v1 API createEvent. DELETE THIS EVENT.',
+            start_date: '2030-06-15',
+            start_time: '09:00',
+            visibility: 'private',
+            organizer_ids: [organizerId],
+            route_ids: [routeId],
+            logo_url: logoUrl  // *** EXPERIMENT: Try setting logo_url ***
+        };
+        
+        console.log('Event data:', JSON.stringify(eventData, null, 2));
+        
+        const createResult = client.createEvent(eventData);
+        
+        if (!createResult.success) {
+            console.error('❌ createEvent failed:', createResult.error);
+            return { success: false, error: createResult.error };
+        }
+        
+        console.log('✅ Event created:', createResult.eventUrl);
+        const newEventId = createResult.event.id;
+        
+        // Step 4: Fetch the created event to check if logo_url was set
+        console.log(`\nStep 4: Fetching created event ${newEventId} to verify logo_url...`);
+        const createdEventResult = client.getEvent(createResult.eventUrl);
+        const createdEvent = createdEventResult.event;
+        
+        console.log('\n=== RESULT ===');
+        console.log('Created event ID:', newEventId);
+        console.log('Created event URL:', createResult.eventUrl);
+        console.log('Template logo_url:', logoUrl);
+        console.log('Created event logo_url:', createdEvent.logo_url || '(none)');
+        
+        const logoWasSet = createdEvent.logo_url === logoUrl;
+        
+        if (logoWasSet) {
+            console.log('🎉 SUCCESS: logo_url WAS set in the created event!');
+            console.log('   The v1 API allows setting logo_url directly.');
+        } else {
+            console.log('❌ FAILED: logo_url was NOT set in the created event.');
+            console.log('   The v1 API does not support setting logo_url via POST.');
+            console.log('   Will need to upload images separately.');
+        }
+        
+        return {
+            success: true,
+            logoWasSet: logoWasSet,
+            templateLogoUrl: logoUrl,
+            createdEventLogoUrl: createdEvent.logo_url,
+            createdEventId: newEventId,
+            createdEventUrl: createResult.eventUrl,
+            message: logoWasSet 
+                ? 'logo_url can be set via v1 API POST' 
+                : 'logo_url cannot be set via v1 API POST - requires upload'
+        };
+        
+    } catch (error) {
+        console.error('❌ Test failed:', error.message);
+        console.error('Stack:', error.stack);
+        return { success: false, error: error.message, stack: error.stack };
+    }
+}
+
+/**
+ * Fetch template event and display photo/logo URLs
+ * 
+ * This helps understand what images need to be copied when creating events from scratch
+ * instead of copying from a template.
+ * 
+ * @param {number} [eventId] - Template event ID (default: 404019 - B template with logo)
+ */
+function fetchTemplatePhotos(eventId) {
+    console.log('====================================');
+    console.log('Fetch Template Photos/Logos');
+    console.log('====================================');
+    
+    if (!eventId) {
+        eventId = 404019;  // Default B template with logo
+        console.log(`Using default template ID: ${eventId}`);
+    }
+    
+    try {
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        console.log(`\nFetching: ${eventUrl}`);
+        
+        const result = client.getEvent(eventUrl);
+        const event = result.event;  // Extract event from result
+        
+        console.log('\n=== LOGO & BANNER URLS ===');
+        console.log('logo_url:', event.logo_url || '(none)');
+        console.log('banner_url:', event.banner_url || '(none)');
+        
+        console.log('\n=== PHOTOS ARRAY ===');
+        if (event.photos && event.photos.length > 0) {
+            console.log(`Found ${event.photos.length} photos:`);
+            event.photos.forEach((photo, i) => {
+                console.log(`\nPhoto ${i + 1}:`);
+                console.log('  id:', photo.id);
+                console.log('  url:', photo.url);
+                console.log('  highlighted:', photo.highlighted);
+                console.log('  caption:', photo.caption || '(none)');
+            });
+        } else {
+            console.log('No photos in photos array');
+        }
+        
+        console.log('\n=== ALL TOP-LEVEL KEYS ===');
+        console.log(Object.keys(event).sort().join(', '));
+        
+        console.log('\n=== FULL EVENT JSON ===');
+        console.log(JSON.stringify(event, null, 2));
+        
+        return { 
+            success: true, 
+            logo_url: event.logo_url,
+            banner_url: event.banner_url,
+            photos: event.photos,
+            allKeys: Object.keys(event).sort()
+        };
+        
+    } catch (error) {
+        console.error('❌ Failed:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Task 4.2: Test v1 API getEvent response transformation
  * 
  * Validates that getEvent() correctly:
@@ -1568,6 +1776,235 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
             error: error.message,
             findings: ['Test execution error - check logs']
         };
+    }
+}
+
+/**
+ * Task 4.1b: Test if double-edit pattern fixes the date update issue
+ * 
+ * Previous test showed:
+ * - start_time: UPDATED with single PUT ✅
+ * - start_date: NOT updated with single PUT ❌
+ * 
+ * This test checks if the double-edit pattern (all_day=1, then all_day=0) 
+ * allows date changes to work.
+ * 
+ * @param {number} [eventId] - Event ID to test (default: 445203)
+ * @returns {{success: boolean, findings?: string[], error?: string}}
+ */
+function testTask4_1b_DoubleEditForDate(eventId) {
+    console.log('====================================');
+    console.log('Task 4.1b: Test Double-Edit for Date');
+    console.log('====================================');
+    console.log(`Testing if double-edit pattern allows date changes`);
+    
+    if (!eventId) {
+        console.warn('⚠️  No event ID provided. Using default: 445203');
+        eventId = 445203;
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ Client ready');
+        
+        // STEP 1: Get original event
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            return { success: false, error: `Failed to get event: ${getResult.error}` };
+        }
+        
+        const originalEvent = getResult.event;
+        console.log(`\n📋 Original Event:`);
+        console.log(`   name: ${originalEvent.name}`);
+        console.log(`   start_date: ${originalEvent.start_date}`);
+        console.log(`   start_time: ${originalEvent.start_time}`);
+        
+        // Test values - change BOTH date and time
+        const testDate = '2030-04-15';
+        const testTime = '14:30';
+        
+        console.log(`\n📋 Test Values:`);
+        console.log(`   target start_date: ${testDate}`);
+        console.log(`   target start_time: ${testTime}`);
+        
+        // STEP 2: First PUT - all_day=1
+        console.log(`\n📡 Step 2: First PUT (all_day=1)...`);
+        const v1Url = `https://ridewithgps.com/api/v1/events/${eventId}.json`;
+        
+        const payload1 = {
+            event: {
+                name: originalEvent.name + ' [DOUBLE-EDIT TEST]',
+                description: originalEvent.description || '',
+                start_date: testDate,
+                start_time: testTime,
+                all_day: '1'  // First: all_day=1
+            }
+        };
+        
+        console.log(`   Sending: start_date=${testDate}, start_time=${testTime}, all_day=1`);
+        
+        const response1 = UrlFetchApp.fetch(v1Url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Basic ' + Utilities.base64Encode(
+                    credentialManager.getApiKey() + ':' + credentialManager.getAuthToken()
+                ),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            payload: JSON.stringify(payload1),
+            muteHttpExceptions: true
+        });
+        
+        const status1 = response1.getResponseCode();
+        const responseData1 = JSON.parse(response1.getContentText());
+        const result1 = responseData1.event || responseData1;  // Unwrap {"event": {...}}
+        
+        console.log(`   Response status: ${status1}`);
+        console.log(`   Response start_date: ${result1.start_date}`);
+        console.log(`   Response start_time: ${result1.start_time}`);
+        console.log(`   Response all_day: ${result1.all_day}`);
+        
+        if (status1 !== 200) {
+            return { success: false, error: `First PUT failed: ${status1}` };
+        }
+        
+        // STEP 3: Second PUT - all_day=0
+        console.log(`\n📡 Step 3: Second PUT (all_day=0)...`);
+        
+        const payload2 = {
+            event: {
+                name: originalEvent.name + ' [DOUBLE-EDIT TEST]',
+                description: originalEvent.description || '',
+                start_date: testDate,
+                start_time: testTime,
+                all_day: '0'  // Second: all_day=0
+            }
+        };
+        
+        console.log(`   Sending: start_date=${testDate}, start_time=${testTime}, all_day=0`);
+        
+        const response2 = UrlFetchApp.fetch(v1Url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Basic ' + Utilities.base64Encode(
+                    credentialManager.getApiKey() + ':' + credentialManager.getAuthToken()
+                ),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            payload: JSON.stringify(payload2),
+            muteHttpExceptions: true
+        });
+        
+        const status2 = response2.getResponseCode();
+        const responseData2 = JSON.parse(response2.getContentText());
+        const result2 = responseData2.event || responseData2;  // Unwrap {"event": {...}}
+        
+        console.log(`   Response status: ${status2}`);
+        console.log(`   Response start_date: ${result2.start_date}`);
+        console.log(`   Response start_time: ${result2.start_time}`);
+        console.log(`   Response all_day: ${result2.all_day}`);
+        
+        if (status2 !== 200) {
+            return { success: false, error: `Second PUT failed: ${status2}` };
+        }
+        
+        // STEP 4: Verify
+        console.log(`\n📋 Verification:`);
+        const dateUpdated = result2.start_date === testDate;
+        const timeUpdated = result2.start_time === testTime;
+        const allDayCorrect = result2.all_day === false || result2.all_day === 0;
+        
+        console.log(`   Date updated: ${dateUpdated ? '✅ YES' : '❌ NO'} (expected ${testDate}, got ${result2.start_date})`);
+        console.log(`   Time updated: ${timeUpdated ? '✅ YES' : '❌ NO'} (expected ${testTime}, got ${result2.start_time})`);
+        console.log(`   all_day correct: ${allDayCorrect ? '✅ YES' : '❌ NO'} (expected false, got ${result2.all_day})`);
+        
+        // STEP 5: Restore
+        console.log(`\n📡 Step 5: Restoring original event...`);
+        
+        const restorePayload = {
+            event: {
+                name: originalEvent.name,
+                description: originalEvent.description || '',
+                start_date: originalEvent.start_date,
+                start_time: originalEvent.start_time,
+                all_day: '1'  // First restore with all_day=1
+            }
+        };
+        
+        UrlFetchApp.fetch(v1Url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Basic ' + Utilities.base64Encode(
+                    credentialManager.getApiKey() + ':' + credentialManager.getAuthToken()
+                ),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            payload: JSON.stringify(restorePayload),
+            muteHttpExceptions: true
+        });
+        
+        // Second restore with all_day=0
+        restorePayload.event.all_day = '0';
+        UrlFetchApp.fetch(v1Url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Basic ' + Utilities.base64Encode(
+                    credentialManager.getApiKey() + ':' + credentialManager.getAuthToken()
+                ),
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            payload: JSON.stringify(restorePayload),
+            muteHttpExceptions: true
+        });
+        
+        console.log('✅ Event restored');
+        
+        // CONCLUSION
+        console.log('\n📝 CONCLUSION:');
+        if (dateUpdated && timeUpdated && allDayCorrect) {
+            console.log('   ✅ DOUBLE-EDIT PATTERN WORKS for date changes!');
+            console.log('   → v1 API requires double-PUT for date changes (same as web API)');
+            console.log('   → Single PUT works for time-only changes');
+        } else if (!dateUpdated && timeUpdated) {
+            console.log('   ❌ Date STILL not updated even with double-edit!');
+            console.log('   → Need different approach for date changes');
+        } else {
+            console.log('   ⚠️  Partial success - investigate further');
+        }
+        
+        return {
+            success: true,
+            findings: {
+                dateUpdated,
+                timeUpdated,
+                allDayCorrect,
+                originalDate: originalEvent.start_date,
+                originalTime: originalEvent.start_time,
+                testDate,
+                testTime,
+                resultDate: result2.start_date,
+                resultTime: result2.start_time
+            }
+        };
+        
+    } catch (error) {
+        console.error('❌ Test failed:', error.message);
+        return { success: false, error: error.message };
     }
 }
 

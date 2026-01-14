@@ -329,6 +329,101 @@ describe('RWGPSClient', () => {
         });
     });
 
+    describe('createEvent', () => {
+        it('should create a new event using v1 API POST', () => {
+            // Load create fixture
+            RWGPSMockServer.loadFixture('create');
+
+            const eventData = {
+                name: 'Test New Event',
+                description: 'Test description',
+                start_date: '2030-03-15',
+                start_time: '10:00',
+                visibility: 'members'
+            };
+
+            const result = client.createEvent(eventData);
+
+            expect(result.success).toBe(true);
+            expect(result.eventUrl).toBeDefined();
+            expect(result.event).toBeDefined();
+            expect(result.event.name).toBe('Test New Event');
+        });
+
+        it('should use v1 API with route_ids and organizer_ids', () => {
+            RWGPSMockServer.loadFixture('create');
+
+            const eventData = {
+                name: 'Event with Routes',
+                start_date: '2030-03-15',
+                start_time: '10:00',
+                route_ids: ['50969472', '12345678'],
+                organizer_ids: ['111111', '222222']
+            };
+
+            client.createEvent(eventData);
+
+            const calls = RWGPSMockServer.actualCalls;
+            const postCalls = calls.filter((/** @type {any} */ c) => c.method === 'POST');
+            expect(postCalls.length).toBeGreaterThan(0);
+            
+            const payload = JSON.parse(postCalls[postCalls.length - 1].options.payload);
+            expect(payload.event.route_ids).toEqual(['50969472', '12345678']);
+            expect(payload.event.organizer_ids).toEqual(['111111', '222222']);
+        });
+
+        it('should use Basic Auth for v1 API', () => {
+            RWGPSMockServer.loadFixture('create');
+
+            const eventData = {
+                name: 'Test Event',
+                start_date: '2030-03-15',
+                start_time: '10:00'
+            };
+
+            client.createEvent(eventData);
+
+            const calls = RWGPSMockServer.actualCalls;
+            const postCalls = calls.filter((/** @type {any} */ c) => c.method === 'POST');
+            
+            // v1 API uses Basic Auth
+            const lastPost = postCalls[postCalls.length - 1];
+            expect(lastPost.options.headers.Authorization).toBeDefined();
+            expect(lastPost.options.headers.Authorization).toContain('Basic ');
+        });
+
+        it('should return error if API call fails', () => {
+            // Don't load fixture - API call will fail
+            const eventData = {
+                name: 'Test Event',
+                start_date: '2030-03-15',
+                start_time: '10:00'
+            };
+
+            const result = client.createEvent(eventData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBeDefined();
+        });
+
+        it('should set all_day to 0 by default', () => {
+            RWGPSMockServer.loadFixture('create');
+
+            const eventData = {
+                name: 'Timed Event',
+                start_date: '2030-03-15',
+                start_time: '10:00'
+            };
+
+            client.createEvent(eventData);
+
+            const calls = RWGPSMockServer.actualCalls;
+            const postCalls = calls.filter((/** @type {any} */ c) => c.method === 'POST');
+            const payload = JSON.parse(postCalls[postCalls.length - 1].options.payload);
+            expect(payload.event.all_day).toBe('0');
+        });
+    });
+
     describe('cancelEvent', () => {
         it('should add CANCELLED: prefix to event name', () => {
             // Mock getEvent and editEvent to avoid fixture complexity

@@ -340,6 +340,26 @@ var RWGPSClientCore = (function() {
     }
 
     /**
+     * Build request options for v1 API createEvent (POST request with Basic Auth)
+     * 
+     * @param {string} basicAuthHeader - Basic Auth header value (from buildBasicAuthHeader)
+     * @param {{event: any}} payload - Event data payload wrapped in "event" key
+     * @returns {{method: string, headers: Record<string, string>, payload: string, muteHttpExceptions: boolean}} Request options
+     */
+    static buildV1CreateEventOptions(basicAuthHeader, payload) {
+        return {
+            method: 'POST',
+            headers: {
+                'Authorization': basicAuthHeader,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            payload: JSON.stringify(payload),
+            muteHttpExceptions: true
+        };
+    }
+
+    /**
      * Build request options for organizer lookup (POST request)
      * 
      * @param {string} sessionCookie - Session cookie value

@@ -54,10 +54,9 @@ describe('RWGPS API Characterization', () => {
             ]);
         });
 
-        test('cancel fixture has 4 API calls', () => {
-            expect(fixtures.cancel.apiCalls).toHaveLength(4);
+        test('cancel fixture has 3 API calls (v1 API - no login needed)', () => {
+            expect(fixtures.cancel.apiCalls).toHaveLength(3);
             expect(fixtures.cancel.apiCalls.map(c => c.operation)).toEqual([
-                'login',
                 'getAll',
                 'edit_event_1',
                 'edit_event_2'
@@ -159,24 +158,29 @@ describe('RWGPS API Characterization', () => {
     });
 
     describe('Cancel Operation Behavior', () => {
-        test('cancel fetches event first (via getAll)', () => {
-            const firstCall = fixtures.cancel.apiCalls[1]; // After login
+        test('cancel fetches event first (via getAll) - v1 API no login', () => {
+            const firstCall = fixtures.cancel.apiCalls[0]; // v1 API: first call is getAll (no login)
             expect(firstCall.operation).toBe('getAll');
             expect(firstCall.method).toBe('GET');
         });
 
         test('cancel adds CANCELLED: prefix to name', () => {
             const edit1 = fixtures.cancel.apiCalls.find(c => c.operation === 'edit_event_1');
-            
-            expect(edit1.request.payload.name).toMatch(/^CANCELLED:/);
+            // Fixture uses web API format (name at top level) even though getAll uses v1 format
+            // This is a transitional state during v1 migration
+            const name = edit1.request.payload.event?.name || edit1.request.payload.name;
+            expect(name).toMatch(/^CANCELLED:/);
         });
 
         test('cancel preserves original event data except name', () => {
             const getAll = fixtures.cancel.apiCalls.find(c => c.operation === 'getAll');
             const edit1 = fixtures.cancel.apiCalls.find(c => c.operation === 'edit_event_1');
             
-            // Description should be preserved
-            expect(edit1.request.payload.desc).toBe(getAll.response.event.desc);
+            // v1 API response uses description field
+            const originalDesc = getAll.response.event.description || getAll.response.event.desc;
+            // Web API request uses desc field
+            const editDesc = edit1.request.payload.event?.description || edit1.request.payload.desc;
+            expect(editDesc).toBe(originalDesc);
         });
     });
 
@@ -238,12 +242,21 @@ describe('RWGPS API Characterization', () => {
     });
 
     describe('Authentication Patterns', () => {
-        test('all operations start with login to web session', () => {
-            for (const [name, fixture] of Object.entries(fixtures)) {
+        test('web API operations start with login to web session', () => {
+            // Web API operations (schedule, update, reinstate, importRoute, unschedule) require login
+            const webApiFixtures = ['schedule', 'update', 'reinstate', 'importRoute', 'unschedule'];
+            for (const name of webApiFixtures) {
+                const fixture = fixtures[name];
                 const firstCall = fixture.apiCalls[0];
                 expect(firstCall.operation).toBe('login');
                 expect(firstCall.url).toBe('https://ridewithgps.com/organizations/47/sign_in');
             }
+        });
+
+        test('v1 API-only operations do not require login', () => {
+            // cancel uses v1 API only - no login required
+            const firstCall = fixtures.cancel.apiCalls[0];
+            expect(firstCall.operation).not.toBe('login');
         });
 
         test('login returns 302 redirect', () => {
@@ -322,14 +335,17 @@ describe('RWGPS Operation Contracts', () => {
     });
 
     describe('Cancel Contract', () => {
-        test('input: event URL', () => {
+        test('input: event URL (v1 API format)', () => {
             const getAll = fixtures.cancel.apiCalls.find(c => c.operation === 'getAll');
-            expect(getAll.url).toMatch(/\/events\/\d+$/);
+            // v1 API uses /api/v1/events/{id}.json format
+            expect(getAll.url).toMatch(/\/api\/v1\/events\/\d+\.json$/);
         });
 
         test('output: event with CANCELLED: prefix', () => {
             const edit = fixtures.cancel.apiCalls.find(c => c.operation === 'edit_event_2');
-            expect(edit.response.name).toMatch(/^CANCELLED:/);
+            // v1 API wraps response in event object
+            const eventName = edit.response.event?.name || edit.response.name;
+            expect(eventName).toMatch(/^CANCELLED:/);
         });
     });
 

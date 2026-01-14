@@ -361,4 +361,103 @@ describe('RWGPSClientCore', () => {
             expect(options.payload.tag_names).toBe('');
         });
     });
+
+    describe('buildV1EditEventPayload', () => {
+        it('should build payload with event wrapper', () => {
+            const eventData = {
+                name: 'Test Event',
+                description: 'Test description',
+                start_date: '2030-03-01',
+                start_time: '11:00'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event).toBeDefined();
+            expect(payload.event.name).toBe('Test Event');
+            expect(payload.event.description).toBe('Test description');
+            expect(payload.event.start_date).toBe('2030-03-01');
+            expect(payload.event.start_time).toBe('11:00');
+            expect(payload.event.all_day).toBe('0');
+        });
+
+        it('should convert organizer_ids to strings', () => {
+            const eventData = {
+                name: 'Test',
+                organizer_ids: [123, 456, '789']
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.organizer_ids).toEqual(['123', '456', '789']);
+        });
+
+        it('should convert route_ids to strings', () => {
+            const eventData = {
+                name: 'Test',
+                route_ids: [50969472, '12345678']
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.route_ids).toEqual(['50969472', '12345678']);
+        });
+
+        it('should set all_day flag', () => {
+            const eventData = { name: 'Test' };
+
+            const payload1 = RWGPSClientCore.buildV1EditEventPayload(eventData, '1');
+            expect(payload1.event.all_day).toBe('1');
+
+            const payload0 = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            expect(payload0.event.all_day).toBe('0');
+        });
+
+        it('should include optional fields when provided', () => {
+            const eventData = {
+                name: 'Test',
+                location: 'Test Location',
+                time_zone: 'America/Los_Angeles',
+                visibility: 'public'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.location).toBe('Test Location');
+            expect(payload.event.time_zone).toBe('America/Los_Angeles');
+            expect(payload.event.visibility).toBe('public');
+        });
+    });
+
+    describe('buildV1EditEventOptions', () => {
+        it('should build PUT request options with Basic Auth', () => {
+            const basicAuth = 'Basic dGVzdDp0ZXN0';
+            const payload = { event: { name: 'Test' } };
+
+            const options = RWGPSClientCore.buildV1EditEventOptions(basicAuth, payload);
+
+            expect(options.method).toBe('PUT');
+            expect(options.headers.Authorization).toBe(basicAuth);
+            expect(options.headers['Content-Type']).toBe('application/json');
+            expect(options.headers.Accept).toBe('application/json');
+            expect(options.payload).toBe(JSON.stringify(payload));
+            expect(options.muteHttpExceptions).toBe(true);
+        });
+    });
+
+    describe('buildV1CreateEventOptions', () => {
+        it('should build POST request options with Basic Auth', () => {
+            const basicAuth = 'Basic dGVzdDp0ZXN0';
+            const payload = { event: { name: 'Test' } };
+
+            const options = RWGPSClientCore.buildV1CreateEventOptions(basicAuth, payload);
+
+            expect(options.method).toBe('POST');
+            expect(options.headers.Authorization).toBe(basicAuth);
+            expect(options.headers['Content-Type']).toBe('application/json');
+            expect(options.headers.Accept).toBe('application/json');
+            expect(options.payload).toBe(JSON.stringify(payload));
+            expect(options.muteHttpExceptions).toBe(true);
+        });
+    });
 });

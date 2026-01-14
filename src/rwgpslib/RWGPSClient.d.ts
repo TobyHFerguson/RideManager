@@ -122,6 +122,26 @@ declare class RWGPSClient {
     editEvent(eventUrl: string, eventData: any): { success: boolean; event?: any; error?: string };
 
     /**
+     * Create a new event using v1 API
+     * 
+     * Uses POST /api/v1/events.json with Basic Auth to create a new event.
+     * 
+     * @param eventData - Event data in v1 format
+     * @returns Result with event URL and data
+     */
+    createEvent(eventData: {
+        name: string;
+        description?: string;
+        start_date: string;
+        start_time: string;
+        visibility?: string | number;
+        organizer_ids?: (string | number)[];
+        route_ids?: (string | number)[];
+        location?: string;
+        time_zone?: string;
+    }): { success: boolean; eventUrl?: string; event?: any; error?: string };
+
+    /**
      * Cancel an event (adds "CANCELLED: " prefix to name)
      * 
      * @param {string} eventUrl - Event URL
@@ -236,3 +256,6 @@ declare class RWGPSClient {
      * Used to test if v1 API requires the double-edit pattern
      */
     testV1SingleEditEvent(eventUrl: string, eventData: any): OperationResult & { event?: any };
+}
+
+export default RWGPSClient;

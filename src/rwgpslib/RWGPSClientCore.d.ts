@@ -108,6 +108,53 @@ declare class RWGPSClientCore {
     static buildEditEventOptions(sessionCookie: string, payload: any): RequestOptions;
 
     /**
+     * Build payload for v1 API editEvent PUT request
+     * Uses native v1 API format (description, start_date, start_time, organizer_ids, route_ids)
+     * 
+     * @param eventData - Event data in v1 format
+     * @param allDay - "0" or "1" for all_day flag
+     * @returns Payload wrapped in "event" key
+     */
+    static buildV1EditEventPayload(
+        eventData: {
+            name?: string;
+            description?: string;
+            start_date?: string;
+            start_time?: string;
+            visibility?: string | number;
+            organizer_ids?: (string | number)[];
+            route_ids?: (string | number)[];
+            location?: string;
+            time_zone?: string;
+        },
+        allDay: string
+    ): { event: any };
+
+    /**
+     * Build request options for v1 API editEvent (PUT request with Basic Auth)
+     * 
+     * @param basicAuthHeader - Basic Auth header value (from buildBasicAuthHeader)
+     * @param payload - Event data payload wrapped in "event" key
+     * @returns Request options
+     */
+    static buildV1EditEventOptions(
+        basicAuthHeader: string,
+        payload: { event: any }
+    ): { method: string; headers: Record<string, string>; payload: string; muteHttpExceptions: boolean };
+
+    /**
+     * Build request options for v1 API createEvent (POST request with Basic Auth)
+     * 
+     * @param basicAuthHeader - Basic Auth header value (from buildBasicAuthHeader)
+     * @param payload - Event data payload wrapped in "event" key
+     * @returns Request options
+     */
+    static buildV1CreateEventOptions(
+        basicAuthHeader: string,
+        payload: { event: any }
+    ): { method: string; headers: Record<string, string>; payload: string; muteHttpExceptions: boolean };
+
+    /**
      * Build request options for organizer lookup (POST request)
      * 
      * @param {string} sessionCookie - Session cookie value

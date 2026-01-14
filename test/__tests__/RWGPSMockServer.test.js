@@ -34,8 +34,8 @@ describe('RWGPSMockServer', () => {
     describe('loadFixtures (multiple)', () => {
         it('combines fixtures for sequence testing', () => {
             RWGPSMockServer.loadFixtures(['schedule', 'cancel']);
-            // schedule has 6 calls, cancel has 4
-            expect(RWGPSMockServer.expectedCalls.length).toBe(10);
+            // schedule has 6 calls, cancel has 3 (v1 API - no login)
+            expect(RWGPSMockServer.expectedCalls.length).toBe(9);
         });
     });
 

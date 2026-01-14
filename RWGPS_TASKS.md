@@ -581,16 +581,179 @@ const routeUrl = `https://ridewithgps.com/routes/${routeId}`;
 
 **TASK COMPLETE**
 
-### Task 4.3.1: Revert Task 4.2 to native v1 format 🟡 IN PROGRESS
-- [ ] Update getEvent to return v1 format natively (remove transformV1EventToWebFormat)
-- [ ] Update tests to expect v1 format
-- [ ] Commit: "Task 4.3.1: getEvent returns native v1 format"
+### Task 4.3.1: Revert Task 4.2 to native v1 format ✅ COMPLETE
+- [x] Update getEvent to return v1 format natively (remove transformV1EventToWebFormat)
+- [x] Update tests to expect v1 format
+- [x] Commit: "Task 4.3.1: getEvent returns native v1 format" (2c1458d)
+
+### v1 API Limitations (Documented via GAS Testing)
+**See RWGPS_V1_API_BUG_REPORT.md for full details**
+
+#### Event Field Updates (PUT /api/v1/events/{id}.json)
+
+| Field | PUT Update Works? | Notes |
+|-------|-------------------|-------|
+| `name` | ✅ Yes | Single PUT |
+| `description` | ✅ Yes | Single PUT |
+| `start_time` | ✅ Yes | Single PUT (after fixing field format) |
+| `start_date` | ❌ No | Never updates, even with double-edit |
+| `all_day` | ❌ No | Read-only (not in EventPayload schema) |
+
+**Workaround for date changes**: Delete and recreate event
+
+#### Event Creation - Logo/Image Handling (POST /api/v1/events.json)
+
+**Experiment Date**: January 13, 2026  
+**Test Function**: `testLogoUrlInCreateEvent()` in gas-integration-tests.js
+
+| Approach | Works? | Details |
+|----------|--------|---------|
+| `logo_url` in JSON payload | ❌ No | Field is read-only, cannot be set via POST |
+| Multipart form-data upload | ✅ Yes (documented) | `Content-Type: multipart/form-data` with `event[logo]` binary field |
+
+**JSON Payload Test Results**:
+```javascript
+// Attempted:
+POST /api/v1/events.json
+{
+  "event": {
+    "name": "...",
+    "logo_url": "https://ridewithgps.com/.../404019.jpg"
+  }
+}
+
+// Result: Event created but logo_url = null
+// Conclusion: logo_url is read-only
+```
+
+**Multipart Upload Solution** (from OpenAPI spec):
+```
+POST /api/v1/events.json
+Content-Type: multipart/form-data
+
+Fields:
+- event[name]
+- event[description]
+- event[logo] - Binary image file
+- event[banner] - Binary image file
+- event[start_date], event[start_time], etc.
+```
+
+**Implementation Required**: To fully replace `copyTemplate()`:
+1. Download logo image from template's `logo_url` as binary
+2. Use multipart/form-data instead of JSON for createEvent
+3. Include logo binary in the payload
+**Impact on RideManager**: Minimal - date changes are rare after event creation
 
 ### Task 4.4: Replace copyTemplate with createEvent
-- [ ] v1 API has `POST /api/v1/events.json` to create events
-- [ ] May need to fetch template first to copy its settings
-- [ ] Run tests
-- [ ] Commit: "Replace copyTemplate with v1 createEvent"
+
+**Status**: Partial - createEvent implemented, logo handling pending
+
+**Findings**:
+
+1. **createEvent implementation complete** ✅
+   - `POST /api/v1/events.json` endpoint working
+   - Creates events with v1 API format
+   - Tests pass (13 tests)
+   - Method signature: `createEvent(eventData)` where eventData contains:
+     - `name`, `description`, `start_date`, `start_time`, `visibility`
+     - `organizer_ids` (array of numbers), `route_ids` (array of numbers)
+     - Optional: `location`, `time_zone`, `all_day`
+
+2. **Logo/Image Handling** 🔄
+   
+   **Experiment Result** (testLogoUrlInCreateEvent):
+   - ❌ **`logo_url` field is read-only** - Cannot be set via JSON POST payload
+   - Template logo_url: `https://ridewithgps.com/.../404019.jpg`
+   - Created event logo_url: `null` (not preserved)
+   
+   **Solution Available**:
+   - ✅ **Multipart upload supported** by v1 API (from OpenAPI spec):
+     ```
+     Content-Type: multipart/form-data
+     
+     Fields:
+     - event[name]
+     - event[description]
+     - event[logo] - Logo image (binary)
+     - event[banner] - Banner image (binary)
+     - event[start_date], etc.
+     ```
+   
+   **Implementation Path - Store Logos in Groups Tab**:
+   
+   **Architecture** (extends existing Groups tab):
+   ```javascript
+   // Groups tab structure (add Logo column):
+   // Group | TEMPLATE                    | GoogleCalendarId    | Logo          | MIN_LENGTH | ...
+   // A     | https://.../events/404019   | groupA@gmail.com   | [image blob]  | 30         | ...
+   // B     | https://.../events/404020   | groupB@gmail.com   | [image blob]  | 40         | ...
+   ```
+   
+   **Logo Storage Strategy**:
+   1. **One-time setup**: Add "Logo" column to Groups tab
+   2. **Populate logos**: Script fetches logos from templates and inserts into cells
+   3. **Read at runtime**: `getGroupSpecs()` includes logo blobs from sheet
+   4. **Usage**: When creating event, pass `logos[row.Group]` to multipart upload
+   
+   **Implementation Steps**:
+   
+   **Part A - One-Time Logo Population Script**:
+   1. Create `populateGroupLogos()` utility function:
+      - Load Groups tab via Fiddler
+      - For each group: fetch template event → extract `logo_url`
+      - Download logo: `UrlFetchApp.fetch(logo_url).getBlob()`
+      - Insert into sheet: `range.setValue(blob)` (Sheets supports image blobs)
+   2. Run once to populate all group logos
+   
+   **Part B - Runtime Logo Usage**:
+   1. Modify `getGroupsFromSheet_()` to include Logo column
+   2. Logo blobs flow through `getGroupSpecs()` automatically
+   3. Modify `createEvent()` to accept optional `logoBlob` parameter
+   4. When `logoBlob` present, use multipart/form-data with logo
+   5. In scheduleEvent: `const logos = getGroupSpecs(); createEvent(data, logos[row.Group].Logo)`
+   
+   **Benefits**:
+   - ✅ Persistent storage (no cache expiry)
+   - ✅ Visible to operators (can see which logo belongs to which group)
+   - ✅ Backed up with spreadsheet
+   - ✅ Single source of truth (Groups tab)
+   - ✅ No need to fetch logos on every script run
+   - ✅ Can manually update logos by replacing images in cells
+
+**Subtasks**:
+- [x] Implement `createEvent()` with JSON payload
+- [x] Add `buildV1CreateEventOptions()` to RWGPSClientCore
+- [x] Write tests for createEvent (13 tests pass)
+- [x] Experiment: Test if logo_url can be set via JSON (result: NO)
+- [x] **DECISION**: Store logos in Groups tab spreadsheet (persistent, visible)
+- [ ] **Part A - One-Time Setup**:
+  - [ ] Add "Logo" column to Groups tab spreadsheet (manual or script)
+  - [ ] Create `populateGroupLogos()` utility function:
+    - [ ] Fetch template events from Groups tab TEMPLATE URLs
+    - [ ] Download logo_url as blob: `UrlFetchApp.fetch(logo_url).getBlob()`
+    - [ ] Insert blobs into Logo column: `range.setValue(blob)`
+  - [ ] Run `populateGroupLogos()` once to populate all logos
+  - [ ] Verify logos visible in Groups tab
+- [ ] **Part B - Runtime Integration**:
+  - [ ] Update `getGroupsFromSheet_()` to include Logo column in Fiddler read
+  - [ ] Verify logos flow through `getGroupSpecs()` automatically
+  - [ ] Implement multipart upload in createEvent:
+    - [ ] Add `createEventWithLogo(eventData, logoBlob)` method
+    - [ ] Build multipart/form-data payload with logo binary
+    - [ ] Test: Create event with logo from Groups tab
+  - [ ] Update scheduleEvent to use logos:
+    - [ ] Get logos via `getGroupSpecs()[row.Group].Logo`
+    - [ ] Pass logo to createEvent: `createEvent(data, groupSpec.Logo)`
+- [ ] Run full test suite
+- [ ] Commit: "Task 4.4: createEvent with logos stored in Groups tab"
+- [ ] Run full test suite
+- [ ] Commit: "Task 4.4: createEvent with logo handling decision"
+
+**Notes**:
+- copyTemplate uses web API with cookies (requires login)
+- createEvent uses v1 API with Basic Auth (no login needed)
+- Logo handling is the ONLY remaining difference between approaches
 
 ### Task 4.5: Handle batch_update_tags
 - [ ] DECISION POINT: Keep web API or implement individual tag calls?
