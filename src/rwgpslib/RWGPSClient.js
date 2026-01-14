@@ -438,7 +438,10 @@ var RWGPSClient = (function() {
             
             if (statusCode === 200) {
                 const responseText = response.getContentText();
-                const v1Event = JSON.parse(responseText);
+                const responseData = JSON.parse(responseText);
+                
+                // v1 API returns {"event": {...}}, unwrap the event object
+                const v1Event = responseData.event || responseData;
                 
                 // Transform v1 API response to web API format for backward compatibility
                 const transformedEvent = RWGPSClientCore.transformV1EventToWebFormat(v1Event);

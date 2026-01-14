@@ -372,13 +372,27 @@ describe('RWGPSClient', () => {
         });
 
         it('should return error if login fails', () => {
-            // Don't load fixture - login will fail
+            // Mock getEvent to succeed (v1 API doesn't need login)
+            const originalGetEvent = client.getEvent;
+            client.getEvent = () => ({
+                success: true,
+                event: {
+                    name: 'Fri B (3/1 11:00) Test Ride',
+                    id: 12345,
+                    desc: 'Test description'
+                }
+            });
+
+            // Don't load fixture - editEvent login will fail
             const eventUrl = 'https://ridewithgps.com/events/12345';
             
             const result = client.cancelEvent(eventUrl);
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Login');
+
+            // Restore
+            client.getEvent = originalGetEvent;
         });
 
         it('should return error for invalid event URL', () => {
@@ -494,13 +508,27 @@ describe('RWGPSClient', () => {
         });
 
         it('should return error if login fails', () => {
-            // Don't load fixture - login will fail
+            // Mock getEvent to succeed (v1 API doesn't need login)
+            const originalGetEvent = client.getEvent;
+            client.getEvent = () => ({
+                success: true,
+                event: {
+                    name: 'CANCELLED: Fri B (3/1 11:00) Test Ride',
+                    id: 12345,
+                    desc: 'Test description'
+                }
+            });
+
+            // Don't load fixture - editEvent login will fail
             const eventUrl = 'https://ridewithgps.com/events/12345';
             
             const result = client.reinstateEvent(eventUrl);
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Login');
+
+            // Restore
+            client.getEvent = originalGetEvent;
         });
 
         it('should return error for invalid event URL', () => {
