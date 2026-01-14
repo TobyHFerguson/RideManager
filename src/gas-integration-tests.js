@@ -679,6 +679,244 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
 }
 
 /**
+ * Test RWGPS Bug Fix: Single PUT with organizers + date change
+ * 
+ * Tests that the RWGPS v1 API bug has been fixed:
+ * - BEFORE: Organizers not set on first edit, required double-edit workaround
+ * - AFTER: Single PUT should set organizers correctly
+ * 
+ * Also tests date updates and all_day inference from start_time/end_time.
+ * 
+ * @returns {{success: boolean, findings?: string[], error?: string}}
+ */
+function testRWGPS_BugFixed_SinglePUT() {
+    console.log('====================================');
+    console.log('RWGPS Bug Fix Verification');
+    console.log('====================================');
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        // @ts-ignore - CredentialManager available in GAS runtime
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        // @ts-ignore - RWGPSClient available in GAS runtime
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        // STEP 1: Create test event
+        console.log('\n📝 Step 1: Creating test event...');
+        
+        const testEventData = {
+            name: `BUG TEST - Single PUT (${new Date().toISOString().slice(11, 19)})`,
+            description: 'Test event for RWGPS bug fix verification. Safe to delete.',
+            start_date: '2030-06-15',
+            start_time: '10:00',
+            visibility: 'public',
+            route_ids: ['32614616'], // SCCCC Test Route
+            organizer_ids: [] // Start with no organizers
+        };
+        
+        const createResult = client.createEvent(testEventData);
+        
+        if (!createResult.success) {
+            console.error('❌ Failed to create test event:', createResult.error);
+            return {
+                success: false,
+                error: `Event creation failed: ${createResult.error}`
+            };
+        }
+        
+        console.log(`✅ Test event created: ${createResult.eventUrl}`);
+        console.log(`   Event ID: ${createResult.event?.id}`);
+        console.log(`   Initial date: ${createResult.event?.start_date}`);
+        console.log(`   Initial time: ${createResult.event?.start_time}`);
+        console.log(`   Initial all_day: ${createResult.event?.all_day}`);
+        
+        const eventUrl = createResult.eventUrl;
+        const eventId = createResult.event?.id;
+        
+        // STEP 2: Test single PUT with organizers + date change
+        console.log('\n🔧 Step 2: Testing single PUT with organizers + date change...');
+        
+        // Get organizer ID for test
+        console.log('   Looking up organizer...');
+        const organizerResult = client._lookupOrganizer(eventUrl, 'Toby Ferguson');
+        
+        if (!organizerResult.success || !organizerResult.organizer) {
+            console.error('❌ Failed to lookup organizer:', organizerResult.error);
+            console.log('\n🧹 Cleaning up test event...');
+            client.deleteEvent(eventUrl);
+            return {
+                success: false,
+                error: `Organizer lookup failed: ${organizerResult.error}`
+            };
+        }
+        
+        const organizerId = String(organizerResult.organizer.id);
+        console.log(`✅ Found organizer: ${organizerResult.organizer.text} (ID: ${organizerId})`);
+        
+        // Single PUT with NEW date + organizer
+        const updateData = {
+            name: `BUG TEST - Single PUT UPDATED`,
+            description: 'Updated via single PUT with organizer and date change.',
+            start_date: '2030-07-20', // Changed from 2030-06-15
+            start_time: '14:30', // Changed from 10:00
+            visibility: 'public',
+            route_ids: ['32614616'],
+            organizer_ids: [organizerId] // Adding organizer
+        };
+        
+        console.log('   Sending single PUT request...');
+        console.log(`   - New date: ${updateData.start_date} (was: ${createResult.event?.start_date})`);
+        console.log(`   - New time: ${updateData.start_time} (was: ${createResult.event?.start_time})`);
+        console.log(`   - Adding organizer: ${organizerId}`);
+        
+        // Use testV1SingleEditEvent for single PUT (no double-edit)
+        const editResult = client.testV1SingleEditEvent(eventUrl, updateData);
+        
+        if (!editResult.success) {
+            console.error('❌ Single PUT failed:', editResult.error);
+            console.log('\n🧹 Cleaning up test event...');
+            client.deleteEvent(eventUrl);
+            return {
+                success: false,
+                error: `Single PUT failed: ${editResult.error}`
+            };
+        }
+        
+        console.log('✅ Single PUT completed');
+        
+        // STEP 3: Verify changes
+        console.log('\n🔍 Step 3: Verifying changes...');
+        
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to fetch updated event:', getResult.error);
+            console.log('\n🧹 Cleaning up test event...');
+            client.deleteEvent(eventUrl);
+            return {
+                success: false,
+                error: `Failed to verify event: ${getResult.error}`
+            };
+        }
+        
+        const updatedEvent = getResult.event;
+        
+        console.log('📊 Verification Results:');
+        console.log(`   Name: ${updatedEvent.name}`);
+        console.log(`   Date: ${updatedEvent.start_date} (expected: 2030-07-20)`);
+        console.log(`   Time: ${updatedEvent.start_time} (expected: 14:30)`);
+        console.log(`   All-day: ${updatedEvent.all_day} (expected: false)`);
+        console.log(`   Organizers: ${updatedEvent.organizer_ids?.length || 0} (expected: 1)`);
+        
+        // Check results
+        /** @type {string[]} */
+        const findings = [];
+        let bugFixed = true;
+        
+        // Check date (previously broken)
+        if (updatedEvent.start_date === '2030-07-20') {
+            console.log('✅ Date updated correctly');
+            findings.push('✅ DATE: Updated correctly (bug was: date never changed)');
+        } else {
+            console.log(`❌ Date NOT updated: ${updatedEvent.start_date} (expected: 2030-07-20)`);
+            findings.push(`❌ DATE: Still broken - got ${updatedEvent.start_date}, expected 2030-07-20`);
+            bugFixed = false;
+        }
+        
+        // Check time
+        if (updatedEvent.start_time === '14:30') {
+            console.log('✅ Time updated correctly');
+            findings.push('✅ TIME: Updated correctly');
+        } else {
+            console.log(`❌ Time NOT updated: ${updatedEvent.start_time}`);
+            findings.push(`❌ TIME: Got ${updatedEvent.start_time}, expected 14:30`);
+            bugFixed = false;
+        }
+        
+        // Check organizers (previously required double-edit)
+        const hasOrganizer = updatedEvent.organizer_ids && updatedEvent.organizer_ids.length > 0;
+        if (hasOrganizer) {
+            console.log('✅ Organizer set on first PUT');
+            findings.push('✅ ORGANIZERS: Set correctly with single PUT (bug was: required double-edit)');
+        } else {
+            console.log('❌ Organizer NOT set');
+            findings.push('❌ ORGANIZERS: Not set - still requires double-edit workaround');
+            bugFixed = false;
+        }
+        
+        // Check all_day inference
+        if (updatedEvent.all_day === false || updatedEvent.all_day === 'false') {
+            console.log('✅ All-day correctly inferred from start_time presence');
+            findings.push('✅ ALL_DAY: Correctly inferred as false from start_time/end_time');
+        } else {
+            console.log(`⚠️  All-day unexpected value: ${updatedEvent.all_day}`);
+            findings.push(`⚠️  ALL_DAY: Unexpected value ${updatedEvent.all_day}, expected false`);
+        }
+        
+        // STEP 4: Cleanup
+        console.log('\n🧹 Step 4: Cleaning up test event...');
+        const deleteResult = client.deleteEvent(eventUrl);
+        
+        if (deleteResult.success) {
+            console.log('✅ Test event deleted');
+        } else {
+            console.warn(`⚠️  Failed to delete test event: ${deleteResult.error}`);
+            console.warn(`   Manual cleanup required: ${eventUrl}`);
+            findings.push(`⚠️  Manual cleanup required: ${eventUrl}`);
+        }
+        
+        // Final summary
+        console.log('\n' + '='.repeat(50));
+        console.log('📊 FINAL VERDICT:');
+        console.log('='.repeat(50));
+        
+        if (bugFixed) {
+            console.log('🎉 BUG FIXED! Single PUT now works correctly.');
+            console.log('✅ Date updates work');
+            console.log('✅ Organizers set on first edit');
+            console.log('✅ All-day correctly inferred');
+            console.log('\n👉 ACTION REQUIRED: Remove double-edit workaround from RWGPSClient.editEvent()');
+            findings.push('🎉 BUG FIXED - Double-edit workaround can be removed');
+        } else {
+            console.log('❌ BUG NOT FIXED - Double-edit workaround still needed');
+            findings.push('❌ BUG NOT FIXED - Keep double-edit workaround');
+        }
+        
+        return {
+            success: true,
+            bugFixed: bugFixed,
+            findings: findings,
+            testEventId: eventId,
+            results: {
+                dateUpdated: updatedEvent.start_date === '2030-07-20',
+                timeUpdated: updatedEvent.start_time === '14:30',
+                organizersSet: hasOrganizer,
+                allDayInferred: updatedEvent.all_day === false || updatedEvent.all_day === 'false'
+            }
+        };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error('❌ Test execution failed:', err.message);
+        console.error('   Stack:', err.stack);
+        return {
+            success: false,
+            error: err.message,
+            findings: ['Test execution error - check logs']
+        };
+    }
+}
+
+/**
  * Simple credential test
  */
 function testCredentials() {
