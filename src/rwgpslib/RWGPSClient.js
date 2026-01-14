@@ -443,20 +443,12 @@ var RWGPSClient = (function() {
                 // v1 API returns {"event": {...}}, unwrap the event object
                 const v1Event = responseData.event || responseData;
                 
-                // Transform v1 API response to web API format for backward compatibility
-                const transformedEvent = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
-                
-                if (transformedEvent) {
-                    return {
-                        success: true,
-                        event: transformedEvent
-                    };
-                } else {
-                    return {
-                        success: false,
-                        error: 'Could not transform event data'
-                    };
-                }
+                // Return v1 format natively (no transformation)
+                // v1 format uses: start_date, start_time, description, organizer_ids, route_ids
+                return {
+                    success: true,
+                    event: v1Event
+                };
             } else {
                 return {
                     success: false,
@@ -951,12 +943,14 @@ var RWGPSClient = (function() {
             const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
             const v1Url = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
             
-            // Build v1 API payload with single PUT
+            // Build v1 API payload with single PUT using CORRECT v1 field names
+            // v1 API uses start_date + start_time, NOT starts_at
             const payload = {
                 event: {
                     name: eventData.name,
-                    description: eventData.desc,
-                    starts_at: eventData.starts_at,
+                    description: eventData.description,
+                    start_date: eventData.start_date,
+                    start_time: eventData.start_time,
                     all_day: '0'  // Single PUT with all_day=0
                 }
             };

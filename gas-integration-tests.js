@@ -1381,18 +1381,20 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
         // STEP 2: Test v1 API single-edit
         console.log(`\n📡 Step 2: Testing v1 API single PUT (no double-edit)...`);
         
-        // Create test event data with modified name and time
-        const testTime = '2030-04-15T18:30:00.000Z'; // Specific test time
+        // Create test event data with modified name and time using CORRECT v1 format
+        // v1 API uses start_date + start_time, NOT starts_at
         const testEventData = {
             name: originalEvent.name + ' [V1 TEST]',
-            desc: originalEvent.desc || '',
-            starts_at: testTime,
+            description: originalEvent.description || '',
+            start_date: '2030-04-15',  // v1 format: separate date
+            start_time: '18:30',       // v1 format: separate time
             all_day: '0'
         };
         
-        console.log(`   Payload being sent to v1 API:`);
+        console.log(`   Payload being sent to v1 API (CORRECTED v1 format):`);
         console.log(`      name: ${testEventData.name}`);
-        console.log(`      starts_at: ${testEventData.starts_at}`);
+        console.log(`      start_date: ${testEventData.start_date}`);
+        console.log(`      start_time: ${testEventData.start_time}`);
         console.log(`      all_day: ${testEventData.all_day}`);
         
         const v1Result = client.testV1SingleEditEvent(eventUrl, testEventData);
@@ -1459,40 +1461,42 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
             findings.push('V1 API name field may not accept updates');
         }
         
-        // Check if time was set correctly
-        const timeMatches = updatedEvent.starts_at === testTime;
-        // Also check if it's close (within 1 hour tolerance for timezone issues)
-        const originalTime = new Date(originalEvent.starts_at).getTime();
-        const updatedTime = new Date(updatedEvent.starts_at).getTime();
-        const testTimeMs = new Date(testTime).getTime();
-        const timeChanged = Math.abs(updatedTime - originalTime) > 60000; // Changed by more than 1 minute
-        const testTimeCloseMatch = Math.abs(updatedTime - testTimeMs) < 3600000; // Within 1 hour
+        // Check if time was set correctly (v1 format: separate start_date and start_time)
+        const expectedDate = '2030-04-15';
+        const expectedTime = '18:30';
+        const dateMatches = updatedEvent.start_date === expectedDate;
+        const timeMatches = updatedEvent.start_time === expectedTime;
         
-        if (timeMatches) {
-            console.log('   ✅ Start time MATCHES test time exactly!');
+        console.log(`   Checking v1 format fields:`);
+        console.log(`      Expected start_date: ${expectedDate}, Got: ${updatedEvent.start_date}`);
+        console.log(`      Expected start_time: ${expectedTime}, Got: ${updatedEvent.start_time}`);
+        console.log(`      Original start_date: ${originalEvent.start_date}, Original start_time: ${originalEvent.start_time}`);
+        
+        const dateChanged = updatedEvent.start_date !== originalEvent.start_date;
+        const timeChanged = updatedEvent.start_time !== originalEvent.start_time;
+        
+        if (dateMatches && timeMatches) {
+            console.log('   ✅ Start date AND time MATCH test values exactly!');
             console.log(`   → V1 API DOES NOT need double-edit!`);
-            findings.push('✅ CONFIRMED: V1 API single PUT correctly sets start_time');
+            findings.push('✅ CONFIRMED: V1 API single PUT correctly sets start_date and start_time');
             findings.push('Migration strategy: Can use single v1 PUT for time changes');
-        } else if (testTimeCloseMatch && timeChanged) {
-            console.log('   ⚠️  Start time changed but may have timezone offset');
-            console.log(`   Expected: ${testTime}`);
-            console.log(`   Got: ${updatedEvent.starts_at}`);
-            console.log(`   Difference: ${Math.abs(updatedTime - testTimeMs) / 60000} minutes`);
-            findings.push('⚠️ V1 API may apply timezone conversion to start_time');
-            findings.push('Need to test with timezone-aware payloads');
-        } else if (!timeChanged) {
-            console.log('   ❌ Start time did NOT change');
-            console.log(`   Expected: ${testTime}`);
-            console.log(`   Got: ${updatedEvent.starts_at} (same as original: ${originalEvent.starts_at})`);
+        } else if (dateChanged || timeChanged) {
+            console.log('   ⚠️  Date/time changed but may not match expected values');
+            if (!dateMatches) {
+                console.log(`   Date mismatch: Expected ${expectedDate}, Got ${updatedEvent.start_date}`);
+            }
+            if (!timeMatches) {
+                console.log(`   Time mismatch: Expected ${expectedTime}, Got ${updatedEvent.start_time}`);
+            }
+            findings.push('⚠️ V1 API date/time partially updated - needs investigation');
+        } else {
+            console.log('   ❌ Start date and time did NOT change');
+            console.log(`   Expected: ${expectedDate} ${expectedTime}`);
+            console.log(`   Got: ${updatedEvent.start_date} ${updatedEvent.start_time} (same as original)`);
             console.log(`   → V1 API likely STILL NEEDS double-edit workaround`);
-            findings.push('❌ CRITICAL: V1 API single PUT does NOT set start_time');
+            findings.push('❌ CRITICAL: V1 API single PUT does NOT set start_date/start_time');
             findings.push('V1 API still requires double-edit workaround (like web API)');
             findings.push('Migration strategy: Must use double PUT for time changes');
-        } else {
-            console.log('   ⚠️  Start time does NOT match test time');
-            console.log(`   Expected: ${testTime}`);
-            console.log(`   Got: ${updatedEvent.starts_at}`);
-            findings.push('⚠️ V1 API start_time behavior unclear - needs more testing');
         }
         
         // Check all_day flag
@@ -1509,10 +1513,12 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
         // STEP 5: Cleanup
         console.log(`\n📡 Step 5: Restoring original event...`);
         
+        // Use v1 format for restore (start_date + start_time, not starts_at)
         const restoreData = {
             name: originalEvent.name,
-            desc: originalEvent.desc,
-            starts_at: originalEvent.starts_at,
+            description: originalEvent.description,
+            start_date: originalEvent.start_date,
+            start_time: originalEvent.start_time,
             all_day: originalEvent.all_day
         };
         

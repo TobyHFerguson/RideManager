@@ -1510,10 +1510,12 @@ describe('RWGPSClient', () => {
             RWGPSMockServer.loadFixture('edit');
             
             const eventUrl = 'https://ridewithgps.com/events/444070';
+            // Use v1 format: start_date + start_time, NOT starts_at
             const eventData = {
                 name: 'V1 Test Event',
-                desc: 'Testing v1 API',
-                starts_at: '2030-03-01T19:00:00.000Z'
+                description: 'Testing v1 API',
+                start_date: '2030-03-01',
+                start_time: '19:00'
             };
             
             // Test the v1 API endpoint
@@ -1532,12 +1534,13 @@ describe('RWGPSClient', () => {
         });
 
         it('v1 API endpoint details', () => {
-            // Document what we know about v1 API
+            // Document what we know about v1 API (CORRECTED format)
             const insights = {
                 endpoint: 'PUT /api/v1/events/{id}.json',
-                authentication: 'Basic Auth (username:password)',
+                authentication: 'Basic Auth (apiKey:authToken)',
                 contentType: 'application/json',
-                payloadFormat: { event: { name: 'string', description: 'string', starts_at: 'datetime', all_day: '0|1' } },
+                payloadFormat: { event: { name: 'string', description: 'string', start_date: 'YYYY-MM-DD', start_time: 'HH:MM', all_day: '0|1' } },
+                note: 'v1 API uses separate start_date and start_time fields, NOT combined starts_at',
                 expectedIf_DoubleEditNotNeeded: 'Single PUT should set time correctly',
                 expectedIf_DoubleEditStillNeeded: 'Even v1 API would need first all_day=1, then all_day=0'
             };
