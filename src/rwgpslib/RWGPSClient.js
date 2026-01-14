@@ -144,7 +144,22 @@ var RWGPSClient = (function() {
      * @param {string[]} organizerNames - Array of organizer names to look up
      * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result
      */
-    scheduleEvent(templateUrl, eventData, organizerNames) {
+    /**
+     * Schedule a new event from template using v1 API createEvent
+     * 
+     * Workflow:
+     * 1. Login to establish web session
+     * 2. Create event using v1 API (with logo if provided)
+     * 3. Look up organizers by name
+     * 4. Edit event with full data including organizer tokens
+     * 
+     * @param {string} templateUrl - Template event URL (used for organizer lookup context)
+     * @param {any} eventData - Event data (name, desc, starts_at, etc.)
+     * @param {string[]} organizerNames - Array of organizer names to look up
+     * @param {string} [logoUrl] - Optional logo URL to attach to event
+     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with new event URL and data
+     */
+    scheduleEvent(templateUrl, eventData, organizerNames, logoUrl) {
         try {
             // Step 1: Login
             const loginSuccess = this.login();
@@ -155,21 +170,24 @@ var RWGPSClient = (function() {
                 };
             }
 
-            // Step 2: Copy template
-            const copyResult = this.copyTemplate(templateUrl, {
-                name: eventData.name || 'NEW EVENT',
-                all_day: '0',
-                copy_routes: '0'
-            });
+            // Step 2: Create event (with or without logo)
+            let createResult;
+            if (logoUrl) {
+                console.log('Creating event with logo...');
+                createResult = this.createEventWithLogo(eventData, logoUrl);
+            } else {
+                console.log('Creating event without logo (no logo URL provided)...');
+                createResult = this.createEvent(eventData);
+            }
 
-            if (!copyResult.success) {
+            if (!createResult.success) {
                 return {
                     success: false,
-                    error: `Failed to copy template: ${copyResult.error}`
+                    error: `Failed to create event: ${createResult.error}`
                 };
             }
 
-            const newEventUrl = copyResult.eventUrl;
+            const newEventUrl = createResult.eventUrl;
             const newEventId = RWGPSClientCore.extractEventId(newEventUrl);
 
             // Step 3: Look up organizers by name
@@ -184,7 +202,7 @@ var RWGPSClient = (function() {
                 }
             }
 
-            // Step 4: Edit event with full data
+            // Step 4: Edit event with full data and organizers
             const fullEventData = {
                 ...eventData,
                 organizer_tokens: organizerTokens.length > 0 ? organizerTokens : eventData.organizer_tokens
@@ -193,19 +211,12 @@ var RWGPSClient = (function() {
             const editResult = this.editEvent(newEventUrl, fullEventData);
 
             if (!editResult.success) {
-                // Try to clean up by deleting the copied event
+                // Try to clean up by deleting the created event
                 this.deleteEvent(newEventUrl);
                 return {
                     success: false,
                     error: `Failed to edit new event: ${editResult.error}`
                 };
-            }
-
-            // Step 5: Remove "template" tag
-            const untagResult = this._removeEventTags(newEventId, ['template']);
-            if (!untagResult.success) {
-                // Log warning but don't fail - event was created successfully
-                console.log(`Warning: Failed to remove template tag: ${untagResult.error}`);
             }
 
             return {
@@ -592,6 +603,76 @@ var RWGPSClient = (function() {
             return {
                 success: false,
                 error: `Create failed: ${err.message}`
+            };
+        }
+    }
+
+    /**
+     * Create a new event with logo using multipart/form-data
+     * 
+     * @param {any} eventData - Event data (name, description, start_date, etc.)
+     * @param {string} logoUrl - Logo image URL to fetch and attach
+     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
+     */
+    createEventWithLogo(eventData, logoUrl) {
+        try {
+            // Build v1 API URL for creating event
+            const v1PostUrl = 'https://ridewithgps.com/api/v1/events.json';
+
+            // Build Basic Auth header
+            const basicAuthHeader = RWGPSClientCore.buildBasicAuthHeader(this.apiKey, this.authToken);
+
+            // Fetch logo image
+            console.log(`Fetching logo from: ${logoUrl}`);
+            const logoResponse = UrlFetchApp.fetch(logoUrl);
+            const logoBlob = logoResponse.getBlob();
+            console.log(`Logo fetched: ${logoBlob.getContentType()}, ${logoBlob.getBytes().length} bytes`);
+
+            // Build multipart payload with logo
+            const boundary = '----WebKitFormBoundary' + Utilities.getUuid().replace(/-/g, '');
+            const payload = RWGPSClientCore.buildMultipartCreateEventPayload(eventData, logoBlob, boundary);
+
+            // Build multipart request options
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Authorization': basicAuthHeader,
+                    'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                    'Accept': 'application/json'
+                },
+                payload: payload,
+                muteHttpExceptions: true
+            };
+
+            // Make POST request
+            const response = this._fetch(v1PostUrl, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode === 201) {
+                const responseText = response.getContentText();
+                const responseData = JSON.parse(responseText);
+
+                // v1 API returns {"event": {...}}, unwrap
+                const event = responseData.event || responseData;
+
+                return {
+                    success: true,
+                    eventUrl: event.html_url || event.url,
+                    event: event
+                };
+            } else {
+                const responseText = response.getContentText();
+                return {
+                    success: false,
+                    error: `Create with logo failed with status ${statusCode}: ${responseText}`
+                };
+            }
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: `Create with logo failed: ${err.message}`
             };
         }
     }

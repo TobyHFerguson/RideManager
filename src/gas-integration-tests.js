@@ -1,3 +1,6 @@
+/// <reference path="./gas-globals.d.ts" />
+// @ts-nocheck - GAS integration tests use GAS-only globals like PropertiesService
+
 /**
  * Task 4.2: Test v1 API getEvent response transformation
  * 
@@ -466,6 +469,175 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
         console.error('   Stack:', err.stack);
         return { 
             success: false, 
+            error: err.message,
+            findings: ['Test execution error - check logs']
+        };
+    }
+}
+
+/**
+ * Task 4.4 Part B: Test createEvent with logo from Groups tab
+ * 
+ * Tests complete logo integration workflow:
+ * 1. Read logo URL from Groups tab
+ * 2. Pass logo to scheduleEvent (which uses createEventWithLogo)
+ * 3. Verify logo appears on created event
+ * 
+ * @returns {{success: boolean, findings?: string[], error?: string}}
+ */
+function testTask4_4_PartB_LogoIntegration() {
+    console.log('====================================');
+    console.log('Task 4.4 Part B: Logo Integration Test');
+    console.log('====================================');
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        // @ts-ignore - CredentialManager available in GAS runtime
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        
+        // Create RWGPSClient
+        // @ts-ignore - RWGPSClient available in GAS runtime
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        // STEP 1: Get group specs (includes logo URLs)
+        console.log('\n📊 Step 1: Loading Groups with logos...');
+        const groupSpecs = getGroupSpecs(); // From Groups.js
+        
+        // Find a group with logo
+        let testGroup = null;
+        let logoUrl = null;
+        for (const [groupName, groupSpec] of Object.entries(groupSpecs)) {
+            if (groupSpec.Logo) {
+                testGroup = groupName;
+                logoUrl = groupSpec.Logo;
+                break;
+            }
+        }
+        
+        if (!testGroup || !logoUrl) {
+            console.warn('⚠️  No groups with logos found');
+            console.warn('   Run GroupLogoManager.autoPopulateGroupLogos() first');
+            return {
+                success: false,
+                error: 'No groups with logos found - run autoPopulateGroupLogos() first'
+            };
+        }
+        
+        console.log(`✅ Found test group: ${testGroup}`);
+        console.log(`   Logo URL: ${logoUrl}`);
+        console.log(`   Template: ${groupSpecs[testGroup].Template}`);
+        
+        // STEP 2: Create event with logo
+        console.log('\n🚀 Step 2: Creating event with logo...');
+        
+        const testEventData = {
+            name: `TEST LOGO - ${testGroup} (${new Date().toISOString().slice(5, 16).replace('T', ' ')})`,
+            description: 'Test event created by testTask4_4_PartB_LogoIntegration(). Safe to delete.',
+            start_date: '2030-12-31',
+            start_time: '10:00',
+            visibility: 0,
+            route_ids: ['32614616'], // SCCCC Test Route
+            organizer_ids: []
+        };
+        
+        const result = client.scheduleEvent(
+            groupSpecs[testGroup].Template, // templateUrl (for organizer lookup context)
+            testEventData,
+            [], // organizerNames
+            logoUrl // Pass logo URL
+        );
+        
+        if (!result.success) {
+            console.error('❌ Event creation failed:', result.error);
+            return {
+                success: false,
+                error: `Event creation failed: ${result.error}`
+            };
+        }
+        
+        console.log(`✅ Event created: ${result.eventUrl}`);
+        console.log(`   Event ID: ${result.event?.id}`);
+        
+        if (!result.eventUrl) {
+            console.error('❌ Event URL missing from result');
+            return {
+                success: false,
+                error: 'Event URL missing from result'
+            };
+        }
+        
+        // STEP 3: Verify logo on created event
+        console.log('\n🔍 Step 3: Verifying logo on created event...');
+        
+        const getResult = client.getEvent(result.eventUrl);
+        if (!getResult.success) {
+            console.error('❌ Failed to fetch created event:', getResult.error);
+            return {
+                success: false,
+                error: `Failed to verify event: ${getResult.error}`
+            };
+        }
+        
+        const hasLogo = getResult.event?.logo_url;
+        console.log(`   logo_url present: ${hasLogo ? '✅ YES' : '❌ NO'}`);
+        if (hasLogo) {
+            console.log(`   logo_url: ${getResult.event.logo_url}`);
+        }
+        
+        // STEP 4: Cleanup - delete test event
+        console.log('\n🧹 Step 4: Cleaning up test event...');
+        const deleteResult = client.deleteEvent(result.eventUrl);
+        if (deleteResult.success) {
+            console.log('✅ Test event deleted');
+        } else {
+            console.warn('⚠️  Failed to delete test event:', deleteResult.error);
+            console.warn(`   Manual cleanup needed: ${result.eventUrl}`);
+        }
+        
+        // Summary
+        console.log('\n====================================');
+        console.log('FINDINGS:');
+        console.log('====================================');
+        const findings = [
+            `Group tested: ${testGroup}`,
+            `Logo URL: ${logoUrl}`,
+            `Event created: ${result.eventUrl}`,
+            `Logo attached: ${hasLogo ? 'YES ✅' : 'NO ❌'}`,
+            `Cleanup: ${deleteResult.success ? 'SUCCESS ✅' : 'FAILED ⚠️'}`
+        ];
+        findings.forEach(f => console.log(`  • ${f}`));
+        
+        if (!hasLogo) {
+            console.error('\n❌ TEST FAILED: Logo not attached to event');
+            return {
+                success: false,
+                error: 'Logo not attached to event',
+                findings
+            };
+        }
+        
+        console.log('\n✅ TEST PASSED: Logo successfully attached to event');
+        return {
+            success: true,
+            findings
+        };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error('❌ Test execution error:', err.message);
+        if (err.stack) console.error(err.stack);
+        return {
+            success: false,
             error: err.message,
             findings: ['Test execution error - check logs']
         };

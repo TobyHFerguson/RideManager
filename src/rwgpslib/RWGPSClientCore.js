@@ -360,6 +360,96 @@ var RWGPSClientCore = (function() {
     }
 
     /**
+     * Build multipart/form-data payload for creating event with logo
+     * 
+     * @param {any} eventData - Event data with name, description, start_date, etc.
+     * @param {GoogleAppsScript.Base.Blob} logoBlob - Logo image as Blob
+     * @param {string} boundary - Multipart boundary string
+     * @returns {GoogleAppsScript.Base.Blob} Multipart payload as Blob
+     */
+    static buildMultipartCreateEventPayload(eventData, logoBlob, boundary) {
+        // Build v1 event payload structure (nested under 'event' key)
+        const v1Payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+        
+        /** @type {string[]} */
+        const parts = [];
+        
+        // Add each event field as a form field
+        for (const key in v1Payload.event) {
+            const value = v1Payload.event[key];
+            
+            // Handle array fields (organizer_ids, route_ids)
+            if (Array.isArray(value)) {
+                value.forEach(item => {
+                    parts.push(
+                        `--${boundary}\r\n` +
+                        `Content-Disposition: form-data; name="event[${key}][]"\r\n\r\n` +
+                        `${item}\r\n`
+                    );
+                });
+            } else {
+                parts.push(
+                    `--${boundary}\r\n` +
+                    `Content-Disposition: form-data; name="event[${key}]"\r\n\r\n` +
+                    `${value}\r\n`
+                );
+            }
+        }
+        
+        // Add logo file
+        parts.push(
+            `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="event[logo]"; filename="logo.${RWGPSClientCore._getFileExtension(logoBlob)}"\r\n` +
+            `Content-Type: ${logoBlob.getContentType()}\r\n\r\n`
+        );
+        
+        // Combine text parts into single string
+        const textPart = parts.join('');
+        
+        // Create final payload with logo binary data
+        const endBoundary = `\r\n--${boundary}--\r\n`;
+        
+        // Convert text to bytes
+        const textBytes = Utilities.newBlob(textPart).getBytes();
+        const logoBytes = logoBlob.getBytes();
+        const endBytes = Utilities.newBlob(endBoundary).getBytes();
+        
+        // Concatenate all bytes
+        const totalLength = textBytes.length + logoBytes.length + endBytes.length;
+        /** @type {number[]} */
+        const allBytes = [];
+        
+        for (let i = 0; i < textBytes.length; i++) {
+            allBytes.push(textBytes[i]);
+        }
+        for (let i = 0; i < logoBytes.length; i++) {
+            allBytes.push(logoBytes[i]);
+        }
+        for (let i = 0; i < endBytes.length; i++) {
+            allBytes.push(endBytes[i]);
+        }
+        
+        // Create blob from bytes
+        return Utilities.newBlob(allBytes).setContentType(`multipart/form-data; boundary=${boundary}`);
+    }
+
+    /**
+     * Get file extension from blob content type
+     * 
+     * @param {GoogleAppsScript.Base.Blob} blob - Image blob
+     * @returns {string} File extension (jpg, png, gif, etc.)
+     * @private
+     */
+    static _getFileExtension(blob) {
+        const contentType = blob.getContentType();
+        if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'jpg';
+        if (contentType.includes('png')) return 'png';
+        if (contentType.includes('gif')) return 'gif';
+        if (contentType.includes('webp')) return 'webp';
+        return 'jpg'; // Default fallback
+    }
+
+    /**
      * Build request options for organizer lookup (POST request)
      * 
      * @param {string} sessionCookie - Session cookie value

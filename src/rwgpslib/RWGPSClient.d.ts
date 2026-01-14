@@ -68,7 +68,7 @@ declare class RWGPSClient {
      * @param {string[]} organizerNames - Organizer names
      * @returns {ScheduleResult} Result with event URL
      */
-    scheduleEvent(templateUrl: string, eventData: any, organizerNames: string[]): ScheduleResult;
+    scheduleEvent(templateUrl: string, eventData: any, organizerNames: string[], logoUrl?: string): ScheduleResult;
 
     /**
      * Update an existing event with new data and optionally add organizers
@@ -140,6 +140,25 @@ declare class RWGPSClient {
         location?: string;
         time_zone?: string;
     }): { success: boolean; eventUrl?: string; event?: any; error?: string };
+
+    /**
+     * Create a new event with logo using multipart/form-data
+     * 
+     * @param {any} eventData - Event data (name, description, start_date, etc.)
+     * @param {string} logoUrl - Logo image URL to fetch and attach
+     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
+     */
+    createEventWithLogo(eventData: {
+        name: string;
+        description?: string;
+        start_date: string;
+        start_time: string;
+        visibility?: string | number;
+        organizer_ids?: (string | number)[];
+        route_ids?: (string | number)[];
+        location?: string;
+        time_zone?: string;
+    }, logoUrl: string): { success: boolean; eventUrl?: string; event?: any; error?: string };
 
     /**
      * Cancel an event (adds "CANCELLED: " prefix to name)
