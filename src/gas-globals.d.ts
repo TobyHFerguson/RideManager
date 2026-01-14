@@ -31,6 +31,9 @@ import type RideCoordinatorClass from './RideCoordinator';
 import type UserLoggerCoreClass from './UserLoggerCore';
 import type UserLoggerType from './UserLogger';
 import type * as GoogleEventCoreModule from './GoogleEventCore';
+import type GroupLogoManagerType from './GroupLogoManager';
+import type CredentialManagerClass from './rwgpslib/CredentialManager';
+import type RWGPSClientClass from './rwgpslib/RWGPSClient';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
@@ -59,6 +62,9 @@ declare global {
     const RWGPSMembersCore: typeof RWGPSMembersCoreClass;
     const RideCoordinator: typeof RideCoordinatorClass;
     const UserLogger: typeof UserLoggerType;
+    const GroupLogoManager: typeof GroupLogoManagerType;
+    const CredentialManager: typeof CredentialManagerClass;
+    const RWGPSClient: typeof RWGPSClientClass;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;

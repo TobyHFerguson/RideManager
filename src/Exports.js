@@ -96,6 +96,9 @@ var Exports = {
     },
     get RWGPSClientCore() {
         return RWGPSClientCore;
+    },
+    get GroupLogoManager() {
+        return GroupLogoManager;
     }
 };
 
