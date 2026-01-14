@@ -35,32 +35,32 @@ function testTask4_4_PartB_LogoIntegration() {
         
         console.log('✅ RWGPSClient instantiated');
         
-        // STEP 1: Get group specs (includes logo URLs)
+        // STEP 1: Get group specs (includes logo URLs from Drive)
         console.log('\n📊 Step 1: Loading Groups with logos...');
         const groupSpecs = getGroupSpecs(); // From Groups.js
         
-        // Find a group with logo
+        // Find a group with LogoURL
         let testGroup = null;
         let logoUrl = null;
         for (const [groupName, groupSpec] of Object.entries(groupSpecs)) {
-            if (groupSpec.Logo) {
+            if (groupSpec.LogoURL) {
                 testGroup = groupName;
-                logoUrl = groupSpec.Logo;
+                logoUrl = groupSpec.LogoURL;
                 break;
             }
         }
         
         if (!testGroup || !logoUrl) {
-            console.warn('⚠️  No groups with logos found');
-            console.warn('   Run GroupLogoManager.autoPopulateGroupLogos() first');
+            console.warn('⚠️  No groups with LogoURL found');
+            console.warn('   Run populateGroupLogos() first to upload logos to Drive');
             return {
                 success: false,
-                error: 'No groups with logos found - run autoPopulateGroupLogos() first'
+                error: 'No groups with LogoURL found - run populateGroupLogos() first'
             };
         }
         
         console.log(`✅ Found test group: ${testGroup}`);
-        console.log(`   Logo URL: ${logoUrl}`);
+        console.log(`   Logo URL (Drive): ${logoUrl}`);
         console.log(`   Template: ${groupSpecs[testGroup].Template}`);
         
         // STEP 2: Create event with logo

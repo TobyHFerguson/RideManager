@@ -35,9 +35,6 @@ function getGroupsFromSheet_() {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   
-  // Find Logo column index
-  const logoColIndex = headers.indexOf('Logo');
-  
   // Convert to array of objects with column names as keys
   const groups = data.map((row, rowIndex) => {
     /** @type {Record<string, any>} */
@@ -45,18 +42,6 @@ function getGroupsFromSheet_() {
     headers.forEach((header, i) => {
       obj[header] = row[i];
     });
-    
-    // Extract logo URL from CellImage if Logo column exists
-    if (logoColIndex !== -1) {
-      const logoCell = sheet.getRange(rowIndex + 2, logoColIndex + 1); // +2 for header and 0-based
-      const images = logoCell.getImages();
-      if (images && images.length > 0) {
-        obj.Logo = images[0].getUrl(); // Extract URL from CellImage
-      } else {
-        obj.Logo = null; // No logo found
-      }
-    }
-    
     return obj;
   });
   
