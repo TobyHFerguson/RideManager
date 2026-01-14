@@ -474,7 +474,7 @@ var RWGPSClient = (function() {
     }
 
     /**
-     * Edit an event
+     * Edit an event using v1 API
      * 
      * CRITICAL: RWGPS API requires two sequential PUT requests (double-edit pattern)
      * 1. First PUT with all_day=1 (workaround to clear existing time)
@@ -482,32 +482,30 @@ var RWGPSClient = (function() {
      * 
      * This workaround is required for the start time to be set correctly.
      * 
+     * **V1 API Native Format**:
+     * - Uses description (not desc)
+     * - Uses start_date + start_time (not starts_at)
+     * - Uses organizer_ids[] (not organizer_tokens[])
+     * - Uses route_ids[] (not route_ids from web API)
+     * 
      * @param {string} eventUrl - Event URL
-     * @param {any} eventData - Event data object (from getEvent or modified)
-     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string}} eventData - Event data in v1 format
+     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data (v1 format)
      */
     editEvent(eventUrl, eventData) {
         try {
             // Parse event URL to get ID
             const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
             
-            // Login to establish session
-            const loginSuccess = this.login();
-            if (!loginSuccess) {
-                return {
-                    success: false,
-                    error: 'Login failed - could not establish web session'
-                };
-            }
-            
-            // Build PUT URL
-            const putUrl = `https://ridewithgps.com/events/${parsed.eventId}`;
+            // Build v1 API URL
+            const v1PutUrl = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
+            const basicAuthHeader = this._getBasicAuthHeader();
             
             // FIRST PUT: Set all_day=1 (workaround)
-            const payload1 = RWGPSClientCore.buildEditEventPayload(eventData, '1');
-            const options1 = RWGPSClientCore.buildEditEventOptions(this.webSessionCookie, payload1);
+            const payload1 = RWGPSClientCore.buildV1EditEventPayload(eventData, '1');
+            const options1 = RWGPSClientCore.buildV1EditEventOptions(basicAuthHeader, payload1);
             
-            const response1 = this._fetch(putUrl, options1);
+            const response1 = this._fetch(v1PutUrl, options1);
             const statusCode1 = response1.getResponseCode();
             
             if (statusCode1 !== 200) {
@@ -518,19 +516,22 @@ var RWGPSClient = (function() {
             }
             
             // SECOND PUT: Set all_day=0 with actual data
-            const payload2 = RWGPSClientCore.buildEditEventPayload(eventData, '0');
-            const options2 = RWGPSClientCore.buildEditEventOptions(this.webSessionCookie, payload2);
+            const payload2 = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const options2 = RWGPSClientCore.buildV1EditEventOptions(basicAuthHeader, payload2);
             
-            const response2 = this._fetch(putUrl, options2);
+            const response2 = this._fetch(v1PutUrl, options2);
             const statusCode2 = response2.getResponseCode();
             
             if (statusCode2 === 200) {
                 const responseText = response2.getContentText();
-                const data = JSON.parse(responseText);
+                const responseData = JSON.parse(responseText);
+                
+                // v1 API returns {"event": {...}}, unwrap
+                const event = responseData.event || responseData;
                 
                 return {
                     success: true,
-                    event: data
+                    event: event
                 };
             } else {
                 return {

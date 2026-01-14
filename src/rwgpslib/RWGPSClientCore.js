@@ -284,6 +284,62 @@ var RWGPSClientCore = (function() {
     }
 
     /**
+     * Build payload for v1 API editEvent PUT request
+     * Uses native v1 API format (description, start_date, start_time, organizer_ids, route_ids)
+     * 
+     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string}} eventData - Event data in v1 format
+     * @param {string} allDay - "0" or "1" for all_day flag
+     * @returns {{event: {name?: string, description?: string, start_date?: string, start_time?: string, all_day?: string, visibility?: string, organizer_ids?: string[], route_ids?: string[], location?: string, time_zone?: string}}} Payload wrapped in "event" key
+     */
+    static buildV1EditEventPayload(eventData, allDay) {
+        /** @type {Record<string, any>} */
+        const event = {
+            all_day: String(allDay)
+        };
+
+        // Copy string fields
+        if (eventData.name !== undefined) event.name = eventData.name;
+        if (eventData.description !== undefined) event.description = eventData.description;
+        if (eventData.start_date !== undefined) event.start_date = eventData.start_date;
+        if (eventData.start_time !== undefined) event.start_time = eventData.start_time;
+        if (eventData.location !== undefined) event.location = eventData.location;
+        if (eventData.time_zone !== undefined) event.time_zone = eventData.time_zone;
+        if (eventData.visibility !== undefined) event.visibility = String(eventData.visibility);
+
+        // Handle organizer_ids (convert to strings)
+        if (eventData.organizer_ids && Array.isArray(eventData.organizer_ids)) {
+            event.organizer_ids = eventData.organizer_ids.map((/** @type {string | number} */ id) => String(id));
+        }
+
+        // Handle route_ids (convert to strings)
+        if (eventData.route_ids && Array.isArray(eventData.route_ids)) {
+            event.route_ids = eventData.route_ids.map((/** @type {string | number} */ id) => String(id));
+        }
+
+        return { event };
+    }
+
+    /**
+     * Build request options for v1 API editEvent (PUT request with Basic Auth)
+     * 
+     * @param {string} basicAuthHeader - Basic Auth header value (from buildBasicAuthHeader)
+     * @param {{event: any}} payload - Event data payload wrapped in "event" key
+     * @returns {{method: string, headers: Record<string, string>, payload: string, muteHttpExceptions: boolean}} Request options
+     */
+    static buildV1EditEventOptions(basicAuthHeader, payload) {
+        return {
+            method: 'PUT',
+            headers: {
+                'Authorization': basicAuthHeader,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            payload: JSON.stringify(payload),
+            muteHttpExceptions: true
+        };
+    }
+
+    /**
      * Build request options for organizer lookup (POST request)
      * 
      * @param {string} sessionCookie - Session cookie value

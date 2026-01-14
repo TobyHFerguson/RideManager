@@ -311,6 +311,101 @@ AFTER:  RWGPSClient → UrlFetchApp
 ### Goal
 Replace web API calls with v1 API calls where possible.
 
+### ARCHITECTURAL DECISION: Native v1 Format
+
+**Key Insight (Session 2026-01-13)**: 
+The original Phase 4 approach was a hybrid that transformed back and forth:
+```
+HYBRID (BAD):
+Consumer → web format → transform → v1 API → transform → web format → Consumer
+```
+
+The cleaner architecture works **natively in v1 API format**:
+```
+NATIVE v1 (GOOD):
+Consumer → v1 format → RWGPSClient → v1 API → v1 format → Consumer
+```
+
+**Why Native v1 is Better**:
+1. **Simpler**: No transformation layer needed
+2. **Fewer bugs**: No format mismatches or conversion errors
+3. **Faster**: No conversion overhead
+4. **Clearer**: Internal state matches API state
+
+**The Pattern**:
+- Event/Route URLs contain numeric IDs (e.g., `/events/444070`)
+- Extract ID from URL using `extractEventId()` or `extractRouteId()`
+- All operations work with IDs and v1 format data
+- RWGPSClient methods accept/return v1 API format natively
+
+**v1 API Format Characteristics**:
+```javascript
+// v1 API event format (native)
+{
+  id: 444070,
+  name: "Event Name",
+  description: "Event description",  // NOT 'desc'
+  start_date: "2030-03-01",          // Separate date
+  start_time: "11:00",               // Separate time
+  all_day: false,
+  visibility: 0,
+  organizer_ids: ["498406"],         // Array of ID strings
+  route_ids: ["50969472"]            // Array of ID strings
+}
+
+// Web API event format (LEGACY - to be deprecated)
+{
+  id: 444070,
+  name: "Event Name", 
+  desc: "Event description",          // Alias for 'description'
+  starts_at: "2030-03-01T11:00:00",   // Combined timestamp
+  organizers: [{id: 498406}],         // Array of objects
+  routes: [{id: 50969472}]            // Array of objects
+}
+```
+
+**Migration Strategy**:
+1. **Phase 4**: RWGPSClient returns v1 format natively (no backward compat transform)
+2. **Phase 5**: Update consumers (EventFactory, RideManager) to use v1 format
+3. **Phase 6**: Remove all web format code and transformations
+
+**Current Status**: Task 4.2 was completed with backward-compat transforms. 
+Task 4.3+ will follow native v1 approach - no more `transformV1EventToWebFormat()`.
+
+### CRITICAL IMPLEMENTATION METHODOLOGY
+
+Phase 4 migration must use **TWO sources of truth** and systematically bridge the gap:
+
+1. **📋 OpenAPI Specification (`docs/rwgps-openapi.yaml`)** - The documented contract
+   - ✅ Endpoint paths, HTTP methods, authentication  
+   - ✅ Request/response schemas, field types, nesting
+   - ✅ Error codes, parameter requirements
+   - ✅ **ALWAYS consult FIRST before implementation**
+
+2. **🔧 Working Implementation** - Current web API behavior  
+   - ✅ Actual request/response patterns (from fixtures)
+   - ✅ Workarounds (double-edit pattern, field transformations)
+   - ✅ Error handling, authentication flows
+   - ✅ **Preserve working behavior patterns**
+
+**LESSON LEARNED (Task 4.2)**: Implementing without checking OpenAPI spec led to unnecessary debugging cycle. v1 API response wrapping under `{"event": {...}}` key was documented but missed during implementation.
+
+**✅ REQUIRED WORKFLOW for ALL Phase 4 tasks**:
+```
+BEFORE implementing ANY v1 endpoint:
+1. Check OpenAPI spec: response schema, nesting, field formats
+2. Review existing fixtures: current behavior patterns  
+3. Identify differences: what needs transformation/adaptation
+4. Implement with proper schema handling from start
+5. Write tests matching documented contract
+6. Deploy and validate - should succeed immediately
+```
+
+**Implementation Pattern**: 
+- v1 API calls with Basic Auth (no login needed)
+- Response transformation to maintain backward compatibility
+- Preserve all workarounds (double-edit) until proven unnecessary
+
 ### CRITICAL: v1 API Authentication
 **ALWAYS use apiKey:authToken for v1 API, NEVER username:password**
 
@@ -386,21 +481,29 @@ The v1 API response format differs from web API:
 **TASK COMPLETE - Key Finding**: V1 API migration must keep double-PUT pattern for time changes.
 
 ### Task 4.2: Replace web getEvent with v1 API ✅ COMPLETE
+- [x] **APPLIED METHODOLOGY**: Consulted OpenAPI spec (after debugging) - response wrapped under `"event"` key
 - [x] Change `getEvent()` to use `GET /api/v1/events/{id}.json`
 - [x] **Transform v1 response format to match web API format**
   - v1 uses: `start_date` (string) + `start_time` (string) + `time_zone`  
   - Web uses: `starts_at` (ISO 8601 timestamp)
   - Implementation: `transformV1EventToWebFormat()` in RWGPSClientCore
   - Conversion: `start_date + start_time` → `starts_at` (ISO 8601)
+  - **FIX**: Unwrap response from `{"event": {...}}` structure (per OpenAPI spec)
 - [x] Run tests - all getEvent tests pass ✅
 - [x] Backward compatibility maintained - consumers get same format
-- [x] Commit: "Task 4.2: Migrate getEvent to v1 API with response transformation" (809b361)
-
+- [x] Commit: "Task 4.2: Migrate getEvent to v1 API with response transformation" (809b361)- [x] **DEPLOYED AND VERIFIED**: GAS integration test confirms v1 API working
+  - ✅ v1 API endpoint called (no login required)
+  - ✅ Response format transformed successfully
+  - ✅ Web API format returned to consumer
+  - ✅ Event data extracted and transformed correctly
 **Key Changes**:
 - Endpoint: `GET /events/{id}` → `GET /api/v1/events/{id}.json`
 - Auth: Web session cookie → Basic Auth (apiKey:authToken)
 - Response transformation handles different date/time format
 - No login required (v1 API uses Basic Auth)
+- **CRITICAL**: v1 API wraps response in `{"event": {...}}` - must unwrap
+
+**LESSON**: Initial implementation failed because OpenAPI spec wasn't consulted first. Response wrapping was documented but discovered through debugging instead of spec review.
 
 **Test Results**: 5 tests pass
 - ✅ successfully get event details
@@ -411,17 +514,67 @@ The v1 API response format differs from web API:
 
 **TASK COMPLETE**
 
-### Task 4.3: Replace web editEvent with v1 API
-- [ ] Change `editEvent()` to use `PUT /api/v1/events/{id}.json`
-- [ ] **MUST keep double-edit workaround** (confirmed by Task 4.1)
+### Task 4.3: Replace web editEvent with v1 API (Native v1 Format) 🟡 IN PROGRESS
+
+**CHOSEN APPROACH: Option B - Native v1 Format with URL Interface**
+
+**Architecture**:
+```
+User Input (URLs) → Extract ID → v1 API Format (internal) → v1 API → Build URL → User Output (URLs)
+```
+
+**Key Principles**:
+1. **URLs for human interface**: Users paste public URLs (ridewithgps.com/events/444070)
+2. **IDs extracted from URLs**: `extractEventId()`, `extractRouteId()` already exist
+3. **v1 format internally**: All data structures use v1 API format (description, start_date, start_time, organizer_ids, route_ids)
+4. **URLs for display**: Reconstruct URLs from IDs for output (e.g., spreadsheet links)
+
+**URL ↔ ID Utilities** (already exist):
+```javascript
+// Extract ID from URL
+const eventId = RWGPSClientCore.extractEventId('https://ridewithgps.com/events/444070'); // → '444070'
+const routeId = RWGPSClientCore.extractRouteId('https://ridewithgps.com/routes/50969472'); // → '50969472'
+
+// Build URL from ID (simple string concatenation)
+const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+const routeUrl = `https://ridewithgps.com/routes/${routeId}`;
+```
+
+**Implementation Steps**:
+
+- [ ] **STEP 1: Update editEvent to accept v1 format natively**
+  - Accept: `{name, description, start_date, start_time, organizer_ids, route_ids, ...}`
+  - Remove: Any input transformation (callers must provide v1 format)
+  - Endpoint: `PUT /api/v1/events/{id}.json` with Basic Auth
+
+- [ ] **STEP 2: Keep double-edit workaround** (confirmed by Task 4.1)
   - First PUT: `all_day: '1'` to reset time
   - Second PUT: actual `start_date`, `start_time`, `all_day: '0'`
-- [ ] **CRITICAL**: Transform payload format for v1 API
-  - Input has: `starts_at` (ISO 8601 timestamp)
-  - v1 needs: `start_date` (YYYY-MM-DD) + `start_time` (HH:MM)
-  - Must convert: `starts_at` → `start_date + start_time`
+
+- [ ] **STEP 3: Return v1 format response natively**
+  - Return: v1 format as-is (unwrap from `{"event": {...}}` only)
+  - Remove: `transformV1EventToWebFormat()` call
+  - Consumers will need to handle v1 format
+
+- [ ] **STEP 4: Update tests**
+  - Tests should provide v1 format input
+  - Tests should expect v1 format output
+  - Update fixture expectations
+
+- [ ] **STEP 5: Document breaking change**
+  - editEvent now accepts/returns v1 format
+  - Callers need to be updated in Phase 5
+
 - [ ] Run tests
-- [ ] Commit: "Migrate editEvent to v1 API with double-edit"
+- [ ] Commit: "Task 4.3: Migrate editEvent to native v1 API format"
+
+**Breaking Change Note**: 
+This is an intentional breaking change. Phase 5 will update all callers.
+
+### Task 4.3.1: Revert Task 4.2 to native v1 format 🔜 NEXT
+- [ ] Update getEvent to return v1 format natively (remove transformV1EventToWebFormat)
+- [ ] Update tests to expect v1 format
+- [ ] Commit: "Task 4.3.1: getEvent returns native v1 format"
 
 ### Task 4.4: Replace copyTemplate with createEvent
 - [ ] v1 API has `POST /api/v1/events.json` to create events
@@ -442,26 +595,124 @@ The v1 API response format differs from web API:
 
 ### Phase 4 Complete Checkpoint
 - [ ] All tests pass
-- [ ] Most operations use v1 API
-- [ ] Document any operations that still need web API
-- [ ] Commit: "Phase 4 complete: Migrated to v1 API"
+- [ ] RWGPSClient operations use v1 API natively
+- [ ] No more web format transformations in RWGPSClient
+- [ ] Document any operations that still need web API (e.g., batch_update_tags)
+- [ ] Commit: "Phase 4 complete: RWGPSClient uses native v1 API"
 
 ---
 
-## Phase 5: Clean Up
+## Phase 5: Update Consumers to v1 Format
+
+**Model recommendation**: Sonnet 4.5
+
+### Goal
+Update all consumers of RWGPSClient to use v1 API format natively.
+
+### Key Format Differences to Address
+```javascript
+// CONSUMER MIGRATION: Update all usages from web format to v1 format
+
+// Event data fields:
+desc → description              // Field rename
+starts_at → start_date + start_time  // Split timestamp
+organizers: [{id: N}] → organizer_ids: ['N']  // Object array → string array
+routes: [{id: N}] → route_ids: ['N']  // Object array → string array
+
+// Example transformation in consumer:
+// BEFORE (web format):
+const eventData = {
+    name: 'Ride Name',
+    desc: 'Description',
+    starts_at: '2030-03-01T11:00:00',
+    organizers: [{ id: 498406 }],
+    routes: [{ id: 50969472 }]
+};
+
+// AFTER (v1 format):
+const eventData = {
+    name: 'Ride Name',
+    description: 'Description',
+    start_date: '2030-03-01',
+    start_time: '11:00',
+    organizer_ids: ['498406'],
+    route_ids: ['50969472']
+};
+```
+
+### Task 5.1: Identify all RWGPSClient consumers
+- [ ] Search codebase: `grep -r "rwgps\." src/ --include="*.js"`
+- [ ] Document each file that calls RWGPSClient methods
+- [ ] List which methods are called and with what format
+- [ ] Prioritize by frequency of use
+
+**Expected consumers**:
+- `RideManager.js` - Main adapter, uses many methods
+- `EventFactory.js` - Creates event data objects
+- `RideCoordinator.js` - Orchestrates ride operations
+- GAS integration tests (`gas-integration-tests.js`)
+
+### Task 5.2: Update EventFactory to create v1 format
+- [ ] `newEvent()` should create v1 format events
+- [ ] Update: `desc` → `description`
+- [ ] Update: `starts_at` → `start_date` + `start_time`
+- [ ] Update: `organizers` → `organizer_ids`
+- [ ] Update: `routes` → `route_ids`
+- [ ] Update tests
+- [ ] Run tests
+- [ ] Commit: "Task 5.2: EventFactory creates v1 format events"
+
+### Task 5.3: Update RideManager to expect v1 format
+- [ ] Update `scheduleRide()` to pass v1 format to RWGPSClient
+- [ ] Update `updateRide()` to pass v1 format to RWGPSClient
+- [ ] Update `cancelRide()` to handle v1 format responses
+- [ ] Update tests
+- [ ] Run tests
+- [ ] Commit: "Task 5.3: RideManager uses v1 format"
+
+### Task 5.4: Update RideCoordinator
+- [ ] Check what format RideCoordinator uses
+- [ ] Update to v1 format if needed
+- [ ] Update tests
+- [ ] Run tests
+- [ ] Commit: "Task 5.4: RideCoordinator uses v1 format"
+
+### Task 5.5: Update GAS integration tests
+- [ ] Update test data to use v1 format
+- [ ] Verify all tests pass with native v1 format
+- [ ] Commit: "Task 5.5: Integration tests use v1 format"
+
+### Phase 5 Complete Checkpoint
+- [ ] All consumers use v1 format natively
+- [ ] No web format code remains in application layer
+- [ ] All tests pass
+- [ ] Deploy and verify in GAS
+- [ ] Commit: "Phase 5 complete: All consumers use native v1 format"
+
+---
+
+## Phase 6: Clean Up Legacy Code
 
 **Model recommendation**: Haiku 4.5
 
 ### Goal
-Remove dead code, simplify structure.
+Remove dead code, legacy transformations, and simplify structure.
 
-### Task 5.1: Remove RWGPS.js facade (if no longer needed)
+### Task 6.1: Remove web format transformation code
+- [ ] Delete `transformV1EventToWebFormat()` from RWGPSClientCore
+- [ ] Delete `transformWebEventToV1Format()` from RWGPSClientCore
+- [ ] Delete `buildEditEventPayload()` (if replaced by v1 native)
+- [ ] Update type definitions
+- [ ] Run tests
+- [ ] Commit: "Remove web format transformation code"
+
+### Task 6.2: Remove RWGPS.js facade (if no longer needed)
 - [ ] Check if anything still imports RWGPS.js
 - [ ] If not, delete it
 - [ ] Run tests
 - [ ] Commit: "Remove unused RWGPS.js"
 
-### Task 5.2: Remove RWGPSService.js (if no longer needed)
+### Task 6.3: Remove RWGPSService.js (if no longer needed)
 - [ ] Check imports
 - [ ] Delete if unused
 - [ ] Run tests

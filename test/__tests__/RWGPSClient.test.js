@@ -183,22 +183,26 @@ describe('RWGPSClient', () => {
 
     describe('editEvent', () => {
         it('should successfully edit an event using double-edit pattern', () => {
-            // Load edit fixture which contains login + 2 PUT requests only
+            // Load edit fixture which contains 2 PUT requests (v1 API, no login)
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
+            // Use v1 format: description, start_date, start_time, organizer_ids, route_ids
             const eventData = {
-                name: 'Updated Event Name',
-                desc: 'Updated description',
-                starts_at: '2030-03-01T19:00:00.000Z',
-                organizers: [{ id: 498406 }],
-                routes: [{ id: 50969472 }]
+                name: 'Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir',
+                description: 'Ride Leader: Albert Saporta',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                visibility: '0',
+                organizer_ids: ['498406'],
+                route_ids: ['50969472']
             };
             
             const result = client.editEvent(eventUrl, eventData);
             
             expect(result.success).toBe(true);
             expect(result.event).toBeDefined();
+            expect(result.event.id).toBe(444070);
             expect(result.error).toBeUndefined();
         });
 
@@ -206,43 +210,49 @@ describe('RWGPSClient', () => {
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
+            // Use v1 format input
             const eventData = {
-                name: 'Test Event',
-                desc: 'Test description',
-                starts_at: '2030-03-01T19:00:00.000Z'
+                name: 'Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir',
+                description: 'Ride Leader: Albert Saporta',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                visibility: '0',
+                organizer_ids: ['498406'],
+                route_ids: ['50969472']
             };
             
             client.editEvent(eventUrl, eventData);
 
-            // Check calls: login (POST) + two PUTs
+            // Check calls: two PUTs (no login needed for v1 API)
             const calls = RWGPSMockServer.actualCalls;
-            
-            // Find the PUT calls (skip login)
             const putCalls = calls.filter((/** @type {any} */ c) => c.method === 'PUT');
             expect(putCalls.length).toBe(2);
             
-            // First PUT should have all_day=1
+            // First PUT should have all_day=1 and use v1 endpoint
             const put1 = putCalls[0];
-            expect(put1.url).toBe('https://ridewithgps.com/events/444070');
+            expect(put1.url).toBe('https://ridewithgps.com/api/v1/events/444070.json');
             const payload1 = JSON.parse(put1.options.payload);
-            expect(payload1.all_day).toBe('1');
+            expect(payload1.event.all_day).toBe('1');
             
             // Second PUT should have all_day=0
             const put2 = putCalls[1];
-            expect(put2.url).toBe('https://ridewithgps.com/events/444070');
+            expect(put2.url).toBe('https://ridewithgps.com/api/v1/events/444070.json');
             const payload2 = JSON.parse(put2.options.payload);
-            expect(payload2.all_day).toBe('0');
+            expect(payload2.event.all_day).toBe('0');
         });
 
-        it('should convert organizers to organizer_tokens', () => {
+        it('should use v1 API with organizer_ids directly', () => {
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
+            // v1 format uses organizer_ids directly (not organizers array)
             const eventData = {
-                name: 'Test Event',
-                desc: 'Test',
-                starts_at: '2030-03-01T19:00:00.000Z',
-                organizers: [{ id: 498406 }, { id: 123456 }]
+                name: 'Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir',
+                description: 'Ride Leader: Albert Saporta',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                organizer_ids: ['498406', '123456'],
+                route_ids: ['50969472']
             };
             
             client.editEvent(eventUrl, eventData);
@@ -250,18 +260,20 @@ describe('RWGPSClient', () => {
             const calls = RWGPSMockServer.actualCalls;
             const putCalls = calls.filter((/** @type {any} */ c) => c.method === 'PUT');
             const payload = JSON.parse(putCalls[0].options.payload);
-            expect(payload.organizer_tokens).toEqual(['498406', '123456']);
+            expect(payload.event.organizer_ids).toEqual(['498406', '123456']);
         });
 
-        it('should convert routes to route_ids', () => {
+        it('should use v1 API with route_ids directly', () => {
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
+            // v1 format uses route_ids directly
             const eventData = {
-                name: 'Test Event',
-                desc: 'Test',
-                starts_at: '2030-03-01T19:00:00.000Z',
-                routes: [{ id: 50969472 }]
+                name: 'Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir',
+                description: 'Ride Leader: Albert Saporta',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                route_ids: ['50969472']
             };
             
             client.editEvent(eventUrl, eventData);
@@ -269,18 +281,18 @@ describe('RWGPSClient', () => {
             const calls = RWGPSMockServer.actualCalls;
             const putCalls = calls.filter((/** @type {any} */ c) => c.method === 'PUT');
             const payload = JSON.parse(putCalls[0].options.payload);
-            expect(payload.route_ids).toEqual(['50969472']);
+            expect(payload.event.route_ids).toEqual(['50969472']);
         });
 
-        it('should return error if login fails', () => {
-            // Don't load fixture - login will fail
+        it('should return error if API call fails', () => {
+            // Don't load fixture - API call will fail
             const eventUrl = 'https://ridewithgps.com/events/12345';
             const eventData = { name: 'Test' };
             
             const result = client.editEvent(eventUrl, eventData);
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Login');
+            expect(result.error).toBeDefined();
         });
 
         it('should return error for invalid event URL', () => {
@@ -293,13 +305,15 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('Invalid event URL');
         });
 
-        it('should include session cookie in both PUT requests', () => {
+        it('should use Basic Auth in both PUT requests', () => {
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
             const eventData = {
-                name: 'Test Event',
-                starts_at: '2030-03-01T19:00:00.000Z'
+                name: 'Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir',
+                description: 'Ride Leader: Albert Saporta',
+                start_date: '2030-03-01',
+                start_time: '11:00'
             };
             
             client.editEvent(eventUrl, eventData);
@@ -307,10 +321,11 @@ describe('RWGPSClient', () => {
             const calls = RWGPSMockServer.actualCalls;
             const putCalls = calls.filter((/** @type {any} */ c) => c.method === 'PUT');
             
-            expect(putCalls[0].options.headers.Cookie).toBeDefined();
-            expect(putCalls[0].options.headers.Cookie).toContain('_rwgps_3_session=');
-            expect(putCalls[1].options.headers.Cookie).toBeDefined();
-            expect(putCalls[1].options.headers.Cookie).toContain('_rwgps_3_session=');
+            // v1 API uses Basic Auth, not cookies
+            expect(putCalls[0].options.headers.Authorization).toBeDefined();
+            expect(putCalls[0].options.headers.Authorization).toContain('Basic ');
+            expect(putCalls[1].options.headers.Authorization).toBeDefined();
+            expect(putCalls[1].options.headers.Authorization).toContain('Basic ');
         });
     });
 
@@ -371,7 +386,7 @@ describe('RWGPSClient', () => {
             client.getEvent = originalGetEvent;
         });
 
-        it('should return error if login fails', () => {
+        it('should return error if editEvent fails', () => {
             // Mock getEvent to succeed (v1 API doesn't need login)
             const originalGetEvent = client.getEvent;
             client.getEvent = () => ({
@@ -379,17 +394,19 @@ describe('RWGPSClient', () => {
                 event: {
                     name: 'Fri B (3/1 11:00) Test Ride',
                     id: 12345,
-                    desc: 'Test description'
+                    description: 'Test description',
+                    start_date: '2030-03-01',
+                    start_time: '11:00'
                 }
             });
 
-            // Don't load fixture - editEvent login will fail
+            // Don't load fixture - v1 API call will fail
             const eventUrl = 'https://ridewithgps.com/events/12345';
             
             const result = client.cancelEvent(eventUrl);
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Login');
+            expect(result.error).toContain('Failed to edit event');
 
             // Restore
             client.getEvent = originalGetEvent;
@@ -507,25 +524,27 @@ describe('RWGPSClient', () => {
             client.getEvent = originalGetEvent;
         });
 
-        it('should return error if login fails', () => {
-            // Mock getEvent to succeed (v1 API doesn't need login)
+        it('should return error if editEvent fails', () => {
+            // Mock getEvent to succeed with v1 format data
             const originalGetEvent = client.getEvent;
             client.getEvent = () => ({
                 success: true,
                 event: {
                     name: 'CANCELLED: Fri B (3/1 11:00) Test Ride',
                     id: 12345,
-                    desc: 'Test description'
+                    description: 'Test description',
+                    start_date: '2024-03-01',
+                    start_time: '11:00'
                 }
             });
 
-            // Don't load fixture - editEvent login will fail
+            // Don't load fixture - editEvent will fail (no mock response)
             const eventUrl = 'https://ridewithgps.com/events/12345';
             
             const result = client.reinstateEvent(eventUrl);
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Login');
+            expect(result.error).toContain('Failed to edit event');
 
             // Restore
             client.getEvent = originalGetEvent;
