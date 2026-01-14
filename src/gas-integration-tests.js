@@ -71,7 +71,7 @@ function testTask4_4_PartB_LogoIntegration() {
             description: 'Test event created by testTask4_4_PartB_LogoIntegration(). Safe to delete.',
             start_date: '2030-12-31',
             start_time: '10:00',
-            visibility: 0,
+            visibility: 'public', // Valid values: 'public', 'private', 'friends_only'
             route_ids: ['32614616'], // SCCCC Test Route
             organizer_ids: []
         };

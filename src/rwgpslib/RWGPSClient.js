@@ -622,10 +622,18 @@ var RWGPSClient = (function() {
             // Build Basic Auth header
             const basicAuthHeader = RWGPSClientCore.buildBasicAuthHeader(this.apiKey, this.authToken);
 
-            // Fetch logo image
+            // Fetch logo image from Google Drive
             console.log(`Fetching logo from: ${logoUrl}`);
-            const logoResponse = UrlFetchApp.fetch(logoUrl);
-            const logoBlob = logoResponse.getBlob();
+            
+            // Extract file ID from Drive URL (format: https://drive.google.com/file/d/FILE_ID/view?...)
+            const fileIdMatch = logoUrl.match(/\/file\/d\/([^\/]+)/);
+            if (!fileIdMatch) {
+                throw new Error(`Invalid Drive URL format: ${logoUrl}`);
+            }
+            const fileId = fileIdMatch[1];
+            
+            // Use DriveApp to get the actual file blob (not the HTML viewer page)
+            const logoBlob = DriveApp.getFileById(fileId).getBlob();
             console.log(`Logo fetched: ${logoBlob.getContentType()}, ${logoBlob.getBytes().length} bytes`);
 
             // Build multipart payload with logo

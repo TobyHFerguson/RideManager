@@ -304,7 +304,21 @@ var RWGPSClientCore = (function() {
         if (eventData.start_time !== undefined) event.start_time = eventData.start_time;
         if (eventData.location !== undefined) event.location = eventData.location;
         if (eventData.time_zone !== undefined) event.time_zone = eventData.time_zone;
-        if (eventData.visibility !== undefined) event.visibility = String(eventData.visibility);
+        
+        // Convert visibility: legacy numeric values → API string values
+        if (eventData.visibility !== undefined) {
+            const vis = eventData.visibility;
+            // Accept both string ('public') and legacy numeric (0) formats
+            if (vis === 0 || vis === '0' || vis === 'public') {
+                event.visibility = 'public';
+            } else if (vis === 1 || vis === '1' || vis === 'private') {
+                event.visibility = 'private';
+            } else if (vis === 2 || vis === '2' || vis === 'friends_only') {
+                event.visibility = 'friends_only';
+            } else {
+                event.visibility = String(vis); // Pass through unknown values
+            }
+        }
 
         // Handle organizer_ids (convert to strings)
         if (eventData.organizer_ids && Array.isArray(eventData.organizer_ids)) {
