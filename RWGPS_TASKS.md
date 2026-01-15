@@ -645,13 +645,13 @@ Fields:
 3. Include logo binary in the payload
 **Impact on RideManager**: Minimal - date changes are rare after event creation
 
-### Task 4.4: Replace copyTemplate with createEvent
+### Task 4.4: Replace copyTemplate with createEvent ✅ COMPLETE
 
-**Status**: Partial - createEvent implemented, logo handling pending
+**Status**: Complete - createEvent with Drive-based logo storage implemented
 
-**Findings**:
+**Implementation Summary**:
 
-1. **createEvent implementation complete** ✅
+1. **createEvent implementation** ✅
    - `POST /api/v1/events.json` endpoint working
    - Creates events with v1 API format
    - Tests pass (13 tests)
@@ -660,106 +660,75 @@ Fields:
      - `organizer_ids` (array of numbers), `route_ids` (array of numbers)
      - Optional: `location`, `time_zone`, `all_day`
 
-2. **Logo/Image Handling** 🔄
+2. **Logo/Image Handling** ✅
    
-   **Experiment Result** (testLogoUrlInCreateEvent):
-   - ❌ **`logo_url` field is read-only** - Cannot be set via JSON POST payload
-   - Template logo_url: `https://ridewithgps.com/.../404019.jpg`
-   - Created event logo_url: `null` (not preserved)
+   **Solution Implemented - Drive-Based Logo Storage**:
+   - ✅ **Drive folder created**: "SCCCC Group Logos" stores logo image files
+   - ✅ **Groups tab updated**: LogoURL column contains Drive file URLs
+   - ✅ **Logo population script**: `GroupLogoManager.populateGroupLogos()`
+   - ✅ **Runtime integration**: `createEventWithLogo()` accepts Drive logo URL
+   - ✅ **Self-healing**: `autoPopulateGroupLogos()` populates missing logos on trigger
    
-   **Solution Available**:
-   - ✅ **Multipart upload supported** by v1 API (from OpenAPI spec):
-     ```
-     Content-Type: multipart/form-data
-     
-     Fields:
-     - event[name]
-     - event[description]
-     - event[logo] - Logo image (binary)
-     - event[banner] - Banner image (binary)
-     - event[start_date], etc.
-     ```
-   
-   **Implementation Path - Store Logos in Groups Tab**:
-   
-   **Architecture** (extends existing Groups tab):
+   **Architecture - Drive-Based Storage**:
    ```javascript
-   // Groups tab structure (add Logo column):
-   // Group | TEMPLATE                    | GoogleCalendarId    | Logo          | MIN_LENGTH | ...
-   // A     | https://.../events/404019   | groupA@gmail.com   | [image blob]  | 30         | ...
-   // B     | https://.../events/404020   | groupB@gmail.com   | [image blob]  | 40         | ...
+   // Groups tab structure (LogoURL column):
+   // Group | TEMPLATE                    | GoogleCalendarId    | LogoURL (Drive)         | MIN_LENGTH | ...
+   // A     | https://.../events/404019   | groupA@gmail.com   | https://drive.google... | 30         | ...
+   // B     | https://.../events/404020   | groupB@gmail.com   | https://drive.google... | 40         | ...
    ```
    
-   **Logo Storage Strategy**:
-   1. **One-time setup**: Add "Logo" column to Groups tab
-   2. **Populate logos**: Script fetches logos from templates and inserts into cells
-   3. **Read at runtime**: `getGroupSpecs()` includes logo blobs from sheet
-   4. **Usage**: When creating event, pass `logos[row.Group]` to multipart upload
+   **Logo Storage Strategy Implemented**:
+   1. ✅ **One-time setup**: `populateGroupLogos()` creates Drive folder and uploads logos
+   2. ✅ **Logo storage**: Image files in Drive folder (persistent, no size limits)
+   3. ✅ **LogoURL column**: Contains Drive file URLs (hover shows preview)
+   4. ✅ **Read at runtime**: `getGroupSpecs()` returns LogoURL from Groups tab
+   5. ✅ **Usage**: `createEventWithLogo(eventData, logoUrl)` downloads from Drive and uploads to RWGPS
+   6. ✅ **Self-healing**: Installable trigger calls `autoPopulateGroupLogos()` if LogoURL missing
    
-   **Implementation Steps**:
-   
-   **Part A - One-Time Logo Population Script**:
-   1. Create `populateGroupLogos()` utility function:
-      - Load Groups tab via Fiddler
-      - For each group: fetch template event → extract `logo_url`
-      - Download logo: `UrlFetchApp.fetch(logo_url).getBlob()`
-      - Insert into sheet: `range.setValue(blob)` (Sheets supports image blobs)
-   2. Run once to populate all group logos
-   
-   **Part B - Runtime Logo Usage**:
-   1. Modify `getGroupsFromSheet_()` to include Logo column
-   2. Logo blobs flow through `getGroupSpecs()` automatically
-   3. Modify `createEvent()` to accept optional `logoBlob` parameter
-   4. When `logoBlob` present, use multipart/form-data with logo
-   5. In scheduleEvent: `const logos = getGroupSpecs(); createEvent(data, logos[row.Group].Logo)`
-   
-   **Benefits**:
-   - ✅ Persistent storage (no cache expiry)
-   - ✅ Visible to operators (can see which logo belongs to which group)
-   - ✅ Backed up with spreadsheet
-   - ✅ Single source of truth (Groups tab)
-   - ✅ No need to fetch logos on every script run
-   - ✅ Can manually update logos by replacing images in cells
+   **Key Files Created**:
+   - `src/GroupLogoManager.js` - Logo population and Drive management
+   - `docs/MIGRATION_GROUP_LOGOS.md` - Operator documentation
+   - `src/gas-integration-tests.js` - Test: `testTask4_4_PartB_LogoIntegration()`
 
-**Subtasks**:
-- [x] Implement `createEvent()` with JSON payload
-- [x] Add `buildV1CreateEventOptions()` to RWGPSClientCore
-- [x] Write tests for createEvent (13 tests pass)
-- [x] Experiment: Test if logo_url can be set via JSON (result: NO)
-- [x] **DECISION**: Store logos in Groups tab spreadsheet (persistent, visible)
-- [ ] **Part A - One-Time Setup**:
-  - [ ] Add "Logo" column to Groups tab spreadsheet (manual or script)
-  - [ ] Create `populateGroupLogos()` utility function:
-    - [ ] Fetch template events from Groups tab TEMPLATE URLs
-    - [ ] Download logo_url as blob: `UrlFetchApp.fetch(logo_url).getBlob()`
-    - [ ] Insert blobs into Logo column: `range.setValue(blob)`
-  - [ ] Run `populateGroupLogos()` once to populate all logos
-  - [ ] Verify logos visible in Groups tab
-- [ ] **Part B - Runtime Integration**:
-  - [ ] Update `getGroupsFromSheet_()` to include Logo column in Fiddler read
-  - [ ] Verify logos flow through `getGroupSpecs()` automatically
-  - [ ] Implement multipart upload in createEvent:
-    - [ ] Add `createEventWithLogo(eventData, logoBlob)` method
-    - [ ] Build multipart/form-data payload with logo binary
-    - [ ] Test: Create event with logo from Groups tab
-  - [ ] Update scheduleEvent to use logos:
-    - [ ] Get logos via `getGroupSpecs()[row.Group].Logo`
-    - [ ] Pass logo to createEvent: `createEvent(data, groupSpec.Logo)`
-- [ ] Run full test suite
-- [ ] Commit: "Task 4.4: createEvent with logos stored in Groups tab"
-- [ ] Run full test suite
-- [ ] Commit: "Task 4.4: createEvent with logo handling decision"
+**Commits**:
+- 90709f7: Task 4.4: Implement createEvent with v1 API POST
+- 19372fa: Task 4.4 Part A: Implement GroupLogoManager for logo storage
+- 26dd274: Task 4.4 Part B: Runtime logo integration
+- b7eba35: Drive-based logo storage for Task 4.4
 
-**Notes**:
-- copyTemplate uses web API with cookies (requires login)
-- createEvent uses v1 API with Basic Auth (no login needed)
-- Logo handling is the ONLY remaining difference between approaches
+**TASK COMPLETE**
 
-### Task 4.5: Handle batch_update_tags
-- [ ] DECISION POINT: Keep web API or implement individual tag calls?
-- [ ] If keeping web API, document why
-- [ ] If replacing, implement individual calls
-- [ ] Commit decision and implementation
+### Task 4.5: Handle batch_update_tags ✅ COMPLETE
+
+**Decision**: Keep web API for batch tag operations
+
+**Rationale**:
+1. **v1 API has NO tag endpoints** - Verified in OpenAPI spec
+   - No `/api/v1/events/{id}/tags` endpoint
+   - No `/api/v1/routes/{id}/tags` endpoint
+   - No batch tag operations in v1 API
+   
+2. **Web API is the ONLY option** for tag operations:
+   - `POST /events/batch_update_tags.json` - Add/remove tags on multiple events
+   - `POST /routes/batch_update_tags.json` - Add/remove tags on multiple routes
+   - Requires web session cookie (login)
+   
+3. **Alternative would be inefficient**:
+   - Would need individual PUT calls for each event/route
+   - No documented way to update tags in v1 EventPayload
+   - Would significantly slow down operations that tag multiple events
+
+**Implementation**: Keep existing `_batch_update_tags()` method using web API
+
+**Affected Methods**:
+- `unTagEvents()` - Batch remove tags from multiple events
+- `tagEvents()` - Batch add tags to multiple events  
+- `_addRouteTags()` - Add tags to routes
+- `_removeRouteTags()` - Remove tags from routes
+
+**Commit**: "Task 4.5: Document decision to keep web API for tag operations"
+
+**TASK COMPLETE**
 
 ### Task 4.6: Verify getClubMembers still works
 - [ ] Already uses v1 API - just verify
