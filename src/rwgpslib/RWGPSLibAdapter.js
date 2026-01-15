@@ -6,15 +6,27 @@
  * 
  * The external library was accessed via: getRWGPSLib_().newCredentialManager(...) etc.
  * This adapter provides the same interface so getRWGPSLib_() can return this object.
+ * 
+ * NEW ARCHITECTURE (Phase 5):
+ * - RWGPSFacade: Clean public API with domain-friendly types (Date, visibility enum)
+ * - RWGPSCore: Pure JS business logic (URL parsing, payload building) - 100% Jest tested
+ * - RWGPSAdapter: Thin GAS wrapper for HTTP calls (UrlFetchApp.fetch)
+ * 
+ * The new classes are exported alongside the legacy factory methods for gradual migration.
  */
 
 // @ts-check
 /* istanbul ignore file - GAS-only adapter */
 
 /**
- * Adapter object that mimics the RWGPSLib library interface
+ * Adapter object that mimics the RWGPSLib library interface.
+ * Also exports new architecture classes for gradual migration.
  */
 var RWGPSLibAdapter = {
+    // ========================================
+    // LEGACY FACTORY METHODS (backward compatibility)
+    // ========================================
+    
     /**
      * Create a new CredentialManager instance
      * @param {GoogleAppsScript.Properties.Properties} scriptProperties
@@ -25,7 +37,7 @@ var RWGPSLibAdapter = {
     },
     
     /**
-     * Create a new RWGPS instance
+     * Create a new RWGPS instance (legacy API)
      * @param {RWGPSService} rwgpsService
      * @returns {RWGPS}
      */
@@ -41,5 +53,48 @@ var RWGPSLibAdapter = {
      */
     newRWGPSService: function(globals, credentialManager) {
         return newRWGPSService(globals, credentialManager);
+    },
+    
+    // ========================================
+    // NEW ARCHITECTURE CLASSES (Phase 5)
+    // ========================================
+    
+    /**
+     * RWGPSCore class - Pure JavaScript business logic
+     * Use for: URL parsing, date formatting, payload building
+     * 100% Jest testable (no GAS dependencies)
+     * @type {typeof RWGPSCore}
+     */
+    get RWGPSCore() {
+        return RWGPSCore;
+    },
+    
+    /**
+     * RWGPSAdapter class - Thin GAS wrapper for HTTP calls
+     * Use for: Direct HTTP requests when facade doesn't cover your use case
+     * @type {typeof RWGPSAdapter}
+     */
+    get RWGPSAdapter() {
+        return RWGPSAdapter;
+    },
+    
+    /**
+     * RWGPSFacade class - Clean public API with domain-friendly types
+     * Use for: All standard RWGPS operations (getEvent, editEvent, createEvent, etc.)
+     * @type {typeof RWGPSFacade}
+     */
+    get RWGPSFacade() {
+        return RWGPSFacade;
+    },
+    
+    /**
+     * Create a new RWGPSFacade instance with default configuration.
+     * Uses getGlobals() for configuration automatically.
+     * @returns {RWGPSFacade}
+     */
+    newFacade: function() {
+        const adapter = new RWGPSAdapter();
+        const globals = typeof getGlobals === 'function' ? getGlobals() : {};
+        return new RWGPSFacade(adapter, globals);
     }
 };
