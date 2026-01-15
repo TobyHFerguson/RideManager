@@ -1114,8 +1114,9 @@ var RWGPSClient = (function() {
             // Visibility
             if (eventData.visibility !== undefined) eventPayload.visibility = eventData.visibility;
             
-            // all_day - always include for time changes
-            eventPayload.all_day = eventData.all_day !== undefined ? eventData.all_day : '0';
+            // Note: all_day is NOT in OpenAPI spec - RWGPS derives it from start/end date/time
+            // Only send if explicitly provided (for backward compatibility)
+            if (eventData.all_day !== undefined) eventPayload.all_day = eventData.all_day;
             
             // Organizers - OpenAPI spec says array of User objects with {id, ...}
             // Only send if present in eventData
