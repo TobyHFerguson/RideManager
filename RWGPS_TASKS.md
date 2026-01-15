@@ -823,277 +823,460 @@ Fields:
 
 ---
 
-## Phase 5: Update Consumers to v1 Format
+## Phase 5: Architecture Overhaul - Proper Core/Adapter Separation
 
-**Model recommendation**: Sonnet 4.5
+**Model recommendation**: Opus 4.5 (complex architectural refactoring)
 
 ### Goal
-Update all consumers of RWGPSClient to use v1 API format natively.
+Replace the current 3,579-line rwgpslib codebase with a small, stable, fully testable library following copilot-instructions Core/Adapter separation pattern.
 
-### Key Format Differences to Address
-```javascript
-// CONSUMER MIGRATION: Update all usages from web format to v1 format
+### Current Problem
+The current `src/rwgpslib/` violates fundamental architectural principles:
 
-// Event data fields:
-desc → description              // Field rename
-starts_at → start_date + start_time  // Split timestamp
-organizers: [{id: N}] → organizer_ids: ['N']  // Object array → string array
-routes: [{id: N}] → route_ids: ['N']  // Object array → string array
+| File | Lines | GAS Calls | Test Coverage | Problem |
+|------|-------|-----------|---------------|---------|
+| RWGPSClient.js | 1,239 | 16 UrlFetchApp | 81% | **Mixed business logic with GAS** |
+| RWGPSClientCore.js | 631 | 0 | **52%** | Missing 100% coverage |
+| RWGPSService.js | 472 | UrlFetchApp | 0% | Legacy, should be deleted |
+| RWGPS.js | 467 | 0 | 0% | Facade, tightly coupled |
+| ApiService.js | 289 | UrlFetchApp | 0% | Duplicates functionality |
+| RWGPSApiLogger.js | 273 | Logger | 0% | Untested |
+| Others | 208 | Various | 0% | Scattered utilities |
+| **Total** | **3,579** | **~20** | **~30%** | **Unmaintainable** |
 
-// Example transformation in consumer:
-// BEFORE (web format):
-const eventData = {
-    name: 'Ride Name',
-    desc: 'Description',
-    starts_at: '2030-03-01T11:00:00',
-    organizers: [{ id: 498406 }],
-    routes: [{ id: 50969472 }]
-};
+**vs What We Actually Use** (9 methods from consumers):
+- `batch_delete_events` - Delete events by URL
+- `copy_template_` - Create event from template (web API only)
+- `edit_event` - Update event fields (hybrid v1+web)
+- `get_club_members` - Fetch club membership list
+- `get_event` - Fetch single event by URL
+- `getOrganizers` - Lookup organizer IDs by name (web API only)
+- `importRoute` - Import route from URL (web API only)
+- `setRouteExpiration` - Tag route with expiration (web API only)
+- `unTagEvents` - Remove tags from events (web API only)
 
-// AFTER (v1 format):
-const eventData = {
-    name: 'Ride Name',
-    description: 'Description',
-    start_date: '2030-03-01',
-    start_time: '11:00',
-    organizer_ids: ['498406'],
-    route_ids: ['50969472']
-};
+### Target Architecture
+
+**New file structure (target: ~600 lines total, 100% coverage on Core)**:
+
+```
+src/rwgpslib/
+├── RWGPSCore.js          (~300 lines, 100% tested)
+│   ├── URL parsing & validation
+│   ├── Payload construction (v1 format)
+│   ├── Response transformations
+│   ├── Date/time formatting
+│   └── Error message building
+│
+├── RWGPSAdapter.js       (~200 lines, thin GAS wrapper)
+│   ├── UrlFetchApp.fetch() calls ONLY
+│   ├── Session/credential handling
+│   ├── Basic Auth header injection
+│   └── Error logging
+│
+├── RWGPSFacade.js        (~100 lines, public API)
+│   ├── 9 public methods matching current interface
+│   ├── Delegates to Core for logic
+│   └── Delegates to Adapter for HTTP
+│
+├── RWGPSCore.d.ts        (type definitions)
+├── RWGPSAdapter.d.ts
+├── RWGPSFacade.d.ts
+└── types.js              (keep, shared types)
 ```
 
-### Task 5.1: Identify all RWGPSClient consumers
-- [ ] Search codebase: `grep -r "rwgps\." src/ --include="*.js"`
-- [ ] Document each file that calls RWGPSClient methods
-- [ ] List which methods are called and with what format
-- [ ] Prioritize by frequency of use
+### Task 5.1: Create RWGPSCore.js (Pure JavaScript, 100% tested)
 
-**Expected consumers**:
-- `RideManager.js` - Main adapter, uses many methods
-- `EventFactory.js` - Creates event data objects
-- `RideCoordinator.js` - Orchestrates ride operations
-- GAS integration tests (`gas-integration-tests.js`)
+**Goal**: Extract ALL business logic from RWGPSClient.js into testable Core module.
 
-### Task 5.2: Update EventFactory to create v1 format
-- [ ] `newEvent()` should create v1 format events
-- [ ] Update: `desc` → `description`
-- [ ] Update: `starts_at` → `start_date` + `start_time`
-- [ ] Update: `organizers` → `organizer_ids`
-- [ ] Update: `routes` → `route_ids`
-- [ ] Update tests
-- [ ] Run tests
-- [ ] Commit: "Task 5.2: EventFactory creates v1 format events"
+**Methods to include**:
+```javascript
+class RWGPSCore {
+    // URL Parsing
+    static parseEventUrl(url)           // Extract event ID from URL
+    static parseRouteUrl(url)           // Extract route ID from URL
+    static isValidEventUrl(url)         // Validate event URL format
+    static isValidRouteUrl(url)         // Validate route URL format
+    
+    // Payload Construction (v1 API format)
+    static buildCreateEventPayload(eventData)   // For POST /api/v1/events
+    static buildEditEventPayload(eventData)     // For PUT /api/v1/events/{id}
+    static buildRouteImportPayload(routeData)   // For web API route import
+    
+    // Response Transformations
+    static extractEventFromResponse(response)   // Parse v1 API response
+    static transformV1EventToWebFormat(event)   // For backward compat during transition
+    static normalizeOrganizerIds(organizers)    // Handle both formats
+    
+    // Date/Time Utilities
+    static formatDateForV1Api(date)             // Date → 'YYYY-MM-DD'
+    static formatTimeForV1Api(date)             // Date → 'HH:MM'
+    static parseV1DateTime(date, time, tz)      // V1 fields → Date object
+    
+    // Validation
+    static validateEventPayload(payload)        // Pre-flight validation
+    static validateRoutePayload(payload)        // Pre-flight validation
+    
+    // Error Building
+    static buildErrorMessage(response, context) // Consistent error formatting
+}
+```
 
-### Task 5.3: Update RideManager to expect v1 format
-- [ ] Update `scheduleRide()` to pass v1 format to RWGPSClient
-- [ ] Update `updateRide()` to pass v1 format to RWGPSClient
-- [ ] Update `cancelRide()` to handle v1 format responses
-- [ ] Update tests
-- [ ] Run tests
-- [ ] Commit: "Task 5.3: RideManager uses v1 format"
+**Implementation steps**:
+- [ ] 5.1.1 Create empty `RWGPSCore.js` with class skeleton
+- [ ] 5.1.2 Create `RWGPSCore.d.ts` with all method signatures
+- [ ] 5.1.3 Create `test/__tests__/RWGPSCore.test.js` with test stubs
+- [ ] 5.1.4 Extract URL parsing methods (copy from RWGPSClientCore.js)
+- [ ] 5.1.5 Write tests for URL parsing → achieve 100% coverage
+- [ ] 5.1.6 Extract payload construction methods
+- [ ] 5.1.7 Write tests for payload construction → achieve 100% coverage
+- [ ] 5.1.8 Extract response transformation methods
+- [ ] 5.1.9 Write tests for transformations → achieve 100% coverage
+- [ ] 5.1.10 Extract date/time utilities
+- [ ] 5.1.11 Write tests for date utilities → achieve 100% coverage
+- [ ] 5.1.12 Extract validation and error methods
+- [ ] 5.1.13 Write tests → achieve 100% coverage
+- [ ] 5.1.14 Run: `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSCore.js'`
+- [ ] 5.1.15 Verify 100% coverage (statements, branches, functions, lines)
+- [ ] Commit: "Task 5.1: RWGPSCore.js with 100% test coverage"
 
-### Task 5.4: Update RideCoordinator
-- [ ] Check what format RideCoordinator uses
-- [ ] Update to v1 format if needed
-- [ ] Update tests
-- [ ] Run tests
-- [ ] Commit: "Task 5.4: RideCoordinator uses v1 format"
+**Expected coverage output**:
+```
+RWGPSCore.js | 100 | 100 | 100 | 100 |
+```
 
-### Task 5.5: Update GAS integration tests
-- [ ] Update test data to use v1 format
-- [ ] Verify all tests pass with native v1 format
-- [ ] Commit: "Task 5.5: Integration tests use v1 format"
+### Task 5.2: Create RWGPSAdapter.js (Thin GAS Wrapper)
+
+**Goal**: Single file containing ALL UrlFetchApp calls. NO business logic.
+
+**Pattern**:
+```javascript
+class RWGPSAdapter {
+    constructor(credentialManager) {
+        this._creds = credentialManager;
+    }
+    
+    // v1 API calls (Basic Auth)
+    fetchV1(method, endpoint, payload = null) {
+        const options = RWGPSCore.buildRequestOptions(method, payload);
+        options.headers.Authorization = this._getBasicAuth();
+        const url = `https://ridewithgps.com/api/v1${endpoint}`;
+        return UrlFetchApp.fetch(url, options);
+    }
+    
+    // Web API calls (session cookie)
+    fetchWeb(method, path, payload = null) {
+        const options = RWGPSCore.buildRequestOptions(method, payload);
+        options.headers.Cookie = this._getSessionCookie();
+        const url = `https://ridewithgps.com${path}`;
+        return UrlFetchApp.fetch(url, options);
+    }
+    
+    // Auth helpers (GAS-dependent)
+    _getBasicAuth() { /* PropertiesService or CredentialManager */ }
+    _getSessionCookie() { /* Session management */ }
+}
+```
+
+**Key rules**:
+- ✅ ALL UrlFetchApp.fetch calls go here (and ONLY here)
+- ✅ ALL credential/auth handling goes here
+- ✅ NO business logic - that's in RWGPSCore
+- ✅ NO response parsing - that's in RWGPSCore
+- ✅ Thin: should be ~100-150 lines max
+
+**Implementation steps**:
+- [ ] 5.2.1 Create `RWGPSAdapter.js` with class skeleton
+- [ ] 5.2.2 Create `RWGPSAdapter.d.ts` with method signatures
+- [ ] 5.2.3 Implement `fetchV1()` - v1 API Basic Auth calls
+- [ ] 5.2.4 Implement `fetchWeb()` - web API session cookie calls
+- [ ] 5.2.5 Implement auth helpers (migrate from CredentialManager.js)
+- [ ] 5.2.6 Add JSDoc with proper types (no `{any}` parameters)
+- [ ] Commit: "Task 5.2: RWGPSAdapter.js thin GAS wrapper"
+
+### Task 5.3: Create RWGPSFacade.js (Public API)
+
+**Goal**: Simple facade providing the 9 methods consumers actually use.
+
+**Interface**:
+```javascript
+class RWGPSFacade {
+    constructor(adapter) {
+        this._adapter = adapter || new RWGPSAdapter(new CredentialManager());
+    }
+    
+    // Event Operations
+    get_event(eventUrl) {
+        const eventId = RWGPSCore.parseEventUrl(eventUrl);
+        const response = this._adapter.fetchV1('GET', `/events/${eventId}`);
+        return RWGPSCore.extractEventFromResponse(response);
+    }
+    
+    edit_event(eventUrl, eventData) {
+        const eventId = RWGPSCore.parseEventUrl(eventUrl);
+        const payload = RWGPSCore.buildEditEventPayload(eventData);
+        // v1 for what it supports + web for the rest
+        this._adapter.fetchV1('PUT', `/events/${eventId}`, payload.v1Fields);
+        if (payload.webFields) {
+            this._adapter.fetchWeb('PUT', `/events/${eventId}`, payload.webFields);
+        }
+    }
+    
+    batch_delete_events(eventUrls) {
+        const ids = eventUrls.map(url => RWGPSCore.parseEventUrl(url));
+        return ids.map(id => this._adapter.fetchV1('DELETE', `/events/${id}`));
+    }
+    
+    // Route Operations (web API only - no v1 equivalent)
+    importRoute(routeData) { /* web API */ }
+    copy_template_(templateUrl) { /* web API */ }
+    setRouteExpiration(routeUrl, date) { /* web API tags */ }
+    
+    // Membership Operations
+    get_club_members() { /* v1 or web API */ }
+    getOrganizers(names) { /* web API only */ }
+    
+    // Tag Operations (web API only - no v1 equivalent)
+    unTagEvents(eventUrls, tags) { /* web API */ }
+}
+```
+
+**Implementation steps**:
+- [ ] 5.3.1 Create `RWGPSFacade.js` with all 9 method signatures
+- [ ] 5.3.2 Create `RWGPSFacade.d.ts` with type definitions
+- [ ] 5.3.3 Implement `get_event()` - v1 API GET
+- [ ] 5.3.4 Implement `edit_event()` - hybrid v1+web
+- [ ] 5.3.5 Implement `batch_delete_events()` - v1 API DELETE
+- [ ] 5.3.6 Implement `importRoute()` - web API
+- [ ] 5.3.7 Implement `copy_template_()` - web API
+- [ ] 5.3.8 Implement `getOrganizers()` - web API
+- [ ] 5.3.9 Implement `get_club_members()` - v1 or web
+- [ ] 5.3.10 Implement `setRouteExpiration()` - web API
+- [ ] 5.3.11 Implement `unTagEvents()` - web API
+- [ ] Commit: "Task 5.3: RWGPSFacade.js public API"
+
+### Task 5.4: Update RWGPSLibAdapter.js Export
+
+**Goal**: Update the existing export adapter to use new architecture.
+
+```javascript
+// RWGPSLibAdapter.js - Updated to use new architecture
+var rwgps = new RWGPSFacade();
+
+// Expose the same interface consumers expect
+if (typeof module !== 'undefined') {
+    module.exports = { rwgps, RWGPSCore, RWGPSAdapter, RWGPSFacade };
+}
+```
+
+- [ ] 5.4.1 Update `RWGPSLibAdapter.js` to instantiate new classes
+- [ ] 5.4.2 Verify all consumers still work (RideManager, EventFactory, etc.)
+- [ ] 5.4.3 Run full test suite: `npm test`
+- [ ] 5.4.4 Run GAS integration tests in spreadsheet
+- [ ] Commit: "Task 5.4: RWGPSLibAdapter uses new architecture"
+
+### Task 5.5: Comprehensive Testing
+
+**Goal**: Verify new architecture works with all existing tests.
+
+- [ ] 5.5.1 Run all existing tests: `npm test`
+- [ ] 5.5.2 Verify RWGPSCore has 100% coverage:
+      `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSCore.js'`
+- [ ] 5.5.3 Run GAS integration tests: `testV1API_OpenAPICompliant()`
+- [ ] 5.5.4 Test each of the 9 facade methods in GAS
+- [ ] 5.5.5 Deploy to dev: `npm run dev:push`
+- [ ] 5.5.6 Manual test: schedule, update, cancel a real ride
+- [ ] Commit: "Task 5.5: All tests pass with new architecture"
 
 ### Phase 5 Complete Checkpoint
-- [ ] All consumers use v1 format natively
-- [ ] No web format code remains in application layer
-- [ ] All tests pass
-- [ ] Deploy and verify in GAS
-- [ ] Commit: "Phase 5 complete: All consumers use native v1 format"
+
+Before proceeding to Phase 6:
+- [ ] ✅ RWGPSCore.js has 100% test coverage
+- [ ] ✅ RWGPSAdapter.js has NO business logic (only GAS API calls)
+- [ ] ✅ RWGPSFacade.js provides all 9 methods consumers need
+- [ ] ✅ All 554+ Jest tests pass
+- [ ] ✅ GAS integration tests pass
+- [ ] ✅ `npm run validate-all` passes with zero errors
+- [ ] Commit: "Phase 5 complete: New Core/Adapter architecture"
 
 ---
 
-## Phase 6: Clean Up Legacy Code
+## Phase 6: Delete Legacy Code
 
-**Model recommendation**: Haiku 4.5
+**Model recommendation**: Claude 4 Sonnet (straightforward deletion with verification)
 
 ### Goal
-Remove dead code, legacy transformations, and simplify structure.
+Remove the ~3,000 lines of legacy code that the new architecture replaces.
 
-### Task 6.1: Remove web format transformation code
-- [ ] Delete `transformV1EventToWebFormat()` from RWGPSClientCore
-- [ ] Delete `transformWebEventToV1Format()` from RWGPSClientCore
-- [ ] Delete `buildEditEventPayload()` (if replaced by v1 native)
-- [ ] Update type definitions
-- [ ] Run tests
-- [ ] Commit: "Remove web format transformation code"
+### Pre-Deletion Verification
 
-### Task 6.2: Remove RWGPS.js facade (if no longer needed)
-- [ ] Check if anything still imports RWGPS.js
-- [ ] If not, delete it
-- [ ] Run tests
-- [ ] Commit: "Remove unused RWGPS.js"
+**Files to DELETE (after Phase 5)**:
+| File | Lines | Reason |
+|------|-------|--------|
+| RWGPSClient.js | 1,239 | Replaced by RWGPSAdapter + RWGPSFacade |
+| RWGPSClientCore.js | 631 | Replaced by RWGPSCore |
+| RWGPSService.js | 472 | Web API now in RWGPSAdapter |
+| RWGPS.js | 467 | Replaced by RWGPSFacade |
+| ApiService.js | 289 | HTTP handling now in RWGPSAdapter |
+| RWGPSApiLogger.js | 273 | Logging simplified in RWGPSAdapter |
+| CanonicalEvent.js | 59 | Type handling now in RWGPSCore |
+| **Total Deleted** | **3,430** | |
 
-### Task 6.3: Remove RWGPSService.js (if no longer needed)
-- [ ] Check imports
-- [ ] Delete if unused
-- [ ] Run tests
-- [ ] Commit: "Remove unused RWGPSService.js"
+**Files to KEEP**:
+| File | Lines | Reason |
+|------|-------|--------|
+| RWGPSCore.js | ~300 | NEW - Pure JS, 100% tested |
+| RWGPSAdapter.js | ~150 | NEW - Thin GAS wrapper |
+| RWGPSFacade.js | ~100 | NEW - Public API |
+| types.js | 63 | Shared type definitions |
+| CredentialManager.js | 41 | Auth management |
+| RWGPSLibAdapter.js | 45 | Export adapter |
+| **Total Kept** | **~700** | |
 
-### Task 5.3: Simplify ApiService.js
-- [ ] If only used for Basic Auth, simplify
-- [ ] Or merge into RWGPSClient
-- [ ] Run tests
-- [ ] Commit: "Simplify ApiService"
+**Net reduction**: ~3,430 - ~150 (new code) = **~3,280 lines deleted** (91% reduction!)
 
-### Task 5.4: Remove web session login (if no longer needed)
-- [ ] If all operations use v1 API, remove web login code
-- [ ] Run tests
-- [ ] Commit: "Remove web session authentication"
+### Task 6.1: Verify No External Dependencies on Legacy Files
 
-### Task 5.5: Clean up CredentialManager
-- [ ] Remove unused credential types
-- [ ] Run tests
-- [ ] Commit: "Simplify CredentialManager"
+- [ ] 6.1.1 Search for imports: `grep -r "RWGPSClient" src/*.js`
+- [ ] 6.1.2 Search for imports: `grep -r "RWGPSService" src/*.js`
+- [ ] 6.1.3 Search for imports: `grep -r "RWGPS\.js\|from.*RWGPS" src/*.js`
+- [ ] 6.1.4 Search for imports: `grep -r "ApiService" src/*.js`
+- [ ] 6.1.5 Document any remaining references
+- [ ] 6.1.6 Update any remaining references to use new classes
 
-### Task 5.6: Update exports and types
-- [ ] Update RWGPSLibAdapter.js to use RWGPSClient
-- [ ] Update any type definitions
-- [ ] Run tests
-- [ ] Commit: "Update exports to use RWGPSClient"
+### Task 6.2: Delete Legacy Files
 
-### Task 5.7: Final cleanup
-- [ ] Remove RWGPSApiLogger if no longer needed for production
-- [ ] Or keep it for debugging (your choice)
-- [ ] Run full test suite: `npm test`
-- [ ] Commit: "Phase 5 complete: Cleanup done"
+**CRITICAL**: Run full test suite after EACH deletion to catch problems early.
 
+- [ ] 6.2.1 Delete `RWGPSClient.js` → run `npm test`
+- [ ] 6.2.2 Delete `RWGPSClientCore.js` → run `npm test`
+- [ ] 6.2.3 Delete `RWGPSService.js` → run `npm test`
+- [ ] 6.2.4 Delete `RWGPS.js` → run `npm test`
+- [ ] 6.2.5 Delete `ApiService.js` → run `npm test`
+- [ ] 6.2.6 Delete `RWGPSApiLogger.js` → run `npm test`
+- [ ] 6.2.7 Delete `CanonicalEvent.js` → run `npm test`
+- [ ] 6.2.8 Delete associated `.d.ts` files
+- [ ] 6.2.9 Delete legacy test files if any
+- [ ] Commit: "Task 6.2: Delete legacy RWGPSClient/Service/RWGPS files"
+
+### Task 6.3: Update Exports.js
+
+- [ ] 6.3.1 Remove deleted modules from `Exports.js`
+- [ ] 6.3.2 Add new modules to `Exports.js` if needed:
+  ```javascript
+  get RWGPSCore() { return RWGPSCore; },
+  get RWGPSAdapter() { return RWGPSAdapter; },
+  get RWGPSFacade() { return RWGPSFacade; },
+  ```
+- [ ] 6.3.3 Run `npm run validate-exports`
+- [ ] Commit: "Task 6.3: Update Exports.js for new RWGPS modules"
+
+### Task 6.4: Update gas-globals.d.ts
+
+- [ ] 6.4.1 Remove type declarations for deleted files
+- [ ] 6.4.2 Add type declarations for new files
+- [ ] 6.4.3 Run `npm run typecheck`
+- [ ] Commit: "Task 6.4: Update gas-globals.d.ts"
+
+### Task 6.5: Update Externals.d.ts
+
+- [ ] 6.5.1 Update RWGPS interface to match RWGPSFacade
+- [ ] 6.5.2 Remove references to deleted internal classes
+- [ ] 6.5.3 Run `npm run typecheck`
+- [ ] 6.5.4 Run `npm run validate-types`
+- [ ] Commit: "Task 6.5: Update Externals.d.ts"
+
+### Task 6.6: Final Validation
+
+- [ ] 6.6.1 Run full test suite: `npm test`
+- [ ] 6.6.2 Run full validation: `npm run validate-all`
+- [ ] 6.6.3 Check coverage on new Core module:
+      `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSCore.js'`
+      (must show 100% on all metrics)
+- [ ] 6.6.4 Deploy to dev: `npm run dev:push`
+- [ ] 6.6.5 Run GAS integration tests
+- [ ] 6.6.6 Manual test: schedule, update, cancel a ride
+- [ ] 6.6.7 Deploy to prod: `npm run prod:push`
+- [ ] Commit: "Task 6.6: Phase 6 complete - legacy code deleted"
+
+### Phase 6 Complete Checkpoint
+
+**Verify final state**:
+- [ ] ✅ Only 5 files remain in `src/rwgpslib/`:
+  - RWGPSCore.js (~300 lines, 100% coverage)
+  - RWGPSAdapter.js (~150 lines)
+  - RWGPSFacade.js (~100 lines)
+  - types.js (63 lines)
+  - CredentialManager.js (41 lines)
+  - RWGPSLibAdapter.js (45 lines)
+- [ ] ✅ Total lines: ~700 (down from 3,579)
+- [ ] ✅ All 554+ tests pass
+- [ ] ✅ RWGPSCore has 100% test coverage
+- [ ] ✅ Production deployment successful
+- [ ] Commit: "Phase 6 complete: Legacy code removed, 91% size reduction"
+
+### Post-Phase 6: Future v1 API Improvements
+
+When RWGPS improves their v1 API:
+
+1. **Check OpenAPI spec changes**: Compare against `docs/rwgps-openapi.yaml`
+2. **Update RWGPSCore**: Add/modify payload construction methods
+3. **Update RWGPSFacade**: Switch web API calls to v1 where possible
+4. **Run tests**: All existing tests should still pass
+5. **File PR**: Document which operations moved from web to v1
+
+**Key endpoints to watch**:
+- `PUT /api/v1/events/{id}` - When all 12 fields work, remove web API fallback
+- `POST /api/v1/routes` - When import-by-URL works, migrate `importRoute()`
+- `GET /api/v1/users` - When search works, migrate `getOrganizers()`
 ---
 
-## Final Verification
+## Summary: Migration Strategy
 
-- [ ] Run full test suite: `npm test` (all 424+ tests pass)
-- [ ] Run characterization tests: `npm test -- test/__tests__/RWGPSCharacterization.test.js`
-- [ ] Deploy to dev: `npm run dev:push`
-- [ ] Test all 6 operations manually in spreadsheet
-- [ ] If all work: `npm run prod:push`
-- [ ] Merge branch to master
+### API Coverage After All Phases
 
----
+| Operation | v1 API | Web API | Notes |
+|-----------|--------|---------|-------|
+| `get_event` | ✅ | - | v1 native |
+| `edit_event` | ✅ partial | ✅ fallback | v1 for 11 fields, web for organizers |
+| `batch_delete_events` | ✅ | - | v1 native |
+| `get_club_members` | ✅ | - | v1 native (or web if simpler) |
+| `copy_template_` | - | ✅ | No v1 equivalent |
+| `importRoute` | - | ✅ | No v1 equivalent |
+| `getOrganizers` | - | ✅ | No v1 search endpoint |
+| `setRouteExpiration` | - | ✅ | No v1 tag endpoints |
+| `unTagEvents` | - | ✅ | No v1 tag endpoints |
 
-## Status Summary: RWGPSLib Migration & V1 API Assessment
+### Final Metrics
 
-### Current Architecture (Hybrid API Approach)
+| Metric | Before | After Phase 6 | Improvement |
+|--------|--------|---------------|-------------|
+| Total lines | 3,579 | ~700 | **80% reduction** |
+| Files | 10 | 6 | **40% reduction** |
+| Test coverage (Core) | 52% | **100%** | **Full coverage** |
+| GAS API calls | ~20 scattered | ~10 in Adapter | **Centralized** |
+| Business logic testable | ~30% | **100%** | **Fully testable** |
 
-**✅ Fully Migrated to v1 API (via RWGPSClient)**:
-- `createEvent()` - POST /api/v1/events (supports all fields including logo upload)
-- `getEvent()` - GET /api/v1/events/{id} (with v1→web format transformation)
-- `deleteEvent()` - DELETE /api/v1/events/{id}
-- `batch_delete_events()` - Multiple DELETE calls (uses RWGPSClient.deleteEvent)
+### Architecture Compliance
 
-**❌ Must Stay on Web API (via RWGPS class)**:
-- `edit_event()` / `edit_events()` - Web API with double-PUT workaround
-  - Reason: v1 PUT only updates 3 of 12 fields (name, start_date, start_time)
-  - v1 ignores: description, end_date/time, location, visibility, organizers, etc.
-  - See RWGPS_V1_API_BUG_REPORT.md for full details
-- `tagEvents()` / `unTagEvents()` - Web API batch tag operations
-  - Reason: v1 API has NO tag endpoints
-- `importRoute()` - Web API route importing
-  - Reason: v1 API has NO route import/copy endpoint (only GET/POST for own routes)
-- `copy_template_()` - Web API template copying
-  - Reason: v1 API has NO template/copy functionality
-- `getOrganizers()` - Web API organizer lookup
-  - Reason: v1 API has NO organizer search endpoint
-- `getRSVPCounts()` / `getRSVPObject()` - Web API participant data
-  - Reason: v1 API does not expose participants endpoint
-- `get_club_members()` - Web API (but returns v1-compatible format)
-  - Reason: Simpler than v1 paginated API, same data structure
-- `setRouteExpiration()` - Web API route tagging
-  - Reason: v1 API has NO route tag endpoints
-- `getRouteObject()` - Web API (could migrate to v1 GET /api/v1/routes/{id})
+After Phase 6, the rwgpslib will comply with copilot-instructions:
 
-### What Could Still Migrate to v1 API
+- ✅ **Rule 1**: Pure logic in RWGPSCore.js (100% testable in Jest)
+- ✅ **Rule 2**: 100% test coverage on Core modules
+- ✅ **Rule 3**: GAS API calls ONLY in RWGPSAdapter.js (thin wrapper)
+- ✅ **Rule 4**: Dependency injection (Adapter accepts CredentialManager)
+- ✅ **Rule 4.5**: Class pattern with static methods (no namespace IIFE)
 
-**Potential Migrations** (if prioritized):
+### When RWGPS Improves v1 API
 
-1. **`getRouteObject(route_url)` → v1 GET /api/v1/routes/{id}**
-   - v1 endpoint exists and returns full route object
-   - Low impact (only called for route expiration checks)
-   - Effort: Low (simple GET request)
+The new architecture makes future updates trivial:
 
-2. **`get_events(event_urls)` → batch v1 GET requests**
-   - Currently uses web API batch GET
-   - Could use multiple v1 API calls (no native batch in v1)
-   - Effort: Medium (refactor batch to parallel single calls)
-   - Benefit: Minimal (web API batch works fine)
+1. **v1 PUT supports all fields** → Remove web API fallback in `edit_event()`
+2. **v1 adds route import** → Add method to RWGPSCore, update Facade
+3. **v1 adds tag endpoints** → Migrate `unTagEvents()` and `setRouteExpiration()`
+4. **v1 adds user search** → Migrate `getOrganizers()`
 
-**Cannot Migrate** (v1 API missing features):
-
-1. ❌ **Route Importing** - No v1 endpoint to import/copy routes from foreign URLs
-   - Web API: POST /routes/copy with `url` parameter
-   - v1 API: Only POST /api/v1/routes (create new from scratch)
-   - **Blocker**: Cannot replicate "import from URL" functionality
-
-2. ❌ **Template Copying** - No v1 endpoint to copy event templates
-   - Web API: POST /events/copy with template URL
-   - v1 API: Only POST /api/v1/events (create new)
-   - **Blocker**: Would need to GET template → create new (loses template linkage)
-
-3. ❌ **Organizer Search** - No v1 endpoint to search users by name
-   - Web API: GET /events/{id}/organizers?search=name
-   - v1 API: No user search capability
-   - **Blocker**: Cannot lookup organizer IDs by name
-
-4. ❌ **Event Participants** - No v1 endpoint for RSVP data
-   - Web API: GET /events/{id}/participants.json
-   - v1 API: Event responses don't include participants array
-   - **Blocker**: Cannot get RSVP counts or participant lists
-
-5. ❌ **Tag Operations** - No v1 endpoints for tags (events or routes)
-   - Web API: POST /events/batch_update_tags, /routes/{id}/tag
-   - v1 API: No tag endpoints exist
-   - **Blocker**: Cannot manage event/route categorization
-
-6. ❌ **Comprehensive Event Editing** - v1 PUT severely limited
-   - Web API: PUT /events/{id} updates all fields
-   - v1 API: PUT /api/v1/events/{id} only updates name, start_date, start_time
-   - **Blocker**: Cannot update description, organizers, visibility, location, etc.
-
-### RWGPSLib Status
-
-**Can we remove RWGPSLib?** NO - Still needed for:
-- Legacy RWGPS class with web API operations (listed above)
-- Double-PUT workaround for comprehensive event edits
-- Batch operations, template copying, route importing
-- Organizer lookup, RSVP data, tag management
-
-**What changed?** 
-- RWGPSLib now USES RWGPSClient internally for new v1 operations
-- RWGPS class delegates to RWGPSClient where possible (e.g., batch_delete_events)
-- Clean layering: RWGPSClient (v1 native) → RWGPS (web API + v1 facade)
-
-### Recommendation: COMPLETE - Pragmatic Hybrid is Correct
-
-**Phase 4 Status**: ✅ **COMPLETE**
-
-**Decision**: Declare Phase 4 complete with intentional hybrid architecture
-- ✅ Migrated everything that v1 API can handle
-- ✅ Documented v1 API limitations (bug report filed)
-- ✅ Kept web API where v1 is insufficient (pragmatic engineering)
-- ✅ All tests passing (554 tests), production-validated via GAS
-- ✅ Clean separation maintained (v1 via RWGPSClient, web via RWGPS)
-
-**Next Steps**:
-1. File GitHub issue tracking v1 API migration blockers
-2. Deploy to production (`npm run prod:push`)
-3. Set 6-month calendar reminder to recheck v1 API improvements
-4. Run `testV1API_ComprehensiveFieldUpdate()` periodically to detect fixes
-5. When RWGPS fixes v1 PUT: File new issue "Phase 4 Part B: Complete v1 Migration"
-
-**Strategic Position**:
-- Codebase uses best tool for each job (v1 where possible, web where necessary)
-- Well-positioned to incrementally adopt v1 improvements as they come
-- No technical debt - this is intentional design based on real constraints
-- Bug report benefits entire RWGPS developer community
+Each change is isolated, testable, and doesn't ripple through the codebase.
 
 ---
 
@@ -1104,23 +1287,39 @@ Remove dead code, legacy transformations, and simplify structure.
 # All tests
 npm test
 
-# Just characterization tests (fast check)
-npm test -- test/__tests__/RWGPSCharacterization.test.js
+# Coverage for new Core module (must be 100%)
+npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSCore.js'
 
-# Just RWGPSClient tests
-npm test -- test/__tests__/RWGPSClient.test.js
+# Full rwgpslib coverage
+npm test -- --coverage --collectCoverageFrom='src/rwgpslib/*.js'
+
+# Characterization tests (verify behavior)
+npm test -- test/__tests__/RWGPSCharacterization.test.js
 ```
 
-### Fixture Files
+### Key Files (After Phase 6)
+```
+src/rwgpslib/
+├── RWGPSCore.js       # Pure JS business logic (100% tested)
+├── RWGPSAdapter.js    # Thin GAS wrapper (only UrlFetchApp)
+├── RWGPSFacade.js     # Public API (9 methods)
+├── types.js           # Shared type definitions
+├── CredentialManager.js # Auth management
+└── RWGPSLibAdapter.js # Module exports
+```
+
+### Validation Commands
+```bash
+npm run validate-all    # Full validation suite
+npm run typecheck       # TypeScript checking
+npm run validate-types  # .d.ts matches .js
+npm run validate-exports # Module loading order
+```
+
+### Fixture Files (for characterization tests)
 - `test/fixtures/rwgps-api/schedule.json` - 6 API calls
 - `test/fixtures/rwgps-api/update.json` - 4 API calls
 - `test/fixtures/rwgps-api/cancel.json` - 4 API calls
 - `test/fixtures/rwgps-api/reinstate.json` - 4 API calls
 - `test/fixtures/rwgps-api/unschedule.json` - 2 API calls
 - `test/fixtures/rwgps-api/import-route.json` - 4 API calls
-
-### Key Files
-- `src/rwgpslib/RWGPSClient.js` - New unified client (create this)
-- `src/rwgpslib/ApiService.js` - Current fetch handling
-- `src/rwgpslib/CredentialManager.js` - Credential storage
-- `test/mocks/RWGPSMockServer.js` - Mock server for tests
