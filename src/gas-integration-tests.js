@@ -921,6 +921,417 @@ function testRWGPS_BugFixed_SinglePUT() {
 }
 
 /**
+ * OpenAPI-Compliant V1 API Field Update Test
+ * 
+ * Tests ALL fields documented in the OpenAPI EventPayload schema for PUT:
+ * 
+ * From OpenAPI spec (EventPayload):
+ * - name (string)
+ * - description (string, nullable)
+ * - visibility (string: "public", "private", "friends_only")
+ * - location (string)
+ * - lat (number) - Latitude
+ * - lng (number) - Longitude
+ * - time_zone (string, nullable)
+ * - start_date (string, date format: YYYY-MM-DD)
+ * - start_time (string, e.g., "09:00")
+ * - end_date (string, date format: YYYY-MM-DD)
+ * - end_time (string, e.g., "15:00")
+ * - logo (binary) - Tested separately
+ * - banner (binary) - Not tested
+ * - organizers (array of User objects) - NOTE: spec says "organizers", not "organizer_ids"
+ * 
+ * NOT in OpenAPI EventPayload (but we've been using):
+ * - route_ids - NOT DOCUMENTED for PUT
+ * - organizer_ids - NOT DOCUMENTED (should be "organizers")
+ * - all_day - Derived field, read-only (inferred from start/end times)
+ * 
+ * @returns {{success: boolean, findings?: string[], fieldResults?: Object, error?: string}}
+ */
+function testV1API_OpenAPICompliant() {
+    console.log('================================================================');
+    console.log('V1 API OpenAPI-Compliant Field Update Test');
+    console.log('================================================================');
+    console.log('Testing ALL fields from OpenAPI EventPayload schema');
+    console.log('Reference: /components/schemas/EventPayload');
+    console.log('');
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        // @ts-ignore - CredentialManager available in GAS runtime
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        // @ts-ignore - RWGPSClient available in GAS runtime
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated\n');
+        
+        // Look up organizer first (we'll need it for testing)
+        console.log('🔍 Pre-step: Looking up organizer for test...');
+        // @ts-ignore - RWGPSMembersAdapter available in GAS runtime
+        const membersAdapter = new RWGPSMembersAdapter();
+        const lookupResult = membersAdapter.lookupUserIdByName('Toby Ferguson');
+        
+        /** @type {number | null} */
+        let organizerId = null;
+        if (lookupResult.success && lookupResult.userId) {
+            organizerId = lookupResult.userId;
+            console.log(`   ✅ Found organizer: ${lookupResult.name} (User ID: ${organizerId})\n`);
+        } else {
+            console.warn('   ⚠️  Could not lookup organizer, organizer tests will be limited\n');
+        }
+        
+        // ============================================================
+        // STEP 1: Create test event with initial values
+        // ============================================================
+        console.log('📝 Step 1: Creating test event with initial values...');
+        console.log('   (Using fields from OpenAPI EventPayload schema)\n');
+        
+        // Initial values - all fields from OpenAPI EventPayload
+        const initialData = {
+            // Text fields
+            name: 'OPENAPI TEST - Initial Name',
+            description: 'Initial description for OpenAPI compliance testing.',
+            
+            // Date/Time fields
+            start_date: '2030-06-15',
+            start_time: '09:00',
+            end_date: '2030-06-15',
+            end_time: '13:00',
+            
+            // Location fields
+            location: 'Initial Location - Starting Point A',
+            lat: 37.3861,  // Mountain View, CA (approx)
+            lng: -122.0839,
+            time_zone: 'America/Los_Angeles',
+            
+            // Visibility
+            visibility: 'private',
+            
+            // Organizers - OpenAPI spec says "organizers" with User objects
+            // We'll test both formats to see what works
+            organizers: organizerId ? [{ id: organizerId }] : []
+        };
+        
+        console.log('Initial values (OpenAPI EventPayload fields):');
+        console.log(`  name: "${initialData.name}"`);
+        console.log(`  description: "${initialData.description}"`);
+        console.log(`  start_date: ${initialData.start_date}`);
+        console.log(`  start_time: ${initialData.start_time}`);
+        console.log(`  end_date: ${initialData.end_date}`);
+        console.log(`  end_time: ${initialData.end_time}`);
+        console.log(`  location: "${initialData.location}"`);
+        console.log(`  lat: ${initialData.lat}`);
+        console.log(`  lng: ${initialData.lng}`);
+        console.log(`  time_zone: ${initialData.time_zone}`);
+        console.log(`  visibility: ${initialData.visibility}`);
+        console.log(`  organizers: ${JSON.stringify(initialData.organizers)}`);
+        
+        // Create event - need to use raw fetch to send exact OpenAPI format
+        const createResult = client.createEvent(initialData);
+        
+        if (!createResult.success) {
+            console.error('\n❌ Failed to create test event:', createResult.error);
+            return {
+                success: false,
+                error: `Event creation failed: ${createResult.error}`
+            };
+        }
+        
+        console.log(`\n✅ Test event created: ${createResult.eventUrl}`);
+        console.log(`   Event ID: ${createResult.event?.id}\n`);
+        
+        const eventUrl = createResult.eventUrl;
+        const eventId = createResult.event?.id;
+        
+        // Record initial state from API response
+        console.log('📋 Initial state from API response:');
+        const initialEvent = createResult.event;
+        console.log(`   name: ${initialEvent?.name}`);
+        console.log(`   desc: ${initialEvent?.desc}`);
+        console.log(`   start_date: ${initialEvent?.start_date}`);
+        console.log(`   start_time: ${initialEvent?.start_time}`);
+        console.log(`   end_date: ${initialEvent?.end_date}`);
+        console.log(`   end_time: ${initialEvent?.end_time}`);
+        console.log(`   location: ${initialEvent?.location}`);
+        console.log(`   lat: ${initialEvent?.lat}`);
+        console.log(`   lng: ${initialEvent?.lng}`);
+        console.log(`   time_zone: ${initialEvent?.time_zone}`);
+        console.log(`   visibility: ${initialEvent?.visibility}`);
+        console.log(`   all_day: ${initialEvent?.all_day}`);
+        console.log(`   organizer_ids: ${JSON.stringify(initialEvent?.organizer_ids)}`);
+        
+        // ============================================================
+        // STEP 2: Update ALL OpenAPI fields via single PUT
+        // ============================================================
+        console.log('\n🔧 Step 2: Updating ALL OpenAPI EventPayload fields...\n');
+        
+        // Updated values - change EVERYTHING
+        const updatedData = {
+            // Text fields
+            name: 'OPENAPI TEST - Updated Name',
+            description: 'Updated description after OpenAPI compliance testing.',
+            
+            // Date/Time fields - change all
+            start_date: '2030-08-20',
+            start_time: '14:30',
+            end_date: '2030-08-20',
+            end_time: '18:00',
+            
+            // Location fields - change all
+            location: 'Updated Location - Starting Point B',
+            lat: 37.7749,  // San Francisco, CA (approx)
+            lng: -122.4194,
+            time_zone: 'America/New_York', // Change timezone
+            
+            // Visibility - change
+            visibility: 'public',
+            
+            // Test BOTH organizer formats to see which works
+            organizers: organizerId ? [{ id: organizerId }] : [],
+            organizer_ids: organizerId ? [organizerId] : [] // Also try the legacy format
+        };
+        
+        console.log('Updated values (OpenAPI EventPayload fields):');
+        console.log(`  name: "${updatedData.name}"`);
+        console.log(`  description: "${updatedData.description}"`);
+        console.log(`  start_date: ${updatedData.start_date}`);
+        console.log(`  start_time: ${updatedData.start_time}`);
+        console.log(`  end_date: ${updatedData.end_date}`);
+        console.log(`  end_time: ${updatedData.end_time}`);
+        console.log(`  location: "${updatedData.location}"`);
+        console.log(`  lat: ${updatedData.lat}`);
+        console.log(`  lng: ${updatedData.lng}`);
+        console.log(`  time_zone: ${updatedData.time_zone}`);
+        console.log(`  visibility: ${updatedData.visibility}`);
+        console.log(`  organizers: ${JSON.stringify(updatedData.organizers)} (OpenAPI spec format)`);
+        console.log(`  organizer_ids: ${JSON.stringify(updatedData.organizer_ids)} (legacy format)`);
+        
+        console.log('\n   Sending single PUT request...');
+        const editResult = client.testV1SingleEditEvent(eventUrl, updatedData);
+        
+        if (!editResult.success) {
+            console.error('❌ Single PUT failed:', editResult.error);
+            console.log('\n🧹 Cleaning up test event...');
+            client.deleteEvent(eventUrl);
+            return {
+                success: false,
+                error: `Single PUT failed: ${editResult.error}`
+            };
+        }
+        
+        console.log('   ✅ Single PUT completed\n');
+        
+        // ============================================================
+        // STEP 3: Verify ALL fields
+        // ============================================================
+        console.log('🔍 Step 3: Verifying ALL OpenAPI fields...\n');
+        
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to fetch updated event:', getResult.error);
+            console.log('\n🧹 Cleaning up test event...');
+            client.deleteEvent(eventUrl);
+            return {
+                success: false,
+                error: `Failed to verify event: ${getResult.error}`
+            };
+        }
+        
+        const updatedEvent = getResult.event;
+        
+        console.log('📊 Verification Results:\n');
+        console.log('OpenAPI EventPayload Fields:');
+        console.log('─'.repeat(50));
+        
+        /** @type {string[]} */
+        const findings = [];
+        /** @type {Record<string, {expected: any, actual: any, updated: boolean, inSpec: boolean}>} */
+        const fieldResults = {};
+        
+        // Helper function to check field
+        const checkField = (
+            /** @type {string} */ fieldName, 
+            /** @type {any} */ expected, 
+            /** @type {any} */ actual, 
+            /** @type {string} */ displayName,
+            /** @type {boolean} */ inOpenAPISpec = true
+        ) => {
+            // Handle comparison - some fields may be null vs undefined
+            const actualNormalized = actual === null || actual === undefined ? null : actual;
+            const expectedNormalized = expected === null || expected === undefined ? null : expected;
+            const matches = actualNormalized === expectedNormalized || 
+                           (typeof expected === 'number' && typeof actual === 'number' && Math.abs(expected - actual) < 0.001);
+            
+            fieldResults[fieldName] = {
+                expected: expected,
+                actual: actual,
+                updated: matches,
+                inSpec: inOpenAPISpec
+            };
+            
+            const specNote = inOpenAPISpec ? '' : ' [NOT IN OPENAPI SPEC]';
+            
+            if (matches) {
+                console.log(`✅ ${displayName}: ${actual}${specNote}`);
+                findings.push(`✅ ${displayName.toUpperCase()}: Updated correctly${specNote}`);
+            } else {
+                console.log(`❌ ${displayName}: ${actual} (expected: ${expected})${specNote}`);
+                findings.push(`❌ ${displayName.toUpperCase()}: NOT updated - got "${actual}", expected "${expected}"${specNote}`);
+            }
+        };
+        
+        // Check all OpenAPI EventPayload fields
+        checkField('name', updatedData.name, updatedEvent.name, 'Name', true);
+        checkField('description', updatedData.description, updatedEvent.desc, 'Description (desc)', true);
+        checkField('start_date', updatedData.start_date, updatedEvent.start_date, 'Start Date', true);
+        checkField('start_time', updatedData.start_time, updatedEvent.start_time, 'Start Time', true);
+        checkField('end_date', updatedData.end_date, updatedEvent.end_date, 'End Date', true);
+        checkField('end_time', updatedData.end_time, updatedEvent.end_time, 'End Time', true);
+        checkField('location', updatedData.location, updatedEvent.location, 'Location', true);
+        checkField('lat', updatedData.lat, updatedEvent.lat, 'Latitude', true);
+        checkField('lng', updatedData.lng, updatedEvent.lng, 'Longitude', true);
+        checkField('time_zone', updatedData.time_zone, updatedEvent.time_zone, 'Time Zone', true);
+        checkField('visibility', updatedData.visibility, updatedEvent.visibility, 'Visibility', true);
+        
+        // Check organizers (complex field)
+        console.log('');
+        console.log('Organizer Fields:');
+        console.log('─'.repeat(50));
+        
+        const hasOrganizers = updatedEvent.organizer_ids && updatedEvent.organizer_ids.length > 0;
+        const organizerMatches = organizerId && hasOrganizers && 
+                                updatedEvent.organizer_ids.includes(Number(organizerId));
+        
+        fieldResults['organizers'] = {
+            expected: organizerId ? [{ id: organizerId }] : [],
+            actual: updatedEvent.organizer_ids || [],
+            updated: organizerMatches || !organizerId,
+            inSpec: true
+        };
+        
+        if (organizerId) {
+            if (organizerMatches) {
+                console.log(`✅ Organizers: ${JSON.stringify(updatedEvent.organizer_ids)} (includes ${organizerId})`);
+                findings.push('✅ ORGANIZERS: Updated correctly via "organizers" field');
+            } else {
+                console.log(`❌ Organizers: ${JSON.stringify(updatedEvent.organizer_ids || [])} (expected to include ${organizerId})`);
+                findings.push(`❌ ORGANIZERS: NOT updated - got ${JSON.stringify(updatedEvent.organizer_ids || [])}, expected to include ${organizerId}`);
+            }
+        } else {
+            console.log('⚠️  Organizers: Skipped (no organizer available for test)');
+            findings.push('⚠️  ORGANIZERS: Not tested (no organizer ID available)');
+        }
+        
+        // Check derived/read-only fields
+        console.log('');
+        console.log('Derived/Read-Only Fields:');
+        console.log('─'.repeat(50));
+        
+        const allDayCorrect = updatedEvent.all_day === false || updatedEvent.all_day === 'false';
+        fieldResults['all_day'] = {
+            expected: false,
+            actual: updatedEvent.all_day,
+            updated: allDayCorrect,
+            inSpec: false // all_day is NOT in EventPayload, only EventSummary
+        };
+        
+        if (allDayCorrect) {
+            console.log(`✅ All-day: ${updatedEvent.all_day} (correctly inferred from times)`);
+            findings.push('✅ ALL_DAY: Correctly inferred as false [DERIVED, NOT IN EVENTPAYLOAD]');
+        } else {
+            console.log(`⚠️  All-day: ${updatedEvent.all_day} (expected: false)`);
+            findings.push(`⚠️  ALL_DAY: Unexpected value ${updatedEvent.all_day} [DERIVED, NOT IN EVENTPAYLOAD]`);
+        }
+        
+        // Note fields NOT in OpenAPI EventPayload that we've been using
+        console.log('');
+        console.log('Fields NOT in OpenAPI EventPayload (legacy/undocumented):');
+        console.log('─'.repeat(50));
+        console.log('⚠️  route_ids: NOT IN OPENAPI SPEC - cannot test for PUT');
+        console.log('⚠️  organizer_ids: NOT IN OPENAPI SPEC - spec uses "organizers" with User objects');
+        findings.push('⚠️  ROUTE_IDS: Not in OpenAPI EventPayload spec - no documented way to update routes via PUT');
+        findings.push('⚠️  ORGANIZER_IDS: Not in OpenAPI spec - should use "organizers" with User objects');
+        
+        // ============================================================
+        // STEP 4: Cleanup
+        // ============================================================
+        console.log('\n🧹 Step 4: Cleaning up test event...');
+        const deleteResult = client.deleteEvent(eventUrl);
+        
+        if (deleteResult.success) {
+            console.log('✅ Test event deleted');
+        } else {
+            console.warn(`⚠️  Failed to delete test event: ${deleteResult.error}`);
+            console.warn(`   Manual cleanup required: ${eventUrl}`);
+            findings.push(`⚠️  Manual cleanup required: ${eventUrl}`);
+        }
+        
+        // ============================================================
+        // Final Summary
+        // ============================================================
+        console.log('\n' + '='.repeat(70));
+        console.log('📊 SUMMARY: OpenAPI-Compliant Field Update Test Results');
+        console.log('='.repeat(70));
+        
+        const specFields = Object.keys(fieldResults).filter(k => fieldResults[k].inSpec);
+        const workingSpecFields = specFields.filter(k => fieldResults[k].updated);
+        const brokenSpecFields = specFields.filter(k => !fieldResults[k].updated);
+        
+        console.log(`\n📋 OpenAPI EventPayload Fields Tested: ${specFields.length}`);
+        
+        console.log(`\n✅ WORKING (${workingSpecFields.length}/${specFields.length} spec fields):`);
+        workingSpecFields.forEach(f => console.log(`   - ${f}`));
+        
+        console.log(`\n❌ NOT WORKING (${brokenSpecFields.length}/${specFields.length} spec fields):`);
+        brokenSpecFields.forEach(f => {
+            const result = fieldResults[f];
+            console.log(`   - ${f}: sent "${result.expected}", got "${result.actual}"`);
+        });
+        
+        console.log('\n📝 ALL FINDINGS:');
+        findings.forEach((f, i) => console.log(`   ${i + 1}. ${f}`));
+        
+        console.log('\n📖 OPENAPI COMPLIANCE NOTES:');
+        console.log('   • EventPayload schema defines what can be sent in PUT/POST');
+        console.log('   • EventSummary/Event schemas define what is returned');
+        console.log('   • "organizers" field expects array of User objects, not IDs');
+        console.log('   • "route_ids" is NOT in EventPayload - routes may be create-only');
+        console.log('   • "all_day" is NOT in EventPayload - it\'s derived from times');
+        
+        return {
+            success: true,
+            fieldResults: fieldResults,
+            findings: findings,
+            testEventId: eventId,
+            summary: {
+                specFieldsTested: specFields.length,
+                workingSpecFields: workingSpecFields,
+                brokenSpecFields: brokenSpecFields,
+                complianceRate: `${workingSpecFields.length}/${specFields.length} (${Math.round(workingSpecFields.length/specFields.length*100)}%)`
+            }
+        };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error('❌ Test execution failed:', err.message);
+        console.error('   Stack:', err.stack);
+        return {
+            success: false,
+            error: err.message,
+            findings: ['Test execution error - check logs']
+        };
+    }
+}
+
+/**
  * Comprehensive V1 API Field Update Test
  * 
  * Tests ALL fields we use in production to identify which can be updated via PUT:
