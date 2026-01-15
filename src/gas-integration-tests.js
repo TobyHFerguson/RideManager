@@ -921,6 +921,309 @@ function testRWGPS_BugFixed_SinglePUT() {
 }
 
 /**
+ * Comprehensive V1 API Field Update Test
+ * 
+ * Tests ALL fields we use in production to identify which can be updated via PUT:
+ * - name, description
+ * - start_date, start_time, end_date, end_time
+ * - route_ids
+ * - visibility
+ * - location
+ * - organizer_ids
+ * - all_day (derived field - inferred from start/end times)
+ * 
+ * This provides comprehensive data to RWGPS developers and ensures we know
+ * exactly which fields work and which require workarounds.
+ * 
+ * @returns {{success: boolean, findings?: string[], fieldResults?: Object, error?: string}}
+ */
+function testV1API_ComprehensiveFieldUpdate() {
+    console.log('====================================');
+    console.log('V1 API Comprehensive Field Update Test');
+    console.log('====================================');
+    console.log('Testing ALL fields used in production');
+    console.log('');
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        // @ts-ignore - CredentialManager available in GAS runtime
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        // @ts-ignore - RWGPSClient available in GAS runtime
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated\n');
+        
+        // STEP 1: Create test event with initial values
+        console.log('📝 Step 1: Creating test event with initial values...');
+        
+        const initialData = {
+            name: 'FIELD TEST - Initial',
+            description: 'Initial description for comprehensive field testing.',
+            start_date: '2030-06-15',
+            start_time: '09:00',
+            end_date: '2030-06-15',
+            end_time: '13:00', // 4 hour duration
+            visibility: 'private',
+            location: 'Starting Point A',
+            route_ids: ['32614616'], // SCCCC Test Route
+            organizer_ids: [] // Start with no organizers
+        };
+        
+        console.log('Initial values:');
+        console.log(`  name: "${initialData.name}"`);
+        console.log(`  description: "${initialData.description}"`);
+        console.log(`  start_date: ${initialData.start_date}, start_time: ${initialData.start_time}`);
+        console.log(`  end_date: ${initialData.end_date}, end_time: ${initialData.end_time}`);
+        console.log(`  visibility: ${initialData.visibility}`);
+        console.log(`  location: "${initialData.location}"`);
+        console.log(`  route_ids: [${initialData.route_ids.join(', ')}]`);
+        console.log(`  organizer_ids: []`);
+        
+        const createResult = client.createEvent(initialData);
+        
+        if (!createResult.success) {
+            console.error('❌ Failed to create test event:', createResult.error);
+            return {
+                success: false,
+                error: `Event creation failed: ${createResult.error}`
+            };
+        }
+        
+        console.log(`\n✅ Test event created: ${createResult.eventUrl}`);
+        console.log(`   Event ID: ${createResult.event?.id}\n`);
+        
+        const eventUrl = createResult.eventUrl;
+        const eventId = createResult.event?.id;
+        
+        // STEP 2: Update ALL fields via single PUT
+        console.log('🔧 Step 2: Updating ALL fields via single PUT...\n');
+        
+        // Look up organizer from RWGPS Members sheet
+        console.log('   Looking up organizer...');
+        // @ts-ignore - RWGPSMembersAdapter available in GAS runtime
+        const membersAdapter = new RWGPSMembersAdapter();
+        const lookupResult = membersAdapter.lookupUserIdByName('Toby Ferguson');
+        
+        if (!lookupResult.success || !lookupResult.userId) {
+            console.warn('⚠️  Could not lookup organizer, skipping organizer test');
+            console.warn(`   Error: ${lookupResult.error}`);
+        } else {
+            console.log(`   ✅ Found organizer: ${lookupResult.name} (User ID: ${lookupResult.userId})`);
+        }
+        
+        const organizerId = lookupResult.success ? String(lookupResult.userId) : null;
+        
+        // Updated values - change EVERYTHING
+        const updatedData = {
+            name: 'FIELD TEST - Updated',
+            description: 'Updated description after comprehensive testing.',
+            start_date: '2030-08-20', // Change date
+            start_time: '14:30', // Change time
+            end_date: '2030-08-20', // Change end date
+            end_time: '18:00', // Change end time (3.5 hour duration)
+            visibility: 'public', // Change visibility
+            location: 'Updated Starting Point B', // Change location
+            route_ids: ['45758868'], // Different route (SCCCC Long Ride)
+            organizer_ids: organizerId ? [organizerId] : [] // Add organizer if available
+        };
+        
+        console.log('\nUpdated values:');
+        console.log(`  name: "${updatedData.name}"`);
+        console.log(`  description: "${updatedData.description}"`);
+        console.log(`  start_date: ${updatedData.start_date}, start_time: ${updatedData.start_time}`);
+        console.log(`  end_date: ${updatedData.end_date}, end_time: ${updatedData.end_time}`);
+        console.log(`  visibility: ${updatedData.visibility}`);
+        console.log(`  location: "${updatedData.location}"`);
+        console.log(`  route_ids: [${updatedData.route_ids.join(', ')}]`);
+        console.log(`  organizer_ids: [${updatedData.organizer_ids.join(', ')}]`);
+        
+        console.log('\n   Sending single PUT request...');
+        const editResult = client.testV1SingleEditEvent(eventUrl, updatedData);
+        
+        if (!editResult.success) {
+            console.error('❌ Single PUT failed:', editResult.error);
+            console.log('\n🧹 Cleaning up test event...');
+            client.deleteEvent(eventUrl);
+            return {
+                success: false,
+                error: `Single PUT failed: ${editResult.error}`
+            };
+        }
+        
+        console.log('   ✅ Single PUT completed\n');
+        
+        // STEP 3: Verify ALL fields
+        console.log('🔍 Step 3: Verifying ALL fields...\n');
+        
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to fetch updated event:', getResult.error);
+            console.log('\n🧹 Cleaning up test event...');
+            client.deleteEvent(eventUrl);
+            return {
+                success: false,
+                error: `Failed to verify event: ${getResult.error}`
+            };
+        }
+        
+        const updatedEvent = getResult.event;
+        
+        console.log('📊 Verification Results:');
+        console.log('');
+        
+        /** @type {string[]} */
+        const findings = [];
+        const fieldResults = {};
+        
+        // Helper function to check field
+        const checkField = (/** @type {string} */ fieldName, /** @type {any} */ expected, /** @type {any} */ actual, /** @type {string} */ displayName) => {
+            const matches = actual === expected;
+            fieldResults[fieldName] = {
+                expected: expected,
+                actual: actual,
+                updated: matches
+            };
+            
+            if (matches) {
+                console.log(`✅ ${displayName}: ${actual}`);
+                findings.push(`✅ ${displayName.toUpperCase()}: Updated correctly`);
+            } else {
+                console.log(`❌ ${displayName}: ${actual} (expected: ${expected})`);
+                findings.push(`❌ ${displayName.toUpperCase()}: NOT updated - got "${actual}", expected "${expected}"`);
+            }
+        };
+        
+        // Check each field
+        checkField('name', updatedData.name, updatedEvent.name, 'Name');
+        checkField('description', updatedData.description, updatedEvent.desc, 'Description');
+        checkField('start_date', updatedData.start_date, updatedEvent.start_date, 'Start Date');
+        checkField('start_time', updatedData.start_time, updatedEvent.start_time, 'Start Time');
+        checkField('end_date', updatedData.end_date, updatedEvent.end_date, 'End Date');
+        checkField('end_time', updatedData.end_time, updatedEvent.end_time, 'End Time');
+        checkField('visibility', updatedData.visibility, updatedEvent.visibility, 'Visibility');
+        checkField('location', updatedData.location, updatedEvent.location, 'Location');
+        
+        // Check route_ids (array comparison)
+        const routesMatch = updatedEvent.routes && 
+                           updatedEvent.routes.length === 1 && 
+                           String(updatedEvent.routes[0].id) === updatedData.route_ids[0];
+        fieldResults['route_ids'] = {
+            expected: updatedData.route_ids,
+            actual: updatedEvent.routes ? updatedEvent.routes.map((/** @type {{id: any}} */ r) => String(r.id)) : [],
+            updated: routesMatch
+        };
+        
+        if (routesMatch) {
+            console.log(`✅ Route IDs: [${updatedEvent.routes[0].id}]`);
+            findings.push('✅ ROUTE_IDS: Updated correctly');
+        } else {
+            const actualRoutes = updatedEvent.routes ? updatedEvent.routes.map((/** @type {{id: any}} */ r) => r.id).join(', ') : 'none';
+            console.log(`❌ Route IDs: [${actualRoutes}] (expected: [${updatedData.route_ids.join(', ')}])`);
+            findings.push(`❌ ROUTE_IDS: NOT updated - got [${actualRoutes}], expected [${updatedData.route_ids.join(', ')}]`);
+        }
+        
+        // Check organizer_ids (array comparison) - only if we had an organizer to add
+        if (organizerId) {
+            const organizersMatch = updatedEvent.organizer_ids && 
+                                   updatedEvent.organizer_ids.length > 0 &&
+                                   updatedEvent.organizer_ids.includes(Number(organizerId));
+            fieldResults['organizer_ids'] = {
+                expected: [organizerId],
+                actual: updatedEvent.organizer_ids || [],
+                updated: organizersMatch
+            };
+            
+            if (organizersMatch) {
+                console.log(`✅ Organizer IDs: [${updatedEvent.organizer_ids.join(', ')}]`);
+                findings.push('✅ ORGANIZER_IDS: Updated correctly');
+            } else {
+                const actualOrgs = updatedEvent.organizer_ids ? updatedEvent.organizer_ids.join(', ') : 'none';
+                console.log(`❌ Organizer IDs: [${actualOrgs}] (expected: [${organizerId}])`);
+                findings.push(`❌ ORGANIZER_IDS: NOT updated - got [${actualOrgs}], expected [${organizerId}]`);
+            }
+        } else {
+            console.log('⚠️  Organizer IDs: Skipped (no organizer available)');
+            findings.push('⚠️  ORGANIZER_IDS: Not tested (organizer lookup failed)');
+        }
+        
+        // Check all_day (derived field)
+        const allDayCorrect = updatedEvent.all_day === false || updatedEvent.all_day === 'false';
+        fieldResults['all_day'] = {
+            expected: false,
+            actual: updatedEvent.all_day,
+            updated: allDayCorrect
+        };
+        
+        if (allDayCorrect) {
+            console.log(`✅ All-day (derived): ${updatedEvent.all_day}`);
+            findings.push('✅ ALL_DAY: Correctly inferred as false from start_time/end_time');
+        } else {
+            console.log(`⚠️  All-day (derived): ${updatedEvent.all_day} (expected: false)`);
+            findings.push(`⚠️  ALL_DAY: Unexpected value ${updatedEvent.all_day}`);
+        }
+        
+        // STEP 4: Cleanup
+        console.log('\n🧹 Step 4: Cleaning up test event...');
+        const deleteResult = client.deleteEvent(eventUrl);
+        
+        if (deleteResult.success) {
+            console.log('✅ Test event deleted');
+        } else {
+            console.warn(`⚠️  Failed to delete test event: ${deleteResult.error}`);
+            console.warn(`   Manual cleanup required: ${eventUrl}`);
+            findings.push(`⚠️  Manual cleanup required: ${eventUrl}`);
+        }
+        
+        // Final summary
+        console.log('\n' + '='.repeat(60));
+        console.log('📊 SUMMARY: Field Update Test Results');
+        console.log('='.repeat(60));
+        
+        const workingFields = Object.keys(fieldResults).filter(k => fieldResults[k].updated);
+        const brokenFields = Object.keys(fieldResults).filter(k => !fieldResults[k].updated);
+        
+        console.log(`\n✅ WORKING (${workingFields.length} fields):`);
+        workingFields.forEach(f => console.log(`   - ${f}`));
+        
+        console.log(`\n❌ NOT WORKING (${brokenFields.length} fields):`);
+        brokenFields.forEach(f => console.log(`   - ${f}`));
+        
+        console.log('\n📝 FINDINGS FOR RWGPS:');
+        findings.forEach((f, i) => console.log(`   ${i + 1}. ${f}`));
+        
+        return {
+            success: true,
+            fieldResults: fieldResults,
+            findings: findings,
+            testEventId: eventId,
+            summary: {
+                workingFields: workingFields,
+                brokenFields: brokenFields,
+                totalTested: Object.keys(fieldResults).length
+            }
+        };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error('❌ Test execution failed:', err.message);
+        console.error('   Stack:', err.stack);
+        return {
+            success: false,
+            error: err.message,
+            findings: ['Test execution error - check logs']
+        };
+    }
+}
+
+/**
  * Simple credential test
  */
 function testCredentials() {
