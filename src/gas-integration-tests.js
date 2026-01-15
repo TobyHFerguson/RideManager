@@ -749,7 +749,7 @@ function testRWGPS_BugFixed_SinglePUT() {
         console.log('   Looking up organizer from RWGPS Members sheet...');
         
         // @ts-ignore - RWGPSMembersAdapter available in GAS runtime
-        const membersAdapter = new RWGPSMembersAdapter(null); // rwgps param not needed for lookup
+        const membersAdapter = new RWGPSMembersAdapter(); // No rwgps needed for lookup
         const lookupResult = membersAdapter.lookupUserIdByName('Toby Ferguson');
         
         if (!lookupResult.success || !lookupResult.userId) {

@@ -28,13 +28,10 @@ if (typeof require !== 'undefined') {
 class RWGPSMembersAdapter {
     /**
      * Creates a new RWGPSMembersAdapter
-     * @param {import('./Externals').RWGPS} rwgps Object from RWGPSLib
+     * @param {import('./Externals').RWGPS | null} [rwgps=null] - Object from RWGPSLib (required for updateMembers, optional for lookups)
      * @param {string} [sheetName='RWGPS Members'] - Name of the sheet to manage
          */
-        constructor(rwgps, sheetName = 'RWGPS Members') {
-            if (!rwgps) {
-                throw new Error('RWGPSMembersAdapter requires a valid RWGPS instance');
-            }
+        constructor(rwgps = null, sheetName = 'RWGPS Members') {
             this.rwgps = rwgps;
             this.sheetName = sheetName;
             this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -50,6 +47,11 @@ class RWGPSMembersAdapter {
          */
         updateMembers() {
             try {
+                // Validate rwgps instance is available
+                if (!this.rwgps) {
+                    throw new Error('RWGPS instance is required for updateMembers(). Pass rwgps to constructor.');
+                }
+                
                 // Fetch raw data from RWGPS API (GAS operation)
                 // @ts-expect-error - get_club_members is defined in RWGPSLib
                 const rawData = this.rwgps.get_club_members();
