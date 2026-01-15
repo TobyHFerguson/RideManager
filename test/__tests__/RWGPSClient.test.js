@@ -814,9 +814,11 @@ describe('RWGPSClient', () => {
             // Use mocks instead of fixture (fixture has complex multi-call flow)
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: true,
-                eventUrl: 'https://ridewithgps.com/events/444070-new-event'
+                eventUrl: 'https://ridewithgps.com/events/444070-new-event',
+                event: { id: 444070 }
             });
             jest.spyOn(client, '_lookupOrganizer').mockReturnValue({
                 success: true,
@@ -831,7 +833,6 @@ describe('RWGPSClient', () => {
                     starts_at: '2030-03-01T10:00:00-08:00'
                 }
             });
-            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
 
             const templateUrl = 'https://ridewithgps.com/events/404019-b-template';
             const eventData = {
@@ -854,9 +855,11 @@ describe('RWGPSClient', () => {
         it('should pass organizer tokens to editEvent', () => {
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: true,
-                eventUrl: 'https://ridewithgps.com/events/444070'
+                eventUrl: 'https://ridewithgps.com/events/444070',
+                event: { id: 444070 }
             });
             jest.spyOn(client, '_lookupOrganizer').mockReturnValue({
                 success: true,
@@ -866,7 +869,6 @@ describe('RWGPSClient', () => {
                 success: true,
                 event: { id: 444070, name: 'Test' }
             });
-            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
 
             client.scheduleEvent(
                 'https://ridewithgps.com/events/404019',
@@ -896,12 +898,13 @@ describe('RWGPSClient', () => {
         });
 
         it('should return error if template copy fails', () => {
-            // Mock login success but copyTemplate failure
+            // Mock login success but createEvent failure
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: false,
-                error: 'Copy failed'
+                error: 'Create failed'
             });
 
             const result = client.scheduleEvent(
@@ -911,16 +914,18 @@ describe('RWGPSClient', () => {
             );
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('copy template');
+            expect(result.error).toContain('create event');
         });
 
         it('should continue if organizer not found', () => {
             // Mock successful flow but organizer lookup fails
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: true,
-                eventUrl: 'https://ridewithgps.com/events/444070'
+                eventUrl: 'https://ridewithgps.com/events/444070',
+                event: { id: 444070 }
             });
             jest.spyOn(client, '_lookupOrganizer').mockReturnValue({
                 success: false,
@@ -930,7 +935,6 @@ describe('RWGPSClient', () => {
                 success: true,
                 event: { id: 444070, name: 'Test Event' }
             });
-            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
 
             const result = client.scheduleEvent(
                 'https://ridewithgps.com/events/404019',
@@ -945,9 +949,11 @@ describe('RWGPSClient', () => {
         it('should delete new event if edit fails', () => {
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: true,
-                eventUrl: 'https://ridewithgps.com/events/444070'
+                eventUrl: 'https://ridewithgps.com/events/444070',
+                event: { id: 444070 }
             });
             jest.spyOn(client, 'editEvent').mockReturnValue({
                 success: false,
@@ -967,19 +973,19 @@ describe('RWGPSClient', () => {
         });
 
         it('should still succeed if tag removal fails', () => {
+            // NOTE: scheduleEvent no longer calls _removeEventTags (removed when migrated to v1 API)
+            // This test verifies that the overall flow still works
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: true,
-                eventUrl: 'https://ridewithgps.com/events/444070'
+                eventUrl: 'https://ridewithgps.com/events/444070',
+                event: { id: 444070 }
             });
             jest.spyOn(client, 'editEvent').mockReturnValue({
                 success: true,
                 event: { id: 444070, name: 'Test Event' }
-            });
-            jest.spyOn(client, '_removeEventTags').mockReturnValue({
-                success: false,
-                error: 'Tag removal failed'
             });
 
             const result = client.scheduleEvent(
@@ -988,7 +994,7 @@ describe('RWGPSClient', () => {
                 []
             );
 
-            // Should still succeed - tag removal failure is non-fatal
+            // Should succeed
             expect(result.success).toBe(true);
             expect(result.eventUrl).toBe('https://ridewithgps.com/events/444070');
         });
@@ -996,15 +1002,16 @@ describe('RWGPSClient', () => {
         it('should handle empty organizer names', () => {
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: true,
-                eventUrl: 'https://ridewithgps.com/events/444070'
+                eventUrl: 'https://ridewithgps.com/events/444070',
+                event: { id: 444070 }
             });
             jest.spyOn(client, 'editEvent').mockReturnValue({
                 success: true,
                 event: { id: 444070, name: 'Test Event' }
             });
-            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
 
             const result = client.scheduleEvent(
                 'https://ridewithgps.com/events/404019',
@@ -1018,15 +1025,16 @@ describe('RWGPSClient', () => {
         it('should handle null organizer names', () => {
             jest.spyOn(client, 'login').mockReturnValue(true);
             client.webSessionCookie = 'test-cookie';
-            jest.spyOn(client, 'copyTemplate').mockReturnValue({
+            // scheduleEvent now uses createEvent() instead of copyTemplate()
+            jest.spyOn(client, 'createEvent').mockReturnValue({
                 success: true,
-                eventUrl: 'https://ridewithgps.com/events/444070'
+                eventUrl: 'https://ridewithgps.com/events/444070',
+                event: { id: 444070 }
             });
             jest.spyOn(client, 'editEvent').mockReturnValue({
                 success: true,
                 event: { id: 444070, name: 'Test Event' }
             });
-            jest.spyOn(client, '_removeEventTags').mockReturnValue({ success: true });
 
             const result = client.scheduleEvent(
                 'https://ridewithgps.com/events/404019',
