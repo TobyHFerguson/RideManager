@@ -745,22 +745,26 @@ function testRWGPS_BugFixed_SinglePUT() {
         // STEP 2: Test single PUT with organizers + date change
         console.log('\n🔧 Step 2: Testing single PUT with organizers + date change...');
         
-        // Get organizer ID for test
-        console.log('   Looking up organizer...');
-        const organizerResult = client._lookupOrganizer(eventUrl, 'Toby Ferguson');
+        // Look up organizer from RWGPS Members sheet
+        console.log('   Looking up organizer from RWGPS Members sheet...');
         
-        if (!organizerResult.success || !organizerResult.organizer) {
-            console.error('❌ Failed to lookup organizer:', organizerResult.error);
+        // @ts-ignore - RWGPSMembersAdapter available in GAS runtime
+        const membersAdapter = new RWGPSMembersAdapter(null); // rwgps param not needed for lookup
+        const lookupResult = membersAdapter.lookupUserIdByName('Toby Ferguson');
+        
+        if (!lookupResult.success || !lookupResult.userId) {
+            console.error('❌ Failed to lookup organizer from sheet:', lookupResult.error);
+            console.warn('⚠️  Hint: Run daily RWGPS members sync first, or check RWGPS Members sheet exists');
             console.log('\n🧹 Cleaning up test event...');
             client.deleteEvent(eventUrl);
             return {
                 success: false,
-                error: `Organizer lookup failed: ${organizerResult.error}`
+                error: `Organizer lookup failed: ${lookupResult.error}. Run RWGPS members sync first.`
             };
         }
         
-        const organizerId = String(organizerResult.organizer.id);
-        console.log(`✅ Found organizer: ${organizerResult.organizer.text} (ID: ${organizerId})`);
+        const organizerId = String(lookupResult.userId);
+        console.log(`✅ Found organizer: ${lookupResult.name} (User ID: ${organizerId})`);
         
         // Single PUT with NEW date + organizer
         const updateData = {

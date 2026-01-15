@@ -138,6 +138,36 @@ class RWGPSMembersAdapter {
         }
 
         /**
+         * Look up user ID by name from the members sheet
+         * Used for organizer lookup when scheduling events
+         * 
+         * @param {string} organizerName - Name to search for
+         * @returns {{success: boolean, userId?: number, name?: string, error?: string}} Result with userId if found
+         */
+        lookupUserIdByName(organizerName) {
+            try {
+                // Get Fiddler instance
+                const fiddler = bmPreFiddler.PreFiddler().getFiddler({
+                    sheetName: this.sheetName,
+                    createIfMissing: false
+                });
+
+                // Read data from sheet
+                const members = fiddler.getData();
+
+                // Use Core logic for lookup
+                return RWGPSMembersCore.lookupUserIdByName(members, organizerName);
+
+            } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                return {
+                    success: false,
+                    error: `Failed to lookup organizer: ${err.message}`
+                };
+            }
+        }
+
+        /**
          * Delete the members sheet (for cleanup)
          * @returns {boolean} True if sheet was deleted, false if it didn't exist
          */

@@ -11,17 +11,17 @@
 class RWGPSMembersCore {
     /**
      * Transform RWGPS API member data to spreadsheet format
-     * Extracts first_name and last_name from user object, concatenates with space
+     * Extracts first_name, last_name, and user ID from API response
      * 
      * @param {any[]} membersData - Raw JSON array from RWGPS API
-     * @returns {Array<{Name: string}>} Array of objects with Name field: [{Name: "First Last"}, ...]
+     * @returns {Array<{Name: string, UserID: number}>} Array of objects with Name and UserID: [{Name: "First Last", UserID: 456}, ...]
      * 
      * @example
      * const input = [{
-     *   user: { first_name: "John", last_name: "Doe" }
+     *   user: { id: 456, first_name: "John", last_name: "Doe" }
      * }];
      * const output = transformMembersData(input);
-     * // output: [{Name: "John Doe"}]
+     * // output: [{Name: "John Doe", UserID: 456}]
      */
     static transformMembersData(membersData) {
         if (!Array.isArray(membersData)) {
@@ -38,7 +38,12 @@ class RWGPSMembersCore {
                 throw new Error('Member missing user object');
             }
 
-            const { first_name, last_name } = member.user;
+            const { id, first_name, last_name } = member.user;
+
+            // Validate user ID is present
+            if (id === undefined || id === null) {
+                throw new Error('User missing id field');
+            }
 
             // Handle missing names - use empty string if not present
             const firstName = first_name || '';
@@ -47,7 +52,10 @@ class RWGPSMembersCore {
             // Concatenate with space, trim to handle cases where one name is missing
             const fullName = `${firstName} ${lastName}`.trim();
 
-            return { Name: fullName };
+            return { 
+                Name: fullName,
+                UserID: Number(id)
+            };
         }).sort((a, b) => a.Name.localeCompare(b.Name));
     }
 
@@ -89,8 +97,8 @@ class RWGPSMembersCore {
      * Filter out members with empty names
      * Useful for cleaning up data where both first and last names are missing
      * 
-     * @param {Array<{Name: string}>} members - Array of {Name: string} objects
-     * @returns {Array<{Name: string}>} Filtered array excluding empty names
+     * @param {Array<{Name: string, UserID: number}>} members - Array of {Name, UserID} objects
+     * @returns {Array<{Name: string, UserID: number}>} Filtered array excluding empty names
      */
     static filterEmptyNames(members) {
         if (!Array.isArray(members)) {
