@@ -1,155 +1,174 @@
-# RWGPS v1 API Bug Report: PUT Does Not Update Event Date
+# RWGPS v1 API Bug Report: PUT Updates Only 3 of 12 OpenAPI Fields
 
 ## Summary
 
-The v1 REST API endpoint `PUT /api/v1/events/{id}.json` does not update the `start_date` field. Other fields including `name`, `description`, and `start_time` update correctly, but the date remains unchanged.
+The v1 REST API endpoint `PUT /api/v1/events/{id}.json` has **severe limitations** - only **3 of 12 fields** defined in the OpenAPI `EventPayload` schema can be updated: `name`, `start_date`, and `start_time`. 
 
-## Reproduction Steps
+**Nine fields documented in the OpenAPI spec are silently ignored**, including `description`, `end_date`, `end_time`, `location`, `lat`, `lng`, `time_zone`, `visibility`, and `organizers`.
 
-### Test 1: Single PUT Request
+This makes the v1 API unsuitable for comprehensive event editing.
 
-1. **Get an existing event** via `GET /api/v1/events/{id}.json`
-   ```json
-   {
-     "event": {
-       "id": 445203,
-       "start_date": "2030-03-01",
-       "start_time": "11:00",
-       "all_day": false,
-       "name": "Fri B (3/1 11:00) CCP - Rancho San Vicente..."
-     }
-   }
-   ```
+## Test Methodology
 
-2. **Send single PUT** with updated date and time:
-   ```bash
-   PUT /api/v1/events/445203.json
-   Authorization: Basic {base64(apiKey:authToken)}
-   Content-Type: application/json
-   
-   {
-     "event": {
-       "name": "Fri B (3/1 11:00) CCP... [V1 TEST]",
-       "description": "...",
-       "start_date": "2030-04-15",
-       "start_time": "18:30",
-       "all_day": "0"
-     }
-   }
-   ```
+We created a comprehensive test (`testV1API_OpenAPICompliant()`) that:
+1. Creates a test event with initial values for ALL OpenAPI EventPayload fields
+2. Sends a single PUT request updating ALL fields to new values
+3. Verifies which fields actually changed
+4. Cleans up (deletes) the test event
 
-3. **Response** (HTTP 200):
-   ```json
-   {
-     "event": {
-       "id": 445203,
-       "start_date": "2030-03-01",  // ❌ NOT updated (sent 2030-04-15)
-       "start_time": "18:30",        // ✅ Updated correctly
-       "all_day": false,
-       "name": "Fri B (3/1 11:00) CCP... [V1 TEST]"  // ✅ Updated correctly
-     }
-   }
-   ```
+**Test strictly follows the OpenAPI specification** (reference: `/components/schemas/EventPayload`).
 
-**Result**: `name` and `start_time` update correctly, but `start_date` remains unchanged.
+## OpenAPI EventPayload Schema Fields Tested
 
-### Test 2: Double-PUT Pattern (all_day workaround)
+Per the OpenAPI spec, `EventPayload` defines these writable fields:
+- `name` (string)
+- `description` (string)
+- `start_date` (string, format: date)
+- `start_time` (string)
+- `end_date` (string, format: date)
+- `end_time` (string)
+- `location` (string)
+- `lat` (number)
+- `lng` (number)
+- `time_zone` (string)
+- `visibility` (enum: public, private, managers_only)
+- `organizers` (array of User objects)
 
-We also tested the "double-edit" pattern that works for the legacy web API:
+**Note**: Fields like `route_ids`, `organizer_ids`, and `all_day` are **NOT in the EventPayload schema**.
 
-1. **First PUT** with `all_day: "1"`:
-   ```json
-   {
-     "event": {
-       "start_date": "2030-04-15",
-       "start_time": "14:30",
-       "all_day": "1"
-     }
-   }
-   ```
-   Response: `start_date: "2030-03-01"`, `start_time: "14:30"`, `all_day: false`
+## Test Results (January 14, 2026)
 
-2. **Second PUT** with `all_day: "0"`:
-   ```json
-   {
-     "event": {
-       "start_date": "2030-04-15",
-       "start_time": "14:30",
-       "all_day": "0"
-     }
-   }
-   ```
-   Response: `start_date: "2030-03-01"`, `start_time: "14:30"`, `all_day: false`
+### Summary Table
 
-**Result**: Even with double-edit, `start_date` does NOT update. Also, `all_day` never changed to `true` despite sending `"1"`.
+| OpenAPI Field | Sent Value | Received Value | Status |
+|---------------|------------|----------------|--------|
+| `name` | "OPENAPI TEST - Updated Name" | "OPENAPI TEST - Updated Name" | ✅ **WORKING** |
+| `start_date` | "2030-08-20" | "2030-08-20" | ✅ **WORKING** |
+| `start_time` | "14:30" | "14:30" | ✅ **WORKING** |
+| `description` | "Updated description..." | `undefined` | ❌ **BROKEN** |
+| `end_date` | "2030-08-20" | `null` | ❌ **IGNORED** |
+| `end_time` | "18:00" | `null` | ❌ **IGNORED** |
+| `location` | "Updated Location - Starting Point B" | "Initial Location - Starting Point A" | ❌ **IGNORED** |
+| `lat` | 37.7749 | `null` | ❌ **IGNORED** |
+| `lng` | -122.4194 | `null` | ❌ **IGNORED** |
+| `time_zone` | "America/New_York" | "America/Los_Angeles" | ❌ **IGNORED** |
+| `visibility` | "public" | "managers_only" | ❌ **IGNORED** |
+| `organizers` | `[{id: 302732}]` | `[]` | ❌ **IGNORED** |
 
-## Summary of Field Update Behavior
+**Result**: Only **3 of 12 OpenAPI EventPayload fields** can be updated via PUT.
 
-| Field | Single PUT | Double-PUT | Notes |
-|-------|------------|------------|-------|
-| `name` | ✅ Works | ✅ Works | |
-| `description` | ✅ Works | ✅ Works | |
-| `start_time` | ✅ Works | ✅ Works | |
-| `start_date` | ❌ Ignored | ❌ Ignored | **BUG: Never updates** |
-| `all_day` | ❌ Ignored | ❌ Ignored | Stays `false` even when sending `"1"` or `true` |
+### Derived/Read-Only Fields (Not in EventPayload)
 
-## Expected Behavior
+| Field | Behavior | Notes |
+|-------|----------|-------|
+| `all_day` | Correctly inferred | Derived from start/end times; not writable |
+| `route_ids` | N/A | **Not in EventPayload spec** - cannot test |
+| `organizer_ids` | N/A | **Not in OpenAPI spec** - use `organizers` instead |
 
-A PUT request should update all provided fields, including `start_date`.
+## Reproduction Example
 
-## Questions for RWGPS Developers
+### Test Payload (OpenAPI-Compliant)
 
-1. **Is `start_date` intentionally read-only?** If so, what is the correct way to reschedule an event to a different date via the v1 API?
-
-2. **Is `all_day` writable?** We noticed it's not listed in the `EventPayload` schema (only in `EventSummary`). Should we be able to change an event between all-day and timed modes?
-
-3. **Is there a different endpoint or method for rescheduling events?** Perhaps a separate "reschedule" action?
-
-4. **Are there restrictions based on event state?** (e.g., events with participants, past events, etc.)
-
-## Environment
-
-- **API Version**: v1 REST API (`/api/v1/events/{id}.json`)
-- **Authentication**: Basic Auth with `apiKey:authToken`
-- **Content-Type**: `application/json`
-- **Tested**: January 13, 2026
-- **Event ID**: 445203 (user-owned event, no participants)
-- **Event Date**: Future date (2030-03-01)
-
-## Payload Format Tested
-
-We confirmed we're using the correct v1 API format:
 ```json
+PUT /api/v1/events/453384.json
+Authorization: Basic {base64(apiKey:authToken)}
+Content-Type: application/json
+
 {
   "event": {
-    "name": "string",
-    "description": "string",
-    "start_date": "YYYY-MM-DD",
-    "start_time": "HH:MM",
-    "all_day": "0" | "1" | true | false
+    "name": "OPENAPI TEST - Updated Name",
+    "description": "Updated description after OpenAPI compliance testing.",
+    "start_date": "2030-08-20",
+    "start_time": "14:30",
+    "end_date": "2030-08-20",
+    "end_time": "18:00",
+    "location": "Updated Location - Starting Point B",
+    "lat": 37.7749,
+    "lng": -122.4194,
+    "time_zone": "America/New_York",
+    "visibility": "public",
+    "organizers": [{"id": 302732}]
   }
 }
 ```
 
-We also tried:
-- Boolean values for `all_day`: `true`/`false`
-- String values for `all_day`: `"0"`/`"1"`
-- ISO timestamp format: `starts_at: "2030-04-15T18:30:00"`
+### API Response (HTTP 200)
 
-None of these variations allowed updating `start_date`.
+```json
+{
+  "event": {
+    "id": 453384,
+    "name": "OPENAPI TEST - Updated Name",      // ✅ Updated
+    "desc": null,                                // ❌ description ignored
+    "start_date": "2030-08-20",                  // ✅ Updated  
+    "start_time": "14:30",                       // ✅ Updated
+    "end_date": null,                            // ❌ end_date ignored
+    "end_time": null,                            // ❌ end_time ignored
+    "location": "Initial Location - Starting Point A",  // ❌ location ignored
+    "lat": null,                                 // ❌ lat ignored
+    "lng": null,                                 // ❌ lng ignored
+    "time_zone": "America/Los_Angeles",          // ❌ time_zone ignored
+    "visibility": "managers_only",               // ❌ visibility ignored
+    "organizer_ids": [],                         // ❌ organizers ignored
+    "all_day": false
+  }
+}
+```
 
-## Current Workaround
+## Expected Behavior
 
-For now, we'll keep the date update limitation in mind:
-- Use v1 API for: name, description, time, organizers, routes
-- For date changes: May need to delete and recreate the event
+Per the OpenAPI specification, `PUT /api/v1/events/{id}.json` should accept an `EventPayload` object and update all provided fields on the event.
 
-## Request
+**Current behavior**: Only `name`, `start_date`, and `start_time` are honored. All other fields in the EventPayload schema are silently ignored with no error.
 
-Could you clarify whether `start_date` is intended to be updatable via the v1 PUT endpoint, and if so, what the correct format/approach should be?
+## Questions for RWGPS Developers
 
-Thank you for your help!
+1. **Are the 9 broken fields intentionally not implemented?** The OpenAPI spec defines them in `EventPayload`, but they don't work.
+
+2. **What is the correct format for `organizers`?** We used `[{id: 302732}]` per the spec (array of User objects), but it was ignored.
+
+3. **How can we update event visibility?** Sending `visibility: "public"` is ignored.
+
+4. **How can we set event duration?** `end_date` and `end_time` are ignored, making it impossible to specify when an event ends.
+
+5. **Is there a different endpoint for updating these fields?** Perhaps a PATCH endpoint or field-specific endpoints?
+
+6. **How can we update event routes?** `route_ids` is not in EventPayload - is there another way to modify routes after event creation?
+
+## Impact
+
+This limitation severely impacts event management applications:
+
+- ❌ **Cannot update event descriptions** (critical for ride details)
+- ❌ **Cannot change event visibility** (stuck on `managers_only`)
+- ❌ **Cannot set event duration** (no end date/time)
+- ❌ **Cannot assign organizers** (empty organizer list)
+- ❌ **Cannot update location** (critical for ride start points)
+- ❌ **Cannot change time zones** (important for multi-region events)
+- ❌ **Cannot set GPS coordinates** (lat/lng ignored)
+
+## Environment
+
+- **API Version**: v1 REST API (`/api/v1/events/{id}.json`)
+- **OpenAPI Reference**: `/components/schemas/EventPayload`
+- **Authentication**: Basic Auth with `apiKey:authToken`
+- **Content-Type**: `application/json`
+- **Tested**: January 14, 2026
+- **Test Event ID**: 453384 (newly created, no participants)
+- **Event Date**: Future date (2030)
+
+## Test Code
+
+Full test implementation available in `gas-integration-tests.js`:
+- `testV1API_OpenAPICompliant()` - Tests all 12 EventPayload fields
+
+The test:
+1. Creates event with initial values
+2. PUTs updated values for ALL OpenAPI EventPayload fields
+3. Verifies each field individually
+4. Reports working vs broken fields
+5. Cleans up test data
 
 ---
 
-**Test Code Available**: We have GAS (Google Apps Script) test functions demonstrating this behavior if you'd like to see the full implementation.
+**We'd appreciate guidance on the correct approach for updating these fields, or confirmation that they are not yet implemented in the v1 API.**
