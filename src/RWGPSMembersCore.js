@@ -114,6 +114,78 @@ class RWGPSMembersCore {
             return name && typeof name === 'string' && name.trim().length > 0;
         });
     }
+
+    /**
+     * Look up a member's user ID by name
+     * Supports exact and partial name matching (case-insensitive)
+     * 
+     * @param {Array<{Name: string, UserID: number}>} members - Array of {Name, UserID} objects from sheet
+     * @param {string} nameToFind - Name to search for (e.g., "Toby Ferguson")
+     * @returns {{success: boolean, userId?: number, name?: string, error?: string}} Result object
+     * 
+     * @example
+     * const members = [{Name: "Toby Ferguson", UserID: 123}];
+     * const result = lookupUserIdByName(members, "toby");
+     * // result: {success: true, userId: 123, name: "Toby Ferguson"}
+     */
+    static lookupUserIdByName(members, nameToFind) {
+        if (!Array.isArray(members)) {
+            return {
+                success: false,
+                error: 'Members must be an array'
+            };
+        }
+
+        if (!nameToFind || typeof nameToFind !== 'string') {
+            return {
+                success: false,
+                error: 'Name to find must be a non-empty string'
+            };
+        }
+
+        const searchTerm = nameToFind.trim().toLowerCase();
+        
+        if (searchTerm.length === 0) {
+            return {
+                success: false,
+                error: 'Search name cannot be empty'
+            };
+        }
+
+        // Try exact match first (case-insensitive)
+        const exactMatch = members.find((/** @type {any} */ member) => {
+            if (!member || !member.Name) return false;
+            return member.Name.toLowerCase() === searchTerm;
+        });
+
+        if (exactMatch) {
+            return {
+                success: true,
+                userId: exactMatch.UserID,
+                name: exactMatch.Name
+            };
+        }
+
+        // Try partial match (contains, case-insensitive)
+        const partialMatch = members.find((/** @type {any} */ member) => {
+            if (!member || !member.Name) return false;
+            return member.Name.toLowerCase().includes(searchTerm);
+        });
+
+        if (partialMatch) {
+            return {
+                success: true,
+                userId: partialMatch.UserID,
+                name: partialMatch.Name
+            };
+        }
+
+        // No match found
+        return {
+            success: false,
+            error: `No member found matching "${nameToFind}"`
+        };
+    }
 }
 
 // Node.js/Jest export
