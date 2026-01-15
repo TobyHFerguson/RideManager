@@ -769,11 +769,21 @@ Fields:
 **TASK COMPLETE - No migration needed**
 
 ### Phase 4 Complete Checkpoint
-- [ ] All tests pass
-- [ ] RWGPSClient operations use v1 API natively
-- [ ] No more web format transformations in RWGPSClient
-- [ ] Document any operations that still need web API (e.g., batch_update_tags)
-- [ ] Commit: "Phase 4 complete: RWGPSClient uses native v1 API"
+- [x] ✅ All tests pass (554 tests - commit 0d0b5d2)
+- [x] ✅ RWGPSClient operations use v1 API natively
+  - createEvent, getEvent, editEvent all use /api/v1/events
+  - Native v1 format throughout (no web format transformations)
+- [x] ✅ Document operations still using web API:
+  - **batch_update_tags** - v1 API has NO tag endpoints (must use web API)
+  - **getClubMembers** - /clubs/47/table_members.json returns v1-compatible format
+    (No migration needed - same data structure, simpler than paginated v1)
+- [x] ✅ Commit Phase 4 complete: "Phase 4 checkpoint: Fix tests after v1 API migration" (0d0b5d2)
+
+**Phase 4 Summary**:
+- RWGPSClient fully migrated to v1 API for events
+- Tests updated to reflect new createEvent() flow
+- Two operations keep web API with documented rationale
+- All 554 tests passing with improved coverage
 
 ---
 
