@@ -1,24 +1,69 @@
-# RWGPS v1 API Bug Report: PUT Updates Only 3 of 12 OpenAPI Fields
+# RWGPS v1 API: OpenAPI Spec Discrepancy for `organizers` Field
 
 ## Summary
 
-The v1 REST API endpoint `PUT /api/v1/events/{id}.json` has **severe limitations** - only **3 of 12 fields** defined in the OpenAPI `EventPayload` schema can be updated: `name`, `start_date`, and `start_time`. 
+**Good news**: The v1 REST API `PUT /api/v1/events/{id}.json` successfully updates **11 of 12** fields from the OpenAPI `EventPayload` schema.
 
-**Nine fields documented in the OpenAPI spec are silently ignored**, including `description`, `end_date`, `end_time`, `location`, `lat`, `lng`, `time_zone`, `visibility`, and `organizers`.
+**Issue**: The `organizers` field documented in the OpenAPI spec does NOT work. However, `organizer_ids` (not in the spec) DOES work.
 
-This makes the v1 API unsuitable for comprehensive event editing.
+This appears to be a **documentation discrepancy** rather than an API limitation.
 
 ---
 
-## How to Reproduce
+## Test Results Summary (January 14, 2026)
+
+### Fields That WORK (11/12)
+
+| OpenAPI Field | Status | Notes |
+|---------------|--------|-------|
+| `name` | ✅ | Works correctly |
+| `description` | ✅ | Works correctly |
+| `start_date` | ✅ | Works correctly |
+| `start_time` | ✅ | Works correctly |
+| `end_date` | ✅ | Works correctly |
+| `end_time` | ✅ | Works correctly |
+| `location` | ✅ | Works correctly |
+| `lat` | ✅ | Works correctly |
+| `lng` | ✅ | Works correctly |
+| `time_zone` | ✅ | Works correctly |
+| `visibility` | ✅ | Works correctly |
+
+### Field That Does NOT Work (1/12)
+
+| OpenAPI Field | Status | Notes |
+|---------------|--------|-------|
+| `organizers` | ❌ | Silently ignored (returns 200 OK but no change) |
+
+### Workaround That WORKS (not in OpenAPI spec)
+
+| Field | Status | Notes |
+|-------|--------|-------|
+| `organizer_ids` | ✅ | Array of integers - **this works** |
+
+---
+
+## Reference Events (Preserved for Inspection)
+
+We've created three test events demonstrating the issue. **Please inspect these**:
+
+| Event ID | Test | X-Request-ID | Result |
+|----------|------|--------------|--------|
+| **453399** | `organizers: [{id: 799754}]` | `764e0bca33cb58d4517a6ff9e733f9af` | ❌ FAILED |
+| **453400** | `organizers: [{id, first_name, last_name, display_name}]` | `4b570b91698fc2688853d962a6c8eda6` | ❌ FAILED |
+| **453401** | `organizer_ids: [799754]` | *(raw fetch, no captured ID)* | ✅ PASSED |
+
+**Event URLs:**
+- https://ridewithgps.com/events/453399-isolated-test-test1-idonly
+- https://ridewithgps.com/events/453400-isolated-test-test2-fulluser  
+- https://ridewithgps.com/events/453401-isolated-test-test3-organizerids
+
+User ID 799754 = Andy Drenick (club member, not account owner)
+
+---
+
+## How to Reproduce with curl
 
 ### Prerequisites
-
-- A valid RWGPS API key and auth token
-- An event ID you own (or create one first)
-- curl (or any HTTP client)
-
-### Step 1: Set Up Environment Variables
 
 ```bash
 # Replace with your actual credentials
@@ -26,234 +71,111 @@ export RWGPS_API_KEY="your_api_key"
 export RWGPS_AUTH_TOKEN="your_auth_token"
 export RWGPS_AUTH=$(echo -n "${RWGPS_API_KEY}:${RWGPS_AUTH_TOKEN}" | base64)
 
-# Replace with an event ID you own
-export EVENT_ID="453384"
+# Use one of these test events (or create your own)
+export EVENT_ID="453399"
 ```
 
-### Step 2: Get Current Event State
+### Test 1: Try `organizers` per OpenAPI Spec (FAILS)
 
 ```bash
-curl -s "https://ridewithgps.com/api/v1/events/${EVENT_ID}.json" \
-  -H "Authorization: Basic ${RWGPS_AUTH}" \
-  -H "Content-Type: application/json" | jq .
-```
-
-Note the current values of all fields.
-
-### Step 3: Send PUT Request with ALL EventPayload Fields
-
-```bash
+# Send organizers array with User objects (per OpenAPI EventPayload schema)
 curl -s -X PUT "https://ridewithgps.com/api/v1/events/${EVENT_ID}.json" \
   -H "Authorization: Basic ${RWGPS_AUTH}" \
   -H "Content-Type: application/json" \
   -d '{
     "event": {
-      "name": "TEST - Updated Name",
-      "description": "This description should appear after PUT.",
-      "start_date": "2030-08-20",
-      "start_time": "14:30",
-      "end_date": "2030-08-20",
-      "end_time": "18:00",
-      "location": "Updated Location - New Start Point",
-      "lat": 37.7749,
-      "lng": -122.4194,
-      "time_zone": "America/New_York",
-      "visibility": "public",
-      "organizers": [{"id": 302732}]
+      "organizers": [{"id": 799754}]
     }
-  }' | jq .
+  }' | jq '.event.organizers'
+
+# Expected: [{"id": 799754, ...}]
+# Actual: []
 ```
 
-### Step 4: Verify Which Fields Updated
+### Test 2: Try Full User Object (FAILS)
 
 ```bash
-curl -s "https://ridewithgps.com/api/v1/events/${EVENT_ID}.json" \
+# Send organizers with full User object
+curl -s -X PUT "https://ridewithgps.com/api/v1/events/${EVENT_ID}.json" \
   -H "Authorization: Basic ${RWGPS_AUTH}" \
-  -H "Content-Type: application/json" | jq '.event | {
-    name,
-    desc,
-    start_date,
-    start_time,
-    end_date,
-    end_time,
-    location,
-    lat,
-    lng,
-    time_zone,
-    visibility,
-    organizer_ids,
-    all_day
-  }'
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": {
+      "organizers": [{
+        "id": 799754,
+        "first_name": "Andy",
+        "last_name": "Drenick",
+        "display_name": "Andy Drenick"
+      }]
+    }
+  }' | jq '.event.organizers'
+
+# Expected: [{"id": 799754, ...}]
+# Actual: []
+```
+
+### Test 3: Try `organizer_ids` (WORKS - but not in spec)
+
+```bash
+# Send organizer_ids as array of integers
+curl -s -X PUT "https://ridewithgps.com/api/v1/events/${EVENT_ID}.json" \
+  -H "Authorization: Basic ${RWGPS_AUTH}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "event": {
+      "organizer_ids": [799754]
+    }
+  }' | jq '.event.organizers'
+
+# Expected: []
+# Actual: [{"id": 799754, "text": "adrenick"}]  <-- IT WORKS!
 ```
 
 ---
 
-## Our Test Results (January 14, 2026)
+## OpenAPI Specification vs Actual Behavior
 
-### Summary Table
-
-| OpenAPI Field | Value Sent | Value After PUT | Status |
-|---------------|------------|-----------------|--------|
-| `name` | `"TEST - Updated Name"` | `"TEST - Updated Name"` | ✅ **WORKS** |
-| `start_date` | `"2030-08-20"` | `"2030-08-20"` | ✅ **WORKS** |
-| `start_time` | `"14:30"` | `"14:30"` | ✅ **WORKS** |
-| `description` | `"This description..."` | `null` | ❌ **IGNORED** |
-| `end_date` | `"2030-08-20"` | `null` | ❌ **IGNORED** |
-| `end_time` | `"18:00"` | `null` | ❌ **IGNORED** |
-| `location` | `"Updated Location..."` | *(original value)* | ❌ **IGNORED** |
-| `lat` | `37.7749` | `null` | ❌ **IGNORED** |
-| `lng` | `-122.4194` | `null` | ❌ **IGNORED** |
-| `time_zone` | `"America/New_York"` | `"America/Los_Angeles"` | ❌ **IGNORED** |
-| `visibility` | `"public"` | `"managers_only"` | ❌ **IGNORED** |
-| `organizers` | `[{"id": 302732}]` | `[]` | ❌ **IGNORED** |
-
-**Result**: Only **3 of 12** EventPayload fields are honored by PUT.
-
----
-
-## OpenAPI Specification Reference
-
-Per your OpenAPI spec, the `EventPayload` schema (used for PUT/POST) defines these fields:
+### What the Spec Says (`EventPayload`)
 
 ```yaml
 # From /components/schemas/EventPayload
-EventPayload:
-  type: object
-  properties:
-    name:
-      type: string
-    description:
-      type: string
-    visibility:
-      type: string
-      enum: [public, private, managers_only]
-    location:
-      type: string
-    lat:
-      type: number
-    lng:
-      type: number
-    time_zone:
-      type: string
-    start_date:
-      type: string
-      format: date
-    start_time:
-      type: string
-    end_date:
-      type: string
-      format: date
-    end_time:
-      type: string
-    logo:
-      type: string
-      format: uri
-    banner:
-      type: string
-      format: uri
-    organizers:
-      type: array
-      items:
-        $ref: '#/components/schemas/User'
+organizers:
+  type: array
+  items:
+    "$ref": "#/components/schemas/User"
 ```
 
-**We tested all non-media fields** (`logo` and `banner` not tested). Only 3 work.
-
----
-
-## Raw HTTP Request/Response
-
-### Request
-
-```http
-PUT /api/v1/events/453384.json HTTP/1.1
-Host: ridewithgps.com
-Authorization: Basic <base64(apiKey:authToken)>
-Content-Type: application/json
-
-{
-  "event": {
-    "name": "OPENAPI TEST - Updated Name",
-    "description": "Updated description after OpenAPI compliance testing.",
-    "start_date": "2030-08-20",
-    "start_time": "14:30",
-    "end_date": "2030-08-20",
-    "end_time": "18:00",
-    "location": "Updated Location - Starting Point B",
-    "lat": 37.7749,
-    "lng": -122.4194,
-    "time_zone": "America/New_York",
-    "visibility": "public",
-    "organizers": [{"id": 302732}]
-  }
-}
-```
-
-### Response (HTTP 200 OK)
+### What Actually Works
 
 ```json
+// NOT in spec, but this works:
 {
   "event": {
-    "id": 453384,
-    "name": "OPENAPI TEST - Updated Name",
-    "desc": null,
-    "start_date": "2030-08-20",
-    "start_time": "14:30",
-    "end_date": null,
-    "end_time": null,
-    "location": "Initial Location - Starting Point A",
-    "lat": null,
-    "lng": null,
-    "time_zone": "America/Los_Angeles",
-    "visibility": "managers_only",
-    "organizer_ids": [],
-    "all_day": false
+    "organizer_ids": [799754, 302732]
   }
 }
 ```
 
-**Note**: The API returns HTTP 200 (success) but silently ignores 9 of 12 fields.
+---
+
+## Recommendation
+
+Could you please:
+
+1. **Confirm `organizer_ids` is the correct field** for setting organizers via PUT?
+2. **Update the OpenAPI spec** to document `organizer_ids` in `EventPayload`?
+3. **Clarify `organizers` behavior** - is it intentionally read-only, or a bug?
 
 ---
 
-## Fields Not in EventPayload Schema
+## Our Previous Bug Report Was WRONG
 
-These fields appear in responses but are **NOT in the EventPayload schema**:
+We initially reported that v1 API only updated 3 fields. **This was our error** - our test code had a bug that was only sending 5 fields. After your team pointed this out (thank you!), we fixed our code and now confirm:
 
-| Field | Notes |
-|-------|-------|
-| `all_day` | Appears derived from start/end times (read-only) |
-| `route_ids` | In `EventSummary`, not `EventPayload` - no documented way to update routes |
-| `organizer_ids` | Response uses this, but spec says to send `organizers` array |
+- ✅ **11 of 12 EventPayload fields work correctly**
+- ❌ Only `organizers` field doesn't work (but `organizer_ids` does)
 
----
-
-## Questions
-
-1. **Are the 9 ignored fields intentionally not implemented?** The OpenAPI spec defines them in `EventPayload`, but PUT ignores them.
-
-2. **What is the correct format for `organizers`?** We used `[{"id": 302732}]` per the schema (array of User objects), but it was ignored.
-
-3. **How do we update `visibility`?** Sending `"public"` is ignored; events stay `managers_only`.
-
-4. **How do we set event duration?** `end_date` and `end_time` are ignored.
-
-5. **Is there a different endpoint?** Perhaps PATCH or field-specific endpoints?
-
-6. **How do we update routes on an existing event?** `route_ids` is not in EventPayload.
-
----
-
-## Impact
-
-Applications cannot:
-
-- ❌ Update event descriptions
-- ❌ Change event visibility (stuck on `managers_only`)
-- ❌ Set event duration (end date/time)
-- ❌ Assign organizers
-- ❌ Update location or GPS coordinates
-- ❌ Change time zones
+We apologize for the confusion and appreciate your patience!
 
 ---
 
@@ -265,10 +187,7 @@ Applications cannot:
 | **Auth** | Basic Auth (`apiKey:authToken`) |
 | **Content-Type** | `application/json` |
 | **Date Tested** | January 14, 2026 |
-| **Event ID** | 453384 (newly created, no participants) |
-
----
-
-We'd appreciate guidance on the correct approach for updating these fields, or confirmation that they are not yet implemented in the v1 API.
+| **Test Events** | 453399, 453400, 453401 |
+| **Test User** | 799754 (Andy Drenick) |
 
 Thank you!

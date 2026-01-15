@@ -1637,6 +1637,335 @@ function testV1API_ComprehensiveFieldUpdate() {
 
 /**
  * Simple credential test
+/**
+ * Test organizers field with full User objects (not just {id})
+ * 
+ * OpenAPI spec says organizers is array of User objects with:
+ * id, first_name, last_name, display_name, email, created_at, updated_at
+ * 
+ * This test checks if sending full User objects works better than {id: X}
+ */
+function testV1API_OrganizersFullUser() {
+    console.log('================================================================');
+    console.log('V1 API Organizers Test - Full User Objects');
+    console.log('================================================================');
+    
+    try {
+        const scriptProps = PropertiesService.getScriptProperties();
+        // @ts-ignore
+        const credentialManager = new CredentialManager(scriptProps);
+        // @ts-ignore
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        // Look up organizer to get full details
+        console.log('🔍 Looking up organizer details...');
+        // @ts-ignore
+        const membersAdapter = new RWGPSMembersAdapter();
+        const lookupResult = membersAdapter.lookupUserIdByName('Toby Ferguson');
+        
+        if (!lookupResult.success || !lookupResult.userId) {
+            return { success: false, error: 'Could not lookup organizer' };
+        }
+        
+        const organizerId = lookupResult.userId;
+        console.log(`   Found: ${lookupResult.name} (ID: ${organizerId})\n`);
+        
+        // Create test event
+        console.log('📝 Creating test event...');
+        const createResult = client.createEvent({
+            name: 'ORGANIZERS TEST',
+            start_date: '2030-07-01',
+            start_time: '10:00',
+            visibility: 'private'
+        });
+        
+        if (!createResult.success) {
+            return { success: false, error: `Create failed: ${createResult.error}` };
+        }
+        
+        const eventUrl = createResult.eventUrl;
+        console.log(`   Created: ${eventUrl}\n`);
+        
+        // Test 1: Just {id} (what we've been doing)
+        console.log('🧪 Test 1: organizers: [{id: X}]');
+        let editResult = client.testV1SingleEditEvent(eventUrl, {
+            organizers: [{ id: organizerId }]
+        });
+        let getResult = client.getEvent(eventUrl);
+        const test1Organizers = getResult.event?.organizers || getResult.event?.organizer_ids || [];
+        console.log(`   Result: ${JSON.stringify(test1Organizers)}`);
+        console.log(`   ${test1Organizers.length > 0 ? '✅' : '❌'} ${test1Organizers.length > 0 ? 'WORKED' : 'EMPTY'}\n`);
+        
+        // Test 2: Full User object per OpenAPI spec
+        console.log('🧪 Test 2: organizers: [{id, first_name, last_name, display_name}]');
+        editResult = client.testV1SingleEditEvent(eventUrl, {
+            organizers: [{
+                id: organizerId,
+                first_name: 'Toby',
+                last_name: 'Ferguson',
+                display_name: 'Toby Ferguson'
+            }]
+        });
+        getResult = client.getEvent(eventUrl);
+        const test2Organizers = getResult.event?.organizers || getResult.event?.organizer_ids || [];
+        console.log(`   Result: ${JSON.stringify(test2Organizers)}`);
+        console.log(`   ${test2Organizers.length > 0 ? '✅' : '❌'} ${test2Organizers.length > 0 ? 'WORKED' : 'EMPTY'}\n`);
+        
+        // Test 3: Try organizer_ids (legacy, not in spec but might work)
+        console.log('🧪 Test 3: organizer_ids: [X] (legacy, not in OpenAPI spec)');
+        // Need to send via raw fetch since testV1SingleEditEvent filters to spec fields
+        const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
+        const v1Url = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
+        const payload = { event: { organizer_ids: [organizerId] } };
+        console.log(`   Payload: ${JSON.stringify(payload)}`);
+        
+        const response = UrlFetchApp.fetch(v1Url, {
+            method: 'put',
+            headers: {
+                'Authorization': 'Basic ' + Utilities.base64Encode(credentialManager.getApiKey() + ':' + credentialManager.getAuthToken()),
+                'Content-Type': 'application/json'
+            },
+            payload: JSON.stringify(payload),
+            muteHttpExceptions: true
+        });
+        console.log(`   Response: ${response.getResponseCode()}`);
+        
+        getResult = client.getEvent(eventUrl);
+        const test3Organizers = getResult.event?.organizers || getResult.event?.organizer_ids || [];
+        console.log(`   Result: ${JSON.stringify(test3Organizers)}`);
+        console.log(`   ${test3Organizers.length > 0 ? '✅' : '❌'} ${test3Organizers.length > 0 ? 'WORKED' : 'EMPTY'}\n`);
+        
+        // Cleanup
+        console.log('🧹 Cleaning up...');
+        client.deleteEvent(eventUrl);
+        console.log('   ✅ Deleted\n');
+        
+        console.log('======================================================================');
+        console.log('SUMMARY');
+        console.log('======================================================================');
+        console.log(`Test 1 (id only):        ${test1Organizers.length > 0 ? '✅ WORKED' : '❌ FAILED'}`);
+        console.log(`Test 2 (full User):      ${test2Organizers.length > 0 ? '✅ WORKED' : '❌ FAILED'}`);
+        console.log(`Test 3 (organizer_ids):  ${test3Organizers.length > 0 ? '✅ WORKED' : '❌ FAILED'}`);
+        
+        return {
+            success: true,
+            results: {
+                idOnly: test1Organizers.length > 0,
+                fullUser: test2Organizers.length > 0,
+                organizerIds: test3Organizers.length > 0
+            }
+        };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error('❌ Test failed:', err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * RIGOROUS isolated test for organizers - each format tested on SEPARATE event
+ * Also tests with a DIFFERENT user (not account owner)
+ */
+function testV1API_OrganizersIsolated() {
+    console.log('================================================================');
+    console.log('V1 API Organizers - ISOLATED Tests (separate events)');
+    console.log('================================================================');
+    console.log('Each format tested on fresh event to eliminate order effects\n');
+    
+    try {
+        const scriptProps = PropertiesService.getScriptProperties();
+        // @ts-ignore
+        const credentialManager = new CredentialManager(scriptProps);
+        // @ts-ignore
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        // Look up TWO different organizers
+        console.log('🔍 Looking up organizers...');
+        // @ts-ignore
+        const membersAdapter = new RWGPSMembersAdapter();
+        
+        // Primary: Account owner
+        const lookup1 = membersAdapter.lookupUserIdByName('Toby Ferguson');
+        const tobyId = lookup1.success ? lookup1.userId : null;
+        console.log(`   Toby Ferguson: ${tobyId || 'NOT FOUND'}`);
+        
+        // Secondary: Different club member (not account owner)
+        const lookup2 = membersAdapter.lookupUserIdByName('Andy Drenick');
+        const andyId = lookup2.success ? lookup2.userId : null;
+        console.log(`   Andy Drenick: ${andyId || 'NOT FOUND'}`);
+        
+        if (!tobyId) {
+            return { success: false, error: 'Could not find Toby Ferguson' };
+        }
+        
+        // Use different user if available, otherwise use Toby
+        const testUserId = andyId || tobyId;
+        const testUserName = andyId ? 'Andy Drenick' : 'Toby Ferguson';
+        console.log(`\n   Testing with: ${testUserName} (ID: ${testUserId})\n`);
+        
+        /** @type {string[]} */
+        const createdEvents = [];
+        
+        // Helper to create fresh event
+        const createTestEvent = (/** @type {string} */ testName) => {
+            const result = client.createEvent({
+                name: `ISOLATED TEST - ${testName}`,
+                start_date: '2030-07-01',
+                start_time: '10:00',
+                visibility: 'private'
+            });
+            if (result.success && result.eventUrl) {
+                createdEvents.push(result.eventUrl);
+            }
+            return result;
+        };
+        
+        // Helper to check organizers (logs BOTH fields)
+        const checkOrganizers = (/** @type {string} */ eventUrl) => {
+            const result = client.getEvent(eventUrl);
+            if (!result.success) return { organizers: null, organizer_ids: null };
+            
+            const event = result.event;
+            console.log(`   Raw response fields:`);
+            console.log(`     organizers: ${JSON.stringify(event?.organizers)}`);
+            console.log(`     organizer_ids: ${JSON.stringify(event?.organizer_ids)}`);
+            
+            return {
+                organizers: event?.organizers || [],
+                organizer_ids: event?.organizer_ids || []
+            };
+        };
+        
+        // ============================================================
+        // TEST 1: organizers: [{id: X}] on FRESH event
+        // ============================================================
+        console.log('━'.repeat(60));
+        console.log('TEST 1: organizers: [{id: X}] (OpenAPI spec format)');
+        console.log('━'.repeat(60));
+        
+        let createResult = createTestEvent('Test1-IdOnly');
+        if (!createResult.success) {
+            console.error('   ❌ Could not create event');
+        } else {
+            console.log(`   Created: ${createResult.eventUrl}`);
+            console.log(`   Initial state:`);
+            checkOrganizers(createResult.eventUrl);
+            
+            console.log(`\n   Sending: organizers: [{id: ${testUserId}}]`);
+            const editResult = client.testV1SingleEditEvent(createResult.eventUrl, {
+                organizers: [{ id: testUserId }]
+            });
+            console.log(`   PUT status: ${editResult.success ? '200 OK' : editResult.error}`);
+            
+            console.log(`\n   After PUT:`);
+            const result1 = checkOrganizers(createResult.eventUrl);
+            const test1Pass = (result1.organizers?.length > 0) || (result1.organizer_ids?.length > 0);
+            console.log(`\n   ${test1Pass ? '✅ PASSED' : '❌ FAILED'}`);
+        }
+        
+        // ============================================================
+        // TEST 2: organizers: [{id, first_name, ...}] on FRESH event
+        // ============================================================
+        console.log('\n' + '━'.repeat(60));
+        console.log('TEST 2: organizers: [{id, first_name, last_name, ...}] (Full User)');
+        console.log('━'.repeat(60));
+        
+        createResult = createTestEvent('Test2-FullUser');
+        if (!createResult.success) {
+            console.error('   ❌ Could not create event');
+        } else {
+            console.log(`   Created: ${createResult.eventUrl}`);
+            console.log(`   Initial state:`);
+            checkOrganizers(createResult.eventUrl);
+            
+            const fullUser = {
+                id: testUserId,
+                first_name: testUserName.split(' ')[0],
+                last_name: testUserName.split(' ')[1] || '',
+                display_name: testUserName
+            };
+            console.log(`\n   Sending: organizers: [${JSON.stringify(fullUser)}]`);
+            const editResult = client.testV1SingleEditEvent(createResult.eventUrl, {
+                organizers: [fullUser]
+            });
+            console.log(`   PUT status: ${editResult.success ? '200 OK' : editResult.error}`);
+            
+            console.log(`\n   After PUT:`);
+            const result2 = checkOrganizers(createResult.eventUrl);
+            const test2Pass = (result2.organizers?.length > 0) || (result2.organizer_ids?.length > 0);
+            console.log(`\n   ${test2Pass ? '✅ PASSED' : '❌ FAILED'}`);
+        }
+        
+        // ============================================================
+        // TEST 3: organizer_ids: [X] on FRESH event
+        // ============================================================
+        console.log('\n' + '━'.repeat(60));
+        console.log('TEST 3: organizer_ids: [X] (Not in OpenAPI spec)');
+        console.log('━'.repeat(60));
+        
+        createResult = createTestEvent('Test3-OrganizerIds');
+        if (!createResult.success) {
+            console.error('   ❌ Could not create event');
+        } else {
+            console.log(`   Created: ${createResult.eventUrl}`);
+            console.log(`   Initial state:`);
+            checkOrganizers(createResult.eventUrl);
+            
+            console.log(`\n   Sending: organizer_ids: [${testUserId}]`);
+            
+            // Raw fetch for organizer_ids
+            const parsed = RWGPSClientCore.parseEventUrl(createResult.eventUrl);
+            const v1Url = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
+            const response = UrlFetchApp.fetch(v1Url, {
+                method: 'put',
+                headers: {
+                    'Authorization': 'Basic ' + Utilities.base64Encode(credentialManager.getApiKey() + ':' + credentialManager.getAuthToken()),
+                    'Content-Type': 'application/json'
+                },
+                payload: JSON.stringify({ event: { organizer_ids: [testUserId] } }),
+                muteHttpExceptions: true
+            });
+            console.log(`   PUT status: ${response.getResponseCode()}`);
+            
+            console.log(`\n   After PUT:`);
+            const result3 = checkOrganizers(createResult.eventUrl);
+            const test3Pass = (result3.organizers?.length > 0) || (result3.organizer_ids?.length > 0);
+            console.log(`\n   ${test3Pass ? '✅ PASSED' : '❌ FAILED'}`);
+        }
+        
+        console.log('\n' + '━'.repeat(60));
+        console.log('KEEPING EVENTS FOR RWGPS REFERENCE (not deleting)');
+        console.log('━'.repeat(60));
+        
+        console.log('\nCreated events for RWGPS to inspect:');
+        for (const url of createdEvents) {
+            console.log(`   ${url}`);
+        }
+        console.log('\nPlease provide these URLs to RWGPS developers.');
+        
+        console.log('\n✅ Isolated tests complete');
+        return { success: true, eventUrls: createdEvents };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error('❌ Test failed:', err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Test RWGPS credentials are properly configured
  */
 function testCredentials() {
     try {

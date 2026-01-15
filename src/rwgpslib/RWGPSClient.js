@@ -1143,7 +1143,9 @@ var RWGPSClient = (function() {
             
             // Capture x-request-id for debugging with RWGPS support
             const headers = response.getAllHeaders();
-            const requestId = headers['x-request-id'] || headers['X-Request-Id'] || 'not found';
+            // Debug: log ALL headers to find the correct case
+            console.log(`   DEBUG: All response headers: ${JSON.stringify(headers)}`);
+            const requestId = headers['x-request-id'] || headers['X-Request-Id'] || headers['X-Request-ID'] || 'not found in headers';
             console.log(`   DEBUG: Response status: ${statusCode}`);
             console.log(`   DEBUG: x-request-id: ${requestId}`);
             
