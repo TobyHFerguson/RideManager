@@ -22,7 +22,10 @@
 /**
  * RWGPSCore - Pure JavaScript business logic
  * Uses class pattern with static methods per copilot-instructions Rule 4.5
+ * Wrapped in IIFE for GAS compatibility (avoids duplicate class declarations)
  */
+var RWGPSCore = (function() {
+
 class RWGPSCore {
     // =============================================
     // URL Parsing & Validation
@@ -676,6 +679,53 @@ class RWGPSCore {
     }
 
     /**
+     * Build legacy format expiry tag
+     * Format: "expires: MM/DD/YYYY" (for backward compatibility)
+     * 
+     * @param {Date | string} expiryDate - Expiration date
+     * @returns {string} Legacy expiry tag (e.g., "expires: 02/15/2025")
+     */
+    static buildLegacyExpiryTag(expiryDate) {
+        const date = expiryDate instanceof Date ? expiryDate : new Date(expiryDate);
+        
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `expires: ${month}/${day}/${year}`;
+    }
+
+    /**
+     * Parse legacy format expiry tag
+     * Format: "expires: MM/DD/YYYY"
+     * 
+     * @param {string} tag - Legacy expiry tag
+     * @returns {Date | null} Parsed date or null if invalid
+     */
+    static parseLegacyExpiryTag(tag) {
+        if (!tag || !tag.startsWith('expires: ')) {
+            return null;
+        }
+        
+        const dateStr = tag.substring('expires: '.length);
+        const parts = dateStr.split('/');
+        
+        if (parts.length !== 3) {
+            return null;
+        }
+        
+        const month = parseInt(parts[0], 10) - 1; // 0-indexed
+        const day = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        
+        if (isNaN(month) || isNaN(day) || isNaN(year)) {
+            return null;
+        }
+        
+        return new Date(year, month, day);
+    }
+
+    /**
      * Build batch tag update payload for RWGPS API
      * 
      * @param {string[]} itemIds - Event or route IDs to tag
@@ -797,6 +847,9 @@ class RWGPSCore {
         return parts.join('\r\n');
     }
 }
+
+return RWGPSCore;
+})();
 
 /* istanbul ignore if - Node.js/Jest export */
 if (typeof module !== 'undefined') {

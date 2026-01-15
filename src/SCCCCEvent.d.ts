@@ -11,8 +11,8 @@ declare class SCCCCEvent {
     name: string | undefined;
     organizer_tokens: string[] | undefined;
     route_ids: string[] | undefined;
-    start_date: string | Date | undefined;
-    start_time: string | Date | undefined;
+    /** Start date/time as a proper Date object (domain type) */
+    startDateTime: Date | undefined;
     visibility: number;
 
     constructor();
@@ -26,13 +26,12 @@ declare class SCCCCEvent {
 
     /**
      * Creates the name of a Managed Event.
-     * @param {Date|string} start_date - Event start date.
-     * @param {Date|string} start_time - Event start time.
+     * @param {Date} startDateTime - Event start date/time.
      * @param {string} groupName - Name of group.
      * @param {string} route_name - Name of route.
      * @returns {string} Name of event.
      */
-    static makeManagedRideName(start_date: Date | string, start_time: Date | string, groupName: string, route_name: string): string;
+    static makeManagedRideName(startDateTime: Date, groupName: string, route_name: string): string;
 
     /**
      * Creates the unmanaged event name by appending or updating the participant count.

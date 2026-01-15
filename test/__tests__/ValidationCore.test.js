@@ -196,43 +196,12 @@ describe('ValidationCore', () => {
             expect(validation.warnings).toContain('No ride leader given');
         });
 
-        it('should warn about missing location', () => {
-            const row = createMockRow({ location: '' });
-            const result = ValidationCore.validateForScheduling([row], defaultOptions);
-            
-            const validation = result.get(row);
-            expect(validation.warnings).toContain('Unknown location');
-        });
-
-        it('should warn about location starting with hash', () => {
-            const row = createMockRow({ location: '#N/A' });
-            const result = ValidationCore.validateForScheduling([row], defaultOptions);
-            
-            const validation = result.get(row);
-            expect(validation.warnings).toContain('Unknown location');
-        });
-
-        it('should warn about missing address', () => {
-            const row = createMockRow({ address: '' });
-            const result = ValidationCore.validateForScheduling([row], defaultOptions);
-            
-            const validation = result.get(row);
-            expect(validation.warnings).toContain('Unknown address');
-        });
-
-        it('should warn about address starting with hash', () => {
-            const row = createMockRow({ address: '#N/A' });
-            const result = ValidationCore.validateForScheduling([row], defaultOptions);
-            
-            const validation = result.get(row);
-            expect(validation.warnings).toContain('Unknown address');
-        });
+        // Note: location/address warnings removed - we use map links now
 
         it('should not show warnings when there are errors', () => {
             const row = createMockRow({ 
                 startDate: null,
-                leaders: [],
-                location: ''
+                leaders: []
             });
             const result = ValidationCore.validateForScheduling([row], defaultOptions);
             

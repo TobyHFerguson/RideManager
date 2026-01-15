@@ -15,8 +15,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
     name: 'Sun A (1/1 10:00) SCP - Seascape/Corralitos',
     organizer_tokens: ['302732'],
     route_ids: ['17166902'],
-    start_date: "2023-01-01T18:00:00.000Z",
-    start_time: "2023-01-01T18:00:00.000Z",
+    startDateTime: new Date("2023-01-01T18:00:00.000Z"),
     visibility: 0,
 }
 

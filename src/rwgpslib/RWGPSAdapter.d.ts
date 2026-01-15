@@ -93,6 +93,16 @@ declare class RWGPSAdapter {
     fetchV1Multipart(method: string, endpoint: string, payload: string, boundary: string): HTTPResponse;
 
     /**
+     * Fetch from v1 API with multipart Blob payload (for binary file uploads)
+     * @param method - HTTP method (POST, PUT)
+     * @param endpoint - API endpoint (e.g., '/events.json')
+     * @param payload - Multipart form payload as Blob
+     * @param boundary - Multipart boundary string
+     * @returns HTTP response
+     */
+    fetchV1MultipartBlob(method: string, endpoint: string, payload: GoogleAppsScript.Base.Blob, boundary: string): HTTPResponse;
+
+    /**
      * Fetch from web API with session cookie
      * @param method - HTTP method
      * @param endpoint - API endpoint (e.g., '/events/12345/edit.json')

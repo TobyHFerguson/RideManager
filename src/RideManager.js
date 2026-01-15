@@ -274,29 +274,63 @@ const RideManager = (function () {
     }
 
     /**
+     * Schedule a new ride event on RWGPS
+     * Uses the new RWGPSFacade.createEvent() approach - NO templates needed!
+     * 
      * @param {RowCoreInstance} row
      * @param {RWGPS} rwgps
      */
     function schedule_row_(row, rwgps) {
-        /**
-         * @param {string} groupName
-         */
-        function get_template_(groupName) {
-            try {
-                return getGroupSpecs()[groupName].TEMPLATE
-            } catch {
-                throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupNames().join(', ')}`);
-            }
+        // Get group specs for logo URL
+        const groupSpecs = getGroupSpecs();
+        const groupSpec = groupSpecs[row.group];
+        if (!groupSpec) {
+            throw new Error(`Unknown group: ${row.group}. Expected one of ${getGroupNames().join(', ')}`);
         }
-
-        const new_event_url = rwgps.copy_template_(get_template_(row.group));
-        const event_id = _extractEventID(new_event_url);
-        const rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
-        rwgps.edit_event(new_event_url, rideEvent);
+        
+        // Get the facade from the legacy adapter (it wraps one)
+        const facade = rwgps._facade;
+        
+        // Look up organizers first
+        const organizers = rwgps.getOrganizers(row.leaders);
+        const organizerTokens = Array.isArray(organizers) 
+            ? organizers.map(o => String(o.id))
+            : [String(organizers.id)];
+        
+        // Build event data using EventFactory logic
+        const globals = getGlobals();
+        const rideEvent = EventFactory.newEvent(row, Array.isArray(organizers) ? organizers : [organizers], 0);
+        
+        // Convert SCCCCEvent to facade's EventInput format
+        const eventData = {
+            name: rideEvent.name,
+            description: rideEvent.desc,
+            startDateTime: row.startDate, // Facade transforms Date to API format
+            routeUrls: row.routeURL ? [`https://ridewithgps.com/routes/${row.routeURL.split('/')[4]}`] : [],
+            visibility: 'members_only',
+            organizer_ids: organizerTokens,
+            group: row.group // For automatic tagging
+        };
+        
+        // Create event with logo (no templates!)
+        const logoUrl = groupSpec.LogoURL || null;
+        const createResult = facade.createEvent(eventData, logoUrl);
+        
+        if (!createResult.success) {
+            throw new Error(`Failed to create RWGPS event: ${createResult.error}`);
+        }
+        
+        const newEventId = createResult.data?.id;
+        const new_event_url = `https://ridewithgps.com/events/${newEventId}`;
+        
+        // Set route expiration
         const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
         rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
+        
+        // Update row with ride link
         row.setRideLink(rideEvent.name, new_event_url);
-        rwgps.unTagEvents([new_event_url], ["template"]);
+        
+        // Create Google Calendar event
         const description = `<a href="${new_event_url}">${rideEvent.name}</a>`;
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with rideEvent:`, rideEvent);
         const eventId = createEvent_(row, rideEvent, description);
@@ -331,7 +365,6 @@ const RideManager = (function () {
         }
         
         // Log to UserLogger
-        const globals = getGlobals();
         const emailKey = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
         const announcementEmail = row.announcementCell ? (globals[emailKey] || '(not configured)') : '(no announcement)';
         

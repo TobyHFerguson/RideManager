@@ -29,9 +29,15 @@ function getRWGPSService_() {
   return getRWGPSLib_().newRWGPSService(getGlobals_(), credentialManager);
 }
 
+/**
+ * Get RWGPS instance using new architecture (LegacyRWGPSAdapter wrapping RWGPSFacade)
+ * @returns {LegacyRWGPSAdapter}
+ */
 function getRWGPS() {
-  const rwgpsService = getRWGPSService_();
-  return getRWGPSLib_().newRWGPS(rwgpsService); 
+  // NEW: Use LegacyRWGPSAdapter which wraps RWGPSFacade
+  // This provides legacy method names (get_event, edit_event, etc.) 
+  // while using the new architecture under the hood
+  return getRWGPSLib_().newLegacyAdapter();
 }
 
 const MenuFunctions = (() => {
@@ -45,8 +51,8 @@ const MenuFunctions = (() => {
     const globals = getGlobals();
     globals["A_TEMPLATE"] = g2.A.TEMPLATE // Needed because RWGPSLib expects globals["A_TEMPLATE"]
 
-    const rwgpsService = getRWGPSService_();
-    const rwgps = getRWGPSLib_().newRWGPS(rwgpsService);
+    // NEW: Use LegacyRWGPSAdapter (wraps RWGPSFacade with legacy method names)
+    const rwgps = getRWGPSLib_().newLegacyAdapter();
     
     // Create adapter and load selected rows
     const adapter = new ScheduleAdapter();

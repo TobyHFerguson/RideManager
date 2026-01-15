@@ -82,12 +82,7 @@ class ValidationCore {
                 if (errors.length === 0) {
                     const leaderWarning = ValidationCore.validateRideLeader(row);
                     if (leaderWarning) warnings.push(leaderWarning);
-                    
-                    const locationWarning = ValidationCore.validateLocation(row);
-                    if (locationWarning) warnings.push(locationWarning);
-                    
-                    const addressWarning = ValidationCore.validateAddress(row);
-                    if (addressWarning) warnings.push(addressWarning);
+                    // Note: location/address warnings removed - we use map links now
                 }
                 
                 validationMap.set(row, { errors, warnings });
@@ -170,12 +165,7 @@ class ValidationCore {
                 if (errors.length === 0) {
                     const leaderWarning = ValidationCore.validateRideLeader(row);
                     if (leaderWarning) warnings.push(leaderWarning);
-                    
-                    const locationWarning = ValidationCore.validateLocation(row);
-                    if (locationWarning) warnings.push(locationWarning);
-                    
-                    const addressWarning = ValidationCore.validateAddress(row);
-                    if (addressWarning) warnings.push(addressWarning);
+                    // Note: location/address warnings removed - we use map links now
                 }
                 
                 validationMap.set(row, { errors, warnings });

@@ -29,16 +29,42 @@ if (typeof require !== 'undefined') {
 /**
  * RWGPSAdapter - Thin GAS wrapper for RWGPS API
  * Uses class pattern per copilot-instructions Rule 4.5
+ * Wrapped in IIFE for GAS compatibility (avoids duplicate class declarations)
  */
+var RWGPSAdapter = (function() {
+
 class RWGPSAdapter {
     /**
-     * Base URLs for API endpoints
-     * @private
+     * Base URL for RWGPS API
+     * @returns {string}
      */
-    static BASE_URL = 'https://ridewithgps.com';
-    static V1_API_PATH = '/api/v1';
-    static LOGIN_PATH = '/organizations/47/sign_in';
-    static SESSION_COOKIE_NAME = '_rwgps_3_session';
+    static get BASE_URL() {
+        return 'https://ridewithgps.com';
+    }
+    
+    /**
+     * V1 API path prefix
+     * @returns {string}
+     */
+    static get V1_API_PATH() {
+        return '/api/v1';
+    }
+    
+    /**
+     * Login path for web session
+     * @returns {string}
+     */
+    static get LOGIN_PATH() {
+        return '/organizations/47/sign_in';
+    }
+    
+    /**
+     * Session cookie name
+     * @returns {string}
+     */
+    static get SESSION_COOKIE_NAME() {
+        return '_rwgps_3_session';
+    }
 
     /**
      * Create adapter with credential provider
@@ -159,6 +185,32 @@ class RWGPSAdapter {
                 'Content-Type': `multipart/form-data; boundary=${boundary}`
             },
             payload: payload,
+            muteHttpExceptions: true
+        };
+        
+        return this._fetch(url, options);
+    }
+
+    /**
+     * Fetch from v1 API with multipart Blob payload (for binary file uploads)
+     * 
+     * @param {string} method - HTTP method (POST, PUT)
+     * @param {string} endpoint - API endpoint (e.g., '/events.json')
+     * @param {GoogleAppsScript.Base.Blob} payload - Multipart form payload as Blob
+     * @param {string} boundary - Multipart boundary string
+     * @returns {GoogleAppsScript.URL_Fetch.HTTPResponse} HTTP response
+     */
+    fetchV1MultipartBlob(method, endpoint, payload, boundary) {
+        const url = `${RWGPSAdapter.BASE_URL}${RWGPSAdapter.V1_API_PATH}${endpoint}`;
+        
+        /** @type {GoogleAppsScript.URL_Fetch.URLFetchRequestOptions} */
+        const options = {
+            method: /** @type {GoogleAppsScript.URL_Fetch.HttpMethod} */ (method.toLowerCase()),
+            headers: {
+                'Authorization': this._getBasicAuthHeader(),
+                'Content-Type': `multipart/form-data; boundary=${boundary}`
+            },
+            payload: payload.getBytes(),
             muteHttpExceptions: true
         };
         
@@ -297,6 +349,9 @@ class RWGPSAdapter {
         return UrlFetchApp.fetch(url, options);
     }
 }
+
+return RWGPSAdapter;
+})();
 
 /* istanbul ignore if - Node.js/Jest export */
 if (typeof module !== 'undefined') {

@@ -30,15 +30,13 @@ class SCCCCEvent {
    * Create the name of a Managed Event. A Managed Event is one where this code is
    * responsible for all parts of the name and the Event body.
    * 
-   * Note that due to the vagaries of Google Spreadsheets the start date and start time are independent, although both are a date and a time!
-   * @param {Date} start_date event start date
-   * @param {Date} start_time event start time
+   * @param {Date} startDateTime event start date/time
    * @param {string} groupName name of group
    * @param {string} route_name name of route
    * @returns {string} name of event
    */
-  static makeManagedRideName(start_date, start_time, groupName, route_name) {
-    return `${dates.weekday(start_date)} ${groupName} (${dates.MMDD(start_date)} ${dates.T24(start_time)}) ${route_name}`;
+  static makeManagedRideName(startDateTime, groupName, route_name) {
+    return `${dates.weekday(startDateTime)} ${groupName} (${dates.MMDD(startDateTime)} ${dates.T24(startDateTime)}) ${route_name}`;
   }
   /**
    * Create the unmanaged event name by appending or updating the participant count to the main name
@@ -71,8 +69,8 @@ class SCCCCEvent {
       this.name = undefined,
       this.organizer_tokens = undefined,
       this.route_ids = undefined,
-      this.start_date = undefined,
-      this.start_time = undefined,
+      /** @type {Date | undefined} */
+      this.startDateTime = undefined,
       this.visibility = 0
   }
   isCancelled() {

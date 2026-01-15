@@ -22,6 +22,7 @@
 if (typeof require !== 'undefined') {
     var RWGPSCore = require('./RWGPSCore');
     var RWGPSAdapter = require('./RWGPSAdapter');
+    var RWGPSClientCore = require('./RWGPSClientCore');
 }
 
 /**
@@ -44,19 +45,26 @@ if (typeof require !== 'undefined') {
 /**
  * RWGPSFacade - Public API for RWGPS operations
  * Uses class pattern per copilot-instructions Rule 4.5
+ * Wrapped in IIFE for GAS compatibility (avoids duplicate class declarations)
  */
+var RWGPSFacade = (function() {
+
 class RWGPSFacade {
     /**
      * Club ID for membership operations
-     * @private
+     * @returns {number}
      */
-    static CLUB_ID = 47;
+    static get CLUB_ID() {
+        return 47;
+    }
 
     /**
      * Default route expiry days
-     * @private
+     * @returns {number}
      */
-    static DEFAULT_EXPIRY_DAYS = 30;
+    static get DEFAULT_EXPIRY_DAYS() {
+        return 30;
+    }
 
     /**
      * Create facade with adapter and globals
@@ -325,6 +333,268 @@ class RWGPSFacade {
     }
 
     // =============================================
+    // Template Operations (for legacy compatibility)
+    // =============================================
+
+    /**
+     * Copy an event template to create a new event
+     * Returns the new event URL
+     * 
+     * @param {string} templateUrl - URL of template event to copy
+     * @returns {{success: boolean, eventUrl?: string, eventId?: string, error?: string}} Result with new event URL
+     */
+    copyTemplate(templateUrl) {
+        try {
+            // Ensure authenticated for web API
+            const loginResult = this._adapter.login();
+            if (!loginResult.success) {
+                return { success: false, error: `Login failed: ${loginResult.error}` };
+            }
+
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            const parsed = RWGPSCore.parseEventUrl(templateUrl);
+            
+            // Copy via web API (POST to /events/{id}/copy)
+            const response = this._adapter.fetchWebForm('POST', `/events/${parsed.eventId}/copy.json`, {});
+            
+            // Copy returns 302 redirect with Location header
+            const statusCode = response.getResponseCode();
+            if (statusCode === 302 || statusCode === 200) {
+                const headers = /** @type {Record<string, string>} */ (response.getAllHeaders());
+                const newEventUrl = headers['Location'] || headers['location'];
+                
+                if (newEventUrl) {
+                    // Extract event ID from URL (format: "https://ridewithgps.com/events/12345-name")
+                    const eventId = newEventUrl.split('/').pop()?.split('-')[0];
+                    return {
+                        success: true,
+                        eventUrl: newEventUrl,
+                        eventId: eventId
+                    };
+                }
+            }
+
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            return RWGPSCore.buildErrorResult(response, 'Copy template');
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
+     * Lookup organizers by name
+     * Returns organizer objects with id and text
+     * 
+     * @param {string[]} names - Array of organizer names to look up
+     * @param {string} templateUrl - Event URL to use for lookup (has autocomplete endpoint)
+     * @returns {{success: boolean, data?: Array<{id: number, text: string}>, error?: string}} Result with organizers
+     */
+    getOrganizers(names, templateUrl) {
+        try {
+            if (!names || names.length === 0) {
+                return { success: true, data: [] };
+            }
+
+            // Ensure authenticated
+            if (!this._adapter.isAuthenticated()) {
+                const loginResult = this._adapter.login();
+                if (!loginResult.success) {
+                    return { success: false, error: `Login failed: ${loginResult.error}` };
+                }
+            }
+
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            const parsed = RWGPSCore.parseEventUrl(templateUrl);
+            
+            /** @type {Array<{id: number, text: string}>} */
+            const organizers = [];
+            
+            for (const name of names) {
+                const trimmedName = name.trim();
+                if (!trimmedName) continue;
+                
+                // Use autocomplete endpoint to search for organizer
+                const queryParams = `q=${encodeURIComponent(trimmedName)}`;
+                const response = this._adapter.fetchWeb('GET', `/events/${parsed.eventId}/organizer_ids?${queryParams}`);
+                
+                // @ts-expect-error - TypeScript can't resolve class methods through module imports
+                if (RWGPSCore.isSuccessResponse(response)) {
+                    try {
+                        const content = JSON.parse(response.getContentText());
+                        const results = content.results || [];
+                        
+                        // Find exact match (case-insensitive, whitespace-normalized)
+                        const normalizedSearch = trimmedName.toLowerCase().replace(/\s+/g, '');
+                        const found = results.find((/** @type {{text: string, id: number}} */ r) => 
+                            r.text.toLowerCase().replace(/\s+/g, '') === normalizedSearch
+                        );
+                        
+                        if (found) {
+                            organizers.push(found);
+                        } else {
+                            // Return TBD placeholder if not found
+                            // Consumers should handle this with their own TBD logic
+                            organizers.push({ id: -1, text: trimmedName });
+                        }
+                    } catch (e) {
+                        organizers.push({ id: -1, text: trimmedName });
+                    }
+                } else {
+                    organizers.push({ id: -1, text: trimmedName });
+                }
+            }
+
+            return { success: true, data: organizers };
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
+     * Set or update route expiration tag
+     * Uses legacy format "expires: MM/DD/YYYY" for backward compatibility
+     * 
+     * @param {string} routeUrl - Route URL
+     * @param {Date} expiryDate - New expiration date
+     * @param {boolean} [extendOnly=false] - If true, only update if expiration already exists
+     * @returns {Result} Success or error
+     */
+    setRouteExpiration(routeUrl, expiryDate, extendOnly = false) {
+        try {
+            if (!routeUrl) {
+                return { success: true }; // No-op if no URL
+            }
+
+            // Ensure authenticated
+            if (!this._adapter.isAuthenticated()) {
+                const loginResult = this._adapter.login();
+                if (!loginResult.success) {
+                    return { success: false, error: `Login failed: ${loginResult.error}` };
+                }
+            }
+
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            const parsed = RWGPSCore.parseRouteUrl(routeUrl);
+            
+            // Get current route to find existing expiry tag
+            const routeResponse = this._adapter.fetchV1('GET', `/routes/${parsed.routeId}.json`);
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            if (!RWGPSCore.isSuccessResponse(routeResponse)) {
+                // @ts-expect-error - TypeScript can't resolve class methods through module imports
+                return RWGPSCore.buildErrorResult(routeResponse, 'Get route for expiration');
+            }
+            
+            const routeBody = JSON.parse(routeResponse.getContentText());
+            const route = routeBody.route || routeBody;
+            const tagNames = route.tag_names || [];
+            
+            // Find existing expiration tag (legacy format: "expires: MM/DD/YYYY")
+            const existingExpiry = tagNames.find((/** @type {string} */ t) => t.startsWith('expires: '));
+            
+            // Build new expiry tag (legacy format for backward compatibility)
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            const newExpiryTag = RWGPSCore.buildLegacyExpiryTag(expiryDate);
+            
+            if (!existingExpiry) {
+                // No existing expiry
+                if (extendOnly) {
+                    // extendOnly but no existing tag - no-op
+                    return { success: true };
+                }
+                // Add new tag
+                return this._addRouteTags(parsed.routeId, [newExpiryTag]);
+            } else {
+                // Has existing expiry - check if new date is later
+                // @ts-expect-error - TypeScript can't resolve class methods through module imports
+                const existingDate = RWGPSCore.parseLegacyExpiryTag(existingExpiry);
+                
+                if (existingDate && expiryDate > existingDate) {
+                    // Remove old, add new
+                    const removeResult = this._removeRouteTags(parsed.routeId, [existingExpiry]);
+                    if (!removeResult.success) {
+                        return removeResult;
+                    }
+                    return this._addRouteTags(parsed.routeId, [newExpiryTag]);
+                }
+                // Existing date is same or later - no change needed
+                return { success: true };
+            }
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    // =============================================
+    // Tag Operations (public - for legacy compatibility)
+    // =============================================
+
+    /**
+     * Remove tags from events (public version of _removeEventTags)
+     * 
+     * @param {string[]} eventUrls - Event URLs to untag
+     * @param {string[]} tags - Tags to remove
+     * @returns {Result} Success or error
+     */
+    removeEventTags(eventUrls, tags) {
+        // Convert URLs to IDs
+        /** @type {string[]} */
+        const eventIds = [];
+        for (const url of eventUrls) {
+            try {
+                // @ts-expect-error - TypeScript can't resolve class methods through module imports
+                const parsed = RWGPSCore.parseEventUrl(url);
+                eventIds.push(parsed.eventId);
+            } catch (e) {
+                // If URL parsing fails, try using as ID directly
+                const idMatch = url.match(/(\d+)/);
+                if (idMatch) {
+                    eventIds.push(idMatch[1]);
+                }
+            }
+        }
+        
+        if (eventIds.length === 0) {
+            return { success: true }; // No valid IDs
+        }
+        
+        return this._removeEventTags(eventIds, tags);
+    }
+
+    /**
+     * Add tags to events
+     * 
+     * @param {string[]} eventUrls - Event URLs to tag
+     * @param {string[]} tags - Tags to add
+     * @returns {Result} Success or error
+     */
+    addEventTags(eventUrls, tags) {
+        // Convert URLs to IDs
+        /** @type {string[]} */
+        const eventIds = [];
+        for (const url of eventUrls) {
+            try {
+                // @ts-expect-error - TypeScript can't resolve class methods through module imports
+                const parsed = RWGPSCore.parseEventUrl(url);
+                eventIds.push(parsed.eventId);
+            } catch (e) {
+                const idMatch = url.match(/(\d+)/);
+                if (idMatch) {
+                    eventIds.push(idMatch[1]);
+                }
+            }
+        }
+        
+        if (eventIds.length === 0) {
+            return { success: true };
+        }
+        
+        return this._addEventTags(eventIds, tags);
+    }
+
+    // =============================================
     // Private Methods
     // =============================================
 
@@ -493,6 +763,40 @@ class RWGPSFacade {
     }
 
     /**
+     * Remove tags from route
+     * 
+     * @param {string} routeId - Route ID to untag
+     * @param {string[]} tags - Tags to remove
+     * @returns {Result} Success or error
+     * @private
+     */
+    _removeRouteTags(routeId, tags) {
+        try {
+            if (!this._adapter.isAuthenticated()) {
+                const loginResult = this._adapter.login();
+                if (!loginResult.success) {
+                    return { success: false, error: `Login failed: ${loginResult.error}` };
+                }
+            }
+
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            const payload = RWGPSCore.buildBatchTagPayload([routeId], 'remove', tags);
+            const response = this._adapter.fetchWebForm('POST', '/routes/batch_update_tags.json', payload);
+            
+            // @ts-expect-error - TypeScript can't resolve class methods through module imports
+            if (!RWGPSCore.isSuccessResponse(response)) {
+                // @ts-expect-error - TypeScript can't resolve class methods through module imports
+                return RWGPSCore.buildErrorResult(response, 'Remove route tags');
+            }
+
+            return { success: true };
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
      * Copy route from source URL
      * 
      * @param {string} sourceUrl - Source route URL
@@ -592,6 +896,7 @@ class RWGPSFacade {
 
     /**
      * Create event with logo using multipart form
+     * REUSES the proven RWGPSClientCore.buildMultipartCreateEventPayload implementation
      * 
      * @param {Record<string, any>} eventData - Event data (API-transformed)
      * @param {GoogleAppsScript.Base.Blob} logoBlob - Logo blob
@@ -599,36 +904,75 @@ class RWGPSFacade {
      * @private
      */
     _createEventWithLogo(eventData, logoBlob) {
-        // @ts-expect-error - TypeScript can't resolve class methods through module imports
-        const boundary = RWGPSCore.generateBoundary();
-        // @ts-expect-error - TypeScript can't resolve class methods through module imports
-        const payload = RWGPSCore.buildMultipartCreatePayload(eventData, logoBlob, boundary);
+        // Use same boundary format as working RWGPSClient
+        const boundary = '----WebKitFormBoundary' + Utilities.getUuid().replace(/-/g, '');
         
-        return this._adapter.fetchV1Multipart('POST', '/events.json', payload, boundary);
+        // REUSE the proven working implementation from RWGPSClientCore
+        // This handles multipart encoding, logo attachment, and byte concatenation correctly
+        const payload = RWGPSClientCore.buildMultipartCreateEventPayload(eventData, logoBlob, boundary);
+        
+        // Make direct request (same as working RWGPSClient pattern)
+        const url = 'https://ridewithgps.com/api/v1/events.json';
+        const options = {
+            method: /** @type {GoogleAppsScript.URL_Fetch.HttpMethod} */ ('post'),
+            headers: {
+                'Authorization': this._adapter._getBasicAuthHeader(),
+                'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                'Accept': 'application/json'
+            },
+            payload: payload.getBytes(),
+            muteHttpExceptions: true
+        };
+        
+        return UrlFetchApp.fetch(url, options);
     }
 
     /**
      * Download blob from URL (Drive or HTTP)
      * 
-     * @param {string} url - URL to download from
+     * @param {string} url - URL to download from (Google Drive URL or HTTP URL)
      * @returns {GoogleAppsScript.Base.Blob | null} Downloaded blob or null
      * @private
      */
     _downloadBlob(url) {
         try {
             /* istanbul ignore next - GAS-only code */
-            if (typeof UrlFetchApp !== 'undefined') {
-                const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-                if (response.getResponseCode() === 200) {
-                    return response.getBlob();
+            if (typeof DriveApp !== 'undefined' || typeof UrlFetchApp !== 'undefined') {
+                // Check if it's a Google Drive URL
+                // Format: https://drive.google.com/file/d/FILE_ID/view?...
+                // Or: https://drive.google.com/open?id=FILE_ID
+                const driveFileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || 
+                                        url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                
+                if (driveFileIdMatch && typeof DriveApp !== 'undefined') {
+                    // It's a Drive URL - use DriveApp to get the blob
+                    const fileId = driveFileIdMatch[1];
+                    console.log(`_downloadBlob: Fetching from Drive, fileId=${fileId}`);
+                    const file = DriveApp.getFileById(fileId);
+                    return file.getBlob();
+                }
+                
+                // Fall back to HTTP fetch for non-Drive URLs
+                if (typeof UrlFetchApp !== 'undefined') {
+                    console.log(`_downloadBlob: Fetching via HTTP: ${url}`);
+                    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+                    if (response.getResponseCode() === 200) {
+                        return response.getBlob();
+                    }
+                    console.warn(`_downloadBlob: HTTP fetch failed with code ${response.getResponseCode()}`);
                 }
             }
             return null;
         } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error(`_downloadBlob: Error downloading from ${url}: ${err.message}`);
             return null;
         }
     }
 }
+
+return RWGPSFacade;
+})();
 
 /* istanbul ignore if - Node.js/Jest export */
 if (typeof module !== 'undefined') {

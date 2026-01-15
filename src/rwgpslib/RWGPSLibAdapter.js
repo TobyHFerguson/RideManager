@@ -88,13 +88,36 @@ var RWGPSLibAdapter = {
     },
     
     /**
+     * LegacyRWGPSAdapter class - Wraps RWGPSFacade with legacy method names
+     * Use for: Drop-in replacement for legacy RWGPS class
+     * @type {typeof LegacyRWGPSAdapter}
+     */
+    get LegacyRWGPSAdapter() {
+        return LegacyRWGPSAdapter;
+    },
+    
+    /**
      * Create a new RWGPSFacade instance with default configuration.
-     * Uses getGlobals() for configuration automatically.
+     * Uses getGlobals() and CredentialManager for configuration automatically.
      * @returns {RWGPSFacade}
      */
     newFacade: function() {
-        const adapter = new RWGPSAdapter();
+        // Create credential manager from script properties
+        const credentialManager = new CredentialManager(PropertiesService.getScriptProperties());
+        const adapter = new RWGPSAdapter(credentialManager);
         const globals = typeof getGlobals === 'function' ? getGlobals() : {};
         return new RWGPSFacade(adapter, globals);
+    },
+    
+    /**
+     * Create a new LegacyRWGPSAdapter instance.
+     * Drop-in replacement for legacy RWGPS class.
+     * Uses getGlobals() for configuration automatically.
+     * @returns {LegacyRWGPSAdapter}
+     */
+    newLegacyAdapter: function() {
+        const facade = this.newFacade();
+        const globals = typeof getGlobals === 'function' ? getGlobals() : {};
+        return new LegacyRWGPSAdapter(facade, globals);
     }
 };

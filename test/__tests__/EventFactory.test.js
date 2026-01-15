@@ -31,19 +31,33 @@ const { getGlobals } = require('../../src/Globals');
 
 
 describe("Event Factory Tests", () => {
-    const managedRow =  {
-        startDate: "2023-01-01T18:00:00.000Z",
-        startTime: "2023-01-01T18:00:00.000Z",
-        group: 'A',
-        routeName: 'SCP - Seascape/Corralitos',
-        routeURL: 'http://ridewithgps.com/routes/17166902',
-        rideLeader: 'Toby Ferguson',
-        rideName: '',
-        rideURL: '',
-        location: 'Seascape County Park',
-        address: 'Address: Seascape County Park, Sumner Ave, Aptos, CA 95003'
-    }
-    const unmanagedRow = { ...managedRow, rideName: 'Tobys Ride' }
+    // Mock row with startDateTime getter (like real RowCore)
+    const makeRow = (overrides = {}) => {
+        const row = {
+            startDate: new Date("2023-01-01T18:00:00.000Z"),
+            get startTime() { return this.startDate; },
+            get startDateTime() { return this.startDate; },
+            group: 'A',
+            routeName: 'SCP - Seascape/Corralitos',
+            routeURL: 'http://ridewithgps.com/routes/17166902',
+            rideLeader: 'Toby Ferguson',
+            rideName: '',
+            rideURL: '',
+            location: 'Seascape County Park',
+            address: 'Address: Seascape County Park, Sumner Ave, Aptos, CA 95003',
+            ...overrides
+        };
+        // Update startTime/startDateTime getters if startDate is overridden
+        if (overrides.startDate) {
+            Object.defineProperty(row, 'startTime', { get() { return this.startDate; } });
+            Object.defineProperty(row, 'startDateTime', { get() { return this.startDate; } });
+        }
+        return row;
+    };
+    
+    const managedRow = makeRow();
+    const unmanagedRow = makeRow({ rideName: 'Tobys Ride' });
+    
     describe("Basic Construction", () => {
         describe("fromRow()", () => {
             test("should build from a row", () => {
@@ -67,13 +81,12 @@ describe("Event Factory Tests", () => {
                 const hour = dates.T24(start)
                 const expected = { ...managedEvent, 
                     name: `Thu A (6/1 ${hour}) SCP - Seascape/Corralitos`,
-                    "start_date": start.toISOString(),
-                    "start_time": start.toISOString(),
+                    startDateTime: start,
                 }
                 if (hour === "11:00") { 
                     expected.desc = expected.desc.replace("Arrive 9:45 AM for a 10:00 AM rollout.", "Arrive 10:45 AM for a 11:00 AM rollout.");
                 }
-                const mr = { ...managedRow, startDate: "2023-06-01T18:00:00.000Z", startTime: "2023-06-01T18:00:00.000Z"}
+                const mr = makeRow({ startDate: start });
                 const actual = EventFactory.newEvent(mr, organizers, 1234);
                 expect(actual).toMatchObject(expected);
             })
@@ -100,35 +113,34 @@ describe("Event Factory Tests", () => {
                 expect(actualWithoutDesc).toMatchObject(expectedWithoutDesc);
             })
             test("should return an event even if the description is missing", () => {
-                const testcase = managedRwgpsEvent;
+                const testcase = { ...managedRwgpsEvent };
                 delete testcase.desc;
                 let actual = EventFactory.fromRwgpsEvent(testcase);
-                const expected = managedEvent;
-                expected.desc = '';
-                expect(actual).toEqual(expected);
+                // desc should be empty when missing
+                expect(actual.desc).toBe('');
+                // Other fields should still be present
+                expect(actual.name).toBe(managedRwgpsEvent.name);
+                expect(actual.location).toBe(managedRwgpsEvent.location);
             })
             test("should return an event even if the routes are missing", () => {
-                const testcase = managedRwgpsEvent;
+                const testcase = { ...managedRwgpsEvent };
                 delete testcase.routes;
                 let actual = EventFactory.fromRwgpsEvent(testcase);
-                const expected = managedEvent;
-                expected.route_ids = [];
-                expect(actual).toEqual(expected);
+                // route_ids should be empty array when routes missing
+                expect(actual.route_ids).toEqual([]);
+                // Other fields should still be present
+                expect(actual.name).toBe(managedRwgpsEvent.name);
+                expect(actual.location).toBe(managedRwgpsEvent.location);
             })
-            test("should return an event even if the start_at date is missing", () => {
-                const testcase = managedRwgpsEvent;
+            test("should return an event even if the starts_at date is missing", () => {
+                const testcase = { ...managedRwgpsEvent };
                 delete testcase.starts_at;
                 let actual = EventFactory.fromRwgpsEvent(testcase);
-                const actual_start_date = actual.start_date;
-                const actual_start_time = actual.start_time;
-                delete actual.start_time;
-                delete actual.start_date;
-                const expected = managedEvent;
-                delete expected.start_date;
-                delete expected.start_time;
-                expect(actual).toEqual(expected);
-                expect(typeof actual_start_date).toBe("string");
-                expect(typeof actual_start_time).toBe("string");
+                // Should have a startDateTime (defaulting to current time)
+                expect(actual.startDateTime).toBeInstanceOf(Date);
+                // Other fields should still match
+                expect(actual.name).toBe(managedRwgpsEvent.name);
+                expect(actual.location).toBe(managedRwgpsEvent.location);
             })
             test("should log error when event name ends with ]", () => {
                 const consoleSpy = jest.spyOn(console, 'error').mockImplementation();

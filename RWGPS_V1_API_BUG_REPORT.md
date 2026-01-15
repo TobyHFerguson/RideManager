@@ -1,3 +1,4 @@
+
 # RWGPS v1 API: OpenAPI Spec Discrepancy for `organizers` Field
 
 ## Summary

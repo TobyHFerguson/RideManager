@@ -560,7 +560,7 @@ describe('RowCore', () => {
                 expect(row.announcement).toEqual({text: '', url: ''});
                 expect(row.sendAt).toBeUndefined();
                 expect(row.status).toBe('');
-                expect(row.attempts).toBe(0);
+                expect(row.attempts).toBe('');
                 expect(row.lastError).toBe('');
                 expect(row.lastAttemptAt).toBeUndefined();
                 

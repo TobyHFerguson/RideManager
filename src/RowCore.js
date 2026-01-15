@@ -138,6 +138,15 @@ if (typeof require !== 'undefined') {
         // ===== COMPUTED PROPERTIES (GETTERS) =====
 
         /**
+         * Start date/time as a Date object
+         * This is the canonical property name for domain objects
+         * @returns {Date}
+         */
+        get startDateTime() {
+            return this.startDate;
+        }
+
+        /**
          * Start time (alias for startDate)
          * @returns {Date}
          */
@@ -327,7 +336,7 @@ if (typeof require !== 'undefined') {
             this.announcementCell = { text: '', url: '' };
             this.sendAt = undefined;
             this.status = '';
-            this.attempts = 0;
+            this.attempts = '';
             this.lastError = '';
             this.lastAttemptAt = undefined;
             

@@ -49,7 +49,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
      */
     function makeRideName(row) {
         const name = (!row.rideName || SCCCCEvent.managedEventName(row.rideName, getGroupNames()))
-            ? SCCCCEvent.makeManagedRideName(row.startDate, row.startTime, row.group, row.routeName)
+            ? SCCCCEvent.makeManagedRideName(row.startDateTime, row.group, row.routeName)
             : SCCCCEvent.makeUnmanagedRideName(row.rideName);
         return name;
     }
@@ -69,8 +69,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
             const event = new SCCCCEvent();
             event.location = row.location && !(row.location.startsWith("#")) ? row.location : "";
             event.route_ids = [row.routeURL.split('/')[4]];
-            event.start_time = row.startTime;
-            event.start_date = row.startDate;
+            event.startDateTime = row.startDateTime;
             event.name = makeRideName(row);
             event.organizer_tokens = organizers.map(o => o.id + "");
             let address = row.address && !(row.address.startsWith("#")) ? row.address : "";
@@ -92,9 +91,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
             event.name = rwgpsEvent.name;
             event.organizer_tokens = rwgpsEvent.organizer_ids ? rwgpsEvent.organizer_ids.map(id => String(id)) : undefined;
             event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map((/** @type {{id: any}} */ r) => r.id + "") : [];
-            const sd = (rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date());
-            event.start_date = sd.toISOString();
-            event.start_time = sd.toISOString();
+            event.startDateTime = rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date();
             event.visibility = rwgpsEvent.visibility || 0;
             if (event.name && event.name.trim().endsWith(']')) {
                 console.error(`Event name '${event.name}' should not end with ']' - this is likely a bug in the RWGPS event import code`);
