@@ -536,6 +536,8 @@ var AnnouncementManager = (function () {
                 if (updates.needsDocumentRename && updates.newDocumentName) {
                     try {
                         doc.setName(updates.newDocumentName);
+                        // Also update the spreadsheet cell's display text to match new document name
+                        row.setAnnouncement(row.announcementURL, updates.newDocumentName);
                         console.log(`AnnouncementManager.updateAnnouncement: Renamed document to ${updates.newDocumentName} for row ${row.rowNum}`);
                     } catch (renameError) {
                         const err = renameError instanceof Error ? renameError : new Error(String(renameError));
