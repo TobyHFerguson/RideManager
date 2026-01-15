@@ -786,6 +786,12 @@ Fields:
     - Logo uploaded successfully (image/jpeg, 9124 bytes)
     - User verified logo displays on RWGPS event page
     - Complete workflow: Drive URL → Blob → v1 API multipart upload
+  - **testTask4_1_V1ApiSingleEdit(445203)** ❌ DEPRECATED - Has bug, use ComprehensiveTest
+    - ❌ Test uses WRONG field names (web API format instead of v1 API format)
+    - Sends: `starts_at` (web API) instead of `start_date` + `start_time` (v1 API)
+    - Sends: `desc` (web API) instead of `description` (v1 API)
+    - **DECISION**: Don't fix - use testV1API_ComprehensiveFieldUpdate() instead
+    - ComprehensiveFieldUpdate already tests all v1 fields correctly
 - [x] ✅ Commit Phase 4 complete: Multiple commits (0d0b5d2, ee9ba29)
 
 **Phase 4 Summary**:

@@ -493,17 +493,19 @@ function testTask4_1_V1ApiSingleEdit(eventId) {
         console.log(`\n📡 Step 2: Testing v1 API single PUT (no double-edit)...`);
         
         // Create test event data with modified name and time
-        const testTime = '2030-04-15T18:30:00.000Z'; // Specific test time
+        // CRITICAL: V1 API uses start_date + start_time (NOT starts_at)
         const testEventData = {
             name: originalEvent.name + ' [V1 TEST]',
-            desc: originalEvent.desc || '',
-            starts_at: testTime,
+            description: originalEvent.description || originalEvent.desc || '',
+            start_date: '2030-04-15', // v1 API field (date only)
+            start_time: '18:30',      // v1 API field (time only)
             all_day: '0'
         };
         
         console.log(`   Payload being sent to v1 API:`);
         console.log(`      name: ${testEventData.name}`);
-        console.log(`      starts_at: ${testEventData.starts_at}`);
+        console.log(`      start_date: ${testEventData.start_date}`);
+        console.log(`      start_time: ${testEventData.start_time}`);
         console.log(`      all_day: ${testEventData.all_day}`);
         
         const v1Result = client.testV1SingleEditEvent(eventUrl, testEventData);
