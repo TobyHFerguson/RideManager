@@ -1095,9 +1095,9 @@ function testV1API_OpenAPICompliant() {
             // Visibility - change
             visibility: 'public',
             
-            // Test BOTH organizer formats to see which works
-            organizers: organizerId ? [{ id: organizerId }] : [],
-            organizer_ids: organizerId ? [organizerId] : [] // Also try the legacy format
+            // Organizers - OpenAPI spec says array of User objects with {id, ...}
+            organizers: organizerId ? [{ id: organizerId }] : []
+            // Note: organizer_ids is NOT in OpenAPI spec - removed
         };
         
         console.log('Updated values (OpenAPI EventPayload fields):');
@@ -1113,7 +1113,6 @@ function testV1API_OpenAPICompliant() {
         console.log(`  time_zone: ${updatedData.time_zone}`);
         console.log(`  visibility: ${updatedData.visibility}`);
         console.log(`  organizers: ${JSON.stringify(updatedData.organizers)} (OpenAPI spec format)`);
-        console.log(`  organizer_ids: ${JSON.stringify(updatedData.organizer_ids)} (legacy format)`);
         
         console.log('\n   Sending single PUT request...');
         const editResult = client.testV1SingleEditEvent(eventUrl, updatedData);

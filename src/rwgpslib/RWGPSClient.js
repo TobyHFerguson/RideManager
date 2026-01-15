@@ -1117,9 +1117,10 @@ var RWGPSClient = (function() {
             // all_day - always include for time changes
             eventPayload.all_day = eventData.all_day !== undefined ? eventData.all_day : '0';
             
-            // Organizers - try both formats that OpenAPI mentions
+            // Organizers - OpenAPI spec says array of User objects with {id, ...}
+            // Only send if present in eventData
             if (eventData.organizers !== undefined) eventPayload.organizers = eventData.organizers;
-            if (eventData.organizer_ids !== undefined) eventPayload.organizer_ids = eventData.organizer_ids;
+            // Note: organizer_ids is NOT in OpenAPI spec (removed)
             
             const payload = { event: eventPayload };
             
