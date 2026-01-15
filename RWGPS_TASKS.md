@@ -830,6 +830,46 @@ Fields:
 ### Goal
 Replace the current 3,579-line rwgpslib codebase with a small, stable, fully testable library following copilot-instructions Core/Adapter separation pattern.
 
+### Relationship to Existing Domain Layer
+
+**Key insight**: The codebase already has a clean domain layer that STAYS unchanged:
+
+| Module | Role | Coverage | Status |
+|--------|------|----------|--------|
+| **SCCCCEvent.js** | Domain model (club event structure, business rules) | 92% | ✅ KEEP |
+| **EventFactory.js** | Creates domain objects from Row data | 100% | ✅ KEEP |
+| **RWGPSCore.js** (new) | API format handling (payload construction) | target 100% | ✅ NEW |
+
+**The Asymmetric Payload Problem** - RWGPS uses different field names for input vs output:
+
+| Concept | Web Input | Web Output | v1 API |
+|---------|-----------|------------|--------|
+| Organizers | `organizer_tokens: ['123']` | `organizers: [{id: 123}]` | `organizer_ids: [123]` |
+| Routes | `route_ids: ['456']` | `routes: [{id: 456}]` | `route_ids: ['456']` |
+| Description | `desc` | `desc` | `description` |
+| Start time | `start_date` + `start_time` | `starts_at` | `start_date` + `start_time` |
+
+**Solution**: RWGPSCore owns ALL API format transformations:
+
+```javascript
+// Domain layer (unchanged)
+const event = EventFactory.newEvent(row, organizers, eventId);  // Returns SCCCCEvent
+
+// RWGPSCore transforms domain → API format
+const v1Payload = RWGPSCore.toV1Payload(event);      // For v1 API POST/PUT
+const webPayload = RWGPSCore.toWebPayload(event);    // For web API fallback
+
+// RWGPSCore transforms API response → domain format
+const domainEvent = RWGPSCore.fromV1Response(apiResponse);
+const domainEvent = RWGPSCore.fromWebResponse(apiResponse);
+```
+
+**Benefits**:
+- SCCCCEvent/EventFactory stay focused on **business logic** (naming rules, cancellation, etc.)
+- RWGPSCore owns **all API format knowledge** (field names, transformations)
+- Format changes only affect RWGPSCore (not scattered across codebase)
+- Each layer is independently testable
+
 ### Current Problem
 The current `src/rwgpslib/` violates fundamental architectural principles:
 
@@ -912,6 +952,12 @@ class RWGPSCore {
     static formatDateForV1Api(date)             // Date → 'YYYY-MM-DD'
     static formatTimeForV1Api(date)             // Date → 'HH:MM'
     static parseV1DateTime(date, time, tz)      // V1 fields → Date object
+    
+    // Domain ↔ API Format Transformations (solves asymmetric payload problem)
+    static toV1Payload(event)                   // SCCCCEvent → v1 API payload
+    static toWebPayload(event)                  // SCCCCEvent → web API payload
+    static fromV1Response(response)             // v1 API response → normalized object
+    static fromWebResponse(response)            // web API response → normalized object
     
     // Validation
     static validateEventPayload(payload)        // Pre-flight validation
