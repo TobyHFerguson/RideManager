@@ -772,18 +772,25 @@ Fields:
 - [x] ✅ All tests pass (554 tests - commit 0d0b5d2)
 - [x] ✅ RWGPSClient operations use v1 API natively
   - createEvent, getEvent, editEvent all use /api/v1/events
-  - Native v1 format throughout (no web format transformations)
+  - getEvent transforms v1 → web format for backward compatibility (commit ee9ba29)
 - [x] ✅ Document operations still using web API:
   - **batch_update_tags** - v1 API has NO tag endpoints (must use web API)
   - **getClubMembers** - /clubs/47/table_members.json returns v1-compatible format
     (No migration needed - same data structure, simpler than paginated v1)
-- [x] ✅ Commit Phase 4 complete: "Phase 4 checkpoint: Fix tests after v1 API migration" (0d0b5d2)
+- [x] ✅ GAS Integration Tests PASSED:
+  - **testTask4_2_V1ApiGetEvent(445203)** ✅ starts_at correctly transformed
+  - v1 format (start_date + start_time) → web format (starts_at ISO 8601)
+  - Backward compatibility maintained for Phase 4
+- [x] ✅ Commit Phase 4 complete: Multiple commits (0d0b5d2, ee9ba29)
 
 **Phase 4 Summary**:
 - RWGPSClient fully migrated to v1 API for events
 - Tests updated to reflect new createEvent() flow
+- v1→web transformation ensures backward compatibility
 - Two operations keep web API with documented rationale
-- All 554 tests passing with improved coverage
+- All 554 tests passing + GAS integration tests validated
+
+**Key Learning**: GAS integration tests caught format mismatch that Jest mocks didn't catch. Always validate with real API calls before considering phase complete.
 
 ---
 
