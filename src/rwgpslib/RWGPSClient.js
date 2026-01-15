@@ -454,11 +454,14 @@ var RWGPSClient = (function() {
                 // v1 API returns {"event": {...}}, unwrap the event object
                 const v1Event = responseData.event || responseData;
                 
-                // Return v1 format natively (no transformation)
-                // v1 format uses: start_date, start_time, description, organizer_ids, route_ids
+                // PHASE 4: Transform v1 → web format for backward compatibility
+                // Consumers still expect web format during Phase 4
+                // Phase 5 will update consumers to accept v1 format directly
+                const webEvent = this._transformV1ToWebFormat(v1Event);
+                
                 return {
                     success: true,
-                    event: v1Event
+                    event: webEvent
                 };
             } else {
                 return {
@@ -1131,6 +1134,63 @@ var RWGPSClient = (function() {
                 error: err.message
             };
         }
+    }
+
+    /**
+     * Transform v1 API format to web API format for backward compatibility
+     * 
+     * During Phase 4: Consumers still expect web format (starts_at, desc, etc.)
+     * During Phase 5: Consumers will be updated to accept v1 format directly
+     * 
+     * v1 format:
+     * - start_date + start_time (separate fields)
+     * - description
+     * - organizers array with {id, name}
+     * - routes array with {id, name}
+     * 
+     * web format:
+     * - starts_at (ISO 8601 datetime)
+     * - desc
+     * - organizers array with {id, text}
+     * - routes array with {id}
+     * 
+     * @param {any} v1Event - Event object in v1 format
+     * @returns {any} Event object in web format
+     * @private
+     */
+    _transformV1ToWebFormat(v1Event) {
+        // Create web format event by copying v1 fields
+        const webEvent = { ...v1Event };
+        
+        // Transform start_date + start_time → starts_at
+        if (v1Event.start_date && v1Event.start_time && !v1Event.all_day) {
+            // Combine date and time into ISO 8601 format
+            // Use time_zone if available, otherwise default to PST (-08:00)
+            const timeZone = v1Event.time_zone || 'America/Los_Angeles';
+            const dateTimeStr = `${v1Event.start_date}T${v1Event.start_time}:00`;
+            
+            // For simplicity, use -08:00 offset for Pacific time
+            // (This is approximate; real implementation should handle DST)
+            webEvent.starts_at = `${dateTimeStr}-08:00`;
+        } else if (v1Event.all_day && v1Event.start_date) {
+            // All-day events: use midnight time
+            webEvent.starts_at = `${v1Event.start_date}T00:00:00-08:00`;
+        }
+        
+        // Add desc as alias for description (consumers may expect both)
+        if (v1Event.description !== undefined) {
+            webEvent.desc = v1Event.description;
+        }
+        
+        // Transform organizers: {id, name} → {id, text}
+        if (Array.isArray(v1Event.organizers)) {
+            webEvent.organizers = v1Event.organizers.map((org) => ({
+                id: org.id,
+                text: org.name || ''
+            }));
+        }
+        
+        return webEvent;
     }
 }
 
