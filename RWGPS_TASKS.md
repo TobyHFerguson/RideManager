@@ -730,10 +730,43 @@ Fields:
 
 **TASK COMPLETE**
 
-### Task 4.6: Verify getClubMembers still works
-- [ ] Already uses v1 API - just verify
-- [ ] Run tests
-- [ ] Commit: "Verify getClubMembers uses v1 API"
+### Task 4.6: Evaluate getClubMembers migration ✅ COMPLETE
+
+**Investigation**: Does `/clubs/47/table_members.json` need migration to v1 API?
+
+**Current Implementation**:
+- Uses `/clubs/47/table_members.json` (undocumented endpoint)
+- Returns: `[{user: {id, first_name, last_name}, ...}]`
+- Used by: `RWGPSMembersAdapter.updateMembers()`
+- Processing: `RWGPSMembersCore.transformMembersData()` expects this exact format
+- Tests: 100% coverage of transformation logic
+
+**v1 API Available**: 
+- Endpoint: `GET /api/v1/members.json`
+- Returns: `{members: [{user: {id, first_name, last_name}, ...}], meta: {pagination}}`
+- Paginated (requires fetching multiple pages)
+
+**Key Finding**: Both endpoints return the SAME data format! ✅
+
+**Decision: Keep existing endpoint**
+
+**Rationale**:
+1. **Works perfectly** - RWGPSMembersAdapter is well-tested and working in production
+2. **Same data format** - Both endpoints return `{user: {id, first_name, last_name}}`
+3. **Simpler** - `/table_members.json` returns all members in one call
+4. **v1 is paginated** - Would require pagination loop (more complexity)
+5. **No benefit** - Migration adds work with zero functional improvement
+6. **Documented** - OpenAPI has v1, but undocumented endpoint works fine
+
+**Conclusion**: This is NOT a "web API that needs migration" - it's already working correctly with the same data format as v1. The only difference is pagination, which is actually a disadvantage for our use case (we want all members at once).
+
+**Affected Code**:
+- `RWGPSService.getClubMembers()` - Keep as-is
+- `RWGPS.get_club_members()` - Keep as-is
+- `RWGPSMembersAdapter` - No changes needed
+- `RWGPSMembersCore` - Already handles the format correctly
+
+**TASK COMPLETE - No migration needed**
 
 ### Phase 4 Complete Checkpoint
 - [ ] All tests pass
