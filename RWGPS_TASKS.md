@@ -792,16 +792,34 @@ Fields:
     - Sends: `desc` (web API) instead of `description` (v1 API)
     - **DECISION**: Don't fix - use testV1API_ComprehensiveFieldUpdate() instead
     - ComprehensiveFieldUpdate already tests all v1 fields correctly
+  - **testV1API_ComprehensiveFieldUpdate()** 🚨 CRITICAL BUG DISCOVERED
+    - ✅ Creates test event, sends single PUT with ALL 12 EventPayload fields
+    - ✅ **ONLY 3 fields work**: name, start_date, start_time
+    - ❌ **9 fields SILENTLY IGNORED**: description, end_date, end_time, location, lat, lng, time_zone, visibility, organizers
+    - 🔍 API returns HTTP 200 (success) but ignores 75% of OpenAPI spec fields
+    - **CONCLUSION**: V1 API PUT is severely limited - unsuitable for comprehensive edits
+    - **See RWGPS_V1_API_BUG_REPORT.md for full details**
+    - **Impact**: Must use web API for description, organizers, end times, visibility
+    - **Good news**: start_date + start_time work in single PUT (NO double-PUT needed!)
 - [x] ✅ Commit Phase 4 complete: Multiple commits (0d0b5d2, ee9ba29)
 
 **Phase 4 Summary**:
-- RWGPSClient fully migrated to v1 API for events
-- Tests updated to reflect new createEvent() flow
-- v1→web transformation ensures backward compatibility
-- Two operations keep web API with documented rationale
+- RWGPSClient fully migrated to v1 API for core operations (createEvent, getEvent)
+- Tests updated to reflect new createEvent() flow (v1 native, not copyTemplate)
+- v1→web transformation ensures backward compatibility during transition
+- **CRITICAL DISCOVERY**: V1 API PUT only updates 3 of 12 fields (name, start_date, start_time)
+  - 9 fields silently ignored: description, end_date/time, location, visibility, organizers, etc.
+  - Must continue using web API for comprehensive edits (editEvent remains web-based)
+- Two operations keep web API with documented rationale:
+  - batch_update_tags (v1 has no tag endpoints)
+  - editEvent comprehensive updates (v1 PUT too limited)
 - All 554 tests passing + GAS integration tests validated
 
-**Key Learning**: GAS integration tests caught format mismatch that Jest mocks didn't catch. Always validate with real API calls before considering phase complete.
+**Key Learnings**: 
+1. GAS integration tests caught format mismatch that Jest mocks didn't catch
+2. v1 API PUT implementation incomplete - OpenAPI spec doesn't match reality
+3. Always validate with real API calls before considering phase complete
+4. Bug report filed: RWGPS_V1_API_BUG_REPORT.md documents all findings
 
 ---
 
