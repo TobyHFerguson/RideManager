@@ -1090,17 +1090,41 @@ var RWGPSClient = (function() {
             const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
             const v1Url = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
             
-            // Build v1 API payload with single PUT using CORRECT v1 field names
-            // v1 API uses start_date + start_time, NOT starts_at
-            const payload = {
-                event: {
-                    name: eventData.name,
-                    description: eventData.description,
-                    start_date: eventData.start_date,
-                    start_time: eventData.start_time,
-                    all_day: '0'  // Single PUT with all_day=0
-                }
-            };
+            // Build v1 API payload with ALL fields from OpenAPI EventPayload schema
+            // Include all fields that are present in eventData
+            /** @type {Record<string, any>} */
+            const eventPayload = {};
+            
+            // Text fields
+            if (eventData.name !== undefined) eventPayload.name = eventData.name;
+            if (eventData.description !== undefined) eventPayload.description = eventData.description;
+            
+            // Date/Time fields (v1 API uses start_date + start_time, NOT starts_at)
+            if (eventData.start_date !== undefined) eventPayload.start_date = eventData.start_date;
+            if (eventData.start_time !== undefined) eventPayload.start_time = eventData.start_time;
+            if (eventData.end_date !== undefined) eventPayload.end_date = eventData.end_date;
+            if (eventData.end_time !== undefined) eventPayload.end_time = eventData.end_time;
+            
+            // Location fields
+            if (eventData.location !== undefined) eventPayload.location = eventData.location;
+            if (eventData.lat !== undefined) eventPayload.lat = eventData.lat;
+            if (eventData.lng !== undefined) eventPayload.lng = eventData.lng;
+            if (eventData.time_zone !== undefined) eventPayload.time_zone = eventData.time_zone;
+            
+            // Visibility
+            if (eventData.visibility !== undefined) eventPayload.visibility = eventData.visibility;
+            
+            // all_day - always include for time changes
+            eventPayload.all_day = eventData.all_day !== undefined ? eventData.all_day : '0';
+            
+            // Organizers - try both formats that OpenAPI mentions
+            if (eventData.organizers !== undefined) eventPayload.organizers = eventData.organizers;
+            if (eventData.organizer_ids !== undefined) eventPayload.organizer_ids = eventData.organizer_ids;
+            
+            const payload = { event: eventPayload };
+            
+            console.log(`   DEBUG: Sending PUT to ${v1Url}`);
+            console.log(`   DEBUG: Payload: ${JSON.stringify(payload, null, 2)}`);
             
             const options = {
                 method: 'PUT',
@@ -1115,16 +1139,24 @@ var RWGPSClient = (function() {
             const response = this._fetch(v1Url, options);
             const statusCode = response.getResponseCode();
             
+            // Capture x-request-id for debugging with RWGPS support
+            const headers = response.getAllHeaders();
+            const requestId = headers['x-request-id'] || headers['X-Request-Id'] || 'not found';
+            console.log(`   DEBUG: Response status: ${statusCode}`);
+            console.log(`   DEBUG: x-request-id: ${requestId}`);
+            
             if (statusCode === 200) {
                 const data = JSON.parse(response.getContentText());
                 return {
                     success: true,
-                    event: data.event || data
+                    event: data.event || data,
+                    requestId: requestId
                 };
             } else {
                 return {
                     success: false,
-                    error: `V1 API edit failed with status ${statusCode}`
+                    error: `V1 API edit failed with status ${statusCode}`,
+                    requestId: requestId
                 };
             }
         } catch (error) {
