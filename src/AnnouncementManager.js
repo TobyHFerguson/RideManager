@@ -426,7 +426,9 @@ var AnnouncementManager = (function () {
 
                 // Update status to cancelled regardless of whether email was sent
                 row.setStatus('cancelled');
-                // Note: Row will be saved automatically by adapter.save() in calling code
+
+                // Update announcement document to match cancelled ride name
+                this.updateAnnouncement(row);
 
                 console.log(`AnnouncementManager.handleCancellation: Row ${row.rowNum} cancelled, email sent: ${sendEmail}`);
                 return { announcementSent: sendEmail, emailAddress };
@@ -464,7 +466,9 @@ var AnnouncementManager = (function () {
 
                 // Update status to pending regardless of whether email was sent
                 row.setStatus('pending');
-                // Note: Row will be saved automatically by adapter.save() in calling code
+
+                // Update announcement document to match reinstated ride name
+                this.updateAnnouncement(row);
 
                 console.log(`AnnouncementManager.handleReinstatement: Row ${row.rowNum} reinstated, email sent: ${sendEmail}`);
                 return { announcementSent: sendEmail, emailAddress };

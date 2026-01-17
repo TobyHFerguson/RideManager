@@ -299,9 +299,33 @@ var RWGPSClientCore = (function() {
 
         // Copy string fields
         if (eventData.name !== undefined) event.name = eventData.name;
-        if (eventData.description !== undefined) event.description = eventData.description;
-        if (eventData.start_date !== undefined) event.start_date = eventData.start_date;
-        if (eventData.start_time !== undefined) event.start_time = eventData.start_time;
+        
+        // Handle description - accept both 'description' and 'desc' (web format alias)
+        if (eventData.description !== undefined) {
+            event.description = eventData.description;
+        } else if (eventData.desc !== undefined) {
+            event.description = eventData.desc;
+        }
+        
+        // Handle start date/time - accept both v1 format AND starts_at (web format)
+        if (eventData.start_date !== undefined) {
+            event.start_date = eventData.start_date;
+        } else if (eventData.starts_at) {
+            // Parse starts_at ISO format: "2025-01-18T10:00:00-08:00"
+            const startsAt = eventData.starts_at;
+            // Extract date (first 10 chars)
+            event.start_date = startsAt.substring(0, 10);
+        }
+        
+        if (eventData.start_time !== undefined) {
+            event.start_time = eventData.start_time;
+        } else if (eventData.starts_at) {
+            // Parse starts_at ISO format: "2025-01-18T10:00:00-08:00"
+            const startsAt = eventData.starts_at;
+            // Extract time (chars 11-16, format HH:MM)
+            event.start_time = startsAt.substring(11, 16);
+        }
+        
         if (eventData.location !== undefined) event.location = eventData.location;
         if (eventData.time_zone !== undefined) event.time_zone = eventData.time_zone;
         
@@ -618,6 +642,26 @@ var RWGPSClientCore = (function() {
                 route_ids: routeId
             },
             muteHttpExceptions: true
+        };
+    }
+
+    /**
+     * Format a Date object for v1 API
+     * Converts Date to {start_date: 'YYYY-MM-DD', start_time: 'HH:MM'} format
+     * 
+     * @param {Date} date - Date to format
+     * @returns {{start_date: string, start_time: string}} Formatted date parts
+     */
+    static formatDateForV1Api(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        
+        return {
+            start_date: `${year}-${month}-${day}`,
+            start_time: `${hours}:${minutes}`
         };
     }
 }

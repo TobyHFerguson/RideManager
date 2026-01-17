@@ -374,6 +374,33 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Add tags to an event
+     * 
+     * @param {string} eventId - Event ID
+     * @param {string[]} tags - Tag names to add
+     * @returns {{success: boolean, error?: string}} Result
+     */
+    _addEventTags(eventId, tags) {
+        try {
+            const url = 'https://ridewithgps.com/events/batch_update_tags.json';
+            const options = RWGPSClientCore.buildBatchTagOptions(this.webSessionCookie, eventId, 'add', tags);
+
+            const response = this._fetch(url, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode === 200) {
+                return { success: true };
+            } else {
+                return { success: false, error: `Tag addition failed with status ${statusCode}` };
+            }
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
      * Delete an event
      * 
      * @param {string} eventUrl - Event URL

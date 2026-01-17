@@ -244,6 +244,11 @@ declare class RWGPSClient {
     private _removeEventTags(eventId: string, tags: string[]): { success: boolean; error?: string };
 
     /**
+     * Add tags to an event
+     */
+    _addEventTags(eventId: string, tags: string[]): { success: boolean; error?: string };
+
+    /**
      * Get Basic Auth header
      * @private
      */

@@ -119,5 +119,21 @@ var RWGPSLibAdapter = {
         const facade = this.newFacade();
         const globals = typeof getGlobals === 'function' ? getGlobals() : {};
         return new LegacyRWGPSAdapter(facade, globals);
+    },
+    
+    /**
+     * Create a new RWGPSClient instance.
+     * Direct access to tested, working RWGPS operations.
+     * Uses CredentialManager for authentication automatically.
+     * @returns {RWGPSClient}
+     */
+    newClient: function() {
+        const credentialManager = new CredentialManager(PropertiesService.getScriptProperties());
+        return new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
     }
 };

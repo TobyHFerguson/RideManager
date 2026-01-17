@@ -224,3 +224,12 @@ declare class RWGPSClientCore {
      * @returns {RequestOptions} Request options
      */
     static buildRouteTagOptions(sessionCookie: string, routeId: string, tags: string[]): RequestOptions;
+
+    /**
+     * Format a Date object for v1 API
+     * Converts Date to {start_date: 'YYYY-MM-DD', start_time: 'HH:MM'} format
+     * 
+     * @param {Date} date - Date to format
+     * @returns {{start_date: string, start_time: string}} Formatted date parts
+     */
+    static formatDateForV1Api(date: Date): { start_date: string; start_time: string };

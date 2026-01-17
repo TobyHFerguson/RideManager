@@ -270,6 +270,15 @@ function handleCRSheetEdit_(event, adapter) {
  * @param {boolean} scheduled - Whether the ride is currently scheduled
  */
 function editRouteColumn_(event, adapter, scheduled) {
+  // Check if this is a re-trigger from our own RichText write
+  // When USER edits, event.value is populated (raw text they typed/pasted)
+  // When OUR CODE writes RichText, event.value is undefined but cell has RichText
+  const existingRichText = event.range.getRichTextValue();
+  if (!event.value && existingRichText && existingRichText.getLinkUrl()) {
+    console.log('editRouteColumn_: Programmatic RichText change detected (no event.value), skipping re-trigger');
+    return;
+  }
+
   // Get raw input from various possible sources
   const inputValue = event.value ||
     event.range.getRichTextValue()?.getLinkUrl() ||
@@ -322,6 +331,8 @@ function editRouteColumn_(event, adapter, scheduled) {
       .setLinkUrl(link.url)
       .build();
     event.range.setRichTextValue(richText);
+    // Flush to ensure the write is committed before we reload for import
+    SpreadsheetApp.flush();
   } else {
     event.range.setValue('');
   }

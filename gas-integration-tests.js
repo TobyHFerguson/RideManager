@@ -2224,6 +2224,136 @@ function runIntegrationTests() {
 }
 
 /**
+ * Test if route_ids works on PUT (like organizer_ids)
+ * 
+ * The RWGPS devs confirmed organizer_ids works on PUT even though
+ * the OpenAPI spec only documents it for POST. This test checks
+ * if route_ids has the same behavior.
+ * 
+ * @param {number} eventId - Event to test with
+ * @param {number} newRouteId - Route ID to switch to
+ * @returns {{success: boolean, routeUpdated: boolean, originalRoutes: number[], newRoutes: number[], error?: string}}
+ */
+function testRouteIdsOnPut(eventId, newRouteId) {
+    console.log('====================================');
+    console.log('TEST: Does route_ids work on PUT?');
+    console.log('====================================');
+    console.log('');
+    console.log('Background: RWGPS devs confirmed organizer_ids works on PUT');
+    console.log('even though OpenAPI spec only documents it for POST.');
+    console.log('This test checks if route_ids has the same undocumented behavior.');
+    console.log('');
+    
+    if (!eventId) {
+        console.error('❌ eventId required - pass a test event ID');
+        console.log('   Example: testRouteIdsOnPut(453399, 50969472)');
+        return { success: false, error: 'eventId required' };
+    }
+    if (!newRouteId) {
+        console.error('❌ newRouteId required - pass a route ID to switch to');
+        console.log('   Example: testRouteIdsOnPut(453399, 50969472)');
+        return { success: false, error: 'newRouteId required' };
+    }
+    
+    console.log(`Event ID: ${eventId}`);
+    console.log(`New Route ID: ${newRouteId}`);
+    
+    try {
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // Step 1: Get original event to see current routes
+        console.log('\n📡 Step 1: Getting original event...');
+        const getResult = client.getEvent(eventUrl);
+        
+        if (!getResult.success) {
+            console.error('❌ Failed to get event:', getResult.error);
+            return { success: false, error: getResult.error };
+        }
+        
+        const originalEvent = getResult.event;
+        const originalRoutes = originalEvent.routes 
+            ? originalEvent.routes.map(r => r.id) 
+            : [];
+        
+        console.log('✅ Original event retrieved');
+        console.log(`   Name: ${originalEvent.name}`);
+        console.log(`   Current routes: [${originalRoutes.join(', ')}]`);
+        
+        // Step 2: Try PUT with route_ids
+        console.log('\n📡 Step 2: Attempting PUT with route_ids...');
+        console.log(`   Sending: route_ids: [${newRouteId}]`);
+        
+        const editResult = client.editEvent(eventUrl, {
+            route_ids: [newRouteId]
+        });
+        
+        if (!editResult.success) {
+            console.error('❌ editEvent failed:', editResult.error);
+            return { 
+                success: false, 
+                error: editResult.error,
+                originalRoutes: originalRoutes
+            };
+        }
+        
+        console.log('✅ PUT returned 200 OK');
+        
+        // Step 3: Verify by fetching event again
+        console.log('\n📡 Step 3: Verifying route change...');
+        const verifyResult = client.getEvent(eventUrl);
+        
+        if (!verifyResult.success) {
+            console.error('❌ Verification GET failed:', verifyResult.error);
+            return { 
+                success: false, 
+                error: verifyResult.error,
+                originalRoutes: originalRoutes
+            };
+        }
+        
+        const newRoutes = verifyResult.event.routes 
+            ? verifyResult.event.routes.map(r => r.id) 
+            : [];
+        
+        console.log(`   New routes: [${newRoutes.join(', ')}]`);
+        
+        // Check if route was updated
+        const routeUpdated = newRoutes.includes(newRouteId);
+        
+        if (routeUpdated) {
+            console.log('\n🎉 SUCCESS: route_ids WORKS on PUT!');
+            console.log('   Like organizer_ids, this is undocumented but functional.');
+            console.log('   We can use this to update routes on existing events!');
+        } else {
+            console.log('\n❌ FAILED: route_ids does NOT work on PUT');
+            console.log('   Unlike organizer_ids, routes cannot be updated via PUT.');
+            console.log('   May need web API or recreation to change routes.');
+        }
+        
+        return {
+            success: true,
+            routeUpdated: routeUpdated,
+            originalRoutes: originalRoutes,
+            newRoutes: newRoutes
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Quick smoke test - just verify core modules load
  */
 function quickSmokeTest() {
@@ -2251,6 +2381,102 @@ function quickSmokeTest() {
         return { success: true };
     } catch (error) {
         console.error('❌ Smoke test failed:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Test the import route flow from RideManager.importRow_
+ * Simulates what happens when a foreign route is detected and import is triggered
+ * 
+ * @param {number} [routeId] - Foreign route ID to test (default: 53253553)
+ * @param {number} [rowNum] - Row number to use for test (default: 25)
+ * @returns {{success: boolean, routeUrl?: string, error?: string}}
+ */
+function testImportRowFlow(routeId, rowNum) {
+    console.log('====================================');
+    console.log('Test: Import Row Flow (RideManager.importRow_)');
+    console.log('====================================');
+    
+    if (!routeId) {
+        routeId = 53253553;
+        console.log(`Using default route ID: ${routeId}`);
+    }
+    if (!rowNum) {
+        rowNum = 25;
+        console.log(`Using default row number: ${rowNum}`);
+    }
+    
+    const foreignRouteUrl = `https://ridewithgps.com/routes/${routeId}`;
+    
+    try {
+        const globals = getGlobals();
+        console.log(`SCCCC_USER_ID: ${globals.SCCCC_USER_ID}`);
+        console.log(`CLUB_USER_ID: ${globals.CLUB_USER_ID}`);
+        console.log(`ClubUserId: ${globals.ClubUserId}`);
+        console.log(`EXPIRY_DELAY: ${globals.EXPIRY_DELAY}`);
+        console.log(`FOREIGN_PREFIX: ${globals.FOREIGN_PREFIX}`);
+        
+        // Step 1: Create CredentialManager and RWGPSClient (same as importRow_)
+        console.log('\n📡 Step 1: Creating RWGPSClient...');
+        const credentialManager = new CredentialManager(PropertiesService.getScriptProperties());
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        console.log('✅ RWGPSClient created');
+        
+        // Step 2: Calculate expiry (same as importRow_)
+        console.log('\n📡 Step 2: Calculating expiry date...');
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() + 7); // Use next week as test date
+        const expiryDate = new Date(startDate);
+        expiryDate.setDate(expiryDate.getDate() + (globals.EXPIRY_DELAY || 30));
+        const expiryStr = `${expiryDate.getMonth() + 1}/${expiryDate.getDate()}/${expiryDate.getFullYear()}`;
+        console.log(`   Start date: ${startDate.toISOString()}`);
+        console.log(`   Expiry date: ${expiryStr}`);
+        
+        // Step 3: Prepare route name (same as importRow_)
+        console.log('\n📡 Step 3: Preparing route name...');
+        const testRouteName = `TEST IMPORT ${new Date().toISOString().substring(0, 19).replace(/[:.]/g, '-')}`;
+        console.log(`   Route name: ${testRouteName}`);
+        
+        // Step 4: Call importRoute (same as importRow_)
+        console.log('\n📡 Step 4: Calling client.importRoute()...');
+        console.log(`   Foreign URL: ${foreignRouteUrl}`);
+        console.log(`   User ID: ${globals.CLUB_USER_ID}`);
+        
+        const result = client.importRoute(foreignRouteUrl, {
+            name: testRouteName,
+            expiry: expiryStr,
+            tags: ['TEST'],
+            userId: globals.CLUB_USER_ID
+        });
+        
+        if (!result.success) {
+            console.error('❌ Import failed:', result.error);
+            return { success: false, error: result.error };
+        }
+        
+        console.log('✅ Import succeeded');
+        console.log(`   New route URL: ${result.routeUrl}`);
+        console.log(`   Route name: ${result.route?.name}`);
+        
+        console.log('\n🎉 Import Row Flow test passed!');
+        console.log('⚠️  Manual cleanup required: Delete route from RWGPS');
+        console.log(`   Route URL: ${result.routeUrl}`);
+        
+        return {
+            success: true,
+            routeUrl: result.routeUrl,
+            route: result.route
+        };
+        
+    } catch (error) {
+        console.error('❌ Test failed:', error.message);
+        console.error('   Stack:', error.stack);
         return { success: false, error: error.message };
     }
 }

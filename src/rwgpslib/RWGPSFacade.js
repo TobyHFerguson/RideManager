@@ -616,9 +616,16 @@ class RWGPSFacade {
 
         // Copy simple fields
         if (eventData.name !== undefined) apiData.name = eventData.name;
+        // Handle both "description" (domain) and "desc" (SCCCCEvent)
         if (eventData.description !== undefined) apiData.description = eventData.description;
+        else if (eventData.desc !== undefined) apiData.description = eventData.desc;
         if (eventData.timeZone !== undefined) apiData.time_zone = eventData.timeZone;
+        // Handle both "organizer_ids" (API) and "organizer_tokens" (SCCCCEvent)
         if (eventData.organizer_ids !== undefined) apiData.organizer_ids = eventData.organizer_ids;
+        else if (eventData.organizer_tokens !== undefined) apiData.organizer_ids = eventData.organizer_tokens;
+        
+        // Pass through route_ids directly (SCCCCEvent uses this)
+        if (eventData.route_ids !== undefined) apiData.route_ids = eventData.route_ids;
 
         // Transform startDateTime (Date) → start_date + start_time strings
         if (eventData.startDateTime !== undefined) {

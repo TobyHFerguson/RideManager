@@ -1,24 +1,26 @@
 
-# RWGPS v1 API: OpenAPI Spec Discrepancy for `organizers` Field
+# RWGPS v1 API: Undocumented Fields Discovery
 
 ## Summary
 
 **Good news**: The v1 REST API `PUT /api/v1/events/{id}.json` successfully updates **11 of 12** fields from the OpenAPI `EventPayload` schema.
 
-**Issue**: The `organizers` field documented in the OpenAPI spec does NOT work. However, `organizer_ids` (not in the spec) DOES work.
+**Discovery**: Two UNDOCUMENTED fields work but aren't in the official spec:
+1. `organizer_ids` - Array of integers (sets event organizers)
+2. `route_ids` - Array of integers (associates routes with event)
 
-This appears to be a **documentation discrepancy** rather than an API limitation.
+The documented `organizers` array is silently ignored. Use `organizer_ids` instead.
 
 ---
 
-## Test Results Summary (January 14, 2026)
+## Test Results Summary (Updated January 17, 2026)
 
-### Fields That WORK (11/12)
+### Fields That WORK (11/12 documented + 2 undocumented)
 
 | OpenAPI Field | Status | Notes |
 |---------------|--------|-------|
 | `name` | ✅ | Works correctly |
-| `description` | ✅ | Works correctly |
+| `description` | ✅ | Works correctly (use 'description', NOT 'desc') |
 | `start_date` | ✅ | Works correctly |
 | `start_time` | ✅ | Works correctly |
 | `end_date` | ✅ | Works correctly |
@@ -29,17 +31,59 @@ This appears to be a **documentation discrepancy** rather than an API limitation
 | `time_zone` | ✅ | Works correctly |
 | `visibility` | ✅ | Works correctly |
 
+### Undocumented Fields That WORK
+
+| Field | Status | Notes |
+|-------|--------|-------|
+| `organizer_ids` | ✅ | Array of integers - **THE correct way to set organizers** |
+| `route_ids` | ✅ | Array of integers - **Associates routes with events** |
+
 ### Field That Does NOT Work (1/12)
 
 | OpenAPI Field | Status | Notes |
 |---------------|--------|-------|
 | `organizers` | ❌ | Silently ignored (returns 200 OK but no change) |
 
-### Workaround That WORKS (not in OpenAPI spec)
+---
 
-| Field | Status | Notes |
-|-------|--------|-------|
-| `organizer_ids` | ✅ | Array of integers - **this works** |
+## Undocumented Feature: route_ids
+
+**Discovery Date**: January 17, 2026  
+**Test Method**: Manual testing via RideManager.js updateRow_() function
+
+### How It Works
+
+```javascript
+// Associate a route with an event
+PUT /api/v1/events/{id}.json
+{
+  "event": {
+    "route_ids": [53253553]  // Array of route IDs (integers)
+  }
+}
+
+// Response confirms the route is associated:
+{
+  "event": {
+    "routes": [
+      { "id": 53253553, "name": "Route Name", ... }
+    ]
+  }
+}
+```
+
+### Verified Behavior
+
+- ✅ **Single route**: `route_ids: [123]` - Associates one route
+- ✅ **Multiple routes**: `route_ids: [123, 456]` - Associates multiple routes
+- ✅ **Empty array**: `route_ids: []` - Removes all route associations
+- ✅ **Works in PUT**: Can update route associations on existing events
+
+### Integration with RideManager
+
+This discovery enabled fixing the updateRow_() function in RideManager.js.
+When a user changes the route associated with a ride, we can now update it directly
+instead of having to delete and recreate the event.
 
 ---
 

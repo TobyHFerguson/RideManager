@@ -457,34 +457,64 @@ class RWGPSCore {
     /**
      * Internal: Build v1 API event payload
      * 
+     * Handles both domain-style fields (description, organizer_ids) 
+     * AND SCCCCEvent-style fields (desc, organizer_tokens, startDateTime)
+     * 
      * @param {any} eventData - Event data
      * @returns {{event: Record<string, any>}} Payload wrapped in "event" key
      * @private
      */
     static _buildV1EventPayload(eventData) {
         /** @type {Record<string, any>} */
-        const event = {
-            all_day: '0'
-        };
+        const event = {};
 
         // Copy string fields
         if (eventData.name !== undefined) event.name = eventData.name;
-        if (eventData.description !== undefined) event.description = eventData.description;
-        if (eventData.start_date !== undefined) event.start_date = eventData.start_date;
-        if (eventData.start_time !== undefined) event.start_time = eventData.start_time;
-        if (eventData.end_date !== undefined) event.end_date = eventData.end_date;
-        if (eventData.end_time !== undefined) event.end_time = eventData.end_time;
+        
+        // Description: handle both "description" and SCCCCEvent-style "desc"
+        if (eventData.description !== undefined) {
+            event.description = eventData.description;
+        } else if (eventData.desc !== undefined) {
+            event.description = eventData.desc;
+        }
+        
+        // Location
         if (eventData.location !== undefined) event.location = eventData.location;
         if (eventData.time_zone !== undefined) event.time_zone = eventData.time_zone;
+        
+        // Date/time: handle both explicit strings AND SCCCCEvent-style startDateTime
+        if (eventData.start_date !== undefined) {
+            event.start_date = eventData.start_date;
+        } else if (eventData.startDateTime !== undefined) {
+            event.start_date = RWGPSCore.formatDateForV1Api(eventData.startDateTime);
+        }
+        
+        if (eventData.start_time !== undefined) {
+            event.start_time = eventData.start_time;
+        } else if (eventData.startDateTime !== undefined) {
+            event.start_time = RWGPSCore.formatTimeForV1Api(eventData.startDateTime);
+        }
+        
+        if (eventData.end_date !== undefined) event.end_date = eventData.end_date;
+        if (eventData.end_time !== undefined) event.end_time = eventData.end_time;
+        
+        // all_day: use provided value or default to '0'
+        if (eventData.all_day !== undefined) {
+            event.all_day = String(eventData.all_day);
+        } else {
+            event.all_day = '0';
+        }
 
         // Convert visibility
         if (eventData.visibility !== undefined) {
             event.visibility = RWGPSCore._convertVisibilityToV1(eventData.visibility);
         }
 
-        // Handle organizer_ids (convert to strings)
+        // Handle organizer_ids: support both "organizer_ids" AND SCCCCEvent-style "organizer_tokens"
         if (eventData.organizer_ids && Array.isArray(eventData.organizer_ids)) {
             event.organizer_ids = eventData.organizer_ids.map((/** @type {string | number} */ id) => String(id));
+        } else if (eventData.organizer_tokens && Array.isArray(eventData.organizer_tokens)) {
+            event.organizer_ids = eventData.organizer_tokens.map((/** @type {string | number} */ id) => String(id));
         }
 
         // Handle route_ids (convert to strings)
