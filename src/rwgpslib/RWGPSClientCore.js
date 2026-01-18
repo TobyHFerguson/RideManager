@@ -398,14 +398,17 @@ var RWGPSClientCore = (function() {
     }
 
     /**
-     * Build multipart/form-data payload for creating event with logo
+     * Build multipart/form-data text parts for event creation with logo (pure JS, no Blob operations)
+     * 
+     * This method builds the text structure for multipart payload without using GAS Utilities.
+     * The Adapter layer (RWGPSClient.js) handles Blob creation and byte concatenation.
      * 
      * @param {any} eventData - Event data with name, description, start_date, etc.
-     * @param {GoogleAppsScript.Base.Blob} logoBlob - Logo image as Blob
+     * @param {any} logoBlob - Logo object with getContentType() and getName() methods
      * @param {string} boundary - Multipart boundary string
-     * @returns {GoogleAppsScript.Base.Blob} Multipart payload as Blob
+     * @returns {{textPart: string, endBoundary: string}} Text parts structure for multipart payload
      */
-    static buildMultipartCreateEventPayload(eventData, logoBlob, boundary) {
+    static buildMultipartTextParts(eventData, logoBlob, boundary) {
         // Build v1 event payload structure (nested under 'event' key)
         const v1Payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
         
@@ -434,57 +437,26 @@ var RWGPSClientCore = (function() {
             }
         }
         
-        // Add logo file
+        // Get file extension from content type
+        const contentType = logoBlob.getContentType();
+        let extension = 'jpg'; // Default
+        if (contentType.includes('png')) extension = 'png';
+        else if (contentType.includes('gif')) extension = 'gif';
+        else if (contentType.includes('webp')) extension = 'webp';
+        else if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = 'jpg';
+        
+        // Add logo file header
         parts.push(
             `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="event[logo]"; filename="logo.${RWGPSClientCore._getFileExtension(logoBlob)}"\r\n` +
-            `Content-Type: ${logoBlob.getContentType()}\r\n\r\n`
+            `Content-Disposition: form-data; name="event[logo]"; filename="logo.${extension}"\r\n` +
+            `Content-Type: ${contentType}\r\n\r\n`
         );
         
-        // Combine text parts into single string
-        const textPart = parts.join('');
-        
-        // Create final payload with logo binary data
-        const endBoundary = `\r\n--${boundary}--\r\n`;
-        
-        // Convert text to bytes
-        const textBytes = Utilities.newBlob(textPart).getBytes();
-        const logoBytes = logoBlob.getBytes();
-        const endBytes = Utilities.newBlob(endBoundary).getBytes();
-        
-        // Concatenate all bytes
-        const totalLength = textBytes.length + logoBytes.length + endBytes.length;
-        /** @type {number[]} */
-        const allBytes = [];
-        
-        for (let i = 0; i < textBytes.length; i++) {
-            allBytes.push(textBytes[i]);
-        }
-        for (let i = 0; i < logoBytes.length; i++) {
-            allBytes.push(logoBytes[i]);
-        }
-        for (let i = 0; i < endBytes.length; i++) {
-            allBytes.push(endBytes[i]);
-        }
-        
-        // Create blob from bytes
-        return Utilities.newBlob(allBytes).setContentType(`multipart/form-data; boundary=${boundary}`);
-    }
-
-    /**
-     * Get file extension from blob content type
-     * 
-     * @param {GoogleAppsScript.Base.Blob} blob - Image blob
-     * @returns {string} File extension (jpg, png, gif, etc.)
-     * @private
-     */
-    static _getFileExtension(blob) {
-        const contentType = blob.getContentType();
-        if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'jpg';
-        if (contentType.includes('png')) return 'png';
-        if (contentType.includes('gif')) return 'gif';
-        if (contentType.includes('webp')) return 'webp';
-        return 'jpg'; // Default fallback
+        // Return text parts structure (no Blob operations)
+        return {
+            textPart: parts.join(''),
+            endBoundary: `\r\n--${boundary}--\r\n`
+        };
     }
 
     /**

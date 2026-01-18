@@ -155,18 +155,18 @@ declare class RWGPSClientCore {
     ): { method: string; headers: Record<string, string>; payload: string; muteHttpExceptions: boolean };
 
     /**
-     * Build multipart/form-data payload for creating event with logo
+     * Build multipart/form-data text parts for event creation with logo (pure JS, no Blob operations)
      * 
      * @param {any} eventData - Event data with name, description, start_date, etc.
-     * @param {GoogleAppsScript.Base.Blob} logoBlob - Logo image as Blob
+     * @param {any} logoBlob - Logo object with getContentType() and getName() methods
      * @param {string} boundary - Multipart boundary string
-     * @returns {GoogleAppsScript.Base.Blob} Multipart payload as Blob
+     * @returns {{textPart: string, endBoundary: string}} Text parts structure for multipart payload
      */
-    static buildMultipartCreateEventPayload(
+    static buildMultipartTextParts(
         eventData: any,
-        logoBlob: GoogleAppsScript.Base.Blob,
+        logoBlob: any,
         boundary: string
-    ): GoogleAppsScript.Base.Blob;
+    ): { textPart: string; endBoundary: string };
 
     /**
      * Build request options for organizer lookup (POST request)

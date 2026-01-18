@@ -591,9 +591,31 @@ var RWGPSClient = (function() {
                 const logoBlob = DriveApp.getFileById(fileId).getBlob();
                 console.log(`Logo fetched: ${logoBlob.getContentType()}, ${logoBlob.getBytes().length} bytes`);
 
-                // Build multipart payload with logo
+                // Build multipart text structure (Core logic - pure JS, no Blob operations)
                 const boundary = '----WebKitFormBoundary' + Utilities.getUuid().replace(/-/g, '');
-                const payload = RWGPSClientCore.buildMultipartCreateEventPayload(eventData, logoBlob, boundary);
+                const textParts = RWGPSClientCore.buildMultipartTextParts(eventData, logoBlob, boundary);
+
+                // Assemble final payload with Blob operations (Adapter responsibility)
+                // Convert text parts to bytes
+                const textBytes = Utilities.newBlob(textParts.textPart).getBytes();
+                const logoBytes = logoBlob.getBytes();
+                const endBytes = Utilities.newBlob(textParts.endBoundary).getBytes();
+
+                // Concatenate all bytes
+                /** @type {number[]} */
+                const allBytes = [];
+                for (let i = 0; i < textBytes.length; i++) {
+                    allBytes.push(textBytes[i]);
+                }
+                for (let i = 0; i < logoBytes.length; i++) {
+                    allBytes.push(logoBytes[i]);
+                }
+                for (let i = 0; i < endBytes.length; i++) {
+                    allBytes.push(endBytes[i]);
+                }
+
+                // Create final multipart Blob
+                const payload = Utilities.newBlob(allBytes).setContentType(`multipart/form-data; boundary=${boundary}`);
 
                 // Build multipart request options
                 options = {

@@ -460,4 +460,122 @@ describe('RWGPSClientCore', () => {
             expect(options.muteHttpExceptions).toBe(true);
         });
     });
+
+    describe('buildMultipartTextParts', () => {
+        // Tests for Task 4.E - moved Blob operations to Adapter
+        // Core method should build text structure without GAS dependencies
+        
+        const mockLogoBlob = {
+            getContentType: () => 'image/jpeg',
+            getName: () => 'logo.jpg'
+        };
+
+        it('should build text parts structure without Blob operations', () => {
+            const eventData = {
+                name: 'Test Event',
+                description: 'Test Description',
+                start_date: '2030-12-15',
+                start_time: '10:00',
+                visibility: 1
+            };
+            const boundary = 'testBoundary123';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, mockLogoBlob, boundary);
+
+            // Should return object with textPart and endBoundary strings
+            expect(result).toHaveProperty('textPart');
+            expect(result).toHaveProperty('endBoundary');
+            expect(typeof result.textPart).toBe('string');
+            expect(typeof result.endBoundary).toBe('string');
+        });
+
+        it('should include all event fields in text parts', () => {
+            const eventData = {
+                name: 'Test Event',
+                description: 'Test Description',
+                start_date: '2030-12-15',
+                start_time: '10:00',
+                visibility: 1,
+                location: 'Test Location'
+            };
+            const boundary = 'testBoundary';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, mockLogoBlob, boundary);
+
+            // Verify all fields present in textPart
+            expect(result.textPart).toContain('name="event[name]"');
+            expect(result.textPart).toContain('Test Event');
+            expect(result.textPart).toContain('name="event[description]"');
+            expect(result.textPart).toContain('Test Description');
+            expect(result.textPart).toContain('name="event[start_date]"');
+            expect(result.textPart).toContain('2030-12-15');
+            expect(result.textPart).toContain('name="event[location]"');
+            expect(result.textPart).toContain('Test Location');
+        });
+
+        it('should handle array fields with [] syntax', () => {
+            const eventData = {
+                name: 'Test Event',
+                organizer_ids: ['123', '456']
+            };
+            const boundary = 'testBoundary';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, mockLogoBlob, boundary);
+
+            // Array fields should use event[field][] syntax
+            expect(result.textPart).toContain('name="event[organizer_ids][]"');
+            expect(result.textPart).toContain('123');
+            expect(result.textPart).toContain('456');
+        });
+
+        it('should include logo file header with correct content type', () => {
+            const eventData = { name: 'Test Event' };
+            const boundary = 'testBoundary';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, mockLogoBlob, boundary);
+
+            // Logo header should include filename and content type
+            expect(result.textPart).toContain('name="event[logo]"');
+            expect(result.textPart).toContain('filename="logo.jpg"');
+            expect(result.textPart).toContain('Content-Type: image/jpeg');
+        });
+
+        it('should include correct boundary markers', () => {
+            const eventData = { name: 'Test Event' };
+            const boundary = 'myCustomBoundary';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, mockLogoBlob, boundary);
+
+            // Should include boundary in parts
+            expect(result.textPart).toContain(`--${boundary}`);
+            
+            // End boundary should be formatted correctly
+            expect(result.endBoundary).toBe(`\r\n--${boundary}--\r\n`);
+        });
+
+        it('should handle PNG logo file extension', () => {
+            const pngBlob = {
+                getContentType: () => 'image/png',
+                getName: () => 'logo.png'
+            };
+            const eventData = { name: 'Test Event' };
+            const boundary = 'testBoundary';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, pngBlob, boundary);
+
+            expect(result.textPart).toContain('filename="logo.png"');
+            expect(result.textPart).toContain('Content-Type: image/png');
+        });
+
+        it('should use correct multipart format with CRLF line endings', () => {
+            const eventData = { name: 'Test' };
+            const boundary = 'test';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, mockLogoBlob, boundary);
+
+            // Should use \r\n (CRLF) for multipart spec compliance
+            expect(result.textPart).toContain('\r\n');
+            expect(result.endBoundary).toContain('\r\n');
+        });
+    });
 });
