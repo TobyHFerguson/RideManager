@@ -182,8 +182,8 @@ describe('RWGPSClient', () => {
     });
 
     describe('editEvent', () => {
-        it('should successfully edit an event using double-edit pattern', () => {
-            // Load edit fixture which contains 2 PUT requests (v1 API, no login)
+        it('should successfully edit an event using single PUT', () => {
+            // Load edit fixture which contains 1 PUT request (v1 API, no login)
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
@@ -206,7 +206,7 @@ describe('RWGPSClient', () => {
             expect(result.error).toBeUndefined();
         });
 
-        it('should make two PUT requests (all_day=1, then all_day=0)', () => {
+        it('should make single PUT request with all_day=0', () => {
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
@@ -223,22 +223,19 @@ describe('RWGPSClient', () => {
             
             client.editEvent(eventUrl, eventData);
 
-            // Check calls: two PUTs (no login needed for v1 API)
+            // Check calls: single PUT (no login needed for v1 API)
             const calls = RWGPSMockServer.actualCalls;
             const putCalls = calls.filter((/** @type {any} */ c) => c.method === 'PUT');
-            expect(putCalls.length).toBe(2);
+            expect(putCalls.length).toBe(1);
             
-            // First PUT should have all_day=1 and use v1 endpoint
-            const put1 = putCalls[0];
-            expect(put1.url).toBe('https://ridewithgps.com/api/v1/events/444070.json');
-            const payload1 = JSON.parse(put1.options.payload);
-            expect(payload1.event.all_day).toBe('1');
-            
-            // Second PUT should have all_day=0
-            const put2 = putCalls[1];
-            expect(put2.url).toBe('https://ridewithgps.com/api/v1/events/444070.json');
-            const payload2 = JSON.parse(put2.options.payload);
-            expect(payload2.event.all_day).toBe('0');
+            // Single PUT should have all_day=0 and use v1 endpoint
+            const put = putCalls[0];
+            expect(put.url).toBe('https://ridewithgps.com/api/v1/events/444070.json');
+            const payload = JSON.parse(put.options.payload);
+            expect(payload.event.all_day).toBe('0');
+            expect(payload.event.name).toBe(eventData.name);
+            expect(payload.event.start_date).toBe(eventData.start_date);
+            expect(payload.event.start_time).toBe(eventData.start_time);
         });
 
         it('should use v1 API with organizer_ids directly', () => {
@@ -305,7 +302,7 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('Invalid event URL');
         });
 
-        it('should use Basic Auth in both PUT requests', () => {
+        it('should use Basic Auth in PUT request', () => {
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
@@ -322,10 +319,9 @@ describe('RWGPSClient', () => {
             const putCalls = calls.filter((/** @type {any} */ c) => c.method === 'PUT');
             
             // v1 API uses Basic Auth, not cookies
+            expect(putCalls.length).toBe(1);
             expect(putCalls[0].options.headers.Authorization).toBeDefined();
             expect(putCalls[0].options.headers.Authorization).toContain('Basic ');
-            expect(putCalls[1].options.headers.Authorization).toBeDefined();
-            expect(putCalls[1].options.headers.Authorization).toContain('Basic ');
         });
     });
 

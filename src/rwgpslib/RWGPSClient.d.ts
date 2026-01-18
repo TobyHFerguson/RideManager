@@ -113,7 +113,11 @@ declare class RWGPSClient {
     getEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
 
     /**
-     * Edit an event (uses double-edit pattern: all_day=1, then all_day=0)
+     * Edit an event using single PUT with all_day=0
+     * 
+     * Historical Note: The double-edit pattern (all_day=1, then all_day=0) was
+     * proven unnecessary through testing. All 11 working fields update correctly
+     * with a single PUT request setting all_day=0.
      * 
      * @param {string} eventUrl - Event URL
      * @param {any} eventData - Event data object (from getEvent or modified)

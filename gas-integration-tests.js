@@ -706,7 +706,7 @@ function testRWGPSClientEditEvent(eventId) {
         console.log('✅ Original event restored');
         
         console.log('\n🎉 Task 3.6 (editEvent) working correctly!');
-        console.log('   ✅ Double-edit pattern (all_day=1, then all_day=0) executed');
+        console.log('   ✅ Single PUT with all_day=0 executed');
         console.log('   ✅ Event modified successfully');
         console.log('   ✅ Event restored to original state');
         

@@ -509,11 +509,9 @@ var RWGPSClient = (function() {
     /**
      * Edit an event using v1 API
      * 
-     * CRITICAL: RWGPS API requires two sequential PUT requests (double-edit pattern)
-     * 1. First PUT with all_day=1 (workaround to clear existing time)
-     * 2. Second PUT with all_day=0 and actual event data
-     * 
-     * This workaround is required for the start time to be set correctly.
+     * Uses a single PUT request to update event data.
+     * Testing proved that v1 API correctly handles all fields including start_date/start_time
+     * with a single PUT (no double-edit workaround needed).
      * 
      * **V1 API Native Format**:
      * - Uses description (not desc)
@@ -534,29 +532,15 @@ var RWGPSClient = (function() {
             const v1PutUrl = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
             const basicAuthHeader = this._getBasicAuthHeader();
             
-            // FIRST PUT: Set all_day=1 (workaround)
-            const payload1 = RWGPSClientCore.buildV1EditEventPayload(eventData, '1');
-            const options1 = RWGPSClientCore.buildV1EditEventOptions(basicAuthHeader, payload1);
+            // Single PUT with all_day=0 and actual data
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const options = RWGPSClientCore.buildV1EditEventOptions(basicAuthHeader, payload);
             
-            const response1 = this._fetch(v1PutUrl, options1);
-            const statusCode1 = response1.getResponseCode();
+            const response = this._fetch(v1PutUrl, options);
+            const statusCode = response.getResponseCode();
             
-            if (statusCode1 !== 200) {
-                return {
-                    success: false,
-                    error: `First edit failed with status code: ${statusCode1}`
-                };
-            }
-            
-            // SECOND PUT: Set all_day=0 with actual data
-            const payload2 = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
-            const options2 = RWGPSClientCore.buildV1EditEventOptions(basicAuthHeader, payload2);
-            
-            const response2 = this._fetch(v1PutUrl, options2);
-            const statusCode2 = response2.getResponseCode();
-            
-            if (statusCode2 === 200) {
-                const responseText = response2.getContentText();
+            if (statusCode === 200) {
+                const responseText = response.getContentText();
                 const responseData = JSON.parse(responseText);
                 
                 // v1 API returns {"event": {...}}, unwrap
@@ -569,7 +553,7 @@ var RWGPSClient = (function() {
             } else {
                 return {
                     success: false,
-                    error: `Second edit failed with status code: ${statusCode2}`
+                    error: `Edit failed with status code: ${statusCode}`
                 };
             }
             
