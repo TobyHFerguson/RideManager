@@ -129,11 +129,13 @@ declare class RWGPSClient {
     editEvent(eventUrl: string, eventData: any): { success: boolean; event?: any; error?: string };
 
     /**
-     * Create a new event using v1 API
+     * Create a new event using v1 API with optional logo
      * 
      * Uses POST /api/v1/events.json with Basic Auth to create a new event.
+     * If logoUrl is provided, uses multipart/form-data to include the logo.
      * 
      * @param eventData - Event data in v1 format
+     * @param logoUrl - Optional logo image URL to fetch and attach
      * @returns Result with event URL and data
      */
     createEvent(eventData: {
@@ -146,26 +148,7 @@ declare class RWGPSClient {
         route_ids?: (string | number)[];
         location?: string;
         time_zone?: string;
-    }): { success: boolean; eventUrl?: string; event?: any; error?: string };
-
-    /**
-     * Create a new event with logo using multipart/form-data
-     * 
-     * @param {any} eventData - Event data (name, description, start_date, etc.)
-     * @param {string} logoUrl - Logo image URL to fetch and attach
-     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
-     */
-    createEventWithLogo(eventData: {
-        name: string;
-        description?: string;
-        start_date: string;
-        start_time: string;
-        visibility?: string | number;
-        organizer_ids?: (string | number)[];
-        route_ids?: (string | number)[];
-        location?: string;
-        time_zone?: string;
-    }, logoUrl: string): { success: boolean; eventUrl?: string; event?: any; error?: string };
+    }, logoUrl?: string): { success: boolean; eventUrl?: string; event?: any; error?: string };
 
     /**
      * Cancel an event (adds "CANCELLED: " prefix to name)

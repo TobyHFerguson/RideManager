@@ -427,6 +427,74 @@ describe('RWGPSClient', () => {
             const payload = JSON.parse(postCalls[postCalls.length - 1].options.payload);
             expect(payload.event.all_day).toBe('0');
         });
+
+        it('should create event with logo using multipart/form-data', () => {
+            RWGPSMockServer.loadFixture('create');
+
+            // Mock Utilities for boundary generation and newBlob
+            global.Utilities = {
+                getUuid: jest.fn().mockReturnValue('12345678-1234-1234-1234-123456789012'),
+                newBlob: jest.fn().mockImplementation((data) => {
+                    const blobData = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+                    return {
+                        getBytes: () => blobData,
+                        setContentType: jest.fn().mockReturnThis()
+                    };
+                })
+            };
+
+            // Mock DriveApp for logo fetch
+            const mockGetBytes = jest.fn().mockReturnValue(new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0])); // JPEG magic bytes
+            const mockLogoBlob = {
+                getContentType: jest.fn().mockReturnValue('image/jpeg'),
+                getBytes: mockGetBytes
+            };
+            global.DriveApp = {
+                getFileById: jest.fn().mockReturnValue({
+                    getBlob: jest.fn().mockReturnValue(mockLogoBlob)
+                })
+            };
+
+            const eventData = {
+                name: 'Event with Logo',
+                description: 'Test with logo',
+                start_date: '2030-03-15',
+                start_time: '10:00'
+            };
+
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.createEvent(eventData, logoUrl);
+
+            if (!result.success) {
+                console.log('Error:', result.error);
+            }
+
+            expect(result.success).toBe(true);
+            expect(result.eventUrl).toBeDefined();
+            expect(DriveApp.getFileById).toHaveBeenCalledWith('1234567890abcdef');
+
+            // Verify multipart Content-Type was used
+            const calls = RWGPSMockServer.actualCalls;
+            const postCalls = calls.filter((/** @type {any} */ c) => c.method === 'POST');
+            const lastPost = postCalls[postCalls.length - 1];
+            expect(lastPost.options.headers['Content-Type']).toContain('multipart/form-data');
+        });
+
+        it('should handle invalid Drive URL when creating with logo', () => {
+            RWGPSMockServer.loadFixture('create');
+
+            const eventData = {
+                name: 'Test Event',
+                start_date: '2030-03-15',
+                start_time: '10:00'
+            };
+
+            const invalidLogoUrl = 'https://invalid-url.com/image.jpg';
+            const result = client.createEvent(eventData, invalidLogoUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Invalid Drive URL format');
+        });
     });
 
     describe('cancelEvent', () => {

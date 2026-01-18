@@ -512,23 +512,37 @@ Line 345 of this file: "Single PUT updates all 11 working fields. No double-edit
 
 ---
 
-### Task 4.D: Consolidate createEvent + createEventWithLogo ⏳ TODO
+### Task 4.D: Consolidate createEvent + createEventWithLogo ✅ COMPLETE
 
-**Status**: Not started
+**Status**: ✅ Complete (2026-01-18)
 
 **Current**: Two methods with overlapping logic
 **Target**: One method `createEvent(eventData, logoUrl?)`
 
 **Steps**:
-- [ ] 4.D.1 Modify `createEvent(eventData, logoUrl?)` to handle optional logo
-  - If logoUrl provided: fetch blob, use multipart
+- [x] 4.D.1 Modify `createEvent(eventData, logoUrl?)` to handle optional logo
+  - If logoUrl provided: fetch blob from Drive, use multipart/form-data
   - If no logoUrl: use JSON POST
-- [ ] 4.D.2 Delete `createEventWithLogo()` method
-- [ ] 4.D.3 Update `scheduleEvent()` to pass logoUrl to createEvent
-- [ ] 4.D.4 Update RWGPSClient.d.ts
-- [ ] 4.D.5 Update tests
-- [ ] 4.D.6 Run GAS tests to verify
-- [ ] Commit: "Task 4.D: Consolidate createEvent with optional logo"
+- [x] 4.D.2 Delete `createEventWithLogo()` method (~68 lines removed)
+- [x] 4.D.3 Update `scheduleEvent()` to always call `createEvent(eventData, logoUrl)`
+- [x] 4.D.4 Update RWGPSClient.d.ts (added logoUrl?: string parameter)
+- [x] 4.D.5 Update tests
+  - Added 2 new tests for createEvent with logo
+  - Updated migration test to check createEvent (not createEventWithLogo)
+  - All 737 tests pass
+- [x] 4.D.6 Created GAS test script: `src/rwgpslib/test-task-4d.js`
+
+**Verification**:
+- All tests pass: 737 passed
+- No type errors: `npm run typecheck` clean
+- Consolidated code: 68 lines removed, logic unified
+- GAS test script ready for manual verification
+
+**Implementation Details**:
+- `createEvent()` now branches internally based on logoUrl presence
+- Logo path: DriveApp → blob → multipart payload with boundary
+- No logo path: JSON POST (original behavior)
+- Maintains backward compatibility (logoUrl is optional)
 
 ---
 

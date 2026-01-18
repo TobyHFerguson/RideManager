@@ -60,8 +60,9 @@ describe('RWGPSClient Interface for RideManager', () => {
             expect(typeof client.importRoute).toBe('function');
         });
 
-        it('should have createEventWithLogo method', () => {
-            expect(typeof client.createEventWithLogo).toBe('function');
+        it('should have createEvent method with optional logo support', () => {
+            expect(typeof client.createEvent).toBe('function');
+            // createEvent now accepts optional logoUrl parameter (Task 4.D)
         });
     });
 

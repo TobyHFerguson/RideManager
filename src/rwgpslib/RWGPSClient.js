@@ -171,14 +171,8 @@ var RWGPSClient = (function() {
             }
 
             // Step 2: Create event (with or without logo)
-            let createResult;
-            if (logoUrl) {
-                console.log('Creating event with logo...');
-                createResult = this.createEventWithLogo(eventData, logoUrl);
-            } else {
-                console.log('Creating event without logo (no logo URL provided)...');
-                createResult = this.createEvent(eventData);
-            }
+            console.log(logoUrl ? 'Creating event with logo...' : 'Creating event without logo...');
+            const createResult = this.createEvent(eventData, logoUrl);
 
             if (!createResult.success) {
                 return {
@@ -565,61 +559,14 @@ var RWGPSClient = (function() {
      * @param {{name: string, description?: string, start_date: string, start_time: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string}} eventData - Event data in v1 format
      * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
      */
-    createEvent(eventData) {
-        try {
-            // Build v1 API URL for creating event
-            const v1PostUrl = 'https://ridewithgps.com/api/v1/events.json';
-
-            // Build Basic Auth header
-            const basicAuthHeader = RWGPSClientCore.buildBasicAuthHeader(this.apiKey, this.authToken);
-
-            // Build payload - same structure as editEvent but with all required fields
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
-
-            // Build POST request options
-            const options = RWGPSClientCore.buildV1CreateEventOptions(basicAuthHeader, payload);
-
-            // Make POST request
-            const response = this._fetch(v1PostUrl, options);
-            const statusCode = response.getResponseCode();
-
-            if (statusCode === 201) {
-                const responseText = response.getContentText();
-                const responseData = JSON.parse(responseText);
-
-                // v1 API returns {"event": {...}}, unwrap
-                const event = responseData.event || responseData;
-
-                return {
-                    success: true,
-                    eventUrl: event.html_url || event.url,
-                    event: event
-                };
-            } else {
-                const responseText = response.getContentText();
-                return {
-                    success: false,
-                    error: `Create failed with status ${statusCode}: ${responseText}`
-                };
-            }
-
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            return {
-                success: false,
-                error: `Create failed: ${err.message}`
-            };
-        }
-    }
-
     /**
-     * Create a new event with logo using multipart/form-data
+     * Create a new event using v1 API with optional logo
      * 
      * @param {any} eventData - Event data (name, description, start_date, etc.)
-     * @param {string} logoUrl - Logo image URL to fetch and attach
+     * @param {string} [logoUrl] - Optional logo image URL to fetch and attach
      * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
      */
-    createEventWithLogo(eventData, logoUrl) {
+    createEvent(eventData, logoUrl) {
         try {
             // Build v1 API URL for creating event
             const v1PostUrl = 'https://ridewithgps.com/api/v1/events.json';
@@ -627,35 +574,43 @@ var RWGPSClient = (function() {
             // Build Basic Auth header
             const basicAuthHeader = RWGPSClientCore.buildBasicAuthHeader(this.apiKey, this.authToken);
 
-            // Fetch logo image from Google Drive
-            console.log(`Fetching logo from: ${logoUrl}`);
-            
-            // Extract file ID from Drive URL (format: https://drive.google.com/file/d/FILE_ID/view?...)
-            const fileIdMatch = logoUrl.match(/\/file\/d\/([^\/]+)/);
-            if (!fileIdMatch) {
-                throw new Error(`Invalid Drive URL format: ${logoUrl}`);
+            // Branch based on whether logo is provided
+            let options;
+            if (logoUrl) {
+                // Create event with logo using multipart/form-data
+                console.log(`Fetching logo from: ${logoUrl}`);
+                
+                // Extract file ID from Drive URL (format: https://drive.google.com/file/d/FILE_ID/view?...)
+                const fileIdMatch = logoUrl.match(/\/file\/d\/([^\/]+)/);
+                if (!fileIdMatch) {
+                    throw new Error(`Invalid Drive URL format: ${logoUrl}`);
+                }
+                const fileId = fileIdMatch[1];
+                
+                // Use DriveApp to get the actual file blob (not the HTML viewer page)
+                const logoBlob = DriveApp.getFileById(fileId).getBlob();
+                console.log(`Logo fetched: ${logoBlob.getContentType()}, ${logoBlob.getBytes().length} bytes`);
+
+                // Build multipart payload with logo
+                const boundary = '----WebKitFormBoundary' + Utilities.getUuid().replace(/-/g, '');
+                const payload = RWGPSClientCore.buildMultipartCreateEventPayload(eventData, logoBlob, boundary);
+
+                // Build multipart request options
+                options = {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': basicAuthHeader,
+                        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                        'Accept': 'application/json'
+                    },
+                    payload: payload,
+                    muteHttpExceptions: true
+                };
+            } else {
+                // Create event without logo using JSON POST
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+                options = RWGPSClientCore.buildV1CreateEventOptions(basicAuthHeader, payload);
             }
-            const fileId = fileIdMatch[1];
-            
-            // Use DriveApp to get the actual file blob (not the HTML viewer page)
-            const logoBlob = DriveApp.getFileById(fileId).getBlob();
-            console.log(`Logo fetched: ${logoBlob.getContentType()}, ${logoBlob.getBytes().length} bytes`);
-
-            // Build multipart payload with logo
-            const boundary = '----WebKitFormBoundary' + Utilities.getUuid().replace(/-/g, '');
-            const payload = RWGPSClientCore.buildMultipartCreateEventPayload(eventData, logoBlob, boundary);
-
-            // Build multipart request options
-            const options = {
-                method: 'POST',
-                headers: {
-                    'Authorization': basicAuthHeader,
-                    'Content-Type': `multipart/form-data; boundary=${boundary}`,
-                    'Accept': 'application/json'
-                },
-                payload: payload,
-                muteHttpExceptions: true
-            };
 
             // Make POST request
             const response = this._fetch(v1PostUrl, options);
@@ -675,17 +630,19 @@ var RWGPSClient = (function() {
                 };
             } else {
                 const responseText = response.getContentText();
+                const errorMsg = logoUrl ? 'Create with logo failed' : 'Create failed';
                 return {
                     success: false,
-                    error: `Create with logo failed with status ${statusCode}: ${responseText}`
+                    error: `${errorMsg} with status ${statusCode}: ${responseText}`
                 };
             }
 
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
+            const errorMsg = logoUrl ? 'Create with logo failed' : 'Create failed';
             return {
                 success: false,
-                error: `Create with logo failed: ${err.message}`
+                error: `${errorMsg}: ${err.message}`
             };
         }
     }
