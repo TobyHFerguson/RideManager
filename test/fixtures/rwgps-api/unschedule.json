@@ -1,26 +1,8 @@
 {
   "operation": "Unschedule",
-  "description": "Unschedule (delete) a ride - permanently removes the event from RWGPS",
+  "description": "Unschedule (delete) a ride - permanently removes the event from RWGPS using v1 API with Basic Auth (no login required)",
   "capturedAt": "2026-01-13T00:32:36.277Z",
   "apiCalls": [
-    {
-      "operation": "login",
-      "url": "https://ridewithgps.com/organizations/47/sign_in",
-      "method": "POST",
-      "request": {
-        "headers": {
-          "user-email": "rides@santacruzcycling.org",
-          "user-password": "[REDACTED]"
-        }
-      },
-      "status": 302,
-      "responseHeaders": {
-        "Location": "https://ridewithgps.com/organizations/47-santa-cruz-county-cycling-club",
-        "Content-Type": "text/html; charset=utf-8",
-        "Set-Cookie": "_rwgps_3_session=mock-session-cookie-value; path=/; HttpOnly"
-      },
-      "response": "(session cookie received)"
-    },
     {
       "operation": "delete_event",
       "description": "Delete the event using v1 API with Basic Auth",

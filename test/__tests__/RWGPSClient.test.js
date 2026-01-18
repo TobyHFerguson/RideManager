@@ -39,8 +39,13 @@ describe('RWGPSClient', () => {
     
     describe('deleteEvent', () => {
         it('should successfully delete an event', () => {
-            // Load fixture with login + delete
-            RWGPSMockServer.loadFixture('unschedule');
+            // Add only DELETE call (no login required)
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/444070.json',
+                method: 'DELETE',
+                response: '',
+                status: 204
+            });
 
             // Use event ID matching fixture
             const eventUrl = 'https://ridewithgps.com/events/444070';
@@ -50,32 +55,24 @@ describe('RWGPSClient', () => {
             expect(result.error).toBeUndefined();
         });
 
-        it('should return error if login fails', () => {
-            // Don't load fixture - login will fail (no mock response)
+        it('should return error if delete returns non-204 status', () => {
+            // Mock DELETE returning error status
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/12345.json',
+                method: 'DELETE',
+                response: JSON.stringify({ error: 'Not found' }),
+                status: 404
+            });
+            
             const eventUrl = 'https://ridewithgps.com/events/12345';
             const result = client.deleteEvent(eventUrl);
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Login'); // Match actual error message
+            expect(result.error).toContain('404');
         });
 
-        it('should return error if delete fails', () => {
-            // Add expected call for login only (delete will fail with no mock response)
-            RWGPSMockServer.addExpectedCall({
-                url: 'https://ridewithgps.com/organizations/47/sign_in',
-                method: 'POST',
-                response: {
-                    status: 302,
-                    headers: {
-                        'Set-Cookie': '_rwgps_session=test-session-cookie; path=/; HttpOnly'
-                    }
-                },
-                status: 302,
-                responseHeaders: {
-                    'Set-Cookie': '_rwgps_session=test-session-cookie; path=/; HttpOnly'
-                }
-            });
-            // Turn off strict mode so we don't fail on unexpected delete call
+        it('should return error if delete request throws exception', () => {
+            // Turn off strict mode so we don't fail on unexpected call
             RWGPSMockServer.strictMode = false;
 
             const eventUrl = 'https://ridewithgps.com/events/12345';
@@ -93,29 +90,41 @@ describe('RWGPSClient', () => {
         });
 
         it('should use v1 API endpoint', () => {
-            RWGPSMockServer.loadFixture('unschedule');
+            // Add only DELETE call (no login)
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/444070.json',
+                method: 'DELETE',
+                response: '',
+                status: 204
+            });
 
             // Use event ID matching fixture
             const eventUrl = 'https://ridewithgps.com/events/444070';
             client.deleteEvent(eventUrl);
 
-            // Check the delete call (second call after login)
+            // Check only the delete call (no login)
             const calls = RWGPSMockServer.actualCalls;
-            expect(calls.length).toBe(2);
-            expect(calls[1].url).toContain('/api/v1/events/444070.json');
-            expect(calls[1].method).toBe('DELETE');
+            expect(calls.length).toBe(1);
+            expect(calls[0].url).toContain('/api/v1/events/444070.json');
+            expect(calls[0].method).toBe('DELETE');
         });
 
         it('should use Basic Auth for v1 API', () => {
-            RWGPSMockServer.loadFixture('unschedule');
+            // Add only DELETE call (no login)
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/444070.json',
+                method: 'DELETE',
+                response: '',
+                status: 204
+            });
 
             // Use event ID matching fixture
             const eventUrl = 'https://ridewithgps.com/events/444070';
             client.deleteEvent(eventUrl);
 
-            // Check the delete call has Authorization header
+            // Check the delete call has Authorization header (first and only call)
             const calls = RWGPSMockServer.actualCalls;
-            const deleteCall = calls[1];
+            const deleteCall = calls[0];
             expect(deleteCall.options.headers.Authorization).toBeDefined();
             expect(deleteCall.options.headers.Authorization).toContain('Basic ');
         });

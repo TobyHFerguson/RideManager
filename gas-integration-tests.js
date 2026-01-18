@@ -979,6 +979,133 @@ function testRWGPSClientReinstateEvent(eventId) {
 }
 
 /**
+ * Task 4.B: Test deleteEvent method (v1 API, no login required)
+ * 
+ * This test verifies that RWGPSClient.deleteEvent() correctly:
+ * - Deletes an event using v1 API with Basic Auth
+ * - Does NOT require login (no web session needed)
+ * - Returns success on 204 No Content response
+ * 
+ * NOTE: This test creates a temporary event to delete. If you have a specific
+ * event ID you want to test deletion on, pass it as a parameter. Be careful
+ * as this will permanently delete the event!
+ * 
+ * @param {number} [eventIdToDelete] - Event ID to delete (CAUTION: will be permanently deleted)
+ * @returns {{success: boolean, error?: string}}
+ */
+function testRWGPSClientDeleteEvent(eventIdToDelete) {
+    console.log('====================================');
+    console.log('Task 4.B: Test RWGPSClient.deleteEvent()');
+    console.log('====================================');
+    
+    if (eventIdToDelete) {
+        console.warn('⚠️  WARNING: You provided event ID:', eventIdToDelete);
+        console.warn('⚠️  This event will be PERMANENTLY DELETED if the test succeeds.');
+        console.warn('⚠️  Press Ctrl+C now to cancel, or wait 5 seconds to continue...');
+        Utilities.sleep(5000);
+    }
+    
+    try {
+        // Get credentials
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        console.log('✅ Credentials loaded');
+        console.log(`   Username: ${credentialManager.getUsername().substring(0, 10) + '...'}`);
+        
+        // Create RWGPSClient
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        console.log('✅ RWGPSClient instantiated');
+        
+        let eventUrl;
+        let createdEvent = false;
+        
+        if (eventIdToDelete) {
+            // Use provided event ID
+            eventUrl = `https://ridewithgps.com/events/${eventIdToDelete}`;
+            console.log(`\n📡 Using provided event: ${eventUrl}`);
+        } else {
+            // Create a temporary event to delete
+            console.log('\n📡 Step 1: Creating temporary event for deletion test...');
+            const createResult = client.createEvent({
+                name: '[TEST DELETE - Will be deleted immediately]',
+                description: 'Temporary event created for deleteEvent() test',
+                start_date: '2099-12-31',  // Far future date
+                start_time: '09:00',
+                visibility: 2  // Private
+            });
+            
+            if (!createResult.success) {
+                console.error('❌ Failed to create temporary event');
+                console.error(`   Error: ${createResult.error}`);
+                return { success: false, error: createResult.error };
+            }
+            
+            eventUrl = createResult.eventUrl;
+            createdEvent = true;
+            console.log('✅ Temporary event created');
+            console.log(`   URL: ${eventUrl}`);
+            console.log(`   ID: ${createResult.event.id}`);
+        }
+        
+        // STEP 2: Delete the event
+        console.log(`\n📡 Step 2: Deleting event (v1 API with Basic Auth, no login)...`);
+        const deleteResult = client.deleteEvent(eventUrl);
+        
+        if (!deleteResult.success) {
+            console.error('❌ Delete failed');
+            console.error(`   Error: ${deleteResult.error}`);
+            if (createdEvent) {
+                console.error('⚠️  Temporary event NOT deleted - may need manual cleanup');
+                console.error(`   URL: ${eventUrl}`);
+            }
+            return { success: false, error: deleteResult.error };
+        }
+        
+        console.log('✅ Delete succeeded (received 204 No Content)');
+        
+        // STEP 3: Verify deletion by attempting to get the event
+        console.log(`\n📡 Step 3: Verifying event is deleted...`);
+        const verifyResult = client.getEvent(eventUrl);
+        
+        if (verifyResult.success) {
+            console.warn('⚠️  Event still exists after deletion! This is unexpected.');
+            console.warn(`   Event ID: ${verifyResult.event.id}`);
+            console.warn(`   Event Name: ${verifyResult.event.name}`);
+            return { 
+                success: false, 
+                error: 'Event still exists after deletion',
+                event: verifyResult.event
+            };
+        } else {
+            console.log('✅ Verified: Event is deleted (GET returned error as expected)');
+        }
+        
+        console.log('\n🎉 Task 4.B (deleteEvent) working correctly!');
+        console.log('   ✅ v1 API DELETE request executed');
+        console.log('   ✅ No login() call required (Basic Auth only)');
+        console.log('   ✅ Event successfully deleted');
+        console.log('   ✅ Deletion verified');
+        
+        return { 
+            success: true,
+            deletedEventUrl: eventUrl
+        };
+        
+    } catch (error) {
+        console.error('❌ Test execution failed:', error.message);
+        console.error('   Stack:', error.stack);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Task 3.9: Test copyTemplate method
  * 
  * This test verifies that the RWGPSClient.copyTemplate() method correctly:

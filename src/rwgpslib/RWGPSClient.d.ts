@@ -97,7 +97,10 @@ declare class RWGPSClient {
     reinstateEvent(eventUrl: string): OperationResult;
 
     /**
-     * Delete an event
+     * Delete an event using v1 API with Basic Auth
+     * 
+     * Historical Note: Previously called login() but v1 API with Basic Auth
+     * doesn't need web session - removed unnecessary login call.
      * 
      * @param {string} eventUrl - Event URL
      * @returns {OperationResult} Result

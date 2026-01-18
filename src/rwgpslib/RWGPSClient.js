@@ -411,16 +411,7 @@ var RWGPSClient = (function() {
             // Parse event URL to get ID
             const parsed = RWGPSClientCore.parseEventUrl(eventUrl);
             
-            // Login to establish session (even though we use Basic Auth, login is required)
-            const loginSuccess = this.login();
-            if (!loginSuccess) {
-                return {
-                    success: false,
-                    error: 'Login failed - could not establish web session'
-                };
-            }
-            
-            // DELETE using v1 API with Basic Auth
+            // DELETE using v1 API with Basic Auth (no login required)
             const deleteUrl = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
             const request = this._prepareRequest(
                 { url: deleteUrl, method: 'delete' },
