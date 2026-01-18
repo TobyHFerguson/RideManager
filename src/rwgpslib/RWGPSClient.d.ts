@@ -184,24 +184,6 @@ declare class RWGPSClient {
     reinstateEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
 
     /**
-     * Copy a template event to create a new event
-     * 
-     * @param {string} templateUrl - Template event URL
-     * @param {object} [eventData] - Optional event data to set during copy
-     * @returns {{success: boolean, eventUrl?: string, error?: string}} Result with new event URL
-     */
-    copyTemplate(
-        templateUrl: string,
-        eventData?: {
-            name?: string;
-            all_day?: string;
-            copy_routes?: string;
-            start_date?: string;
-            start_time?: string;
-        }
-    ): { success: boolean; eventUrl?: string; error?: string };
-
-    /**
      * Import (copy) a route into the club library with tags
      * 
      * @param {string} routeUrl - Source route URL to copy
@@ -282,11 +264,6 @@ declare class RWGPSClient {
      */
     private _fetch(url: string, options: any): GoogleAppsScript.URL_Fetch.HTTPResponse;
 
-    /**
-     * TEST: Edit event via v1 API with single PUT (no double-edit workaround)
-     * Used to test if v1 API requires the double-edit pattern
-     */
-    testV1SingleEditEvent(eventUrl: string, eventData: any): OperationResult & { event?: any };
 }
 
 export default RWGPSClient;

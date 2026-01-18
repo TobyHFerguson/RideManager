@@ -44,23 +44,8 @@ describe('RWGPSMockServer', () => {
             RWGPSMockServer.loadFixture('unschedule');
         });
 
-        it('returns correct response for login', () => {
-            const response = mockUrlFetchApp.fetch(
-                'https://ridewithgps.com/organizations/47/sign_in',
-                { method: 'POST' }
-            );
-            
-            expect(response.getResponseCode()).toBe(302);
-            expect(response.getAllHeaders().Location).toBe(
-                'https://ridewithgps.com/organizations/47-santa-cruz-county-cycling-club'
-            );
-        });
-
         it('returns correct response for delete', () => {
-            // First call - login
-            mockUrlFetchApp.fetch('https://ridewithgps.com/organizations/47/sign_in', { method: 'POST' });
-            
-            // Second call - delete
+            // unschedule fixture now has only DELETE (no login)
             const response = mockUrlFetchApp.fetch(
                 'https://ridewithgps.com/api/v1/events/444070.json',
                 { method: 'DELETE' }
@@ -71,7 +56,7 @@ describe('RWGPSMockServer', () => {
         });
 
         it('throws on unexpected extra call', () => {
-            mockUrlFetchApp.fetch('https://ridewithgps.com/organizations/47/sign_in', { method: 'POST' });
+            // unschedule fixture now has only DELETE (no login)
             mockUrlFetchApp.fetch('https://ridewithgps.com/api/v1/events/444070.json', { method: 'DELETE' });
             
             expect(() => {
@@ -81,13 +66,13 @@ describe('RWGPSMockServer', () => {
 
         it('throws on wrong URL', () => {
             expect(() => {
-                mockUrlFetchApp.fetch('https://ridewithgps.com/wrong-url', { method: 'POST' });
+                mockUrlFetchApp.fetch('https://ridewithgps.com/wrong-url', { method: 'DELETE' });
             }).toThrow(/URL mismatch/);
         });
 
         it('throws on wrong method', () => {
             expect(() => {
-                mockUrlFetchApp.fetch('https://ridewithgps.com/organizations/47/sign_in', { method: 'GET' });
+                mockUrlFetchApp.fetch('https://ridewithgps.com/api/v1/events/444070.json', { method: 'GET' });
             }).toThrow(/Method mismatch/);
         });
     });
@@ -117,15 +102,14 @@ describe('RWGPSMockServer', () => {
         });
 
         it('passes when all calls made', () => {
-            mockUrlFetchApp.fetch('https://ridewithgps.com/organizations/47/sign_in', { method: 'POST' });
+            // unschedule fixture now has only DELETE (no login)
             mockUrlFetchApp.fetch('https://ridewithgps.com/api/v1/events/444070.json', { method: 'DELETE' });
             
             expect(() => RWGPSMockServer.verify()).not.toThrow();
         });
 
         it('fails when calls missing', () => {
-            mockUrlFetchApp.fetch('https://ridewithgps.com/organizations/47/sign_in', { method: 'POST' });
-            // Missing delete call
+            // Make no calls - should fail since fixture expects DELETE
             
             expect(() => RWGPSMockServer.verify()).toThrow(/Not all expected API calls were made/);
         });
@@ -134,11 +118,12 @@ describe('RWGPSMockServer', () => {
     describe('getSummary', () => {
         it('returns summary of actual calls', () => {
             RWGPSMockServer.loadFixture('unschedule');
-            mockUrlFetchApp.fetch('https://ridewithgps.com/organizations/47/sign_in', { method: 'POST' });
+            // unschedule fixture now has only DELETE (no login)
+            mockUrlFetchApp.fetch('https://ridewithgps.com/api/v1/events/444070.json', { method: 'DELETE' });
             
             const summary = RWGPSMockServer.getSummary();
-            expect(summary).toContain('POST');
-            expect(summary).toContain('sign_in');
+            expect(summary).toContain('DELETE');
+            expect(summary).toContain('444070');
         });
     });
 });

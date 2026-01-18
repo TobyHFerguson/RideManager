@@ -73,10 +73,9 @@ describe('RWGPS API Characterization', () => {
             ]);
         });
 
-        test('unschedule fixture has 2 API calls', () => {
-            expect(fixtures.unschedule.apiCalls).toHaveLength(2);
+        test('unschedule fixture has 1 API call (no login required)', () => {
+            expect(fixtures.unschedule.apiCalls).toHaveLength(1);
             expect(fixtures.unschedule.apiCalls.map(c => c.operation)).toEqual([
-                'login',
                 'delete_event'
             ]);
         });
@@ -243,8 +242,9 @@ describe('RWGPS API Characterization', () => {
 
     describe('Authentication Patterns', () => {
         test('web API operations start with login to web session', () => {
-            // Web API operations (schedule, update, reinstate, importRoute, unschedule) require login
-            const webApiFixtures = ['schedule', 'update', 'reinstate', 'importRoute', 'unschedule'];
+            // Web API operations (schedule, update, reinstate, importRoute) require login
+            // Note: unschedule now uses v1 API with Basic Auth (no login required)
+            const webApiFixtures = ['schedule', 'update', 'reinstate', 'importRoute'];
             for (const name of webApiFixtures) {
                 const fixture = fixtures[name];
                 const firstCall = fixture.apiCalls[0];
@@ -254,9 +254,13 @@ describe('RWGPS API Characterization', () => {
         });
 
         test('v1 API-only operations do not require login', () => {
-            // cancel uses v1 API only - no login required
-            const firstCall = fixtures.cancel.apiCalls[0];
-            expect(firstCall.operation).not.toBe('login');
+            // cancel and unschedule use v1 API only - no login required
+            const v1Fixtures = ['cancel', 'unschedule'];
+            for (const name of v1Fixtures) {
+                const fixture = fixtures[name];
+                const firstCall = fixture.apiCalls[0];
+                expect(firstCall.operation).not.toBe('login');
+            }
         });
 
         test('login returns 302 redirect', () => {

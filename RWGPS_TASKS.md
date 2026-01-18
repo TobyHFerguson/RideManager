@@ -465,37 +465,50 @@ Line 345 of this file: "Single PUT updates all 11 working fields. No double-edit
 
 ---
 
-### Task 4.B: Remove unnecessary login() from deleteEvent() ⏳ TODO
+### Task 4.B: Remove unnecessary login() from deleteEvent() ✅ COMPLETE
 
-**Status**: Not started
+**Status**: Complete (commit 937f355)
 
 **Current**: `deleteEvent()` calls `login()` then uses Basic Auth
 **Issue**: v1 API with Basic Auth doesn't need web session
 
 **Steps**:
-- [ ] 4.B.1 Remove `login()` call from `deleteEvent()`
-- [ ] 4.B.2 Run existing GAS test or add `testRWGPSClientDeleteEvent()`
-- [ ] 4.B.3 Verify delete works without login
-- [ ] Commit: "Task 4.B: Remove unnecessary login() from deleteEvent()"
+- [x] 4.B.1 Remove `login()` call from `deleteEvent()`
+- [x] 4.B.2 Run existing GAS test or add `testRWGPSClientDeleteEvent()`
+- [x] 4.B.3 Verify delete works without login
+- [x] Commit: "Task 4.B: Remove unnecessary login() from deleteEvent()"
+
+**GAS Test Result** (2026-01-18 10:02 AM):
+- ✅ Created temporary event (ID 453684)
+- ✅ Deleted using v1 API with Basic Auth (no login)
+- ✅ Received 204 No Content response
+- ✅ Verified deletion successful
 
 ---
 
 ### Task 4.C: Delete deprecated methods ⏳ TODO
 
-**Status**: Not started
+**Status**: ✅ Complete (2026-01-18)
 
 **Methods to delete from RWGPSClient.js**:
 1. `copyTemplate()` - Templates are GONE per architecture
 2. `testV1SingleEditEvent()` - Test artifact, already proved its point
 
 **Steps**:
-- [ ] 4.C.1 Delete `copyTemplate()` method
-- [ ] 4.C.2 Delete `testV1SingleEditEvent()` method
-- [ ] 4.C.3 Update RWGPSClient.d.ts - remove deleted method signatures
-- [ ] 4.C.4 Delete/update any tests referencing deleted methods
-- [ ] 4.C.5 Run `npm test` - verify no breakage
-- [ ] 4.C.6 Run `npm run typecheck` - verify types
-- [ ] Commit: "Task 4.C: Delete deprecated copyTemplate and test artifact"
+- [x] 4.C.1 Delete `copyTemplate()` method (66 lines removed)
+- [x] 4.C.2 Delete `testV1SingleEditEvent()` method (94 lines removed)
+- [x] 4.C.3 Update RWGPSClient.d.ts - remove deleted method signatures
+- [x] 4.C.4 Delete/update any tests referencing deleted methods (8 tests removed)
+- [x] 4.C.5 Run `npm test` - 735 tests pass (down from 744 due to deleted tests)
+- [x] 4.C.6 Run `npm run typecheck` - ZERO errors
+- [x] Updated fixture-related tests due to Task 4.B changes (unschedule fixture now 1 call not 2)
+
+**Verification**:
+- All tests pass: 735 passed
+- No type errors
+- Methods successfully removed from implementation and type definitions
+- Tests cleaned up: removed 6 copyTemplate tests, 2 testV1SingleEditEvent tests
+- Fixed cascading test failures from Task 4.B fixture changes
 
 ---
 

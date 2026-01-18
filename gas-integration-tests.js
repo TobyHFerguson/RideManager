@@ -1036,7 +1036,7 @@ function testRWGPSClientDeleteEvent(eventIdToDelete) {
             const createResult = client.createEvent({
                 name: '[TEST DELETE - Will be deleted immediately]',
                 description: 'Temporary event created for deleteEvent() test',
-                start_date: '2099-12-31',  // Far future date
+                start_date: '2030-12-31',  // Far future date
                 start_time: '09:00',
                 visibility: 2  // Private
             });
