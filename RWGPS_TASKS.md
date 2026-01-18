@@ -530,19 +530,28 @@ Line 345 of this file: "Single PUT updates all 11 working fields. No double-edit
   - Added 2 new tests for createEvent with logo
   - Updated migration test to check createEvent (not createEventWithLogo)
   - All 737 tests pass
-- [x] 4.D.6 Created GAS test script: `src/rwgpslib/test-task-4d.js`
+- [x] 4.D.6 Added GAS integration tests to `gas-integration-tests.js` (lines 2612-2745)
+  - `testTask4DCreateEvent()` - Tests without logo (JSON POST)
+  - `testTask4DCreateEventWithLogo(logoUrl)` - Tests with logo (multipart POST)
+  - **NOTE**: All GAS integration tests MUST be in `gas-integration-tests.js` file
 
 **Verification**:
-- All tests pass: 737 passed
-- No type errors: `npm run typecheck` clean
-- Consolidated code: 68 lines removed, logic unified
-- GAS test script ready for manual verification
+- ✅ All tests pass: 737 passed
+- ✅ No type errors: `npm run typecheck` clean
+- ✅ Consolidated code: 68 lines removed, logic unified
+- ✅ GAS integration tests: Both passed (2026-01-18 10:25-10:27)
+  - `testTask4DCreateEvent()` - Event 453687 created successfully (JSON POST)
+  - `testTask4DCreateEventWithLogo()` - Event 453688 created with logo (multipart POST)
 
 **Implementation Details**:
 - `createEvent()` now branches internally based on logoUrl presence
 - Logo path: DriveApp → blob → multipart payload with boundary
 - No logo path: JSON POST (original behavior)
 - Maintains backward compatibility (logoUrl is optional)
+
+**Commits**: 
+- d3d807c (code implementation)
+- [this commit] (GAS integration tests)
 
 ---
 

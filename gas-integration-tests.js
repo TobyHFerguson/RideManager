@@ -2607,3 +2607,134 @@ function testImportRowFlow(routeId, rowNum) {
         return { success: false, error: error.message };
     }
 }
+/**
+ * Task 4.D GAS Test: createEvent without logo (JSON POST)
+ * 
+ * Tests that createEvent() works without the optional logo parameter,
+ * using standard JSON POST to v1 API.
+ * 
+ * CLEANUP: Event created by this test should be manually deleted from RWGPS.
+ */
+function testTask4DCreateEvent() {
+    console.log('====================================');
+    console.log('Task 4.D GAS Test: createEvent without logo');
+    console.log('====================================');
+    
+    try {
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        // Create test event data
+        const eventData = {
+            name: `[TEST 4.D] Event without logo ${new Date().toISOString()}`,
+            description: 'Task 4.D test - createEvent without logo parameter',
+            start_date: '2030-12-15',
+            start_time: '10:00',
+            visibility: 1, // Club members only
+            location: 'Test Location'
+        };
+        
+        console.log('Creating event without logo...');
+        const result = client.createEvent(eventData);
+        
+        if (result.success) {
+            console.log('✅ SUCCESS: Event created without logo');
+            console.log(`   Event URL: ${result.eventUrl}`);
+            console.log(`   Event ID: ${result.event.id}`);
+            console.log('\n⚠️  Manual cleanup required: Delete event from RWGPS');
+            return result;
+        } else {
+            console.error('❌ FAILED: ' + result.error);
+            throw new Error(result.error);
+        }
+        
+    } catch (error) {
+        console.error('❌ Test failed:', error.message);
+        console.error('   Stack:', error.stack);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Task 4.D GAS Test: createEvent with logo (multipart POST)
+ * 
+ * Tests that createEvent() works with the optional logoUrl parameter,
+ * using multipart/form-data POST to v1 API.
+ * 
+ * SETUP REQUIRED:
+ * 1. Upload a test image to Google Drive
+ * 2. Get the sharing link (File > Share > Copy link)
+ * 3. Replace the logoUrl parameter when calling this function
+ * 
+ * CLEANUP: Event created by this test should be manually deleted from RWGPS.
+ * 
+ * @param {string} [logoUrl] - Google Drive URL for logo image
+ */
+function testTask4DCreateEventWithLogo(logoUrl) {
+    console.log('====================================');
+    console.log('Task 4.D GAS Test: createEvent with logo');
+    console.log('====================================');
+    
+    // Default to a placeholder if not provided
+    if (!logoUrl) {
+        logoUrl = 'https://drive.google.com/file/d/YOUR_FILE_ID_HERE/view';
+    }
+    
+    if (logoUrl.includes('YOUR_FILE_ID_HERE')) {
+        console.warn('⚠️  WARNING: Please provide logoUrl parameter');
+        console.warn('   Usage: testTask4DCreateEventWithLogo("https://drive.google.com/file/d/YOUR_ID/view")');
+        console.warn('   Upload a test image to Drive and paste the sharing link');
+        return { success: false, error: 'Logo URL not provided' };
+    }
+    
+    try {
+        const scriptProps = PropertiesService.getScriptProperties();
+        const credentialManager = new CredentialManager(scriptProps);
+        
+        const client = new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+        
+        // Create test event data
+        const eventData = {
+            name: `[TEST 4.D] Event with logo ${new Date().toISOString()}`,
+            description: 'Task 4.D test - createEvent with logo parameter',
+            start_date: '2030-12-15',
+            start_time: '14:00',
+            visibility: 1, // Club members only
+            location: 'Test Location'
+        };
+        
+        console.log('Creating event with logo...');
+        console.log(`Logo URL: ${logoUrl}`);
+        const result = client.createEvent(eventData, logoUrl);
+        
+        if (result.success) {
+            console.log('✅ SUCCESS: Event created with logo');
+            console.log(`   Event URL: ${result.eventUrl}`);
+            console.log(`   Event ID: ${result.event.id}`);
+            console.log('\n⚠️  Manual verification required:');
+            console.log('   1. Visit event page and verify logo appears');
+            console.log('   2. Delete event from RWGPS');
+            return result;
+        } else {
+            console.error('❌ FAILED: ' + result.error);
+            throw new Error(result.error);
+        }
+        
+    } catch (error) {
+        console.error('❌ Test failed:', error.message);
+        console.error('   Stack:', error.stack);
+        return { success: false, error: error.message };
+    }
+}
