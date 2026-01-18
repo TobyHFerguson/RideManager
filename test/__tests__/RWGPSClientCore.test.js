@@ -153,6 +153,405 @@ describe('RWGPSClientCore', () => {
             
             expect(result.valid).toBe(true);
         });
+
+        // Task 4.F: Cover lines 122-123 (null/undefined check)
+        it('should reject null event data', () => {
+            const result = RWGPSClientCore.validateEventData(null);
+            
+            expect(result.valid).toBe(false);
+            expect(result.errors).toContain('Event data is required');
+        });
+
+        it('should reject undefined event data', () => {
+            const result = RWGPSClientCore.validateEventData(undefined);
+            
+            expect(result.valid).toBe(false);
+            expect(result.errors).toContain('Event data is required');
+        });
+    });
+
+    // Task 4.F: Cover lines 154-273 (transformV1EventToWebFormat)
+    describe('transformV1EventToWebFormat', () => {
+        it('should return null for null input', () => {
+            const result = RWGPSClientCore.transformV1EventToWebFormat(null);
+            expect(result).toBeNull();
+        });
+
+        it('should return null for undefined input', () => {
+            const result = RWGPSClientCore.transformV1EventToWebFormat(undefined);
+            expect(result).toBeNull();
+        });
+
+        it('should transform v1 event with start_date and start_time', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                time_zone: 'America/Los_Angeles',
+                all_day: false,
+                description: 'Test description',
+                visibility: 1
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.id).toBe(12345);
+            expect(result.name).toBe('Test Event');
+            expect(result.starts_at).toBe('2030-03-01T11:00:00');
+            expect(result.all_day).toBe(false);
+            expect(result.desc).toBe('Test description');
+            expect(result.visibility).toBe(1);
+        });
+
+        it('should use starts_at if already present in v1 event', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                starts_at: '2030-03-01T14:30:00',
+                all_day: false
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.starts_at).toBe('2030-03-01T14:30:00');
+        });
+
+        it('should use starts_at when no start_date/start_time present', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                starts_at: '2030-03-01T14:30:00',
+                all_day: false
+                // No start_date or start_time fields
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.starts_at).toBe('2030-03-01T14:30:00');
+        });
+
+        it('should prefer start_date/start_time over starts_at when both present', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                starts_at: '2030-03-01T14:30:00',
+                all_day: false
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.starts_at).toBe('2030-03-01T11:00:00');
+        });
+
+        it('should default all_day to false if not provided', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00'
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.all_day).toBe(false);
+        });
+
+        it('should handle all_day events', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '00:00',
+                all_day: true
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.all_day).toBe(true);
+        });
+
+        it('should transform organizers array to organizer_ids', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                organizers: [
+                    { id: 111, name: 'Alice' },
+                    { id: 222, name: 'Bob' }
+                ]
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.organizer_ids).toEqual([111, 222]);
+        });
+
+        it('should copy routes if present', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                routes: [{ id: 999, name: 'Test Route' }]
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.routes).toEqual([{ id: 999, name: 'Test Route' }]);
+        });
+
+        it('should transform end_date and end_time to ends_at', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                end_date: '2030-03-01',
+                end_time: '15:00'
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.ends_at).toBe('2030-03-01T15:00:00');
+        });
+
+        it('should copy ends_at if already present', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                ends_at: '2030-03-01T16:00:00'
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.ends_at).toBe('2030-03-01T16:00:00');
+        });
+
+        it('should handle desc field (alternative to description)', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                desc: 'Test desc field'
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.desc).toBe('Test desc field');
+        });
+
+        it('should prefer description over desc when both present', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                description: 'Priority description',
+                desc: 'Fallback desc'
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.desc).toBe('Priority description');
+        });
+
+        it('should default visibility to 0 if not provided', () => {
+            const v1Event = {
+                id: 12345,
+                name: 'Test Event',
+                start_date: '2030-03-01',
+                start_time: '11:00'
+            };
+
+            const result = RWGPSClientCore.transformV1EventToWebFormat(v1Event);
+
+            expect(result.visibility).toBe(0);
+        });
+    });
+
+    describe('buildGetEventOptions', () => {
+        // Task 4.F: Cover buildGetEventOptions method
+        it('should build GET event request options with session cookie', () => {
+            const sessionCookie = 'test-session-cookie';
+            const options = RWGPSClientCore.buildGetEventOptions(sessionCookie);
+
+            expect(options.method).toBe('GET');
+            expect(options.headers.Accept).toBe('application/json');
+            expect(options.headers.Cookie).toBe('test-session-cookie');
+            expect(options.headers['User-Agent']).toContain('Mozilla');
+            expect(options.muteHttpExceptions).toBe(true);
+        });
+    });
+
+    describe('buildEditEventPayload', () => {
+        // Task 4.F: Cover buildEditEventPayload method
+        it('should build payload with all required fields', () => {
+            const eventData = {
+                name: 'Test Event',
+                desc: 'Test description',
+                location: 'Test Location',
+                start_date: '2030-03-01',
+                start_time: '11:00',
+                visibility: 1
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.all_day).toBe('0');
+            expect(payload.name).toBe('Test Event');
+            expect(payload.desc).toBe('Test description');
+            expect(payload.location).toBe('Test Location');
+            expect(payload.start_date).toBe('2030-03-01');
+            expect(payload.start_time).toBe('11:00');
+            expect(payload.visibility).toBe(1);
+            expect(payload.auto_expire_participants).toBe('1');
+        });
+
+        it('should prefer desc over description', () => {
+            const eventData = {
+                name: 'Test Event',
+                desc: 'Desc field',
+                description: 'Description field'
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.desc).toBe('Desc field');
+        });
+
+        it('should fallback to description if desc not present', () => {
+            const eventData = {
+                name: 'Test Event',
+                description: 'Description field'
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.desc).toBe('Description field');
+        });
+
+        it('should default description to empty string', () => {
+            const eventData = {
+                name: 'Test Event'
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.desc).toBe('');
+        });
+
+        it('should transform organizers array to organizer_tokens', () => {
+            const eventData = {
+                name: 'Test Event',
+                organizers: [
+                    { id: 111 },
+                    { id: 222 }
+                ]
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.organizer_tokens).toEqual(['111', '222']);
+        });
+
+        it('should use existing organizer_tokens if provided', () => {
+            const eventData = {
+                name: 'Test Event',
+                organizer_tokens: ['333', '444']
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.organizer_tokens).toEqual(['333', '444']);
+        });
+
+        it('should transform routes array to route_ids', () => {
+            const eventData = {
+                name: 'Test Event',
+                routes: [
+                    { id: 999 },
+                    { id: 888 }
+                ]
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.route_ids).toEqual(['999', '888']);
+        });
+
+        it('should use existing route_ids if provided', () => {
+            const eventData = {
+                name: 'Test Event',
+                route_ids: [777, 666]
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.route_ids).toEqual([777, 666]);
+        });
+
+        it('should convert single route_id to array', () => {
+            const eventData = {
+                name: 'Test Event',
+                route_id: 555
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.route_ids).toEqual(['555']);
+        });
+
+        it('should handle numeric allDay parameter', () => {
+            const eventData = { name: 'Test Event' };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, 1);
+
+            expect(payload.all_day).toBe('1');
+        });
+
+        it('should default visibility to 0', () => {
+            const eventData = { name: 'Test Event' };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.visibility).toBe(0);
+        });
+
+        it('should preserve auto_expire_participants if provided', () => {
+            const eventData = {
+                name: 'Test Event',
+                auto_expire_participants: 0
+            };
+
+            const payload = RWGPSClientCore.buildEditEventPayload(eventData, '0');
+
+            expect(payload.auto_expire_participants).toBe('0');
+        });
+    });
+
+    describe('buildEditEventOptions', () => {
+        // Task 4.F: Cover buildEditEventOptions method
+        it('should build PUT request options with session cookie', () => {
+            const sessionCookie = 'test-session-cookie';
+            const payload = { name: 'Test Event' };
+
+            const options = RWGPSClientCore.buildEditEventOptions(sessionCookie, payload);
+
+            expect(options.method).toBe('PUT');
+            expect(options.headers.Accept).toBe('application/json');
+            expect(options.headers.Cookie).toBe('test-session-cookie');
+            expect(options.headers['Content-Type']).toBe('application/json');
+            expect(options.headers['User-Agent']).toContain('Mozilla');
+            expect(options.payload).toBe(JSON.stringify(payload));
+            expect(options.muteHttpExceptions).toBe(true);
+        });
     });
 
     describe('buildOrganizerLookupOptions', () => {
@@ -427,6 +826,187 @@ describe('RWGPSClientCore', () => {
             expect(payload.event.time_zone).toBe('America/Los_Angeles');
             expect(payload.event.visibility).toBe('public');
         });
+
+        // Task 4.F: Cover lines 307, 315-317, 324-326 (desc, starts_at parsing branches)
+        it('should handle missing description field', () => {
+            const eventData = {
+                name: 'Test'
+                // No description or desc field
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.description).toBeUndefined();
+        });
+
+        it('should use desc field when description field is missing', () => {
+            const eventData = {
+                name: 'Test',
+                desc: 'Event description from desc field'
+                // No description field, only desc
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.description).toBe('Event description from desc field');
+        });
+
+        it('should parse starts_at to start_date when start_date missing', () => {
+            const eventData = {
+                name: 'Test',
+                starts_at: '2025-01-18T10:00:00-08:00'
+                // No start_date field
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.start_date).toBe('2025-01-18');
+        });
+
+        it('should parse starts_at to start_time when start_time missing', () => {
+            const eventData = {
+                name: 'Test',
+                starts_at: '2025-01-18T10:00:00-08:00'
+                // No start_time field
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.start_time).toBe('10:00');
+        });
+
+        it('should handle missing location field', () => {
+            const eventData = {
+                name: 'Test'
+                // No location field
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.location).toBeUndefined();
+        });
+
+        it('should handle missing time_zone field', () => {
+            const eventData = {
+                name: 'Test'
+                // No time_zone field
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.time_zone).toBeUndefined();
+        });
+
+        // Task 4.F: Cover line 341 (visibility normalization)
+        it('should normalize numeric visibility 0 to "public"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: 0
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('public');
+        });
+
+        it('should normalize string visibility "0" to "public"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: '0'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('public');
+        });
+
+        it('should normalize numeric visibility 1 to "private"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: 1
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('private');
+        });
+
+        it('should normalize string visibility "1" to "private"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: '1'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('private');
+        });
+
+        it('should normalize numeric visibility 2 to "friends_only"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: 2
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('friends_only');
+        });
+
+        it('should normalize string visibility "2" to "friends_only"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: '2'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('friends_only');
+        });
+
+        it('should pass through string visibility "public"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: 'public'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('public');
+        });
+
+        it('should pass through string visibility "private"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: 'private'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('private');
+        });
+
+        it('should pass through string visibility "friends_only"', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: 'friends_only'
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('friends_only');
+        });
+
+        it('should pass through unknown visibility values as string', () => {
+            const eventData = {
+                name: 'Test',
+                visibility: 99
+            };
+
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+            expect(payload.event.visibility).toBe('99');
+        });
     });
 
     describe('buildV1EditEventOptions', () => {
@@ -567,6 +1147,34 @@ describe('RWGPSClientCore', () => {
             expect(result.textPart).toContain('Content-Type: image/png');
         });
 
+        it('should handle GIF logo file extension', () => {
+            const gifBlob = {
+                getContentType: () => 'image/gif',
+                getName: () => 'logo.gif'
+            };
+            const eventData = { name: 'Test Event' };
+            const boundary = 'testBoundary';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, gifBlob, boundary);
+
+            expect(result.textPart).toContain('filename="logo.gif"');
+            expect(result.textPart).toContain('Content-Type: image/gif');
+        });
+
+        it('should handle WebP logo file extension', () => {
+            const webpBlob = {
+                getContentType: () => 'image/webp',
+                getName: () => 'logo.webp'
+            };
+            const eventData = { name: 'Test Event' };
+            const boundary = 'testBoundary';
+
+            const result = RWGPSClientCore.buildMultipartTextParts(eventData, webpBlob, boundary);
+
+            expect(result.textPart).toContain('filename="logo.webp"');
+            expect(result.textPart).toContain('Content-Type: image/webp');
+        });
+
         it('should use correct multipart format with CRLF line endings', () => {
             const eventData = { name: 'Test' };
             const boundary = 'test';
@@ -576,6 +1184,44 @@ describe('RWGPSClientCore', () => {
             // Should use \r\n (CRLF) for multipart spec compliance
             expect(result.textPart).toContain('\r\n');
             expect(result.endBoundary).toContain('\r\n');
+        });
+    });
+
+    describe('formatDateForV1Api', () => {
+        it('should format date with zero-padded month and day', () => {
+            const date = new Date('2025-03-15T10:30:00');
+
+            const result = RWGPSClientCore.formatDateForV1Api(date);
+
+            expect(result.start_date).toBe('2025-03-15');
+            expect(result.start_time).toBe('10:30');
+        });
+
+        it('should zero-pad single digit month', () => {
+            const date = new Date('2025-01-05T14:45:00');
+
+            const result = RWGPSClientCore.formatDateForV1Api(date);
+
+            expect(result.start_date).toBe('2025-01-05');
+            expect(result.start_time).toBe('14:45');
+        });
+
+        it('should zero-pad single digit hours and minutes', () => {
+            const date = new Date('2025-11-20T09:05:00');
+
+            const result = RWGPSClientCore.formatDateForV1Api(date);
+
+            expect(result.start_date).toBe('2025-11-20');
+            expect(result.start_time).toBe('09:05');
+        });
+
+        it('should handle midnight correctly', () => {
+            const date = new Date('2025-06-15T00:00:00');
+
+            const result = RWGPSClientCore.formatDateForV1Api(date);
+
+            expect(result.start_date).toBe('2025-06-15');
+            expect(result.start_time).toBe('00:00');
         });
     });
 });
