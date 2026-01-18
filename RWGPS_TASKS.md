@@ -433,7 +433,7 @@ RWGPSClientCore.js contains GAS API calls:
 
 | Method | API | Notes |
 |--------|-----|-------|
-| `_lookupOrganizer()` | Web | ⚠️ Replace with cached Members lookup |
+| `_lookupOrganizer()` | Web | ⚠️ Replace with cached Members lookup (Phase 5) |
 | `_removeEventTags()` | Web | ✅ Keep - no v1 tag endpoints |
 | `_addEventTags()` | Web | ✅ Keep - no v1 tag endpoints |
 | `_copyRoute()` | Web | ✅ Keep - no v1 route copy |
@@ -441,70 +441,31 @@ RWGPSClientCore.js contains GAS API calls:
 
 ---
 
-### Task 4.7: Fix Core/Adapter Architecture Violations ⏳ TODO
+## Phase 4 Task List (Revised 2026-01-17)
 
-**Status**: Not started
-**Priority**: HIGH - blocks proper Jest testing
-
-RWGPSClientCore.js has GAS dependencies, violating architecture:
-```
-Utilities.base64Encode (L108)
-Utilities.newBlob (L451, 453, 471)
-```
-
-**Steps**:
-- [ ] 4.7.1 Move `buildMultipartCreateEventPayload()` from Core to RWGPSClient.js
-  - Uses `Utilities.newBlob()`, cannot be tested in Jest
-  - Core should only build the data structure, adapter handles Blob creation
-- [ ] 4.7.2 Fix `buildBasicAuthHeader()` to be pure JS
-  - Use Buffer.from() which works in both Node.js and can be polyfilled
-  - OR inject the base64 encoder as dependency
-- [ ] 4.7.3 Increase RWGPSClientCore.js coverage to 100%
-  - Current: 54.85% stmt, 54.19% branch
-  - Target: 100% (architecture requirement)
-- [ ] 4.7.4 Run `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClientCore.js'`
-- [ ] Commit: "Task 4.7: Fix Core/Adapter architecture violations"
-
----
-
-### Task 4.8: Consolidate createEvent + createEventWithLogo ⏳ TODO
-
-**Status**: Not started
-
-**Current**: Two methods with overlapping logic
-**Target**: One method `createEvent(eventData, logoUrl?)`
-
-**Steps**:
-- [ ] 4.8.1 Modify `createEvent(eventData, logoUrl?)` to handle optional logo
-  - If logoUrl provided: fetch blob, use multipart
-  - If no logoUrl: use JSON POST
-- [ ] 4.8.2 Delete `createEventWithLogo()` method
-- [ ] 4.8.3 Update `scheduleEvent()` to pass logoUrl to createEvent
-- [ ] 4.8.4 Update RWGPSClient.d.ts
-- [ ] 4.8.5 Update tests
-- [ ] 4.8.6 Run GAS tests to verify
-- [ ] Commit: "Task 4.8: Consolidate createEvent with optional logo"
-
----
-
-### Task 4.9: Verify POST /events accepts organizer_ids ⏳ TODO
+### Task 4.A: Remove double-edit pattern from editEvent() ⏳ TODO
 
 **Status**: Not started  
-**Question**: Does v1 POST (create) accept organizer_ids like PUT (edit) does?
+**Priority**: HIGH - proven unnecessary, code cleanup
+
+**Evidence**: PHASE4_HISTORICAL_NOTES.md documents that single PUT works for all 11 fields.
+Line 345 of this file: "Single PUT updates all 11 working fields. No double-edit required."
+
+**Current**: `editEvent()` does two PUTs (all_day=1, then all_day=0)
+**Target**: Single PUT with all_day=0
 
 **Steps**:
-- [ ] 4.9.1 Add `testRWGPSClientCreateEventWithOrganizers()` GAS test
-  - Create event with organizer_ids in eventData
-  - Verify organizers appear on created event
-  - Delete test event
-- [ ] 4.9.2 Document result in this file
-- [ ] 4.9.3 If works: Remove organizer lookup from scheduleEvent() workflow
-- [ ] 4.9.4 If doesn't work: Keep two-step create+edit workflow
-- [ ] Commit: "Task 4.9: Verify POST accepts organizer_ids"
+- [ ] 4.A.1 Update `editEvent()` to use single PUT (remove first PUT)
+- [ ] 4.A.2 Update JSDoc to remove "double-edit" references
+- [ ] 4.A.3 Update RWGPSClient.d.ts JSDoc
+- [ ] 4.A.4 Update tests to expect single fetch call
+- [ ] 4.A.5 Run `npm test` - verify all pass
+- [ ] 4.A.6 Run GAS test `testRWGPSClientEditEvent` - verify still works
+- [ ] Commit: "Task 4.A: Remove unnecessary double-edit from editEvent()"
 
 ---
 
-### Task 4.10: Remove unnecessary login() from deleteEvent ⏳ TODO
+### Task 4.B: Remove unnecessary login() from deleteEvent() ⏳ TODO
 
 **Status**: Not started
 
@@ -512,94 +473,115 @@ Utilities.newBlob (L451, 453, 471)
 **Issue**: v1 API with Basic Auth doesn't need web session
 
 **Steps**:
-- [ ] 4.10.1 Remove `login()` call from `deleteEvent()`
-- [ ] 4.10.2 Add `testRWGPSClientDeleteEvent()` GAS test
-  - Create test event
-  - Delete it (should work without login)
-  - Verify event is gone
-- [ ] 4.10.3 Run test, confirm works
-- [ ] Commit: "Task 4.10: Remove unnecessary login from deleteEvent"
+- [ ] 4.B.1 Remove `login()` call from `deleteEvent()`
+- [ ] 4.B.2 Run existing GAS test or add `testRWGPSClientDeleteEvent()`
+- [ ] 4.B.3 Verify delete works without login
+- [ ] Commit: "Task 4.B: Remove unnecessary login() from deleteEvent()"
 
 ---
 
-### Task 4.11: Replace _lookupOrganizer with cached lookup ⏳ TODO
-
-**Status**: Not started
-
-**Current**: `_lookupOrganizer()` makes web API call for EACH organizer name
-**Target**: Use cached "RWGPS Members" sheet for instant local lookup
-
-**Steps**:
-- [ ] 4.11.1 Add `lookupUserIdByName(members, name)` to RWGPSClientCore.js
-  - Pure JS, takes array of member objects and name string
-  - Returns `{success: boolean, userId?: number, error?: string}`
-  - 100% test coverage required
-- [ ] 4.11.2 Add `_lookupOrganizerId(name)` to RWGPSClient.js (private)
-  - Reads "RWGPS Members" sheet via Fiddler
-  - Calls Core lookup function
-  - Returns organizer ID or null
-- [ ] 4.11.3 Update `scheduleEvent()` to use `_lookupOrganizerId()`
-- [ ] 4.11.4 Update `updateEvent()` similarly
-- [ ] 4.11.5 Delete old `_lookupOrganizer()` method
-- [ ] 4.11.6 Remove `login()` from scheduleEvent/updateEvent (no longer needed!)
-- [ ] 4.11.7 Run GAS tests: `testRWGPSClientScheduleEvent`, `testRWGPSClientUpdateEvent`
-- [ ] Commit: "Task 4.11: Replace web organizer lookup with cached sheet lookup"
-
----
-
-### Task 4.12: Delete deprecated methods ⏳ TODO
+### Task 4.C: Delete deprecated methods ⏳ TODO
 
 **Status**: Not started
 
 **Methods to delete from RWGPSClient.js**:
-1. `copyTemplate()` (L844) - Templates are GONE per architecture
-2. `testV1SingleEditEvent()` (L1115) - Test artifact, not production code
+1. `copyTemplate()` - Templates are GONE per architecture
+2. `testV1SingleEditEvent()` - Test artifact, already proved its point
 
 **Steps**:
-- [ ] 4.12.1 Delete `copyTemplate()` method
-- [ ] 4.12.2 Delete `testV1SingleEditEvent()` method
-- [ ] 4.12.3 Update RWGPSClient.d.ts - remove deleted method signatures
-- [ ] 4.12.4 Delete/update any tests referencing deleted methods
-- [ ] 4.12.5 Run `npm test` - verify no breakage
-- [ ] 4.12.6 Run `npm run typecheck` - verify types
-- [ ] Commit: "Task 4.12: Delete deprecated copyTemplate and test artifact"
+- [ ] 4.C.1 Delete `copyTemplate()` method
+- [ ] 4.C.2 Delete `testV1SingleEditEvent()` method
+- [ ] 4.C.3 Update RWGPSClient.d.ts - remove deleted method signatures
+- [ ] 4.C.4 Delete/update any tests referencing deleted methods
+- [ ] 4.C.5 Run `npm test` - verify no breakage
+- [ ] 4.C.6 Run `npm run typecheck` - verify types
+- [ ] Commit: "Task 4.C: Delete deprecated copyTemplate and test artifact"
 
 ---
 
-### Task 4.13: Minimize public API surface ⏳ TODO
+### Task 4.D: Consolidate createEvent + createEventWithLogo ⏳ TODO
 
 **Status**: Not started
 
-**Goal**: Only expose methods that RideManager.js needs. Everything else should be private (`_` prefix).
+**Current**: Two methods with overlapping logic
+**Target**: One method `createEvent(eventData, logoUrl?)`
 
 **Steps**:
-- [ ] 4.13.1 Audit RideManager.js - list which RWGPSClient methods are actually called
-- [ ] 4.13.2 Identify methods that are only used internally
-- [ ] 4.13.3 Rename internal-only methods with `_` prefix
-- [ ] 4.13.4 Update .d.ts to mark private methods
-- [ ] 4.13.5 Update tests if method names changed
-- [ ] 4.13.6 Run `npm test` and `npm run validate-all`
-- [ ] Commit: "Task 4.13: Minimize public API surface"
+- [ ] 4.D.1 Modify `createEvent(eventData, logoUrl?)` to handle optional logo
+  - If logoUrl provided: fetch blob, use multipart
+  - If no logoUrl: use JSON POST
+- [ ] 4.D.2 Delete `createEventWithLogo()` method
+- [ ] 4.D.3 Update `scheduleEvent()` to pass logoUrl to createEvent
+- [ ] 4.D.4 Update RWGPSClient.d.ts
+- [ ] 4.D.5 Update tests
+- [ ] 4.D.6 Run GAS tests to verify
+- [ ] Commit: "Task 4.D: Consolidate createEvent with optional logo"
 
 ---
 
-### Phase 4 Completion Checklist
+### Task 4.E: Fix Core/Adapter Architecture Violations ⏳ TODO
+
+**Status**: Not started
+**Priority**: HIGH - blocks proper Jest testing
+
+RWGPSClientCore.js has GAS dependencies, violating architecture:
+```
+Utilities.base64Encode (L108) - has Buffer fallback, minor issue
+Utilities.newBlob (L451, 453, 471) - TRUE violation, no fallback
+```
+
+**Steps**:
+- [ ] 4.E.1 Move `buildMultipartCreateEventPayload()` from Core to RWGPSClient.js
+  - Uses `Utilities.newBlob()`, cannot be tested in Jest
+  - Core should only build the data structure, adapter handles Blob creation
+- [ ] 4.E.2 Increase RWGPSClientCore.js coverage to 100%
+  - Current: 54.85% stmt, 54.19% branch
+  - Target: 100% (architecture requirement)
+- [ ] 4.E.3 Run `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClientCore.js'`
+- [ ] Commit: "Task 4.E: Fix Core/Adapter architecture violations"
+
+Note: `buildBasicAuthHeader()` already has Buffer.from() fallback for Node.js - not a blocking issue.
+
+---
+
+### Task 4.F: Achieve 100% RWGPSClientCore.js Coverage ⏳ TODO
+
+**Status**: Not started
+**Depends on**: Task 4.E (multipart code moved out of Core)
+
+**Current Coverage** (after Task 4.E):
+- Target: 100% stmt, 100% branch, 100% functions
+
+**Steps**:
+- [ ] 4.F.1 Write tests for uncovered lines
+- [ ] 4.F.2 Run `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClientCore.js'`
+- [ ] 4.F.3 Verify 100% coverage
+- [ ] Commit: "Task 4.F: Achieve 100% RWGPSClientCore coverage"
+
+---
+
+## Phase 4 Completion Checklist
 
 Before marking Phase 4 complete:
-- [ ] RWGPSClientCore.js has NO GAS dependencies (pure JavaScript)
-- [ ] RWGPSClientCore.js has 100% test coverage
-- [ ] `createEvent()` and `createEventWithLogo()` consolidated
-- [ ] POST /events with organizer_ids verified (or documented as not working)
-- [ ] `login()` removed from v1-only methods (deleteEvent, etc.)
-- [ ] `_lookupOrganizer()` replaced with cached lookup
-- [ ] `login()` removed from scheduleEvent/updateEvent
+- [ ] `editEvent()` uses single PUT (no double-edit)
+- [ ] `deleteEvent()` has no login() call
 - [ ] `copyTemplate()` deleted
 - [ ] `testV1SingleEditEvent()` deleted
-- [ ] Every public RWGPSClient method has a GAS integration test
+- [ ] `createEvent()` and `createEventWithLogo()` consolidated
+- [ ] RWGPSClientCore.js has NO GAS dependencies (pure JavaScript)
+- [ ] RWGPSClientCore.js has 100% test coverage
+- [ ] All tests pass: `npm test`
 - [ ] All GAS integration tests pass
-- [ ] Public API minimized (internal methods prefixed with `_`)
-- [ ] `npm test` passes with 100% Core coverage
-- [ ] `npm run validate-all` passes
+
+---
+
+## Deferred to Phase 5
+
+The following tasks are deferred to Phase 5 (see Phase 5 section below for details):
+
+- **Task 5.0.5**: Replace `_lookupOrganizer` with cached lookup (already defined)
+- **Task 5.X**: Verify POST /events accepts organizer_ids
+- **Task 5.X**: Minimize public API surface
 
 ---
 
