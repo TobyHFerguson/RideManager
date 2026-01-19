@@ -2,6 +2,8 @@
  * A class to centralize access to and validation of credentials
  * stored in Script Properties.
  */
+var CredentialManager = (function() {
+
 class CredentialManager {
     constructor(scriptProperties) {
         this.scriptProperties = scriptProperties;
@@ -39,6 +41,9 @@ class CredentialManager {
         return authToken;
     }
 }
+
+return CredentialManager;
+})();
 
 /* istanbul ignore if - Node.js compatibility check */
 if (typeof module !== 'undefined') {
