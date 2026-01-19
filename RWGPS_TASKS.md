@@ -1005,23 +1005,25 @@ updateEvent(eventUrl, eventData, organizerIds)
 
 ---
 
-### Task 5.4: Remove rwgps parameter from RideCoordinator ⏳ IN PROGRESS
+### Task 5.4: Remove rwgps parameter from RideCoordinator ✅ COMPLETE
 
-**Status**: Not started
+**Status**: Complete (2026-01-19)
 
-**What needs to happen**:
-1. Remove `rwgps` parameter from all RideCoordinator methods
-2. Update RideCoordinator.d.ts
-3. Remove `getRWGPS()` and related functions from MenuFunctions.js
+**What was done**:
+1. Removed `rwgps` parameter from all RideCoordinator methods
+2. Updated RideCoordinator.d.ts - removed RWGPS import and rwgps from signatures
+3. Updated MenuFunctions.js - removed getRWGPS(), getRWGPSLib_(), getRWGPSService_(), getGlobals_()
+4. Simplified executeOperation() - no longer creates/passes rwgps
+5. All 809 tests pass, TypeScript typecheck clean
 
 **Steps**:
-- [ ] 5.4.1 Update RideCoordinator.js - remove rwgps from all methods
-- [ ] 5.4.2 Update RideCoordinator.d.ts
-- [ ] 5.4.3 Update MenuFunctions.js - remove getRWGPS(), getRWGPSLib_(), getRWGPSService_()
-- [ ] 5.4.4 Update executeOperation() - don't create/pass rwgps
-- [ ] 5.4.5 Run `npm run validate-all`
+- [x] 5.4.1 Update RideCoordinator.js - remove rwgps from all methods
+- [x] 5.4.2 Update RideCoordinator.d.ts
+- [x] 5.4.3 Update MenuFunctions.js - remove getRWGPS(), getRWGPSLib_(), getRWGPSService_()
+- [x] 5.4.4 Update executeOperation() - don't create/pass rwgps
+- [x] 5.4.5 Run `npm run validate-all` - PASSED (809 tests)
 - [ ] 5.4.6 Test all operations in GAS
-- [ ] Commit: "Task 5.4: Remove rwgps parameter from RideCoordinator"
+- [x] Commit: "Task 5.4: Remove rwgps parameter from RideCoordinator"
 
 ---
 

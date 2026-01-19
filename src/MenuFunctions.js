@@ -6,54 +6,14 @@ if (typeof require !== 'undefined') {
 
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
-/**
- * Execute the given command with the given credentials.
- * 
- * If no credentials are found then collect them from the user and try again.
- */
-
-function getRWGPSLib_() {
-  // Use vendored RWGPSLib adapter instead of external library
-  // The adapter wraps the vendored RWGPS files and provides the same interface
-  return RWGPSLibAdapter;
-}
-
-function getGlobals_() {
-  const g2 = getGroupSpecs();
-  const globals = getGlobals();
-  globals["A_TEMPLATE"] = g2.A.TEMPLATE
-  return globals;
-}
-function getRWGPSService_() {
-  const credentialManager = getRWGPSLib_().newCredentialManager(PropertiesService.getScriptProperties())
-  return getRWGPSLib_().newRWGPSService(getGlobals_(), credentialManager);
-}
-
-/**
- * Get RWGPS instance using new architecture (LegacyRWGPSAdapter wrapping RWGPSFacade)
- * @returns {LegacyRWGPSAdapter}
- */
-function getRWGPS() {
-  // NEW: Use LegacyRWGPSAdapter which wraps RWGPSFacade
-  // This provides legacy method names (get_event, edit_event, etc.) 
-  // while using the new architecture under the hood
-  return getRWGPSLib_().newLegacyAdapter();
-}
 
 const MenuFunctions = (() => {
   /**
    * Execute a ride operation using RideCoordinator
-   * @param {(rows: InstanceType<typeof RowCore>[], rwgps: any, adapter: InstanceType<typeof ScheduleAdapter>, force?: boolean) => void} operation
+   * @param {(rows: InstanceType<typeof RowCore>[], adapter: InstanceType<typeof ScheduleAdapter>, force?: boolean) => void} operation
    * @param {boolean} [force]
    */
   function executeOperation(operation, force = false) {
-    const g2 = getGroupSpecs();
-    const globals = getGlobals();
-    globals["A_TEMPLATE"] = g2.A.TEMPLATE // Needed because RWGPSLib expects globals["A_TEMPLATE"]
-
-    // NEW: Use LegacyRWGPSAdapter (wraps RWGPSFacade with legacy method names)
-    const rwgps = getRWGPSLib_().newLegacyAdapter();
-    
     // Create adapter and load selected rows
     const adapter = new ScheduleAdapter();
     let rows = adapter.loadSelected();
@@ -61,7 +21,7 @@ const MenuFunctions = (() => {
     
     try {
       // Execute operation (validation and confirmation handled by RideCoordinator)
-      operation(rows, rwgps, adapter, force);
+      operation(rows, adapter, force);
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
       // Log errors

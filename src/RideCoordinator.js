@@ -10,7 +10,6 @@ if (typeof require !== 'undefined') {
 }
 
 /**
- * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
  */
 
@@ -38,11 +37,10 @@ class RideCoordinator {
     /**
      * Schedule rides operation
      * @param {RowCoreInstance[]} rows - Rows to schedule
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static scheduleRides(rows, rwgps, adapter, force = false) {
+    static scheduleRides(rows, adapter, force = false) {
         try {
             // 1. Validate
             // NOTE: validateForScheduling exists in ValidationCore (see ValidationCore.d.ts:59, test coverage: TBD)
@@ -90,11 +88,10 @@ class RideCoordinator {
     /**
      * Cancel rides operation
      * @param {RowCoreInstance[]} rows - Rows to cancel
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static cancelRides(rows, rwgps, adapter, force = false) {
+    static cancelRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForCancellation exists in ValidationCore (see ValidationCore.d.ts:68, implementation: ValidationCore.js)
@@ -211,11 +208,10 @@ class RideCoordinator {
     /**
      * Update rides operation
      * @param {RowCoreInstance[]} rows - Rows to update
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static updateRides(rows, rwgps, adapter, force = false) {
+    static updateRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForUpdate exists in ValidationCore (see ValidationCore.d.ts:77)
@@ -262,11 +258,10 @@ class RideCoordinator {
     /**
      * Reinstate rides operation
      * @param {RowCoreInstance[]} rows - Rows to reinstate
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static reinstateRides(rows, rwgps, adapter, force = false) {
+    static reinstateRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForReinstatement exists in ValidationCore (see ValidationCore.d.ts:86)
@@ -383,11 +378,10 @@ class RideCoordinator {
     /**
      * Unschedule rides operation
      * @param {RowCoreInstance[]} rows - Rows to unschedule
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static unscheduleRides(rows, rwgps, adapter, force = false) {
+    static unscheduleRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForUnschedule exists in ValidationCore (see ValidationCore.d.ts:95)
@@ -431,11 +425,10 @@ class RideCoordinator {
     /**
      * Import routes operation
      * @param {RowCoreInstance[]} rows - Rows to import
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static importRoutes(rows, rwgps, adapter, force = false) {
+    static importRoutes(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForRouteImport exists in ValidationCore (see ValidationCore.d.ts:104)
