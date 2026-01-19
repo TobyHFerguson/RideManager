@@ -130,36 +130,22 @@ var RWGPSClient = (function() {
     }
 
     /**
-     * Schedule a new event from template
-     * 
-     * This method performs the full schedule workflow:
-     * 1. Login to establish web session
-     * 2. Copy template to create new event
-     * 3. Look up organizer IDs by name
-     * 4. Edit event with full data (using double-edit pattern)
-     * 5. Remove "template" tag from new event
-     * 
-     * @param {string} templateUrl - Template event URL
-     * @param {any} eventData - Event data (name, desc, starts_at, etc.)
-     * @param {string[]} organizerNames - Array of organizer names to look up
-     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result
-     */
-    /**
-     * Schedule a new event from template using v1 API createEvent
+     * Schedule a new event (no templates - creates event directly)
      * 
      * Workflow:
      * 1. Login to establish web session
      * 2. Create event using v1 API (with logo if provided)
-     * 3. Look up organizers by name
-     * 4. Edit event with full data including organizer tokens
+     * 3. Edit event with full data including organizer tokens
      * 
-     * @param {string} templateUrl - Template event URL (used for organizer lookup context)
-     * @param {any} eventData - Event data (name, desc, starts_at, etc.)
-     * @param {string[]} organizerNames - Array of organizer names to look up
+     * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
+     * before calling this method.
+     * 
+     * @param {any} eventData - Event data (name, desc, start_date, start_time, etc.)
+     * @param {number[]} organizerIds - Array of organizer user IDs (pre-looked up)
      * @param {string} [logoUrl] - Optional logo URL to attach to event
      * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with new event URL and data
      */
-    scheduleEvent(templateUrl, eventData, organizerNames, logoUrl) {
+    scheduleEvent(eventData, organizerIds, logoUrl) {
         try {
             // Step 1: Login
             const loginSuccess = this.login();
@@ -182,17 +168,13 @@ var RWGPSClient = (function() {
             }
 
             const newEventUrl = createResult.eventUrl;
-            const newEventId = RWGPSClientCore.extractEventId(newEventUrl);
 
-            // Step 3: Look up organizers by name
+            // Step 3: Convert organizer IDs to tokens (strings)
+            // Organizer IDs are looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
             const organizerTokens = [];
-            if (organizerNames && organizerNames.length > 0) {
-                for (const name of organizerNames) {
-                    const organizerResult = this._lookupOrganizer(templateUrl, name);
-                    if (organizerResult.success && organizerResult.organizer) {
-                        organizerTokens.push(String(organizerResult.organizer.id));
-                    }
-                    // If organizer not found, continue with empty (TBD will be used)
+            if (organizerIds && organizerIds.length > 0) {
+                for (const id of organizerIds) {
+                    organizerTokens.push(String(id));
                 }
             }
 
@@ -229,19 +211,20 @@ var RWGPSClient = (function() {
     }
 
     /**
-     * Update an existing event with new data and optionally add organizers
+     * Update an existing event with new data and optionally set organizers
      * 
      * Workflow:
      * 1. Login to establish web session
-     * 2. Look up organizers by name (optional)
-     * 3. Edit event with full data including organizer tokens
+     * 2. Edit event with full data including organizer tokens
+     * 
+     * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
      * 
      * @param {string} eventUrl - Existing event URL
      * @param {any} eventData - Event data (name, desc, starts_at, etc.)
-     * @param {string[]} organizerNames - Array of organizer names to look up (optional)
-     * @returns {{success: boolean, event?: any, organizers?: Array<{name: string, token: string}>, error?: string}} Result
+     * @param {number[]} organizerIds - Array of organizer user IDs (optional)
+     * @returns {{success: boolean, event?: any, error?: string}} Result
      */
-    updateEvent(eventUrl, eventData, organizerNames) {
+    updateEvent(eventUrl, eventData, organizerIds) {
         try {
             // Step 1: Login
             const loginSuccess = this.login();
@@ -252,20 +235,11 @@ var RWGPSClient = (function() {
                 };
             }
 
-            // Step 2: Look up organizers by name (optional)
-            const resolvedOrganizers = [];
+            // Step 2: Convert organizer IDs to tokens (strings)
             const organizerTokens = [];
-            if (organizerNames && organizerNames.length > 0) {
-                for (const name of organizerNames) {
-                    const organizerResult = this._lookupOrganizer(eventUrl, name);
-                    if (organizerResult.success && organizerResult.organizer) {
-                        organizerTokens.push(String(organizerResult.organizer.id));
-                        resolvedOrganizers.push({
-                            name: organizerResult.organizer.text,
-                            token: String(organizerResult.organizer.id)
-                        });
-                    }
-                    // If organizer not found, continue (non-fatal)
+            if (organizerIds && organizerIds.length > 0) {
+                for (const id of organizerIds) {
+                    organizerTokens.push(String(id));
                 }
             }
 
@@ -286,8 +260,7 @@ var RWGPSClient = (function() {
 
             return {
                 success: true,
-                event: editResult.event,
-                organizers: resolvedOrganizers
+                event: editResult.event
             };
 
         } catch (error) {
@@ -299,45 +272,9 @@ var RWGPSClient = (function() {
         }
     }
 
-    /**
-     * Look up an organizer by name
-     * 
-     * @param {string} eventUrl - Event URL to use for lookup (usually template URL)
-     * @param {string} organizerName - Full name of organizer
-     * @returns {{success: boolean, organizer?: {id: number, text: string}, error?: string}} Result
-     * @private
-     */
-    _lookupOrganizer(eventUrl, organizerName) {
-        try {
-            const eventId = RWGPSClientCore.extractEventId(eventUrl);
-            if (!eventId) {
-                return { success: false, error: 'Invalid event URL' };
-            }
-
-            const lookupUrl = `https://ridewithgps.com/events/${eventId}/organizer_ids.json`;
-            const options = RWGPSClientCore.buildOrganizerLookupOptions(this.webSessionCookie, organizerName);
-
-            const response = this._fetch(lookupUrl, options);
-            const statusCode = response.getResponseCode();
-
-            if (statusCode !== 200) {
-                return { success: false, error: `Lookup failed with status ${statusCode}` };
-            }
-
-            const data = JSON.parse(response.getContentText());
-            const match = RWGPSClientCore.findMatchingOrganizer(data.results, organizerName);
-
-            if (match) {
-                return { success: true, organizer: match };
-            } else {
-                return { success: false, error: `Organizer not found: ${organizerName}` };
-            }
-
-        } catch (error) {
-            const err = error instanceof Error ? error : new Error(String(error));
-            return { success: false, error: err.message };
-        }
-    }
+    // NOTE: _lookupOrganizer was removed in Task 5.3.5
+    // Organizer lookup is now done by caller via RWGPSMembersAdapter.lookupUserIdByName()
+    // which uses the cached "RWGPS Members" sheet for faster lookups
 
     /**
      * Remove tags from an event

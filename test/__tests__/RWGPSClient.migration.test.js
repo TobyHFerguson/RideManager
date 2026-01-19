@@ -67,16 +67,18 @@ describe('RWGPSClient Interface for RideManager', () => {
     });
 
     describe('scheduleEvent signature', () => {
-        // schedule_row_ needs: create event with logo + organizer names
-        it('should accept templateUrl, eventData, organizerNames, logoUrl', () => {
+        // Task 5.3.5: Changed to accept organizerIds instead of names (no lookup needed)
+        it('should accept eventData, organizerIds, and optional logoUrl', () => {
             // Verify signature matches expected pattern
-            expect(client.scheduleEvent.length).toBe(4); // 4 parameters
+            // scheduleEvent(eventData, organizerIds, logoUrl) - 3 parameters (logoUrl optional)
+            expect(client.scheduleEvent.length).toBeGreaterThanOrEqual(2);
+            expect(client.scheduleEvent.length).toBeLessThanOrEqual(3);
         });
     });
 
     describe('updateEvent signature', () => {
-        // updateRow_ needs: edit event + organizer names
-        it('should accept eventUrl, eventData, organizerNames', () => {
+        // Task 5.3.5: Changed to accept organizerIds instead of names (no lookup needed)
+        it('should accept eventUrl, eventData, organizerIds', () => {
             expect(client.updateEvent.length).toBe(3); // 3 parameters
         });
     });

@@ -344,13 +344,13 @@ const RideManager = (function () {
         const dateParts = RWGPSClientCore.formatDateForV1Api(row.startDateTime);
         const routeId = row.routeURL ? row.routeURL.split('/')[4] : null;
         
-        // Get organizer names as strings (RWGPSClient looks them up internally)
+        // Look up organizer IDs from cached RWGPS Members sheet
         const organizerNames = Array.isArray(row.leaders) ? row.leaders : [row.leaders];
+        const organizers = _lookupOrganizers(organizerNames);
+        const organizerIds = organizers.map((/** @type {{id: number}} */ o) => o.id);
         
         // Build ride name using EventFactory logic (we need this for the event name)
-        // Create a temporary organizer list for name generation
-        const tempOrganizers = organizerNames.map((/** @type {string} */ name) => ({ id: -1, text: name }));
-        const rideEvent = EventFactory.newEvent(row, tempOrganizers, 0);
+        const rideEvent = EventFactory.newEvent(row, organizers, 0);
         
         const eventData = {
             name: rideEvent.name,
@@ -361,12 +361,11 @@ const RideManager = (function () {
             visibility: 1  // 1 = friends_only/members_only
         };
         
-        // Use A_TEMPLATE for organizer lookup context
-        const templateUrl = globals.A_TEMPLATE;
         const logoUrl = groupSpec.LogoURL || null;
         
-        // Create event with RWGPSClient (handles login, logo upload, organizer lookup, editing)
-        const createResult = client.scheduleEvent(templateUrl, eventData, organizerNames, logoUrl);
+        // Create event with RWGPSClient (handles login, logo upload, editing)
+        // Organizer IDs pre-looked up from members sheet - no API lookup needed
+        const createResult = client.scheduleEvent(eventData, organizerIds, logoUrl);
         
         if (!createResult.success) {
             throw new Error(`Failed to create RWGPS event: ${createResult.error}`);

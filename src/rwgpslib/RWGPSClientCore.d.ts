@@ -168,23 +168,8 @@ declare class RWGPSClientCore {
         boundary: string
     ): { textPart: string; endBoundary: string };
 
-    /**
-     * Build request options for organizer lookup (POST request)
-     * 
-     * @param {string} sessionCookie - Session cookie value
-     * @param {string} organizerName - Organizer name to search for
-     * @returns {RequestOptions} Request options
-     */
-    static buildOrganizerLookupOptions(sessionCookie: string, organizerName: string): RequestOptions;
-
-    /**
-     * Find matching organizer from API response
-     * 
-     * @param {Array<{id: number, text: string}>} results - API results array
-     * @param {string} organizerName - Full name to match
-     * @returns {{id: number, text: string} | null} Matching organizer or null
-     */
-    static findMatchingOrganizer(results: Array<{id: number, text: string}>, organizerName: string): {id: number, text: string} | null;
+    // NOTE: buildOrganizerLookupOptions and findMatchingOrganizer were removed in Task 5.3.5
+    // Organizer lookup is now done via RWGPSMembersAdapter.lookupUserIdByName()
 
     /**
      * Build request options for batch tag update (POST request)

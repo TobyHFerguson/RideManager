@@ -932,9 +932,9 @@ var RWGPSClientFactory = {
 
 ---
 
-### Task 5.3.5: Remove templateUrl and _lookupOrganizer from RWGPSClient ⏳ NEXT
+### Task 5.3.5: Remove templateUrl and _lookupOrganizer from RWGPSClient ✅ COMPLETE
 
-**Status**: Not started
+**Status**: Complete (pending GAS testing)
 
 **Problem identified**:
 Per `copilot-instructions.md`:
@@ -991,15 +991,15 @@ updateEvent(eventUrl, eventData, organizerIds)
 ```
 
 **Steps**:
-- [ ] 5.3.5.1 Update `RWGPSClient.scheduleEvent()` - remove templateUrl, accept organizerIds
-- [ ] 5.3.5.2 Update `RWGPSClient.updateEvent()` - accept organizerIds instead of organizerNames
-- [ ] 5.3.5.3 Delete `RWGPSClient._lookupOrganizer()` method
-- [ ] 5.3.5.4 Delete unused Core methods (buildOrganizerLookupOptions, findMatchingOrganizer)
-- [ ] 5.3.5.5 Update `RideManager.schedule_row_()` - lookup organizers first, pass IDs
-- [ ] 5.3.5.6 Update `RWGPSClient.d.ts` - update method signatures
-- [ ] 5.3.5.7 Update tests in `RWGPSClient.test.js`
-- [ ] 5.3.5.8 Run `npm run typecheck`
-- [ ] 5.3.5.9 Run `npm test`
+- [x] 5.3.5.7 Update tests in `RWGPSClient.test.js` (TDD - tests first)
+- [x] 5.3.5.1 Update `RWGPSClient.scheduleEvent()` - remove templateUrl, accept organizerIds
+- [x] 5.3.5.2 Update `RWGPSClient.updateEvent()` - accept organizerIds instead of organizerNames
+- [x] 5.3.5.3 Delete `RWGPSClient._lookupOrganizer()` method
+- [x] 5.3.5.4 Delete unused Core methods (buildOrganizerLookupOptions, findMatchingOrganizer)
+- [x] 5.3.5.5 Update `RideManager.schedule_row_()` - lookup organizers first, pass IDs
+- [x] 5.3.5.6 Update `RWGPSClient.d.ts` - update method signatures
+- [x] 5.3.5.8 Run `npm run typecheck` - PASSED (zero errors)
+- [x] 5.3.5.9 Run `npm test` - PASSED (809 tests)
 - [ ] 5.3.5.10 Test in GAS - schedule a ride, verify organizers set correctly
 - [ ] Commit: "Task 5.3.5: Remove templateUrl and _lookupOrganizer, use sheet-based organizer lookup"
 

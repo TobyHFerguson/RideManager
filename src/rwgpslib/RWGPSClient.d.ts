@@ -61,24 +61,28 @@ declare class RWGPSClient {
     login(): boolean;
 
     /**
-     * Schedule a new event from template
+     * Schedule a new event (no templates - creates event directly)
      * 
-     * @param {string} templateUrl - Template event URL
-     * @param {any} eventData - Event data
-     * @param {string[]} organizerNames - Organizer names
+     * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
+     * 
+     * @param {any} eventData - Event data (name, desc, start_date, start_time, etc.)
+     * @param {number[]} organizerIds - Array of organizer user IDs (pre-looked up)
+     * @param {string} [logoUrl] - Optional logo URL
      * @returns {ScheduleResult} Result with event URL
      */
-    scheduleEvent(templateUrl: string, eventData: any, organizerNames: string[], logoUrl?: string): ScheduleResult;
+    scheduleEvent(eventData: any, organizerIds: number[], logoUrl?: string): ScheduleResult;
 
     /**
-     * Update an existing event with new data and optionally add organizers
+     * Update an existing event with new data and optionally set organizers
+     * 
+     * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
      * 
      * @param {string} eventUrl - Event URL
      * @param {any} eventData - Updated event data
-     * @param {string[]} organizerNames - Optional array of organizer names to look up
-     * @returns {ScheduleResult} Result with event data and resolved organizers
+     * @param {number[]} organizerIds - Optional array of organizer user IDs (pre-looked up)
+     * @returns {ScheduleResult} Result with event data
      */
-    updateEvent(eventUrl: string, eventData: any, organizerNames?: string[]): ScheduleResult;
+    updateEvent(eventUrl: string, eventData: any, organizerIds?: number[]): ScheduleResult;
 
     /**
      * Cancel an event (adds CANCELLED prefix)
@@ -215,11 +219,8 @@ declare class RWGPSClient {
      */
     setRouteExpiration(routeUrl: string, expiryDate: Date, forceUpdate?: boolean): { success: boolean; skipped?: boolean; error?: string };
 
-    /**
-     * Look up an organizer by name
-     * @private
-     */
-    private _lookupOrganizer(eventUrl: string, organizerName: string): { success: boolean; organizer?: { id: number; text: string }; error?: string };
+    // NOTE: _lookupOrganizer was removed in Task 5.3.5
+    // Organizer lookup is now done via RWGPSMembersAdapter.lookupUserIdByName()
 
     /**
      * Remove tags from an event
