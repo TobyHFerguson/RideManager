@@ -101,6 +101,15 @@ declare class RWGPSClient {
     reinstateEvent(eventUrl: string): OperationResult;
 
     /**
+     * Update the logo on an existing event
+     * 
+     * @param {string} eventUrl - Event URL
+     * @param {string} logoUrl - Google Drive URL for the new logo image
+     * @returns {OperationResult} Result
+     */
+    updateEventLogo(eventUrl: string, logoUrl: string): OperationResult;
+
+    /**
      * Delete an event using v1 API with Basic Auth
      * 
      * Historical Note: Previously called login() but v1 API with Basic Auth

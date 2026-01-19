@@ -1016,13 +1016,24 @@ updateEvent(eventUrl, eventData, organizerIds)
 4. Simplified executeOperation() - no longer creates/passes rwgps
 5. All 809 tests pass, TypeScript typecheck clean
 
+**Bug Fixes During GAS Testing**:
+1. **Cancel/Reinstate should UPDATE ride**: Fixed so cancel/reinstate now sync ALL fields (A-F) with RWGPS, not just title change
+2. **Update should change logo when Group changes**: Added `RWGPSClient.updateEventLogo()` method
+3. **Refactored to shared helper**: Created `_syncRowWithRwgps(row, options)` in RideManager.js that:
+   - Builds SCCCCEvent from row data with organizers
+   - Sets route expiration
+   - Calls editEvent() with full v1 data (including cancel/reinstate flags)
+   - Updates logo if group changed
+   - Handles Google Calendar event updates/migrations
+4. All three operations (cancel/reinstate/update) now use same sync logic
+
 **Steps**:
 - [x] 5.4.1 Update RideCoordinator.js - remove rwgps from all methods
 - [x] 5.4.2 Update RideCoordinator.d.ts
 - [x] 5.4.3 Update MenuFunctions.js - remove getRWGPS(), getRWGPSLib_(), getRWGPSService_()
 - [x] 5.4.4 Update executeOperation() - don't create/pass rwgps
 - [x] 5.4.5 Run `npm run validate-all` - PASSED (809 tests)
-- [ ] 5.4.6 Test all operations in GAS
+- [x] 5.4.6 Test all operations in GAS - Verified cancel/reinstate/update work correctly
 - [x] Commit: "Task 5.4: Remove rwgps parameter from RideCoordinator"
 
 ---

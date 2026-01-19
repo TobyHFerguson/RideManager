@@ -723,6 +723,117 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Update the logo on an existing event using multipart form-data PUT
+     * 
+     * @param {string} eventUrl - Event URL (e.g., "https://ridewithgps.com/events/12345-event-name")
+     * @param {string} logoUrl - Google Drive URL for the new logo image
+     * @returns {{success: boolean, error?: string}} Result
+     */
+    updateEventLogo(eventUrl, logoUrl) {
+        try {
+            // Step 1: Login to establish web session (needed for multipart PUT)
+            const loginSuccess = this.login();
+            if (!loginSuccess) {
+                return {
+                    success: false,
+                    error: 'Login failed - could not establish web session'
+                };
+            }
+
+            // Step 2: Extract event ID from URL
+            const eventId = RWGPSClientCore.extractEventId(eventUrl);
+            if (!eventId) {
+                return {
+                    success: false,
+                    error: `Could not extract event ID from URL: ${eventUrl}`
+                };
+            }
+
+            // Step 3: Fetch logo from Google Drive
+            const fileIdMatch = logoUrl.match(/\/file\/d\/([^\/]+)/);
+            if (!fileIdMatch) {
+                return {
+                    success: false,
+                    error: `Invalid Drive URL format: ${logoUrl}`
+                };
+            }
+            const fileId = fileIdMatch[1];
+            const logoBlob = DriveApp.getFileById(fileId).getBlob();
+            console.log(`RWGPSClient.updateEventLogo: Logo fetched: ${logoBlob.getContentType()}, ${logoBlob.getBytes().length} bytes`);
+
+            // Step 4: Build multipart form-data for logo update
+            const boundary = '----WebKitFormBoundary' + Utilities.getUuid().replace(/-/g, '');
+            
+            // Build the multipart text parts (adapted from buildMultipartTextParts)
+            const contentType = logoBlob.getContentType();
+            const extension = contentType === 'image/png' ? 'png' : 'jpg';
+            
+            // Header part (just the logo, no event data)
+            const textPart = 
+                `--${boundary}\r\n` +
+                `Content-Disposition: form-data; name="event[logo]"; filename="logo.${extension}"\r\n` +
+                `Content-Type: ${contentType}\r\n\r\n`;
+            
+            const endBoundary = `\r\n--${boundary}--\r\n`;
+
+            // Step 5: Assemble final payload with Blob operations
+            const textBytes = Utilities.newBlob(textPart).getBytes();
+            const logoBytes = logoBlob.getBytes();
+            const endBytes = Utilities.newBlob(endBoundary).getBytes();
+
+            /** @type {number[]} */
+            const allBytes = [];
+            for (let i = 0; i < textBytes.length; i++) {
+                allBytes.push(textBytes[i]);
+            }
+            for (let i = 0; i < logoBytes.length; i++) {
+                allBytes.push(logoBytes[i]);
+            }
+            for (let i = 0; i < endBytes.length; i++) {
+                allBytes.push(endBytes[i]);
+            }
+
+            const payload = Utilities.newBlob(allBytes).setContentType(`multipart/form-data; boundary=${boundary}`);
+
+            // Step 6: Build and execute PUT request
+            const basicAuthHeader = RWGPSClientCore.buildBasicAuthHeader(this.apiKey, this.authToken);
+            const putUrl = `https://ridewithgps.com/api/v1/events/${eventId}.json`;
+
+            const options = {
+                method: 'PUT',
+                headers: {
+                    'Authorization': basicAuthHeader,
+                    'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                    'Accept': 'application/json'
+                },
+                payload: payload,
+                muteHttpExceptions: true
+            };
+
+            const response = this._fetch(putUrl, options);
+            const statusCode = response.getResponseCode();
+
+            if (statusCode === 200 || statusCode === 201) {
+                console.log(`RWGPSClient.updateEventLogo: Logo updated successfully for event ${eventId}`);
+                return { success: true };
+            } else {
+                const responseText = response.getContentText();
+                return {
+                    success: false,
+                    error: `Logo update failed with status ${statusCode}: ${responseText}`
+                };
+            }
+
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return {
+                success: false,
+                error: err.message
+            };
+        }
+    }
+
+    /**
      * Import (copy) a route into the club library with tags
      * 
      * Workflow:
