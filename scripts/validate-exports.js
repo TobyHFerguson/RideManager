@@ -116,17 +116,31 @@ allJsFiles.forEach(({ absolutePath, relativePath }) => {
     });
 });
 
-// Check for duplicate declarations (ignore if same file and consecutive lines - common IIFE pattern)
+// Check for duplicate declarations (ignore IIFE pattern: var X = (function() { class X ... return X; })())
 globalDeclarations.forEach((declarations, identifier) => {
     if (declarations.length > 1) {
         // Check if all declarations are in the same file
         const uniqueFiles = new Set(declarations.map(d => d.file));
         if (uniqueFiles.size === 1) {
-            // Same file - check if lines are consecutive (IIFE pattern: const X = ...; class X extends ...)
+            const file = declarations[0].file;
+            const absolutePath = path.join(__dirname, '..', file);
+            const content = fs.readFileSync(absolutePath, 'utf8');
+            
+            // Check for IIFE pattern: var X = (function() { ... class X ... return X; })()
+            // This is the correct GAS-compatible class pattern per copilot-instructions.md
+            const iifePattern = new RegExp(
+                `var\\s+${identifier}\\s*=\\s*\\(function\\s*\\(\\)\\s*\\{[\\s\\S]*?class\\s+${identifier}\\s*(?:\\{|extends)[\\s\\S]*?return\\s+${identifier};?\\s*\\}\\)\\(\\)`,
+                'm'
+            );
+            if (iifePattern.test(content)) {
+                // This is the correct IIFE pattern - var X = (function() { class X { } return X; })()
+                return;
+            }
+            
+            // Also check for consecutive lines (simpler pattern like const X = X;)
             const lines = declarations.map(d => d.line).sort((a, b) => a - b);
             const isConsecutive = lines.every((line, i) => i === 0 || line - lines[i-1] <= 5);
             if (isConsecutive) {
-                // This is likely the IIFE pattern (const followed by class), not an error
                 return;
             }
         }
