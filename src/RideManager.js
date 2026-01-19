@@ -67,8 +67,8 @@ const RideManager = (function () {
      * @param {string} [reason]
      */
     function cancelRow_(row, rwgps, sendEmail = false, reason = '') {
-        // Get RWGPSClient for direct cancel operation
-        const client = RWGPSLibAdapter.newClient();
+        // Get RWGPSClient via factory
+        const client = RWGPSClientFactory.create();
         
         // Use RWGPSClient.cancelEvent() - handles get/modify/edit internally
         const result = client.cancelEvent(row.rideURL);
@@ -112,14 +112,8 @@ const RideManager = (function () {
     function importRow_(row, _rwgps) {
         const globals = getGlobals();
         
-        // Create RWGPSClient with CredentialManager
-        const credentialManager = new CredentialManager(PropertiesService.getScriptProperties());
-        const client = new RWGPSClient({
-            apiKey: credentialManager.getApiKey(),
-            authToken: credentialManager.getAuthToken(),
-            username: credentialManager.getUsername(),
-            password: credentialManager.getPassword()
-        });
+        // Create RWGPSClient via factory
+        const client = RWGPSClientFactory.create();
         
         // Calculate expiry date
         const expiryDate = /** @type {Date} */ (dates.add(row.startDate, globals.EXPIRY_DELAY));
@@ -261,8 +255,8 @@ const RideManager = (function () {
      * @param {string} [reason]
      */
     function reinstateRow_(row, rwgps, sendEmail = false, reason = '') {
-        // Get RWGPSClient for direct reinstate operation
-        const client = RWGPSLibAdapter.newClient();
+        // Get RWGPSClient via factory
+        const client = RWGPSClientFactory.create();
         
         // Use RWGPSClient.reinstateEvent() - handles get/modify/edit internally
         const result = client.reinstateEvent(row.rideURL);
@@ -316,14 +310,8 @@ const RideManager = (function () {
         
         const globals = getGlobals();
         
-        // Create RWGPSClient with CredentialManager
-        const credentialManager = new CredentialManager(PropertiesService.getScriptProperties());
-        const client = new RWGPSClient({
-            apiKey: credentialManager.getApiKey(),
-            authToken: credentialManager.getAuthToken(),
-            username: credentialManager.getUsername(),
-            password: credentialManager.getPassword()
-        });
+        // Create RWGPSClient via factory
+        const client = RWGPSClientFactory.create();
         
         // Build event data for v1 API format
         const dateParts = RWGPSClientCore.formatDateForV1Api(row.startDateTime);

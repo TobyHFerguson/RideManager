@@ -63,19 +63,12 @@ const TEST_STATE = {
 
 /**
  * Get RWGPSClient instance with credentials from Script Properties
- * Uses CredentialManager (same as production code)
+ * Uses RWGPSClientFactory (centralized factory pattern)
  * @returns {RWGPSClient} Initialized client
  */
 function getTestClient() {
-    // Use CredentialManager to get credentials (matches production pattern)
-    const credentialManager = new CredentialManager(PropertiesService.getScriptProperties());
-    
-    return new RWGPSClient({
-        apiKey: credentialManager.getApiKey(),
-        authToken: credentialManager.getAuthToken(),
-        username: credentialManager.getUsername(),
-        password: credentialManager.getPassword()
-    });
+    // Use RWGPSClientFactory - centralized factory for all RWGPSClient creation
+    return RWGPSClientFactory.create();
 }
 
 /**
@@ -141,6 +134,56 @@ function cleanupCreatedEvents() {
     });
     
     TEST_STATE.createdEvents = [];
+}
+
+// ============================================================================
+// TEST SUITE: Factory Pattern
+// ============================================================================
+
+/**
+ * Test: RWGPSClientFactory.create() - Factory Pattern
+ * 
+ * Verifies:
+ * - Factory returns RWGPSClient instance
+ * - Client is properly configured with credentials
+ * - Factory is the single point of client creation
+ */
+function testRWGPSClientFactory() {
+    const testName = 'RWGPSClientFactory.create()';
+    console.log(`\n📋 Running: ${testName}`);
+    
+    try {
+        // STEP 1: Create client via factory
+        console.log('   Creating client via RWGPSClientFactory.create()...');
+        const client = RWGPSClientFactory.create();
+        
+        assert(client !== null, 'Factory should return a client');
+        assert(typeof client.getEvent === 'function', 'Client should have getEvent method');
+        assert(typeof client.createEvent === 'function', 'Client should have createEvent method');
+        assert(typeof client.editEvent === 'function', 'Client should have editEvent method');
+        
+        console.log('   ✅ Client has expected methods');
+        
+        // STEP 2: Verify client works (basic connectivity test)
+        console.log('   Verifying client can make API call...');
+        const eventUrl = `https://ridewithgps.com/events/${DEFAULT_TEST_EVENT_ID}`;
+        const result = client.getEvent(eventUrl);
+        
+        assert(result.success === true, 'Client should be able to make API calls');
+        console.log('   ✅ Client successfully made API call');
+        
+        // STEP 3: Verify factory creates new instances (not singleton)
+        console.log('   Verifying factory creates new instances...');
+        const client2 = RWGPSClientFactory.create();
+        assert(client !== client2, 'Factory should create new instances each time');
+        console.log('   ✅ Factory creates distinct instances');
+        
+        logTestResult(testName, true);
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logTestResult(testName, false, err.message);
+    }
 }
 
 // ============================================================================
@@ -770,6 +813,13 @@ function runAllIntegrationTests(testEventId, logoUrl) {
     const startTime = new Date();
     
     try {
+        // Phase 0: Factory Pattern
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Phase 0: Factory Pattern');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        testRWGPSClientFactory();
+        
         // Phase 1: Basic v1 API operations
         console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('Phase 1: Basic v1 API Operations');

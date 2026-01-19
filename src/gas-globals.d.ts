@@ -36,6 +36,7 @@ import type CredentialManagerClass from './rwgpslib/CredentialManager';
 import type RWGPSClientClass from './rwgpslib/RWGPSClient';
 import type RWGPSCoreClass from './rwgpslib/RWGPSCore';
 import type RWGPSAdapterClass from './rwgpslib/RWGPSAdapter';
+import type RWGPSClientFactoryType from './rwgpslib/RWGPSClientFactory';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
@@ -69,6 +70,7 @@ declare global {
     const RWGPSClient: typeof RWGPSClientClass;
     const RWGPSCore: typeof RWGPSCoreClass;
     const RWGPSAdapter: typeof RWGPSAdapterClass;
+    const RWGPSClientFactory: typeof RWGPSClientFactoryType;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;

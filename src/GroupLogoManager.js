@@ -168,15 +168,8 @@ function populateGroupLogos(force) {
         
         console.log(`LogoURL column found at column ${logoUrlColIndex + 1}`);
         
-        // Get RWGPSClient
-        const scriptProps = PropertiesService.getScriptProperties();
-        const credentialManager = new CredentialManager(scriptProps);
-        const client = new RWGPSClient({
-            apiKey: credentialManager.getApiKey(),
-            authToken: credentialManager.getAuthToken(),
-            username: credentialManager.getUsername(),
-            password: credentialManager.getPassword()
-        });
+        // Get RWGPSClient via factory
+        const client = RWGPSClientFactory.create();
         
         // Process each group
         for (let i = 0; i < data.length; i++) {

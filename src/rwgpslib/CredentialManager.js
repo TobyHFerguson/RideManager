@@ -39,3 +39,8 @@ class CredentialManager {
         return authToken;
     }
 }
+
+/* istanbul ignore if - Node.js compatibility check */
+if (typeof module !== 'undefined') {
+    module.exports = CredentialManager;
+}
