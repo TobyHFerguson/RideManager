@@ -701,251 +701,277 @@ The following tasks are deferred to Phase 5 (see Phase 5 section below for detai
 - `docs/RWGPS_V1_API_BUG_REPORT.md` - API discrepancies
 
 ---
-## Phase 5: Consolidate to RWGPSClient + Migrate RideManager.js
+## Phase 5: Factory Pattern + Complete Migration to RWGPSClient
 
 **Model recommendation**: Opus 4.5 (for complex multi-step tasks)
 
+**Related**: See GitHub Issue #199 for detailed RWGPSClientFactory design discussion.
+
 ### Goal
 
-1. **Move RWGPSClient.js and RWGPSClientCore.js to `src/`** - canonical implementations
-2. **Replace all RideManager.js RWGPS calls** with direct RWGPSClient calls
-3. **Treat `src/rwgpslib/` as reference only** - code will be deleted in Phase 6
+1. **Create RWGPSClientFactory** - single point for creating RWGPSClient instances
+2. **Migrate remaining operations** to use RWGPSClient via factory
+3. **Remove `rwgps` parameter** from all method signatures
+4. **Delete legacy layers** (RWGPSLibAdapter, LegacyRWGPSAdapter, RWGPSFacade)
 
-**CRITICAL PATTERN**: When you find useful code in `src/rwgpslib/`:
-- Use it as **reference** for what functionality is needed
-- **Migrate the logic INTO** RWGPSClient.js or RWGPSClientCore.js
-- **Do NOT call** rwgpslib code directly - it's being deprecated
+### Why Factory Pattern?
 
-**Reference**: See `docs/SUPERSEDED_PHASE5_PLAN.md` for the original overly-complex plan that was discarded.
+**Problem with current approach**:
+- `rwgps` parameter is threaded through RideCoordinator → RideManager → operations
+- Some operations ignore this and create their own RWGPSClient
+- Creates coupling mess with multiple adapter layers
+
+**Benefits of factory**:
+- ✅ Single interface (RWGPSClient)
+- ✅ Testable (swap factory in tests, mock UrlFetchApp at HTTP level)
+- ✅ No parameter threading (cleaner code)
+- ✅ Future-proof (test server → change factory config)
 
 ### Target Architecture
 
-After Phase 5:
-```
-src/
-├── RWGPSClient.js      # GAS adapter - all RWGPS API calls
-├── RWGPSClientCore.js  # Pure JS - all transformations, testable
-├── RideManager.js      # Orchestrates ride operations using RWGPSClient
-└── rwgpslib/           # DEPRECATED - reference only, delete in Phase 6
-```
-
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  RideManager.js  (GAS Adapter - orchestrates operations)│
-│  - importRow_(), schedule_row_(), updateRow_(), etc.    │
-│  - Uses CredentialManager for credentials               │
-│  - Creates RWGPSClient instance and calls methods       │
+│  RideCoordinator  (Validate → Confirm → Execute)        │
+│  - No rwgps parameter                                   │
+│  - Calls RideManager methods                            │
 └──────────────────────────┬──────────────────────────────┘
-                           │ Direct calls (no facade layer)
                            ↓
 ┌─────────────────────────────────────────────────────────┐
-│  src/RWGPSClient.js  (moved from rwgpslib/)             │
-│  - importRoute(), getEvent(), editEvent(), createEvent()│
-│  - lookupOrganizerId() - uses cached Members sheet      │
-│  - Uses v1 API with Basic Auth (apiKey:authToken)       │
-│  - Web session for tag operations (login required)      │
+│  RideManager  (Orchestrates operations)                 │
+│  - No rwgps parameter                                   │
+│  - Uses RWGPSClientFactory.create()                     │
 └──────────────────────────┬──────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────┐
-│  src/RWGPSClientCore.js  (moved from rwgpslib/)         │
-│  - extractRouteId(), extractEventId()                   │
-│  - buildV1EditEventPayload(), buildRouteCopyOptions()   │
-│  - lookupUserIdByName() - pure JS lookup logic          │
-│  - All format transformations                           │
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│  RWGPSClientFactory  (Single creation point)            │
+│  - create() → RWGPSClient                               │
+│  - Swappable for tests                                  │
+└──────────────────────────┬──────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│  RWGPSClient  (THE interface to RWGPS)                  │
+│  - All RWGPS operations                                 │
+│  - Uses CredentialManager internally                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Organizer Lookup Migration
+### Files to KEEP in rwgpslib/
 
-**OLD** (wrong - adds layers):
-- `RWGPSMembersAdapter.lookupUserIdByName()` → reads from "RWGPS Members" sheet
-- Separate adapter class, separate file
+| File | Reason |
+|------|--------|
+| `RWGPSClient.js` | Main client - tested, working, 100% Core coverage |
+| `RWGPSClientCore.js` | Pure JS helpers - 100% tested |
+| `CredentialManager.js` | Simple credential access |
+| `RWGPSClientFactory.js` | NEW - single creation point |
 
-**NEW** (right - consolidate):
-- `RWGPSClientCore.lookupUserIdByName(members, name)` → pure JS lookup (testable)
-- `RWGPSClient.lookupOrganizerId(name)` → reads sheet, calls Core
-- All in RWGPSClient, no separate adapter
+### Files to DELETE in Phase 6
 
-### Pattern for RideManager.js
+| File | Reason |
+|------|--------|
+| `RWGPSLibAdapter.js` | Replaced by factory |
+| `LegacyRWGPSAdapter.js` | Legacy compatibility layer |
+| `RWGPSFacade.js` | Extra layer, not needed |
+| `RWGPSAdapter.js` | Part of Facade pattern |
+| `RWGPS.js` | Legacy class |
+| `RWGPSService.js` | Legacy service layer |
+| `ApiService.js` | Legacy HTTP layer |
+| `CanonicalEvent.js` | Legacy event format |
+| `RWGPSCore.js` | Superseded by RWGPSClientCore |
 
-Use Task 3.12 (testRWGPSClientImportRoute) as the template:
+### Current Migration Status
 
+| Operation | Uses RWGPSClient | Uses Legacy rwgps |
+|-----------|------------------|-------------------|
+| `schedule_row_()` | ✅ Yes | No |
+| `cancelRow_()` | ✅ Yes | No |
+| `reinstateRow_()` | ✅ Yes | No |
+| `importRow_()` | ✅ Yes | No |
+| `updateRow_()` | ❌ No | ⚠️ `rwgps.get_event()`, `rwgps.edit_event()`, `rwgps.getOrganizers()` |
+| `unscheduleRows()` | ❌ No | ⚠️ `rwgps.batch_delete_events()` |
+
+**Only 2 operations need migration!**
+
+### Organizer Lookup Strategy
+
+**Current (WRONG)**: `rwgps.getOrganizers(row.leaders)` → Makes WEB API calls to RWGPS
+
+**Correct**: Use cached "RWGPS Members" sheet lookup:
 ```javascript
-function operationName_() {
-    // 1. Get credentials
-    const creds = CredentialManager.getAll();
-    const globals = getGlobals();
-    
-    // 2. Create client
-    const client = new RWGPSClient({
-        apiKey: creds.apiKey,
-        authToken: creds.authToken,
-        username: creds.username,
-        password: creds.password
-    });
-    
-    // 3. Call the TESTED method
-    const result = client.methodName(params);
-    
-    // 4. Handle result
-    if (!result.success) {
-        throw new Error(result.error);
+// In updateRow_()
+const adapter = new RWGPSMembersAdapter();
+const organizerIds = [];
+for (const leader of row.leaders) {
+    const result = adapter.lookupUserIdByName(leader);
+    if (result.success && result.userId) {
+        organizerIds.push(result.userId);
     }
-    return result;
 }
+// Pass organizerIds to EventFactory.newEvent or client.editEvent
 ```
 
-### Undocumented API Features
+**Key Point**: RWGPSMembersAdapter/Core are GOOD architecture - they separate:
+- Fetching members (API call, infrequent) → `updateMembers()`
+- Looking up organizer (sheet read, fast) → `lookupUserIdByName()`
 
-Discovered through testing (January 2026):
-- `organizer_ids`: Array of integers - sets event organizers (NOT in official spec)
-- `route_ids`: Array of integers - associates routes with event (NOT in official spec)
-
-See `docs/rwgps-api-tested.yaml` for complete verified API behavior.
+**Keep these modules!** They follow Core/Adapter pattern correctly.
 
 ---
 
-### Task 5.0: Move RWGPSClient/Core to src/ ⏳ NEXT
+### Task 5.0: Create RWGPSClientFactory ⏳ NEXT
+
+**Status**: Not started
+
+**What**:
+Create a simple factory for RWGPSClient instances.
+
+**Implementation**:
+```javascript
+// src/rwgpslib/RWGPSClientFactory.js
+var RWGPSClientFactory = {
+    /**
+     * Create RWGPSClient instance. Swappable for testing.
+     * @returns {RWGPSClient}
+     */
+    create: function() {
+        const credentialManager = new CredentialManager(PropertiesService.getScriptProperties());
+        return new RWGPSClient({
+            apiKey: credentialManager.getApiKey(),
+            authToken: credentialManager.getAuthToken(),
+            username: credentialManager.getUsername(),
+            password: credentialManager.getPassword()
+        });
+    }
+};
+```
+
+**Steps**:
+- [ ] 5.0.1 Create `src/rwgpslib/RWGPSClientFactory.js`
+- [ ] 5.0.2 Create `src/rwgpslib/RWGPSClientFactory.d.ts`
+- [ ] 5.0.3 Add to gas-globals.d.ts
+- [ ] 5.0.4 Update existing `RWGPSLibAdapter.newClient()` calls to use factory
+- [ ] 5.0.5 Run `npm run validate-all`
+- [ ] 5.0.6 Test in GAS (cancel/reinstate still work)
+- [ ] Commit: "Task 5.0: Create RWGPSClientFactory"
+
+---
+
+### Task 5.1: Migrate updateRow_() to RWGPSClient
+
+**Status**: Not started (was marked complete but that was importRow_)
+
+**What needs to happen**:
+1. Replace `rwgps.get_event()` with `RWGPSClientFactory.create().getEvent()`
+2. Replace `rwgps.edit_event()` with `client.editEvent()`
+3. Replace `rwgps.getOrganizers()` with `RWGPSMembersAdapter.lookupUserIdByName()` (cached sheet lookup)
+4. Replace `rwgps.setRouteExpiration()` with client method
+
+**Note on organizer lookup**: RWGPSMembersAdapter already exists and works! Use it:
+```javascript
+const membersAdapter = new RWGPSMembersAdapter();
+const organizerIds = row.leaders.map(name => {
+    const result = membersAdapter.lookupUserIdByName(name);
+    return result.success ? result.userId : null;
+}).filter(id => id !== null);
+```
+
+**Steps**:
+- [ ] 5.1.1 Use factory: `const client = RWGPSClientFactory.create()`
+- [ ] 5.1.2 Replace `rwgps.get_event()` → `client.getEvent()`
+- [ ] 5.1.3 Replace `rwgps.edit_event()` → `client.editEvent()`
+- [ ] 5.1.4 Handle organizer lookup (use RWGPSMembersAdapter or inline)
+- [ ] 5.1.5 Test: Update Selected Rides in GAS
+- [ ] Commit: "Task 5.1: updateRow_() uses RWGPSClient"
+
+---
+
+### Task 5.2: Migrate unscheduleRows() to RWGPSClient
 
 **Status**: Not started
 
 **What needs to happen**:
-1. Move `src/rwgpslib/RWGPSClient.js` → `src/RWGPSClient.js`
-2. Move `src/rwgpslib/RWGPSClientCore.js` → `src/RWGPSClientCore.js`
-3. Move corresponding `.d.ts` files
-4. Update imports/references in all consuming files
-5. Update test paths in `test/__tests__/`
-6. Add to `Exports.js`
+1. Replace `rwgps.batch_delete_events()` with `client.deleteEvent()` calls
+2. Note: RWGPSClient.deleteEvent() is single-event (loop required)
 
 **Steps**:
-- [ ] 5.0.1 Copy RWGPSClient.js to src/ (keep rwgpslib version temporarily)
-- [ ] 5.0.2 Copy RWGPSClientCore.js to src/
-- [ ] 5.0.3 Copy .d.ts files to src/
-- [ ] 5.0.4 Update require paths in moved files
-- [ ] 5.0.5 Add RWGPSClient and RWGPSClientCore to Exports.js
-- [ ] 5.0.6 Update test file paths
-- [ ] 5.0.7 Run `npm test` - verify all tests pass
-- [ ] 5.0.8 Run `npm run validate-all` - verify types
-- [ ] Commit: "Task 5.0: Move RWGPSClient/Core to src/"
+- [ ] 5.2.1 Use factory: `const client = RWGPSClientFactory.create()`
+- [ ] 5.2.2 Replace batch delete with loop: `rideUrls.forEach(url => client.deleteEvent(url))`
+- [ ] 5.2.3 Handle errors per-event (don't fail entire batch)
+- [ ] 5.2.4 Test: Unschedule Selected Rides in GAS
+- [ ] Commit: "Task 5.2: unscheduleRows() uses RWGPSClient"
 
 ---
 
-### Task 5.0.5: Consolidate member lookup into RWGPSClient
+### Task 5.3: Remove rwgps parameter from RideManager
 
 **Status**: Not started
 
 **What needs to happen**:
-1. Move `RWGPSMembersCore.lookupUserIdByName()` logic → `RWGPSClientCore.js`
-2. Add `RWGPSClient.lookupOrganizerId(name)` - reads "RWGPS Members" sheet
-3. Update `scheduleEvent()` and `updateEvent()` to use cached lookup instead of web API
-4. Delete dependency on RWGPSMembersAdapter
+1. Remove `rwgps` parameter from all RideManager methods
+2. Update method signatures in RideManager.d.ts
+3. Operations now get client from factory internally
 
-**Why**:
-- Current `_lookupOrganizer()` makes web API call for EACH organizer name
-- Members are already cached in sheet - just look them up locally
-- Eliminates web API calls, faster, simpler
-
-**Steps**:
-- [ ] Add `lookupUserIdByName(members, name)` to RWGPSClientCore.js (pure JS)
-- [ ] Add `lookupOrganizerId(name)` to RWGPSClient.js (reads sheet via Fiddler)
-- [ ] Update `scheduleEvent()` to use `lookupOrganizerId()` instead of `_lookupOrganizer()`
-- [ ] Update `updateEvent()` similarly
-- [ ] Write tests for new lookup methods
-- [ ] Verify in GAS
-- [ ] Commit: "Task 5.0.5: Consolidate member lookup into RWGPSClient"
-
----
-
-### Task 5.1: Migrate importRow_() ✅ COMPLETE
-
-**Status**: Done (January 2026)
-
-- [x] Replace legacy route import with `client.importRoute()`
-- [x] Handle FOREIGN prefix naming
-- [x] Add group + expiry tags via `_addRouteTags()`
-
-**Result**: Works end-to-end. Route imported with correct naming.
-
----
-
-### Task 5.2: Migrate schedule_row_() ⏳ IN PROGRESS
-
-**Status**: Partially complete
-
-**What needs to happen**:
-1. Use `client.createEvent()` instead of `copy_template_()` + `edit_event()`
-2. Pass logo URL from Groups table (NOT from template)
-3. Add group tag via `_addEventTags()`
-4. Set route association via `route_ids` field
-
-**Known issues**:
-- [ ] `_addEventTags()` may have bug - needs verification
+**Methods to update**:
+- `cancelRows(rows)` - remove rwgps param
+- `reinstateRows(rows)` - remove rwgps param
+- `scheduleRows(rows)` - remove rwgps param
+- `importRows(rows)` - remove rwgps param
+- `updateRows(rows)` - remove rwgps param
+- `unscheduleRows(rows)` - remove rwgps param
 
 **Steps**:
-- [ ] 5.2.1 Update schedule_row_() to create RWGPSClient
-- [ ] 5.2.2 Get logo URL from `getGroupSpecs()[group].LogoURL`
-- [ ] 5.2.3 Call `client.createEvent(eventData, logoUrl)`
-- [ ] 5.2.4 Add group tag with `client._addEventTags([eventId], [group])`
-- [ ] 5.2.5 Test: Schedule Selected Rides in GAS
-- [ ] Commit: "Task 5.2: schedule_row_() uses RWGPSClient"
+- [ ] 5.3.1 Update RideManager.js - remove rwgps from all public methods
+- [ ] 5.3.2 Update RideManager.d.ts - remove rwgps from signatures
+- [ ] 5.3.3 Update processRows_() internal helper - remove rwgps
+- [ ] 5.3.4 Run `npm run typecheck`
+- [ ] Commit: "Task 5.3: Remove rwgps parameter from RideManager"
 
 ---
 
-### Task 5.3: Migrate updateRow_() 🔜 NEXT
+### Task 5.4: Remove rwgps parameter from RideCoordinator
 
 **Status**: Not started
 
 **What needs to happen**:
-1. Use `client.editEvent()` with correct v1 field names
-2. Use `route_ids` to associate route (verified working)
-3. Handle group changes: swap tags + update logo
+1. Remove `rwgps` parameter from all RideCoordinator methods
+2. Update RideCoordinator.d.ts
+3. Remove `getRWGPS()` and related functions from MenuFunctions.js
 
 **Steps**:
-- [ ] 5.3.1 Update updateRow_() to create RWGPSClient
-- [ ] 5.3.2 Call `client.editEvent(url, eventData)`
-- [ ] 5.3.3 If group changed: update logo + swap tags
-- [ ] 5.3.4 Test: Update Selected Rides in GAS
-- [ ] Commit: "Task 5.3: updateRow_() uses RWGPSClient"
+- [ ] 5.4.1 Update RideCoordinator.js - remove rwgps from all methods
+- [ ] 5.4.2 Update RideCoordinator.d.ts
+- [ ] 5.4.3 Update MenuFunctions.js - remove getRWGPS(), getRWGPSLib_(), getRWGPSService_()
+- [ ] 5.4.4 Update executeOperation() - don't create/pass rwgps
+- [ ] 5.4.5 Run `npm run validate-all`
+- [ ] 5.4.6 Test all operations in GAS
+- [ ] Commit: "Task 5.4: Remove rwgps parameter from RideCoordinator"
 
 ---
 
-### Task 5.4: Migrate cancel/reinstate operations
+### Task 5.5: Final verification
 
 **Status**: Not started
 
-- [ ] 5.4.1 Update cancelRow_() to use RWGPSClient
-- [ ] 5.4.2 Update reinstateRow_() to use RWGPSClient
-- [ ] 5.4.3 Test: Cancel/Reinstate in GAS
-- [ ] Commit: "Task 5.4: cancel/reinstate use RWGPSClient"
-
----
-
-### Task 5.5: Migrate unschedule operation
-
-**Status**: Not started
-
-- [ ] 5.5.1 Update unscheduleRow_() to use RWGPSClient
-- [ ] 5.5.2 Test: Unschedule Selected Rides in GAS
-- [ ] Commit: "Task 5.5: unscheduleRow_() uses RWGPSClient"
-
----
-
-### Task 5.6: Final verification
-
-**Status**: Not started
-
-- [ ] 5.6.1 Run all Jest tests: `npm test`
-- [ ] 5.6.2 Run validation: `npm run validate-all`
-- [ ] 5.6.3 Full GAS integration test of all operations
-- [ ] 5.6.4 Document any remaining issues
-- [ ] Commit: "Phase 5 complete: RideManager uses RWGPSClient"
+- [ ] 5.5.1 Run all Jest tests: `npm test`
+- [ ] 5.5.2 Run validation: `npm run validate-all`
+- [ ] 5.5.3 Full GAS integration test of all operations:
+  - Schedule ride
+  - Update ride
+  - Cancel ride
+  - Reinstate ride
+  - Unschedule ride
+  - Import route
+- [ ] 5.5.4 Verify no `rwgps.` calls remain: `grep -r "rwgps\." src/`
+- [ ] Commit: "Phase 5 complete: All operations use RWGPSClientFactory"
 
 ---
 
 ### Phase 5 Complete Checkpoint
 
 Before proceeding to Phase 6:
-- [ ] All RideManager operations use RWGPSClient directly
+- [ ] RWGPSClientFactory created and used
+- [ ] All RideManager operations use factory (no rwgps parameter)
+- [ ] All RideCoordinator operations updated (no rwgps parameter)
+- [ ] MenuFunctions cleaned up (no getRWGPS/getRWGPSLib)
 - [ ] All Jest tests pass
 - [ ] All GAS integration tests pass
 - [ ] `npm run validate-all` passes
@@ -953,48 +979,84 @@ Before proceeding to Phase 6:
 
 ---
 
-## Phase 6: Delete rwgpslib/ and Legacy Code
+## Phase 6: Delete Legacy Adapter Layers
 
 **Model recommendation**: Claude 4 Sonnet (straightforward cleanup with verification)
 
 ### Goal
 
 After Phase 5 is complete:
-1. **Delete `src/rwgpslib/` entirely** - all useful code migrated to src/
-2. **Delete other unused legacy files**
-3. **Update RWGPSMembersAdapter** - functionality consolidated into RWGPSClient
+1. **Delete LEGACY adapter layers** from `src/rwgpslib/` (NOT the good code!)
+2. **Keep canonical modules** in `src/rwgpslib/`
+3. **Keep RWGPSMembersAdapter/Core** - they're good architecture!
+
+### Files to KEEP (in src/rwgpslib/)
+
+| File | Reason |
+|------|--------|
+| `RWGPSClient.js` | Main RWGPS API client - tested, working |
+| `RWGPSClientCore.js` | Pure JS helpers - 100% tested |
+| `CredentialManager.js` | Simple credential access |
+| `RWGPSClientFactory.js` | NEW - single creation point (created in Phase 5) |
 
 ### Files to KEEP (in src/)
 
 | File | Reason |
 |------|--------|
-| src/RWGPSClient.js | **KEEP** - Migrated, tested, canonical |
-| src/RWGPSClientCore.js | **KEEP** - Migrated, pure JS helpers |
+| `RWGPSMembersAdapter.js` | **KEEP** - Manages "RWGPS Members" sheet, provides `lookupUserIdByName()` |
+| `RWGPSMembersCore.js` | **KEEP** - Pure JS lookup logic, 100% tested |
 
-### Files to DELETE
+### Files to DELETE (legacy adapter layers)
 
-| File/Folder | Status | Notes |
-|-------------|--------|-------|
-| `src/rwgpslib/` | **DELETE ALL** | Entire folder - functionality migrated to src/ |
-| `src/RWGPSMembersAdapter.js` | **DELETE** | Lookup consolidated into RWGPSClient |
-| `src/RWGPSMembersCore.js` | **DELETE** | Lookup consolidated into RWGPSClientCore |
+| File | Reason |
+|------|--------|
+| `src/rwgpslib/RWGPSLibAdapter.js` | Factory that creates legacy adapters - replaced by RWGPSClientFactory |
+| `src/rwgpslib/LegacyRWGPSAdapter.js` | Compatibility shim - no longer needed |
+| `src/rwgpslib/RWGPSFacade.js` | Extra abstraction layer - not needed |
+| `src/rwgpslib/RWGPSAdapter.js` | Part of Facade pattern - not needed |
+| `src/rwgpslib/RWGPS.js` | Legacy class - superseded by RWGPSClient |
+| `src/rwgpslib/RWGPSService.js` | Legacy service layer - superseded by RWGPSClient |
+| `src/rwgpslib/ApiService.js` | Legacy HTTP layer - superseded by RWGPSClient |
+| `src/rwgpslib/CanonicalEvent.js` | Legacy event format - not used |
+| `src/rwgpslib/RWGPSCore.js` | Superseded by RWGPSClientCore |
 
-### Task 6.1: Delete rwgpslib/ folder
+### Task 6.1: Delete legacy adapter files from rwgpslib/
 
-- [ ] 6.1.1 Verify all needed functionality is in src/RWGPSClient*.js
-- [ ] 6.1.2 `rm -rf src/rwgpslib/`
-- [ ] 6.1.3 Run `npm test` - all tests should pass
-- [ ] 6.1.4 Run `npm run validate-all`
-- [ ] Commit: "Task 6.1: Delete deprecated rwgpslib/"
+- [ ] 6.1.1 Delete these files from `src/rwgpslib/`:
+  - `RWGPSLibAdapter.js` + `.d.ts`
+  - `LegacyRWGPSAdapter.js` + `.d.ts`
+  - `RWGPSFacade.js` + `.d.ts`
+  - `RWGPSAdapter.js` + `.d.ts`
+  - `RWGPS.js` + `.d.ts`
+  - `RWGPSService.js` + `.d.ts`
+  - `ApiService.js` + `.d.ts`
+  - `CanonicalEvent.js` + `.d.ts`
+  - `RWGPSCore.js` + `.d.ts`
+- [ ] 6.1.2 Update Exports.js - remove references to deleted modules
+- [ ] 6.1.3 Update gas-globals.d.ts - remove references to deleted modules
+- [ ] 6.1.4 Run `npm test` - all tests should pass
+- [ ] 6.1.5 Run `npm run validate-all`
+- [ ] Commit: "Task 6.1: Delete legacy adapter layers"
 
-### Task 6.2: Delete RWGPSMembersAdapter
+### Task 6.2: Verify final rwgpslib/ structure
 
-- [ ] 6.2.1 Verify lookup is in RWGPSClient
-- [ ] 6.2.2 Delete `src/RWGPSMembersAdapter.js` and `.d.ts`
-- [ ] 6.2.3 Delete `src/RWGPSMembersCore.js` and `.d.ts`
-- [ ] 6.2.4 Remove from Exports.js
-- [ ] 6.2.5 Run `npm test`
-- [ ] Commit: "Task 6.2: Delete RWGPSMembersAdapter (consolidated into RWGPSClient)"
+After cleanup, `src/rwgpslib/` should contain ONLY:
+```
+src/rwgpslib/
+├── RWGPSClient.js       # Main client
+├── RWGPSClient.d.ts
+├── RWGPSClientCore.js   # Pure JS helpers
+├── RWGPSClientCore.d.ts
+├── RWGPSClientFactory.js  # Factory (created in Phase 5)
+├── RWGPSClientFactory.d.ts
+└── CredentialManager.js  # Credential access
+    CredentialManager.d.ts
+```
+
+- [ ] 6.2.1 Verify structure matches above
+- [ ] 6.2.2 Run `npm test`
+- [ ] 6.2.3 Run `npm run validate-all`
+- [ ] Commit: "Task 6.2: Verify clean rwgpslib structure"
 
 ### Task 6.3: Clean up test files
 
@@ -1038,14 +1100,15 @@ Monitor the RWGPS OpenAPI spec for improvements:
 
 ## Summary
 
-### Current Status (January 17, 2026)
+### Current Status (January 18, 2026)
 
-- **Phase 1-4**: Complete
-- **Phase 5**: In progress
-  - ✅ Task 5.1: importRow_() migrated
-  - ⏳ Task 5.2: schedule_row_() in progress
-  - 🔜 Task 5.3-5.6: Not started
-- **Phase 6**: Not started (waiting on Phase 5)
+- **Phase 1-4**: Complete ✅ (7/7 GAS tests passing)
+- **Phase 5**: Not started
+  - 🔜 Task 5.0: Create RWGPSClientFactory
+  - 🔜 Task 5.1: Migrate updateRow_() 
+  - 🔜 Task 5.2: Migrate unscheduleRows()
+  - 🔜 Task 5.3-5.5: Remove rwgps parameter, cleanup
+- **Phase 6**: Not started (delete legacy adapter layers)
 
 ### Key Discoveries
 
@@ -1053,6 +1116,9 @@ Monitor the RWGPS OpenAPI spec for improvements:
 2. **Undocumented fields work**: `organizer_ids`, `route_ids`
 3. **Only `organizers` array fails** - Use `organizer_ids` instead
 4. **RWGPSClient is already tested** - Use it directly, don't add layers
+5. **Only 2 operations need migration** - updateRow_() and unscheduleRows() (4 others already done!)
+6. **RWGPSMembersAdapter is good architecture** - Keep it! Provides cached organizer lookup
+7. **Keep rwgpslib/** - Contains canonical RWGPSClient, just delete legacy adapter layers
 
 ### Reference Documents
 
@@ -1087,11 +1153,17 @@ npm run validate-types  # .d.ts matches .js
 npm run validate-exports # Module loading order
 ```
 
-### Key Files (After Phase 5 Migration)
+### Key Files (Target Architecture)
 ```
 src/
-├── RWGPSClient.js      # Main client (CANONICAL - moved from rwgpslib/)
-├── RWGPSClientCore.js  # Pure JS helpers (CANONICAL - moved from rwgpslib/)
-├── RideManager.js      # Orchestrates rides - uses RWGPSClient directly
-└── rwgpslib/           # DEPRECATED - delete in Phase 6
+├── RideManager.js           # Orchestrates rides - uses RWGPSClientFactory
+├── RideCoordinator.js       # Validate → Confirm → Execute pattern
+├── RWGPSMembersAdapter.js   # Cached organizer lookup (sheet-based)
+├── RWGPSMembersCore.js      # Pure JS lookup logic
+└── rwgpslib/                # RWGPS API layer
+    ├── RWGPSClient.js       # Main RWGPS client (CANONICAL)
+    ├── RWGPSClientCore.js   # Pure JS helpers (100% tested)
+    ├── RWGPSClientFactory.js  # Factory for creating clients
+    └── CredentialManager.js   # Credential access
+    # DELETE in Phase 6: RWGPSLibAdapter, LegacyRWGPSAdapter, RWGPSFacade, etc.
 ```
