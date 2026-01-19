@@ -4,6 +4,110 @@ const { test, describe, expect } = require('@jest/globals');
 
 
 describe('SCCCCEvent Tests', () => {
+  // =========================================================================
+  // Task 7.3: v1 API Field Names Tests
+  // =========================================================================
+  describe('v1 API field names', () => {
+    describe('description field (renamed from desc)', () => {
+      test('should have description field', () => {
+        const event = new SCCCCEvent();
+        event.description = 'Test description';
+        expect(event.description).toBe('Test description');
+      });
+
+      test('desc getter should return description value', () => {
+        const event = new SCCCCEvent();
+        event.description = 'Test description';
+        expect(event.desc).toBe('Test description');
+      });
+
+      test('desc setter should set description value', () => {
+        const event = new SCCCCEvent();
+        event.desc = 'Set via legacy alias';
+        expect(event.description).toBe('Set via legacy alias');
+      });
+    });
+
+    describe('organizer_ids field (renamed from organizer_tokens)', () => {
+      test('should have organizer_ids field', () => {
+        const event = new SCCCCEvent();
+        event.organizer_ids = ['123', '456'];
+        expect(event.organizer_ids).toEqual(['123', '456']);
+      });
+
+      test('organizer_tokens getter should return organizer_ids value', () => {
+        const event = new SCCCCEvent();
+        event.organizer_ids = ['123', '456'];
+        expect(event.organizer_tokens).toEqual(['123', '456']);
+      });
+
+      test('organizer_tokens setter should set organizer_ids value', () => {
+        const event = new SCCCCEvent();
+        event.organizer_tokens = ['789'];
+        expect(event.organizer_ids).toEqual(['789']);
+      });
+    });
+
+    describe('start_date and start_time fields', () => {
+      test('should have start_date field', () => {
+        const event = new SCCCCEvent();
+        event.start_date = '2025-01-20';
+        expect(event.start_date).toBe('2025-01-20');
+      });
+
+      test('should have start_time field', () => {
+        const event = new SCCCCEvent();
+        event.start_time = '09:00';
+        expect(event.start_time).toBe('09:00');
+      });
+
+      test('startDateTime getter should compute from start_date and start_time', () => {
+        const event = new SCCCCEvent();
+        event.start_date = '2025-01-20';
+        event.start_time = '09:30';
+        const result = event.startDateTime;
+        expect(result).toBeInstanceOf(Date);
+        expect(result.getFullYear()).toBe(2025);
+        expect(result.getMonth()).toBe(0); // January
+        expect(result.getDate()).toBe(20);
+        expect(result.getHours()).toBe(9);
+        expect(result.getMinutes()).toBe(30);
+      });
+
+      test('startDateTime getter should return undefined when start_date is missing', () => {
+        const event = new SCCCCEvent();
+        event.start_time = '09:30';
+        expect(event.startDateTime).toBeUndefined();
+      });
+
+      test('startDateTime getter should return undefined when start_time is missing', () => {
+        const event = new SCCCCEvent();
+        event.start_date = '2025-01-20';
+        expect(event.startDateTime).toBeUndefined();
+      });
+
+      test('startDateTime setter should split into start_date and start_time', () => {
+        const event = new SCCCCEvent();
+        // Set using Date object (local time)
+        event.startDateTime = new Date('2025-03-15T14:45:00');
+        expect(event.start_date).toBe('2025-03-15');
+        expect(event.start_time).toBe('14:45');
+      });
+
+      test('startDateTime setter should handle undefined', () => {
+        const event = new SCCCCEvent();
+        event.start_date = '2025-01-20';
+        event.start_time = '09:30';
+        event.startDateTime = undefined;
+        expect(event.start_date).toBeUndefined();
+        expect(event.start_time).toBeUndefined();
+      });
+    });
+  });
+
+  // =========================================================================
+  // Original Tests (unchanged)
+  // =========================================================================
   let groupNames;
   beforeEach(() => {
     groupNames = ['A', 'B', 'C', 'D', 'O1', 'O2', 'O3'];

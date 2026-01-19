@@ -2,18 +2,40 @@
  * The SCCCCEvent class represents a ride event and provides static and instance methods
  * for creating, updating, and managing event names and properties.
  * (Renamed from Event to avoid DOM Event shadowing)
+ * 
+ * Uses v1 API field names natively so events can be passed directly to/from RWGPS API.
  */
 declare class SCCCCEvent {
+    // === v1 API NATIVE FIELDS (passed directly to API) ===
     all_day: string;
     auto_expire_participants: string;
-    desc: string | undefined;
+    /** Event description (v1 API field name) */
+    description: string | undefined;
     location: string | undefined;
     name: string | undefined;
-    organizer_tokens: string[] | undefined;
+    /** Organizer IDs (v1 API field name) */
+    organizer_ids: string[] | undefined;
     route_ids: string[] | undefined;
-    /** Start date/time as a proper Date object (domain type) */
-    startDateTime: Date | undefined;
+    /** Start date string: "2025-01-20" (v1 API field) */
+    start_date: string | undefined;
+    /** Start time string: "09:00" (v1 API field) */
+    start_time: string | undefined;
     visibility: number;
+    
+    // === LEGACY ALIASES (deprecated, for backward compatibility) ===
+    /** @deprecated Use description instead */
+    get desc(): string | undefined;
+    /** @deprecated Use description instead */
+    set desc(value: string | undefined);
+    /** @deprecated Use organizer_ids instead */
+    get organizer_tokens(): string[] | undefined;
+    /** @deprecated Use organizer_ids instead */
+    set organizer_tokens(value: string[] | undefined);
+    
+    // === CONVENIENCE GETTER/SETTER ===
+    /** Computed from start_date + start_time; setter splits Date into those fields */
+    get startDateTime(): Date | undefined;
+    set startDateTime(value: Date | undefined);
 
     constructor();
 

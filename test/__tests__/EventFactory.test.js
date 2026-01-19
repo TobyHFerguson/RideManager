@@ -107,10 +107,17 @@ describe("Event Factory Tests", () => {
             test("should return the managedEvent", () => {
                 let actual = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
                 const expected = managedEvent;
-                // Don't compare desc since RWGPS events preserve original description text
-                const { desc: _, ...expectedWithoutDesc } = expected;
-                const { desc: __, ...actualWithoutDesc } = actual;
-                expect(actualWithoutDesc).toMatchObject(expectedWithoutDesc);
+                // Check direct properties
+                expect(actual.all_day).toBe(expected.all_day);
+                expect(actual.auto_expire_participants).toBe(expected.auto_expire_participants);
+                expect(actual.location).toBe(expected.location);
+                expect(actual.name).toBe(expected.name);
+                expect(actual.route_ids).toEqual(expected.route_ids);
+                expect(actual.visibility).toBe(expected.visibility);
+                // Check via legacy aliases (organizer_tokens is getter for organizer_ids)
+                expect(actual.organizer_tokens).toEqual(expected.organizer_tokens);
+                // Check startDateTime (getter that computes from start_date/start_time)
+                expect(actual.startDateTime).toEqual(expected.startDateTime);
             })
             test("should return an event even if the description is missing", () => {
                 const testcase = { ...managedRwgpsEvent };

@@ -64,26 +64,81 @@ class SCCCCEvent {
 
 
   constructor() {
-    this.all_day = '0',
-      this.auto_expire_participants = '1',
-      this.desc = undefined,
-      this.location = undefined,
-      this.name = undefined,
-      this.organizer_tokens = undefined,
-      this.route_ids = undefined,
-      /** @type {Date | undefined} */
-      this.startDateTime = undefined,
-      this.visibility = 0
+    // === v1 API NATIVE FIELDS (passed directly to API) ===
+    this.all_day = '0';
+    this.auto_expire_participants = '1';
+    /** @type {string | undefined} v1 API field name */
+    this.description = undefined;
+    /** @type {string | undefined} */
+    this.location = undefined;
+    /** @type {string | undefined} */
+    this.name = undefined;
+    /** @type {string[] | undefined} v1 API field name */
+    this.organizer_ids = undefined;
+    /** @type {string[] | undefined} */
+    this.route_ids = undefined;
+    /** @type {string | undefined} v1 API field: "2025-01-20" */
+    this.start_date = undefined;
+    /** @type {string | undefined} v1 API field: "09:00" */
+    this.start_time = undefined;
+    /** @type {number} */
+    this.visibility = 0;
+  }
+
+  // === LEGACY ALIASES (for backward compatibility during migration) ===
+  
+  /** @deprecated Use description instead */
+  get desc() { return this.description; }
+  /** @deprecated Use description instead */
+  set desc(v) { this.description = v; }
+  
+  /** @deprecated Use organizer_ids instead */
+  get organizer_tokens() { return this.organizer_ids; }
+  /** @deprecated Use organizer_ids instead */
+  set organizer_tokens(v) { this.organizer_ids = v; }
+
+  // === CONVENIENCE GETTER/SETTER for startDateTime ===
+  
+  /**
+   * Get startDateTime computed from start_date and start_time
+   * @returns {Date | undefined}
+   */
+  get startDateTime() {
+    if (this.start_date && this.start_time) {
+      return new Date(`${this.start_date}T${this.start_time}`);
+    }
+    return undefined;
+  }
+
+  /**
+   * Set start_date and start_time from a Date object
+   * @param {Date | undefined} value
+   */
+  set startDateTime(value) {
+    if (!value) {
+      this.start_date = undefined;
+      this.start_time = undefined;
+      return;
+    }
+    // Format as YYYY-MM-DD
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    this.start_date = `${year}-${month}-${day}`;
+    // Format as HH:MM
+    const hours = String(value.getHours()).padStart(2, '0');
+    const minutes = String(value.getMinutes()).padStart(2, '0');
+    this.start_time = `${hours}:${minutes}`;
   }
   isCancelled() {
-    return this.name.startsWith('CANCELLED: ');
+    return this.name ? this.name.startsWith('CANCELLED: ') : false;
   }
   cancel() {
-    this.name = this.isCancelled() ? this.name  : `CANCELLED: ${this.name}`;
+    this.name = this.isCancelled() ? this.name  : `CANCELLED: ${this.name || ''}`;
     return this;
   }
   reinstate() {
-    this.name = this.name.replace('CANCELLED: ', '');
+    this.name = this.name ? this.name.replace('CANCELLED: ', '') : '';
     return this;
   }
 
@@ -91,7 +146,7 @@ class SCCCCEvent {
    * @param {string[]} groupNames
    */
   managedEvent(groupNames) {
-    const result = SCCCCEvent.managedEventName(this.name, groupNames);
+    const result = SCCCCEvent.managedEventName(this.name || '', groupNames);
     return result;
   }
   /**

@@ -1236,95 +1236,227 @@ src/rwgpslib/
 
 ---
 
-## Phase 7: Simplify Event Data Flow
+## Phase 7: Unified Event Domain Object
 
 **Model recommendation**: Claude 4 Opus (TDD approach, careful refactoring with tests)
 
 ### Goal
 
-Leverage the "extra fields tolerance" discovery to simplify the event data flow:
-1. **Delete dead code** - Functions that are tested but never called
-2. **Simplify buildV1EditEventPayload** - No need to strip fields
-3. **Clean up tests** - Remove tests for deleted functions
+Create ONE unified event domain object that works everywhere:
+- **Used as-is** when calling RWGPS API (no conversion needed)
+- **Returned as-is** from RWGPS API (no transformation needed)
+- **Used throughout** our codebase (EventFactory, RideManager, etc.)
 
-### Analysis: Active vs Dead Code
+This is possible because **RWGPS API tolerates extra fields** (proven by `testExtraFieldsTolerance`).
 
-**DEAD CODE** (tested but never called in production):
+### The Big Picture
+
+**BEFORE (current complexity):**
+```
+SCCCCEvent ──convertSCCCCEventToV1Format()──> v1 format ──buildV1EditEventPayload()──> API
+     ↑
+     └── EventFactory creates with non-API field names (desc, startDateTime, organizer_tokens)
+     
+API response ──_transformV1ToWebFormat()──> web format ──EventFactory.fromRwgpsEvent()──> SCCCCEvent
+```
+
+**AFTER (unified flow):**
+```
+SCCCCEvent ──buildV1EditEventPayload()──> API
+     ↑       (just wraps in {event:}, converts visibility)
+     └── Uses v1 API field names natively (description, start_date, organizer_ids)
+     
+API response ──> SCCCCEvent (accept directly, v1 format is our format!)
+```
+
+### Current SCCCCEvent Fields (to be refactored)
+
+```javascript
+// CURRENT - uses non-API names
+this.desc = undefined;              // ⚠️ v1 uses 'description'
+this.organizer_tokens = undefined;  // ⚠️ v1 uses 'organizer_ids'
+this.startDateTime = undefined;     // ⚠️ Date object; v1 uses 'start_date' + 'start_time' strings
+```
+
+### Proposed Unified SCCCCEvent Shape
+
+```javascript
+class SCCCCEvent {
+  // === v1 API NATIVE FIELDS (passed directly to API) ===
+  all_day = '0';
+  auto_expire_participants = '1';
+  description = undefined;          // RENAMED from 'desc'
+  location = undefined;
+  name = undefined;
+  organizer_ids = undefined;        // RENAMED from 'organizer_tokens'
+  route_ids = undefined;
+  start_date = undefined;           // NEW: String "2025-01-20"
+  start_time = undefined;           // NEW: String "09:00"
+  visibility = 0;
+  
+  // === EXTRA FIELDS FROM GET RESPONSE (RWGPS ignores on PUT) ===
+  id = undefined;                   // Event ID (from GET response)
+  starts_at = undefined;            // ISO datetime (from GET response)
+  organizers = undefined;           // Full objects (from GET response)
+  routes = undefined;               // Full objects (from GET response)
+  time_zone = undefined;            // Timezone string (from GET response)
+  created_at = undefined;           // Metadata (from GET response)
+  updated_at = undefined;           // Metadata (from GET response)
+  logo_url = undefined;             // Logo URL (from GET response)
+  
+  // === CONVENIENCE GETTER (for our code) ===
+  get startDateTime() { 
+    if (this.start_date && this.start_time) {
+      return new Date(`${this.start_date}T${this.start_time}`);
+    }
+    if (this.starts_at) {
+      return new Date(this.starts_at);
+    }
+    return undefined;
+  }
+  
+  // === LEGACY ALIASES (deprecated, for gradual migration) ===
+  get desc() { return this.description; }
+  set desc(v) { this.description = v; }
+  get organizer_tokens() { return this.organizer_ids; }
+  set organizer_tokens(v) { this.organizer_ids = v; }
+}
+```
+
+### Functions to DELETE After Unification
+
+| Function | Reason Deletable |
+|----------|------------------|
+| `convertSCCCCEventToV1Format()` | SCCCCEvent now uses v1 field names natively |
+| `_transformV1ToWebFormat()` | Accept v1 response directly (it's already our format) |
+| `EventFactory.fromRwgpsEvent()` | Can just use v1 response (add convenience getters) |
+
+### Functions to SIMPLIFY
+
+| Function | Simplification |
+|----------|----------------|
+| `buildV1EditEventPayload()` | Just wrap in `{event: ...}` + visibility conversion |
+
+---
+
+### Analysis: Active vs Dead Code (Pre-Phase 7)
+
+**DEAD CODE** (deleted in Task 7.1-7.2):
 | Function | Location | Notes |
 |----------|----------|-------|
-| `transformV1EventToWebFormat()` | RWGPSClientCore.js:153 | 16 tests, 0 production usages |
-| `buildEditEventPayload()` | RWGPSClientCore.js:233 | Tests only, 0 production usages |
+| `transformV1EventToWebFormat()` | RWGPSClientCore.js | ✅ DELETED - 16 tests removed |
+| `buildEditEventPayload()` | RWGPSClientCore.js | ✅ DELETED - 11 tests removed |
 
-**ACTIVE CODE** (called in production):
-| Function | Location | Called From |
-|----------|----------|-------------|
-| `buildV1EditEventPayload()` | RWGPSClientCore.js:294 | RWGPSClient.editEvent(), createEvent() |
-| `convertSCCCCEventToV1Format()` | RWGPSClientCore.js:605 | RideManager.js:172 |
-| `_transformV1ToWebFormat()` | RWGPSClient.js:1115 | RWGPSClient.getEvent() (instance method) |
+**ACTIVE CODE** (to be simplified/deleted):
+| Function | Location | Called From | Plan |
+|----------|----------|-------------|------|
+| `buildV1EditEventPayload()` | RWGPSClientCore.js | RWGPSClient.editEvent(), createEvent() | SIMPLIFY |
+| `convertSCCCCEventToV1Format()` | RWGPSClientCore.js | RideManager.js:172 | DELETE |
+| `_transformV1ToWebFormat()` | RWGPSClient.js | RWGPSClient.getEvent() | DELETE or SIMPLIFY |
 
-### Task 7.1: Delete transformV1EventToWebFormat (TDD)
+---
 
-This function is defined in RWGPSClientCore but NEVER called in production.
-RWGPSClient uses its own instance method `_transformV1ToWebFormat()` instead.
+### Progress
 
-- [ ] 7.1.1 Search codebase to confirm no production usages
-- [ ] 7.1.2 Delete `transformV1EventToWebFormat()` from RWGPSClientCore.js
-- [ ] 7.1.3 Delete tests for `transformV1EventToWebFormat` in RWGPSClientCore.test.js
-- [ ] 7.1.4 Update RWGPSClientCore.d.ts to remove the type declaration
-- [ ] 7.1.5 Run `npm test` - verify remaining tests pass
-- [ ] 7.1.6 Run `npm run typecheck` - ZERO errors
-- [ ] 7.1.7 Commit: "Task 7.1: Delete unused transformV1EventToWebFormat"
+- [x] Task 7.1: Delete transformV1EventToWebFormat (dead code) ✅ Commit 297190c
+- [x] Task 7.2: Delete buildEditEventPayload (dead code) ✅ Commit 297190c
+- [x] Task 7.3: Refactor SCCCCEvent to use v1 field names ✅
+- [ ] Task 7.4: Update EventFactory to use new field names
+- [ ] Task 7.5: Delete convertSCCCCEventToV1Format
+- [ ] Task 7.6: Simplify buildV1EditEventPayload
+- [ ] Task 7.7: Delete _transformV1ToWebFormat (or keep as optional enhancement layer)
+- [ ] Task 7.8: Update EventFactory.fromRwgpsEvent to accept v1 directly
+- [ ] Task 7.9: Final verification and cleanup
 
-### Task 7.2: Delete buildEditEventPayload (TDD)
+---
 
-This function builds web-format edit payloads but production uses `buildV1EditEventPayload()`.
+### Task 7.3: Refactor SCCCCEvent to use v1 field names (TDD) ✅
 
-- [ ] 7.2.1 Search codebase to confirm no production usages
-- [ ] 7.2.2 Delete `buildEditEventPayload()` from RWGPSClientCore.js
-- [ ] 7.2.3 Delete tests for `buildEditEventPayload` in RWGPSClientCore.test.js
-- [ ] 7.2.4 Update RWGPSClientCore.d.ts to remove the type declaration
-- [ ] 7.2.5 Run `npm test` - verify remaining tests pass
-- [ ] 7.2.6 Run `npm run typecheck` - ZERO errors
-- [ ] 7.2.7 Commit: "Task 7.2: Delete unused buildEditEventPayload"
+**Approach**: Use legacy aliases to maintain backward compatibility during migration.
 
-### Task 7.3: Simplify buildV1EditEventPayload (TDD)
+- [x] 7.3.1 Write tests for new field names (description, organizer_ids, start_date, start_time)
+- [x] 7.3.2 Add new fields to SCCCCEvent class
+- [x] 7.3.3 Add legacy getter/setter aliases (desc → description, organizer_tokens → organizer_ids)
+- [x] 7.3.4 Add startDateTime getter that reads from start_date/start_time
+- [x] 7.3.5 Update SCCCCEvent.d.ts with new type definitions
+- [x] 7.3.6 Run `npm test` - all tests pass (641 tests)
+- [x] 7.3.7 Run `npm run typecheck` - ZERO errors
+- [x] 7.3.8 Commit: "Task 7.3: Add v1 API field names to SCCCCEvent with legacy aliases"
 
-Since RWGPS API tolerates extra fields, we can simplify this function to pass through
-all fields instead of filtering to only known fields.
+### Task 7.4: Update EventFactory to use new field names (TDD)
 
-**Current behavior**: Explicitly picks 11 known v1 fields
-**New behavior**: Pass through all fields (API ignores unknown ones)
-
-- [ ] 7.3.1 Write test for new behavior (passthrough mode)
-- [ ] 7.3.2 Verify existing tests still define expected contract
-- [ ] 7.3.3 Simplify implementation to spread input and only transform date fields
-- [ ] 7.3.4 Run `npm test` - all tests pass
-- [ ] 7.3.5 Run `npm run typecheck` - ZERO errors
-- [ ] 7.3.6 Commit: "Task 7.3: Simplify buildV1EditEventPayload to passthrough mode"
-
-### Task 7.4: Review convertSCCCCEventToV1Format
-
-Check if this function can be simplified given extra fields tolerance.
-
-- [ ] 7.4.1 Analyze current implementation
-- [ ] 7.4.2 Determine if simplification is possible
-- [ ] 7.4.3 If simplifiable, apply TDD approach
+- [ ] 7.4.1 Update EventFactory.newEvent() to set description, start_date, start_time, organizer_ids
+- [ ] 7.4.2 Update EventFactory.fromRwgpsEvent() to copy v1 fields directly
+- [ ] 7.4.3 Update tests in EventFactory.test.js
 - [ ] 7.4.4 Run `npm test` - all tests pass
-- [ ] 7.4.5 Commit if changes made
+- [ ] 7.4.5 Run `npm run typecheck` - ZERO errors
+- [ ] 7.4.6 Commit: "Task 7.4: Update EventFactory to use v1 field names"
 
-### Task 7.5: Final verification and cleanup
+### Task 7.5: Delete convertSCCCCEventToV1Format (TDD)
 
-- [ ] 7.5.1 Run `npm run validate-all`
-- [ ] 7.5.2 Run coverage check on RWGPSClientCore.js
-- [ ] 7.5.3 Update documentation as needed
-- [ ] 7.5.4 Commit: "Phase 7 complete: Simplified event data flow"
+Now that SCCCCEvent uses v1 field names, this conversion is unnecessary.
+
+- [ ] 7.5.1 Update RideManager.js to pass SCCCCEvent directly (no conversion)
+- [ ] 7.5.2 Delete `convertSCCCCEventToV1Format()` from RWGPSClientCore.js
+- [ ] 7.5.3 Delete tests for `convertSCCCCEventToV1Format` in RWGPSClientCore.test.js
+- [ ] 7.5.4 Update RWGPSClientCore.d.ts to remove the type declaration
+- [ ] 7.5.5 Run `npm test` - all tests pass
+- [ ] 7.5.6 Run `npm run typecheck` - ZERO errors
+- [ ] 7.5.7 Commit: "Task 7.5: Delete convertSCCCCEventToV1Format (SCCCCEvent now uses v1 format)"
+
+### Task 7.6: Simplify buildV1EditEventPayload (TDD)
+
+With unified event shape, this function only needs to:
+1. Wrap event in `{event: ...}`
+2. Convert visibility number → string
+
+- [ ] 7.6.1 Write test for simplified behavior
+- [ ] 7.6.2 Simplify implementation (spread input, only transform visibility)
+- [ ] 7.6.3 Update or remove now-redundant tests
+- [ ] 7.6.4 Run `npm test` - all tests pass
+- [ ] 7.6.5 Run `npm run typecheck` - ZERO errors
+- [ ] 7.6.6 Commit: "Task 7.6: Simplify buildV1EditEventPayload to passthrough mode"
+
+### Task 7.7: Evaluate _transformV1ToWebFormat (Decision Point)
+
+**Options:**
+1. **Delete entirely** - Accept v1 response as-is, SCCCCEvent handles both formats
+2. **Keep for starts_at convenience** - Adds starts_at from start_date+start_time
+3. **Move to SCCCCEvent** - Add static method to SCCCCEvent to compute convenience fields
+
+- [ ] 7.7.1 Analyze consumers: Who needs starts_at? Who needs organizers array?
+- [ ] 7.7.2 Decide on approach
+- [ ] 7.7.3 Implement decision (TDD)
+- [ ] 7.7.4 Run `npm test` - all tests pass
+- [ ] 7.7.5 Commit based on decision
+
+### Task 7.8: Simplify EventFactory.fromRwgpsEvent (TDD)
+
+With unified shape, this may become just spreading v1 response into SCCCCEvent.
+
+- [ ] 7.8.1 Analyze what transformation is still needed
+- [ ] 7.8.2 Simplify or delete based on analysis
+- [ ] 7.8.3 Update tests
+- [ ] 7.8.4 Run `npm test` - all tests pass
+- [ ] 7.8.5 Commit: "Task 7.8: Simplify EventFactory.fromRwgpsEvent"
+
+### Task 7.9: Final verification and cleanup
+
+- [ ] 7.9.1 Remove legacy aliases from SCCCCEvent if no longer used
+- [ ] 7.9.2 Run `npm run validate-all`
+- [ ] 7.9.3 Run coverage check on modified files
+- [ ] 7.9.4 Run GAS integration tests
+- [ ] 7.9.5 Update documentation
+- [ ] 7.9.6 Commit: "Phase 7 complete: Unified event domain object"
 
 ### Phase 7 Complete Checkpoint
 
 - [ ] All Jest tests pass
 - [ ] `npm run typecheck` passes (zero errors)
 - [ ] `npm run validate-exports` passes
-- [ ] Dead code removed
+- [ ] ONE event shape used everywhere (SCCCCEvent with v1 field names)
+- [ ] Conversion functions deleted
+- [ ] GAS integration tests pass
 - [ ] Coverage maintained for remaining code
 
 ---
@@ -1365,13 +1497,17 @@ Monitor the RWGPS OpenAPI spec for improvements:
   - Removed rwgps parameter threading
 - **Phase 6**: Complete ✅
   - Deleted 19 legacy files from rwgpslib/
-  - 655 tests pass
-- **Phase 7**: In Progress ⏳
-  - 🔜 Task 7.1: Delete transformV1EventToWebFormat (dead code)
-  - 🔜 Task 7.2: Delete buildEditEventPayload (dead code)
-  - 🔜 Task 7.3: Simplify buildV1EditEventPayload
-  - 🔜 Task 7.4: Review convertSCCCCEventToV1Format
-  - 🔜 Task 7.5: Final verification
+  - 628 tests pass (was 655, removed dead code tests)
+- **Phase 7**: In Progress ⏳ (Unified Event Domain Object)
+  - ✅ Task 7.1: Delete transformV1EventToWebFormat (dead code) - Commit 297190c
+  - ✅ Task 7.2: Delete buildEditEventPayload (dead code) - Commit 297190c
+  - 🔜 Task 7.3: Refactor SCCCCEvent to use v1 field names
+  - 🔜 Task 7.4: Update EventFactory to use new field names
+  - 🔜 Task 7.5: Delete convertSCCCCEventToV1Format
+  - 🔜 Task 7.6: Simplify buildV1EditEventPayload
+  - 🔜 Task 7.7: Evaluate _transformV1ToWebFormat
+  - 🔜 Task 7.8: Simplify EventFactory.fromRwgpsEvent
+  - 🔜 Task 7.9: Final verification
 
 ### Key Discoveries
 
@@ -1381,6 +1517,7 @@ Monitor the RWGPS OpenAPI spec for improvements:
 4. **RWGPS API tolerates extra fields** - No need to strip unknown fields from PUT
 5. **Dead code identified** - transformV1EventToWebFormat, buildEditEventPayload never called
 6. **RWGPSMembersAdapter is good architecture** - Keep it! Provides cached organizer lookup
+7. **Unified event shape possible** - SCCCCEvent can use v1 API field names directly, eliminating conversion functions
 
 ### Reference Documents
 
