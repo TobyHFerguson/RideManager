@@ -1062,8 +1062,7 @@ var AnnouncementManager = (function () {
             const userEmail = Session.getActiveUser().getEmail().toLowerCase();
 
             // Try personal templates first
-            // @ts-expect-error - getPersonalTemplates is global but VS Code sees module import type
-            const personalTemplates = getPersonalTemplates();
+            const personalTemplates = Globals.getPersonalTemplates();
             console.log('Personal templates loaded:', personalTemplates);
             if (personalTemplates[userEmail]) {
                 console.log(`AnnouncementManager: Using personal template for ${userEmail}`);
