@@ -932,7 +932,80 @@ var RWGPSClientFactory = {
 
 ---
 
-### Task 5.4: Remove rwgps parameter from RideCoordinator ⏳ NEXT
+### Task 5.3.5: Remove templateUrl and _lookupOrganizer from RWGPSClient ⏳ NEXT
+
+**Status**: Not started
+
+**Problem identified**:
+Per `copilot-instructions.md`:
+> "🚫 DEPRECATED: Templates Are GONE" 
+> "This codebase NO LONGER uses RWGPS event templates."
+
+Yet `RWGPSClient.scheduleEvent()` still:
+1. Accepts `templateUrl` parameter (deprecated - templates no longer used)
+2. Accepts `organizerNames` (strings) and looks them up via `_lookupOrganizer()`
+3. Uses `_lookupOrganizer()` which calls the RWGPS API `/events/{id}/organizer_ids.json`
+
+**Better pattern already exists**:
+- `RideManager._lookupOrganizers()` uses `RWGPSMembersAdapter.lookupUserIdByName()`
+- This looks up organizer IDs from the cached "RWGPS Members" sheet
+- Much faster than API calls, works offline, already tested
+
+**What needs to change**:
+
+1. **`RWGPSClient.scheduleEvent()`**:
+   - Remove `templateUrl` parameter (no longer needed)
+   - Change `organizerNames: string[]` → `organizerIds: number[]`
+   - Remove internal `_lookupOrganizer()` calls
+   - Just pass `organizer_tokens` directly to edit
+
+2. **`RWGPSClient.updateEvent()`**:
+   - Already doesn't use templateUrl
+   - Change `organizerNames: string[]` → `organizerIds: number[]`  
+   - Remove internal `_lookupOrganizer()` calls
+
+3. **`RideManager.schedule_row_()`**:
+   - Call `_lookupOrganizers(row.leaders)` BEFORE `client.scheduleEvent()`
+   - Extract IDs: `const organizerIds = organizers.map(o => o.id)`
+   - Pass `organizerIds` to `client.scheduleEvent()`
+   - Remove `templateUrl` from call
+
+4. **Delete**:
+   - `RWGPSClient._lookupOrganizer()` - no longer needed
+   - `RWGPSClientCore.buildOrganizerLookupOptions()` - no longer needed
+   - `RWGPSClientCore.findMatchingOrganizer()` - no longer needed
+
+5. **Update tests**:
+   - Update `RWGPSClient.test.js` scheduleEvent tests (remove templateUrl, use organizerIds)
+   - Update `RWGPSClient.test.js` updateEvent tests (use organizerIds)
+
+**New signatures**:
+```javascript
+// Before:
+scheduleEvent(templateUrl, eventData, organizerNames, logoUrl)
+updateEvent(eventUrl, eventData, organizerNames)
+
+// After:
+scheduleEvent(eventData, organizerIds, logoUrl)
+updateEvent(eventUrl, eventData, organizerIds)
+```
+
+**Steps**:
+- [ ] 5.3.5.1 Update `RWGPSClient.scheduleEvent()` - remove templateUrl, accept organizerIds
+- [ ] 5.3.5.2 Update `RWGPSClient.updateEvent()` - accept organizerIds instead of organizerNames
+- [ ] 5.3.5.3 Delete `RWGPSClient._lookupOrganizer()` method
+- [ ] 5.3.5.4 Delete unused Core methods (buildOrganizerLookupOptions, findMatchingOrganizer)
+- [ ] 5.3.5.5 Update `RideManager.schedule_row_()` - lookup organizers first, pass IDs
+- [ ] 5.3.5.6 Update `RWGPSClient.d.ts` - update method signatures
+- [ ] 5.3.5.7 Update tests in `RWGPSClient.test.js`
+- [ ] 5.3.5.8 Run `npm run typecheck`
+- [ ] 5.3.5.9 Run `npm test`
+- [ ] 5.3.5.10 Test in GAS - schedule a ride, verify organizers set correctly
+- [ ] Commit: "Task 5.3.5: Remove templateUrl and _lookupOrganizer, use sheet-based organizer lookup"
+
+---
+
+### Task 5.4: Remove rwgps parameter from RideCoordinator
 
 **Status**: Not started
 
