@@ -886,24 +886,24 @@ var RWGPSClientFactory = {
 
 ---
 
-### Task 5.2: Migrate unscheduleRows() to RWGPSClient ⏳ NEXT
+### Task 5.2: Migrate unscheduleRows() to RWGPSClient ✅ COMPLETE
 
-**Status**: Not started
+**Status**: Complete
 
-**What needs to happen**:
-1. Replace `rwgps.batch_delete_events()` with `client.deleteEvent()` calls
-2. Note: RWGPSClient.deleteEvent() is single-event (loop required)
+**What was done**:
+1. Replaced `rwgps.batch_delete_events()` with `client.deleteEvent()` calls
+2. RWGPSClient.deleteEvent() called per-event in loop
 
 **Steps**:
-- [ ] 5.2.1 Use factory: `const client = RWGPSClientFactory.create()`
-- [ ] 5.2.2 Replace batch delete with loop: `rideUrls.forEach(url => client.deleteEvent(url))`
-- [ ] 5.2.3 Handle errors per-event (don't fail entire batch)
-- [ ] 5.2.4 Test: Unschedule Selected Rides in GAS
-- [ ] Commit: "Task 5.2: unscheduleRows() uses RWGPSClient"
+- [x] 5.2.1 Use factory: `const client = RWGPSClientFactory.create()`
+- [x] 5.2.2 Replace batch delete with loop: `rideUrls.forEach(url => client.deleteEvent(url))`
+- [x] 5.2.3 Handle errors per-event (don't fail entire batch)
+- [x] 5.2.4 Test: Unschedule Selected Rides in GAS
+- [x] Commit: "Task 5.2: unscheduleRows() uses RWGPSClient"
 
 ---
 
-### Task 5.3: Remove rwgps parameter from RideManager
+### Task 5.3: Remove rwgps parameter from RideManager ⏳ NEXT
 
 **Status**: Not started
 
