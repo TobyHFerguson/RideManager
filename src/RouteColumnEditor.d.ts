@@ -72,130 +72,73 @@ export interface ProcessRouteEditResult {
 }
 
 /**
- * Parse various forms of route input to extract URL
- * 
- * Handles:
- * - Plain URLs: "https://ridewithgps.com/routes/12345"
- * - HYPERLINK formulas: '=HYPERLINK("url", "name")'
- * - Empty/null input
- * 
- * @param input - Could be URL, hyperlink formula, or empty
- * @returns Parsed URL and whether input was a formula
- * 
- * @example
- * ```javascript
- * const result1 = parseRouteInput('=HYPERLINK("https://ridewithgps.com/routes/12345", "My Route")');
- * console.log(result1.url); // "https://ridewithgps.com/routes/12345"
- * console.log(result1.wasFormula); // true
- * 
- * const result2 = parseRouteInput('https://ridewithgps.com/routes/12345');
- * console.log(result2.url); // "https://ridewithgps.com/routes/12345"
- * console.log(result2.wasFormula); // false
- * ```
+ * RouteColumnEditor class with static methods for route column editing
  */
-declare function parseRouteInput(input: string): ParsedRouteInput;
+declare class RouteColumnEditor {
+    /**
+     * Parse various forms of route input to extract URL
+     * 
+     * Handles:
+     * - Plain URLs: "https://ridewithgps.com/routes/12345"
+     * - HYPERLINK formulas: '=HYPERLINK("url", "name")'
+     * - Empty/null input
+     * 
+     * @param input - Could be URL, hyperlink formula, or empty
+     * @returns Parsed URL and whether input was a formula
+     */
+    static parseRouteInput(input: string): ParsedRouteInput;
 
-/**
- * Determine the display name for a route
- * 
- * Logic:
- * - If club route: use route.name
- * - If foreign route: use userProvidedName or prefix route.name
- * 
- * @param route - Route object from RWGPS
- * @param clubUserId - Club's RWGPS user ID
- * @param foreignPrefix - Prefix for foreign routes (e.g., "EXTERNAL:")
- * @param userProvidedName - Optional user-provided name (for foreign routes)
- * @returns Display name and foreign status
- * 
- * @example
- * ```javascript
- * const result = determineRouteName(
- *   { user_id: 999, name: "Cool Route" },
- *   12345,  // club user ID
- *   "EXTERNAL:",
- *   undefined
- * );
- * console.log(result.name); // "EXTERNAL: Cool Route"
- * console.log(result.isForeign); // true
- * ```
- */
-declare function determineRouteName(
-    route: RouteData,
-    clubUserId: number,
-    foreignPrefix: string,
-    userProvidedName?: string
-): RouteNameResult;
+    /**
+     * Determine the display name for a route
+     * 
+     * Logic:
+     * - If club route: use route.name
+     * - If foreign route: use userProvidedName or prefix route.name
+     * 
+     * @param route - Route object from RWGPS
+     * @param clubUserId - Club's RWGPS user ID
+     * @param foreignPrefix - Prefix for foreign routes (e.g., "EXTERNAL:")
+     * @param userProvidedName - Optional user-provided name (for foreign routes)
+     * @returns Display name and foreign status
+     */
+    static determineRouteName(
+        route: RouteData,
+        clubUserId: number,
+        foreignPrefix: string,
+        userProvidedName?: string
+    ): RouteNameResult;
 
-/**
- * Build a hyperlink formula string (legacy support for migration)
- * 
- * @deprecated Use buildRichTextLink instead for new code
- * @param url - The URL
- * @param name - The display name
- * @returns HYPERLINK formula (lowercase "hyperlink")
- * 
- * @example
- * ```javascript
- * const formula = buildHyperlinkFormula("https://ridewithgps.com/routes/12345", "My Route");
- * console.log(formula); // '=hyperlink("https://ridewithgps.com/routes/12345", "My Route")'
- * ```
- */
-declare function buildHyperlinkFormula(url: string, name: string): string;
+    /**
+     * Build a hyperlink formula string (legacy support for migration)
+     * 
+     * @deprecated Use buildRichTextLink instead for new code
+     * @param url - The URL
+     * @param name - The display name
+     * @returns HYPERLINK formula (lowercase "hyperlink")
+     */
+    static buildHyperlinkFormula(url: string, name: string): string;
 
-/**
- * Build a RichText link object
- * 
- * @param url - The URL
- * @param name - The display name
- * @returns RichText link object with text and url properties
- * 
- * @example
- * ```javascript
- * const link = buildRichTextLink("https://ridewithgps.com/routes/12345", "My Route");
- * console.log(link); // { text: "My Route", url: "https://ridewithgps.com/routes/12345" }
- * ```
- */
-declare function buildRichTextLink(url: string, name: string): RichTextLink;
+    /**
+     * Build a RichText link object
+     * 
+     * @param url - The URL
+     * @param name - The display name
+     * @returns RichText link object with text and url properties
+     */
+    static buildRichTextLink(url: string, name: string): RichTextLink;
 
-/**
- * Process route column edit - pure logic
- * 
- * Orchestrates the full route edit workflow:
- * 1. Parse input to extract URL
- * 2. Determine route name (with foreign prefix if needed)
- * 3. Build RichText link object
- * 
- * @param params - Processing parameters
- * @returns RichText link object and foreign status
- * 
- * @example
- * ```javascript
- * const result = processRouteEdit({
- *   inputValue: 'https://ridewithgps.com/routes/12345',
- *   route: { user_id: 999, name: "Cool Route" },
- *   clubUserId: 12345,
- *   foreignPrefix: "EXTERNAL:",
- *   userProvidedName: undefined
- * });
- * console.log(result.link); // { text: "EXTERNAL: Cool Route", url: "https://ridewithgps.com/routes/12345" }
- * console.log(result.isForeign); // true
- * ```
- */
-declare function processRouteEdit(params: ProcessRouteEditParams): ProcessRouteEditResult;
-
-/**
- * RouteColumnEditor namespace
- */
-interface RouteColumnEditorNamespace {
-    parseRouteInput: typeof parseRouteInput;
-    determineRouteName: typeof determineRouteName;
-    buildHyperlinkFormula: typeof buildHyperlinkFormula;
-    buildRichTextLink: typeof buildRichTextLink;
-    processRouteEdit: typeof processRouteEdit;
+    /**
+     * Process route column edit - pure logic
+     * 
+     * Orchestrates the full route edit workflow:
+     * 1. Parse input to extract URL
+     * 2. Determine route name (with foreign prefix if needed)
+     * 3. Build RichText link object
+     * 
+     * @param params - Processing parameters
+     * @returns RichText link object and foreign status
+     */
+    static processRouteEdit(params: ProcessRouteEditParams): ProcessRouteEditResult;
 }
 
-declare const RouteColumnEditor: RouteColumnEditorNamespace;
-
 export default RouteColumnEditor;
-export { parseRouteInput, determineRouteName, buildHyperlinkFormula, buildRichTextLink, processRouteEdit };

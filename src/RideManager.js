@@ -3,8 +3,7 @@
 
 
 if (typeof require !== 'undefined') {
-    // @ts-ignore
-    const { getGroupNames } = require("./Groups");
+    var Groups = require("./Groups");
     var dates = require('./common/dates');
 }
 
@@ -338,10 +337,10 @@ const RideManager = (function () {
      */
     function schedule_row_(row, rwgps) {
         // Get group specs for logo URL
-        const groupSpecs = getGroupSpecs();
+        const groupSpecs = Groups.getGroupSpecs();
         const groupSpec = groupSpecs[row.group];
         if (!groupSpec) {
-            throw new Error(`Unknown group: ${row.group}. Expected one of ${getGroupNames().join(', ')}`);
+            throw new Error(`Unknown group: ${row.group}. Expected one of ${Groups.getGroupNames().join(', ')}`);
         }
         
         const globals = getGlobals();
@@ -451,7 +450,7 @@ const RideManager = (function () {
      * @param {RWGPS} _rwgps - Legacy parameter, no longer used (client created from factory)
      */
     function updateRow_(row, _rwgps) {
-        const names = getGroupNames();
+        const names = Groups.getGroupNames();
         const client = RWGPSClientFactory.create();
 
         let rideEvent

@@ -13,6 +13,8 @@
  * - Users can update logos by replacing files in Drive folder
  */
 
+var GroupLogoManager = (function() {
+
 /**
  * Test Drive access and trigger authorization dialog if needed
  * 
@@ -21,7 +23,7 @@
  * 
  * @returns {{success: boolean, message: string}}
  */
-function testDriveAccess() {
+function testDriveAccess_() {
     try {
         // Try to access Drive
         const folders = DriveApp.getFoldersByName('SCCCC Group Logos');
@@ -45,7 +47,7 @@ function testDriveAccess() {
  * 
  * @returns {GoogleAppsScript.Drive.Folder} Drive folder for logos
  */
-function getOrCreateLogoFolder() {
+function getOrCreateLogoFolder_() {
     const folderName = 'SCCCC Group Logos';
     
     // Search for existing folder
@@ -70,7 +72,7 @@ function getOrCreateLogoFolder() {
  * @param {GoogleAppsScript.Drive.Folder} folder - Drive folder to store file
  * @returns {string} Shareable Drive URL
  */
-function uploadLogoToDrive(blob, fileName, folder) {
+function uploadLogoToDrive_(blob, fileName, folder) {
     // Check if file already exists
     const existingFiles = folder.getFilesByName(fileName);
     if (existingFiles.hasNext()) {
@@ -88,287 +90,285 @@ function uploadLogoToDrive(blob, fileName, folder) {
     return file.getUrl();
 }
 
-/**
- * Populate logos in Groups tab from template events
- * 
- * This is a one-time setup operation that:
- * 1. Reads Groups tab to get template URLs
- * 2. Fetches each template event to get logo_url
- * 3. Downloads logo as blob
- * 4. Uploads blob to Drive folder
- * 5. Stores Drive URL in LogoURL column
- * 
- * Can be run multiple times safely (only updates missing logos)
- * Note: LogoURL column provides hover preview - no separate Logo column needed
- * 
- * @param {boolean} [force=false] - If true, repopulate all logos even if LogoURL already exists
- * @returns {{success: boolean, populated: number, skipped: number, errors: string[]}}
- */
-function populateGroupLogos(force) {
-    console.log('=== Populating Group Logos ===');
-    if (force) {
-        console.log('⚠️  FORCE MODE: Repopulating all logos');
-    }
-    
-    /** @type {{success: boolean, populated: number, skipped: number, errors: string[]}} */
-    const results = {
-        success: true,
-        populated: 0,
-        skipped: 0,
-        errors: []
-    };
-    
-    try {
-        // Get Groups sheet directly
-        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Groups');
-        if (!sheet) {
-            const error = 'Groups sheet not found';
-            console.error(error);
-            results.success = false;
-            results.errors.push(error);
-            return results;
+class GroupLogoManager {
+    /**
+     * Populate logos in Groups tab from template events
+     * 
+     * This is a one-time setup operation that:
+     * 1. Reads Groups tab to get template URLs
+     * 2. Fetches each template event to get logo_url
+     * 3. Downloads logo as blob
+     * 4. Uploads blob to Drive folder
+     * 5. Stores Drive URL in LogoURL column
+     * 
+     * Can be run multiple times safely (only updates missing logos)
+     * Note: LogoURL column provides hover preview - no separate Logo column needed
+     * 
+     * @param {boolean} [force=false] - If true, repopulate all logos even if LogoURL already exists
+     * @returns {{success: boolean, populated: number, skipped: number, errors: string[]}}
+     */
+    static populateGroupLogos(force) {
+        console.log('=== Populating Group Logos ===');
+        if (force) {
+            console.log('⚠️  FORCE MODE: Repopulating all logos');
         }
         
-        // Get or create Drive folder for logos
-        const logoFolder = getOrCreateLogoFolder();
+        /** @type {{success: boolean, populated: number, skipped: number, errors: string[]}} */
+        const results = {
+            success: true,
+            populated: 0,
+            skipped: 0,
+            errors: []
+        };
         
-        // Get all data
-        const lastRow = sheet.getLastRow();
-        if (lastRow < 2) {
-            console.log('No data rows in Groups sheet');
-            return results;
-        }
-        
-        const lastCol = sheet.getLastColumn();
-        const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-        const data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-        
-        console.log(`Found ${data.length} groups`);
-        
-        // Find column indices
-        const groupColIndex = headers.indexOf('Group');
-        const templateColIndex = headers.indexOf('TEMPLATE');
-        const logoUrlColIndex = headers.indexOf('LogoURL');
-        
-        if (logoUrlColIndex === -1) {
-            const error = 'LogoURL column not found in Groups tab (required for Drive URLs). Please add it manually.';
-            console.error(error);
-            results.success = false;
-            results.errors.push(error);
-            return results;
-        }
-        
-        if (groupColIndex === -1 || templateColIndex === -1) {
-            const error = 'Required columns (Group, TEMPLATE) not found in Groups tab';
-            console.error(error);
-            results.success = false;
-            results.errors.push(error);
-            return results;
-        }
-        
-        console.log(`LogoURL column found at column ${logoUrlColIndex + 1}`);
-        
-        // Get RWGPSClient via factory
-        const client = RWGPSClientFactory.create();
-        
-        // Process each group
-        for (let i = 0; i < data.length; i++) {
-            const row = data[i];
-            const groupName = row[groupColIndex] || '';
-            const templateUrl = row[templateColIndex] || '';
-            const existingLogoUrl = row[logoUrlColIndex] || '';
-            const rowNum = i + 2; // 1-based, +1 for header
-            
-            console.log(`\nProcessing group ${groupName}...`);
-            
-            // Skip if already has logo URL (unless force mode)
-            if (!force && existingLogoUrl && existingLogoUrl !== '') {
-                console.log(`  ⏭ Group "${groupName}" already has logo URL, skipping`);
-                results.skipped++;
-                continue;
+        try {
+            // Get Groups sheet directly
+            const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Groups');
+            if (!sheet) {
+                const error = 'Groups sheet not found';
+                console.error(error);
+                results.success = false;
+                results.errors.push(error);
+                return results;
             }
             
-            if (force && existingLogoUrl) {
-                console.log(`  🔄 Force mode: Replacing existing logo URL`);
+            // Get or create Drive folder for logos
+            const logoFolder = getOrCreateLogoFolder_();
+            
+            // Get all data
+            const lastRow = sheet.getLastRow();
+            if (lastRow < 2) {
+                console.log('No data rows in Groups sheet');
+                return results;
             }
             
-            // Skip if no template URL
-            if (!templateUrl) {
-                console.log(`  ⚠ No template URL, skipping`);
-                results.skipped++;
-                continue;
+            const lastCol = sheet.getLastColumn();
+            const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+            const data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+            
+            console.log(`Found ${data.length} groups`);
+            
+            // Find column indices
+            const groupColIndex = headers.indexOf('Group');
+            const templateColIndex = headers.indexOf('TEMPLATE');
+            const logoUrlColIndex = headers.indexOf('LogoURL');
+            
+            if (logoUrlColIndex === -1) {
+                const error = 'LogoURL column not found in Groups tab (required for Drive URLs). Please add it manually.';
+                console.error(error);
+                results.success = false;
+                results.errors.push(error);
+                return results;
             }
             
-            try {
-                // Fetch template event
-                console.log(`  Fetching template: ${templateUrl}`);
-                const eventResult = client.getEvent(templateUrl);
+            if (groupColIndex === -1 || templateColIndex === -1) {
+                const error = 'Required columns (Group, TEMPLATE) not found in Groups tab';
+                console.error(error);
+                results.success = false;
+                results.errors.push(error);
+                return results;
+            }
+            
+            console.log(`LogoURL column found at column ${logoUrlColIndex + 1}`);
+            
+            // Get RWGPSClient via factory
+            const client = RWGPSClientFactory.create();
+            
+            // Process each group
+            for (let i = 0; i < data.length; i++) {
+                const row = data[i];
+                const groupName = row[groupColIndex] || '';
+                const templateUrl = row[templateColIndex] || '';
+                const existingLogoUrl = row[logoUrlColIndex] || '';
+                const rowNum = i + 2; // 1-based, +1 for header
                 
-                if (!eventResult.success) {
-                    const errorMsg = `Failed to fetch template: ${eventResult.error}`;
-                    console.error(`  ✗ ${errorMsg}`);
-                    results.errors.push(`${groupName}: ${errorMsg}`);
-                    continue;
-                }
+                console.log(`\nProcessing group ${groupName}...`);
                 
-                const event = eventResult.event;
-                const logoUrl = event.logo_url;
-                
-                if (!logoUrl) {
-                    console.log(`  ⚠ Template has no logo_url, skipping`);
+                // Skip if already has logo URL (unless force mode)
+                if (!force && existingLogoUrl && existingLogoUrl !== '') {
+                    console.log(`  ⏭ Group "${groupName}" already has logo URL, skipping`);
                     results.skipped++;
                     continue;
                 }
                 
-                console.log(`  Found logo: ${logoUrl}`);
+                if (force && existingLogoUrl) {
+                    console.log(`  🔄 Force mode: Replacing existing logo URL`);
+                }
                 
-                // Download logo blob from template URL
-                console.log(`  Downloading logo blob...`);
-                const response = UrlFetchApp.fetch(logoUrl);
-                const logoBlob = response.getBlob();
+                // Skip if no template URL
+                if (!templateUrl) {
+                    console.log(`  ⚠ No template URL, skipping`);
+                    results.skipped++;
+                    continue;
+                }
                 
-                // Determine file extension from blob or URL
-                const mimeType = logoBlob.getContentType();
-                const ext = mimeType && mimeType.includes('png') ? 'png' : 'jpg';
-                const fileName = `${groupName}.${ext}`;
-                
-                // Upload to Drive
-                console.log(`  Uploading to Drive as ${fileName}...`);
-                const driveUrl = uploadLogoToDrive(logoBlob, fileName, logoFolder);
-                
-                // Store Drive URL in LogoURL column
-                const logoUrlCell = sheet.getRange(rowNum, logoUrlColIndex + 1);
-                logoUrlCell.setValue(driveUrl);
-                console.log(`  ✓ Drive URL stored for ${groupName}`);
-                
-                results.populated++;
-                
-            } catch (error) {
-                const err = error instanceof Error ? error : new Error(String(error));
-                const errorMsg = `Failed to populate logo: ${err.message}`;
-                console.error(`  ✗ ${errorMsg}`);
-                results.errors.push(`${groupName}: ${errorMsg}`);
-            }
-        }
-        
-        // Flush to ensure all writes are committed
-        if (results.populated > 0) {
-            console.log(`\nFlushing ${results.populated} logo operations...`);
-            SpreadsheetApp.flush();
-            console.log('✓ Logos saved to Groups tab');
-        }
-        
-        // Log summary
-        console.log('\n=== Summary ===');
-        console.log(`Populated: ${results.populated}`);
-        console.log(`Skipped: ${results.skipped}`);
-        console.log(`Errors: ${results.errors.length}`);
-        
-        if (results.errors.length > 0) {
-            console.log('\nErrors:');
-            results.errors.forEach((err, i) => {
-                console.log(`  ${i + 1}. ${err}`);
-            });
-        }
-        
-        return results;
-        
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        console.error('FATAL ERROR:', err.message);
-        results.success = false;
-        results.errors.push(err.message);
-        return results;
-    }
-}
-
-/**
- * Check if group logos need population (self-healing)
- * 
- * Returns true if any group is missing a logo URL
- * 
- * @returns {boolean} True if logos need population
- */
-function groupLogosNeedPopulation() {
-    try {
-        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Groups');
-        if (!sheet) {
-            return false;
-        }
-        
-        const lastRow = sheet.getLastRow();
-        if (lastRow < 2) {
-            return false;
-        }
-        
-        const lastCol = sheet.getLastColumn();
-        const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-        const data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-        
-        const templateColIndex = headers.indexOf('TEMPLATE');
-        const logoUrlColIndex = headers.indexOf('LogoURL');
-        
-        if (templateColIndex === -1 || logoUrlColIndex === -1) {
-            return false;
-        }
-        
-        // Check if any group has a template but no logo URL
-        for (let i = 0; i < data.length; i++) {
-            const row = data[i];
-            const templateUrl = row[templateColIndex] || '';
-            const logoUrl = row[logoUrlColIndex] || '';
-            
-            if (!templateUrl) {
-                continue;
+                try {
+                    // Fetch template event
+                    console.log(`  Fetching template: ${templateUrl}`);
+                    const eventResult = client.getEvent(templateUrl);
+                    
+                    if (!eventResult.success) {
+                        const errorMsg = `Failed to fetch template: ${eventResult.error}`;
+                        console.error(`  ✗ ${errorMsg}`);
+                        results.errors.push(`${groupName}: ${errorMsg}`);
+                        continue;
+                    }
+                    
+                    const event = eventResult.event;
+                    const logoUrl = event.logo_url;
+                    
+                    if (!logoUrl) {
+                        console.log(`  ⚠ Template has no logo_url, skipping`);
+                        results.skipped++;
+                        continue;
+                    }
+                    
+                    console.log(`  Found logo: ${logoUrl}`);
+                    
+                    // Download logo blob from template URL
+                    console.log(`  Downloading logo blob...`);
+                    const response = UrlFetchApp.fetch(logoUrl);
+                    const logoBlob = response.getBlob();
+                    
+                    // Determine file extension from blob or URL
+                    const mimeType = logoBlob.getContentType();
+                    const ext = mimeType && mimeType.includes('png') ? 'png' : 'jpg';
+                    const fileName = `${groupName}.${ext}`;
+                    
+                    // Upload to Drive
+                    console.log(`  Uploading to Drive as ${fileName}...`);
+                    const driveUrl = uploadLogoToDrive_(logoBlob, fileName, logoFolder);
+                    
+                    // Store Drive URL in LogoURL column
+                    const logoUrlCell = sheet.getRange(rowNum, logoUrlColIndex + 1);
+                    logoUrlCell.setValue(driveUrl);
+                    console.log(`  ✓ Drive URL stored for ${groupName}`);
+                    
+                    results.populated++;
+                    
+                } catch (error) {
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    const errorMsg = `Failed to populate logo: ${err.message}`;
+                    console.error(`  ✗ ${errorMsg}`);
+                    results.errors.push(`${groupName}: ${errorMsg}`);
+                }
             }
             
-            // If has template but no logo URL, needs population
-            if (!logoUrl || logoUrl === '') {
-                return true;
+            // Flush to ensure all writes are committed
+            if (results.populated > 0) {
+                console.log(`\nFlushing ${results.populated} logo operations...`);
+                SpreadsheetApp.flush();
+                console.log('✓ Logos saved to Groups tab');
             }
+            
+            // Log summary
+            console.log('\n=== Summary ===');
+            console.log(`Populated: ${results.populated}`);
+            console.log(`Skipped: ${results.skipped}`);
+            console.log(`Errors: ${results.errors.length}`);
+            
+            if (results.errors.length > 0) {
+                console.log('\nErrors:');
+                results.errors.forEach((err, i) => {
+                    console.log(`  ${i + 1}. ${err}`);
+                });
+            }
+            
+            return results;
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error('FATAL ERROR:', err.message);
+            results.success = false;
+            results.errors.push(err.message);
+            return results;
         }
-        
-        return false;
-        
-    } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        console.error('Error checking if logos need population:', err.message);
-        return false;
+    }
+
+    /**
+     * Check if group logos need population (self-healing)
+     * 
+     * Returns true if any group is missing a logo URL
+     * 
+     * @returns {boolean} True if logos need population
+     */
+    static groupLogosNeedPopulation() {
+        try {
+            const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Groups');
+            if (!sheet) {
+                return false;
+            }
+            
+            const lastRow = sheet.getLastRow();
+            if (lastRow < 2) {
+                return false;
+            }
+            
+            const lastCol = sheet.getLastColumn();
+            const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+            const data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+            
+            const templateColIndex = headers.indexOf('TEMPLATE');
+            const logoUrlColIndex = headers.indexOf('LogoURL');
+            
+            if (templateColIndex === -1 || logoUrlColIndex === -1) {
+                return false;
+            }
+            
+            // Check if any group has a template but no logo URL
+            for (let i = 0; i < data.length; i++) {
+                const row = data[i];
+                const templateUrl = row[templateColIndex] || '';
+                const logoUrl = row[logoUrlColIndex] || '';
+                
+                if (!templateUrl) {
+                    continue;
+                }
+                
+                // If has template but no logo URL, needs population
+                if (!logoUrl || logoUrl === '') {
+                    return true;
+                }
+            }
+            
+            return false;
+            
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error('Error checking if logos need population:', err.message);
+            return false;
+        }
+    }
+
+    /**
+     * Auto-populate group logos if missing (self-healing)
+     * 
+     * Called automatically by triggers to ensure logos are always populated
+     * Safe to call multiple times - only populates missing logos
+     */
+    static autoPopulateGroupLogos() {
+        if (GroupLogoManager.groupLogosNeedPopulation()) {
+            console.log('Group logos missing - auto-populating...');
+            const result = GroupLogoManager.populateGroupLogos();
+            
+            if (result.populated > 0) {
+                UserLogger.log('INFO', `Auto-populated ${result.populated} group logos`, {
+                    populated: result.populated,
+                    skipped: result.skipped,
+                    errors: result.errors.length
+                });
+            }
+            
+            return result;
+        } else {
+            console.log('All group logos present - no action needed');
+            return { success: true, populated: 0, skipped: 0, errors: [] };
+        }
     }
 }
 
-/**
- * Auto-populate group logos if missing (self-healing)
- * 
- * Called automatically by triggers to ensure logos are always populated
- * Safe to call multiple times - only populates missing logos
- */
-function autoPopulateGroupLogos() {
-    if (groupLogosNeedPopulation()) {
-        console.log('Group logos missing - auto-populating...');
-        const result = populateGroupLogos();
-        
-        if (result.populated > 0) {
-            UserLogger.log('INFO', `Auto-populated ${result.populated} group logos`, {
-                populated: result.populated,
-                skipped: result.skipped,
-                errors: result.errors.length
-            });
-        }
-        
-        return result;
-    } else {
-        console.log('All group logos present - no action needed');
-        return { success: true, populated: 0, skipped: 0, errors: [] };
-    }
-}
-
-// Export module for GAS global scope
-var GroupLogoManager = {
-    populateGroupLogos: populateGroupLogos,
-    groupLogosNeedPopulation: groupLogosNeedPopulation,
-    autoPopulateGroupLogos: autoPopulateGroupLogos
-};
+return GroupLogoManager;
+})();
 
 // Export for Node.js/testing
 if (typeof module !== 'undefined') {

@@ -1,14 +1,15 @@
 /**
- * The EventFactory provides methods to create and convert event objects for ride scheduling.
+ * EventFactory - Factory for creating and converting event objects
+ * 
+ * Provides methods to create and convert event objects for ride scheduling.
  */
 
-import type Row from './Row';
 import type { Organizer } from './Externals';
 
 /**
- * EventFactory namespace with methods for creating and converting events
+ * EventFactory class with static methods for event creation
  */
-declare const EventFactory: {
+declare class EventFactory {
     /**
      * Creates a new event object from a row and organizers.
      * @param row - The row object to make event from.
@@ -16,7 +17,7 @@ declare const EventFactory: {
      * @param event_id - The event ID (extracted from event URL).
      * @returns The created event object.
      */
-    newEvent(row: RowCore, organizers: Organizer[], event_id: string | number): SCCCCEvent;
+    static newEvent(row: RowCore, organizers: Organizer[], event_id: string | number): SCCCCEvent;
 
     /**
      * Converts a RWGPS event object to a SCCCCEvent.
@@ -24,7 +25,7 @@ declare const EventFactory: {
      * @returns The converted event object.
      * @throws {Error} If the event name ends with ']'.
      */
-    fromRwgpsEvent(rwgpsEvent: any): SCCCCEvent;
-};
+    static fromRwgpsEvent(rwgpsEvent: any): SCCCCEvent;
+}
 
 export default EventFactory;

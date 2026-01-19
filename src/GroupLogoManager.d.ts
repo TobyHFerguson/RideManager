@@ -1,21 +1,35 @@
 /**
- * GroupLogoManager - Namespace object with logo management functions
+ * GroupLogoManager - Logo management for groups
  * 
  * Manages logo storage in Drive and Groups spreadsheet:
  * - Stores logo files in "SCCCC Group Logos" Drive folder
  * - Saves Drive URLs in LogoURL column (persistent, user-manageable)
  * - Optionally displays thumbnails in Logo column (for visual reference)
  */
-declare namespace GroupLogoManager {
+
+/**
+ * Result of logo population operation
+ */
+export interface PopulateLogosResult {
+    success: boolean;
+    populated: number;
+    skipped: number;
+    errors: string[];
+}
+
+/**
+ * GroupLogoManager class with static methods for logo management
+ */
+declare class GroupLogoManager {
     /**
      * Get or create the Drive folder for group logos
      */
-    function getOrCreateLogoFolder(): GoogleAppsScript.Drive.Folder;
+    static getOrCreateLogoFolder(): GoogleAppsScript.Drive.Folder;
     
     /**
      * Upload logo blob to Drive and return shareable URL
      */
-    function uploadLogoToDrive(
+    static uploadLogoToDrive(
         blob: GoogleAppsScript.Base.Blob,
         fileName: string,
         folder: GoogleAppsScript.Drive.Folder
@@ -26,29 +40,19 @@ declare namespace GroupLogoManager {
      * 
      * Downloads logos from templates, uploads to Drive, stores Drive URLs
      */
-    function populateGroupLogos(): {
-        success: boolean;
-        populated: number;
-        skipped: number;
-        errors: string[];
-    };
+    static populateGroupLogos(): PopulateLogosResult;
 
     /**
      * Check if group logos need population
      * 
      * Returns true if any group has TEMPLATE but no LogoURL
      */
-    function groupLogosNeedPopulation(): boolean;
+    static groupLogosNeedPopulation(): boolean;
 
     /**
      * Auto-populate group logos if missing (self-healing)
      */
-    function autoPopulateGroupLogos(): {
-        success: boolean;
-        populated: number;
-        skipped: number;
-        errors: string[];
-    };
+    static autoPopulateGroupLogos(): PopulateLogosResult;
 }
 
 export default GroupLogoManager;
