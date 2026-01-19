@@ -34,6 +34,7 @@ import type * as GoogleEventCoreModule from './GoogleEventCore';
 import type GroupLogoManagerType from './GroupLogoManager';
 import type CredentialManagerClass from './rwgpslib/CredentialManager';
 import type RWGPSClientClass from './rwgpslib/RWGPSClient';
+import type RWGPSClientCoreClass from './rwgpslib/RWGPSClientCore';
 import type RWGPSCoreClass from './rwgpslib/RWGPSCore';
 import type RWGPSAdapterClass from './rwgpslib/RWGPSAdapter';
 import type RWGPSClientFactoryType from './rwgpslib/RWGPSClientFactory';
@@ -68,6 +69,7 @@ declare global {
     const GroupLogoManager: typeof GroupLogoManagerType;
     const CredentialManager: typeof CredentialManagerClass;
     const RWGPSClient: typeof RWGPSClientClass;
+    const RWGPSClientCore: typeof RWGPSClientCoreClass;
     const RWGPSCore: typeof RWGPSCoreClass;
     const RWGPSAdapter: typeof RWGPSAdapterClass;
     const RWGPSClientFactory: typeof RWGPSClientFactoryType;

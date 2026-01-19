@@ -636,6 +636,119 @@ var RWGPSClientCore = (function() {
             start_time: `${hours}:${minutes}`
         };
     }
+
+    /**
+     * Convert SCCCCEvent object to v1 API format
+     * 
+     * SCCCCEvent uses: startDateTime (Date), desc, organizer_tokens
+     * v1 API uses: start_date, start_time, description, organizer_ids
+     * 
+     * @param {{name?: string, desc?: string, location?: string, startDateTime?: Date, organizer_tokens?: (string | number)[], route_ids?: (string | number)[], visibility?: number}} scccEvent - SCCCCEvent-like object
+     * @returns {{name?: string, description?: string, location?: string, start_date?: string, start_time?: string, organizer_ids?: string[], route_ids?: string[], visibility?: number}} v1 API format
+     */
+    static convertSCCCCEventToV1Format(scccEvent) {
+        /** @type {{name?: string, description?: string, location?: string, start_date?: string, start_time?: string, organizer_ids?: string[], route_ids?: string[], visibility?: number}} */
+        const result = {};
+        
+        // Copy name directly
+        if (scccEvent.name !== undefined) {
+            result.name = scccEvent.name;
+        }
+        
+        // Convert desc → description
+        if (scccEvent.desc !== undefined) {
+            result.description = scccEvent.desc;
+        }
+        
+        // Copy location directly
+        if (scccEvent.location !== undefined) {
+            result.location = scccEvent.location;
+        }
+        
+        // Convert startDateTime → start_date + start_time
+        if (scccEvent.startDateTime !== undefined) {
+            const dateParts = RWGPSClientCore.formatDateForV1Api(scccEvent.startDateTime);
+            result.start_date = dateParts.start_date;
+            result.start_time = dateParts.start_time;
+        }
+        
+        // Convert organizer_tokens → organizer_ids (convert to strings)
+        if (scccEvent.organizer_tokens !== undefined) {
+            result.organizer_ids = scccEvent.organizer_tokens.map(id => String(id));
+        }
+        
+        // Copy route_ids (convert to strings for consistency)
+        if (scccEvent.route_ids !== undefined) {
+            result.route_ids = scccEvent.route_ids.map(id => String(id));
+        }
+        
+        // Copy visibility directly
+        if (scccEvent.visibility !== undefined) {
+            result.visibility = scccEvent.visibility;
+        }
+        
+        return result;
+    }
+
+    /**
+     * Build expiration tag for a route
+     * Format: "expires: MM/DD/YYYY"
+     * 
+     * @param {Date} date - Expiration date
+     * @returns {string} Tag string
+     */
+    static buildExpirationTag(date) {
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `expires: ${month}/${day}/${year}`;
+    }
+
+    /**
+     * Parse expiration tag to extract date parts
+     * 
+     * @param {string | null} tag - Tag string like "expires: MM/DD/YYYY"
+     * @returns {{month: number, day: number, year: number} | null} Parsed date parts or null if invalid
+     */
+    static parseExpirationTag(tag) {
+        if (!tag || typeof tag !== 'string') {
+            return null;
+        }
+        
+        const match = tag.match(/^expires:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!match) {
+            return null;
+        }
+        
+        return {
+            month: parseInt(match[1], 10),
+            day: parseInt(match[2], 10),
+            year: parseInt(match[3], 10)
+        };
+    }
+
+    /**
+     * Check if new expiration date is newer (later) than existing tag date
+     * 
+     * @param {string} existingTag - Existing expiration tag like "expires: MM/DD/YYYY"
+     * @param {Date} newDate - New expiration date to compare
+     * @returns {boolean} True if newDate is after existing tag date
+     */
+    static isExpirationTagNewer(existingTag, newDate) {
+        const parsed = RWGPSClientCore.parseExpirationTag(existingTag);
+        if (!parsed) {
+            return true; // No valid existing tag, treat as newer
+        }
+        
+        // Create date from parsed values (month is 0-indexed in JS Date)
+        const existingDate = new Date(parsed.year, parsed.month - 1, parsed.day);
+        
+        // Compare dates (strip time component from newDate)
+        const newDateOnly = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
+        
+        return newDateOnly.getTime() > existingDate.getTime();
+    }
 }
 
 return RWGPSClientCore;
@@ -645,3 +758,4 @@ return RWGPSClientCore;
 if (typeof module !== 'undefined') {
     module.exports = RWGPSClientCore;
 }
+

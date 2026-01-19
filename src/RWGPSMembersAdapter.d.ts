@@ -53,6 +53,19 @@ declare class RWGPSMembersAdapter {
     getSheet(): GoogleAppsScript.Spreadsheet.Sheet | null;
 
     /**
+     * Look up a user ID by name from the cached members sheet
+     * 
+     * @param organizerName - Name to search for
+     * @returns Result with userId if found
+     */
+    lookupUserIdByName(organizerName: string): {
+        success: boolean;
+        userId?: number;
+        name?: string;
+        error?: string;
+    };
+
+    /**
      * Delete the members sheet (for cleanup)
      * @returns True if sheet was deleted, false if it didn't exist
      */

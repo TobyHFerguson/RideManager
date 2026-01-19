@@ -786,10 +786,10 @@ The following tasks are deferred to Phase 5 (see Phase 5 section below for detai
 | `cancelRow_()` | ✅ Yes | No |
 | `reinstateRow_()` | ✅ Yes | No |
 | `importRow_()` | ✅ Yes | No |
-| `updateRow_()` | ❌ No | ⚠️ `rwgps.get_event()`, `rwgps.edit_event()`, `rwgps.getOrganizers()` |
+| `updateRow_()` | ✅ Yes | No |
 | `unscheduleRows()` | ❌ No | ⚠️ `rwgps.batch_delete_events()` |
 
-**Only 2 operations need migration!**
+**Only 1 operation needs migration!**
 
 ### Organizer Lookup Strategy
 
@@ -855,36 +855,38 @@ var RWGPSClientFactory = {
 
 ---
 
-### Task 5.1: Migrate updateRow_() to RWGPSClient ⏳ NEXT
+### Task 5.1: Migrate updateRow_() to RWGPSClient ✅ COMPLETE
 
-**Status**: Not started (was marked complete but that was importRow_)
+**Status**: Complete (2026-01-19)
 
-**What needs to happen**:
-1. Replace `rwgps.get_event()` with `RWGPSClientFactory.create().getEvent()`
-2. Replace `rwgps.edit_event()` with `client.editEvent()`
-3. Replace `rwgps.getOrganizers()` with `RWGPSMembersAdapter.lookupUserIdByName()` (cached sheet lookup)
-4. Replace `rwgps.setRouteExpiration()` with client method
+**What was done**:
+1. Replaced `rwgps.get_event()` with `RWGPSClientFactory.create().getEvent()`
+2. Replaced `rwgps.edit_event()` with `client.editEvent()`
+3. Replaced `rwgps.getOrganizers()` with `RWGPSMembersAdapter.lookupUserIdByName()` (cached sheet lookup)
+4. Added `client.setRouteExpiration()` method to RWGPSClient
 
-**Note on organizer lookup**: RWGPSMembersAdapter already exists and works! Use it:
-```javascript
-const membersAdapter = new RWGPSMembersAdapter();
-const organizerIds = row.leaders.map(name => {
-    const result = membersAdapter.lookupUserIdByName(name);
-    return result.success ? result.userId : null;
-}).filter(id => id !== null);
-```
+**Implementation Details**:
+- Created `_lookupOrganizers(leaderNames)` helper in RideManager.js using RWGPSMembersAdapter
+- Added 4 new Core functions in RWGPSClientCore.js:
+  - `convertSCCCCEventToV1Format()` - Maps SCCCCEvent fields to v1 API format
+  - `buildExpirationTag()` - Creates "expires: MM/DD/YYYY" tag string
+  - `parseExpirationTag()` - Extracts date parts from tag string
+  - `isExpirationTagNewer()` - Compares dates for tag update logic
+- Added `setRouteExpiration()` method to RWGPSClient.js (6 tests)
+- 17 new tests for Core functions, 6 new tests for setRouteExpiration
+- All 824 tests pass, TypeScript typecheck clean
 
 **Steps**:
-- [ ] 5.1.1 Use factory: `const client = RWGPSClientFactory.create()`
-- [ ] 5.1.2 Replace `rwgps.get_event()` → `client.getEvent()`
-- [ ] 5.1.3 Replace `rwgps.edit_event()` → `client.editEvent()`
-- [ ] 5.1.4 Handle organizer lookup (use RWGPSMembersAdapter or inline)
-- [ ] 5.1.5 Test: Update Selected Rides in GAS
-- [ ] Commit: "Task 5.1: updateRow_() uses RWGPSClient"
+- [x] 5.1.1 Use factory: `const client = RWGPSClientFactory.create()`
+- [x] 5.1.2 Replace `rwgps.get_event()` → `client.getEvent()`
+- [x] 5.1.3 Replace `rwgps.edit_event()` → `client.editEvent()`
+- [x] 5.1.4 Handle organizer lookup (use RWGPSMembersAdapter via `_lookupOrganizers()`)
+- [ ] 5.1.5 Test: Update Selected Rides in GAS (manual verification needed)
+- [x] Commit: "Task 5.1: updateRow_() uses RWGPSClient"
 
 ---
 
-### Task 5.2: Migrate unscheduleRows() to RWGPSClient
+### Task 5.2: Migrate unscheduleRows() to RWGPSClient ⏳ NEXT
 
 **Status**: Not started
 

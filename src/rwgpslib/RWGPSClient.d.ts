@@ -204,6 +204,18 @@ declare class RWGPSClient {
     private _addRouteTags(routeUrl: string, tags: string[]): { success: boolean; error?: string };
 
     /**
+     * Set route expiration date by adding an expiration tag
+     * 
+     * Adds a tag like "expires: MM/DD/YYYY" to the route.
+     * If forceUpdate is false, will skip if new date is not later than existing tag.
+     * 
+     * @param routeUrl - Route URL
+     * @param expiryDate - Expiration date
+     * @param forceUpdate - Force update even if new date is not newer (default: false)
+     */
+    setRouteExpiration(routeUrl: string, expiryDate: Date, forceUpdate?: boolean): { success: boolean; skipped?: boolean; error?: string };
+
+    /**
      * Look up an organizer by name
      * @private
      */

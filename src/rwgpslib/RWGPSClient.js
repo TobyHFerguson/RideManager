@@ -967,6 +967,58 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Set route expiration date by adding an expiration tag
+     * 
+     * Adds a tag like "expires: MM/DD/YYYY" to the route.
+     * If forceUpdate is false, will skip if new date is not later than existing tag.
+     * 
+     * @param {string} routeUrl - Route URL
+     * @param {Date} expiryDate - Expiration date
+     * @param {boolean} [forceUpdate=false] - Force update even if new date is not newer
+     * @returns {{success: boolean, skipped?: boolean, error?: string}} Result
+     */
+    setRouteExpiration(routeUrl, expiryDate, forceUpdate = false) {
+        try {
+            // Login to establish web session
+            if (!this.login()) {
+                return { success: false, error: 'Login failed' };
+            }
+
+            // Get current route to check existing expiration tag
+            const routeResult = this.getRoute(routeUrl);
+            if (!routeResult.success) {
+                return { success: false, error: routeResult.error || 'Failed to get route' };
+            }
+
+            // Check existing expiration tag
+            const tagNames = routeResult.route?.tag_names || [];
+            const existingExpirationTag = tagNames.find((/** @type {string} */ tag) => tag.startsWith('expires:'));
+
+            // Skip if not forceUpdate and existing tag is newer or equal
+            if (!forceUpdate && existingExpirationTag) {
+                if (!RWGPSClientCore.isExpirationTagNewer(existingExpirationTag, expiryDate)) {
+                    return { success: true, skipped: true };
+                }
+            }
+
+            // Build new expiration tag
+            const newTag = RWGPSClientCore.buildExpirationTag(expiryDate);
+
+            // Add the tag
+            const tagResult = this._addRouteTags(routeUrl, [newTag]);
+            if (!tagResult.success) {
+                return { success: false, error: tagResult.error };
+            }
+
+            return { success: true };
+
+        } catch (/** @type {any} */ error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
      * Get Basic Auth header
      * 
      * @returns {string} Basic Auth header value

@@ -233,3 +233,57 @@ declare class RWGPSClientCore {
      * @returns {{start_date: string, start_time: string}} Formatted date parts
      */
     static formatDateForV1Api(date: Date): { start_date: string; start_time: string };
+
+    /**
+     * Convert SCCCCEvent object to v1 API format
+     * 
+     * @param {object} scccEvent - SCCCCEvent-like object with startDateTime, desc, organizer_tokens
+     * @returns {object} v1 API format with start_date, start_time, description, organizer_ids
+     */
+    static convertSCCCCEventToV1Format(scccEvent: {
+        name?: string;
+        desc?: string;
+        location?: string;
+        startDateTime?: Date;
+        organizer_tokens?: (string | number)[];
+        route_ids?: (string | number)[];
+        visibility?: number;
+    }): {
+        name?: string;
+        description?: string;
+        location?: string;
+        start_date?: string;
+        start_time?: string;
+        organizer_ids?: string[];
+        route_ids?: string[];
+        visibility?: number;
+    };
+
+    /**
+     * Build expiration tag for a route
+     * 
+     * @param {Date} date - Expiration date
+     * @returns {string} Tag in format "expires: MM/DD/YYYY"
+     */
+    static buildExpirationTag(date: Date): string;
+
+    /**
+     * Parse expiration tag to extract date parts
+     * 
+     * @param {string | null} tag - Tag string like "expires: MM/DD/YYYY"
+     * @returns {{month: number, day: number, year: number} | null} Parsed date parts or null
+     */
+    static parseExpirationTag(tag: string | null): { month: number; day: number; year: number } | null;
+
+    /**
+     * Check if new expiration date is newer than existing tag date
+     * 
+     * @param {string} existingTag - Existing expiration tag
+     * @param {Date} newDate - New expiration date to compare
+     * @returns {boolean} True if newDate is after existing tag date
+     */
+    static isExpirationTagNewer(existingTag: string, newDate: Date): boolean;
+}
+
+export default RWGPSClientCore;
+

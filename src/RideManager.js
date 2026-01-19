@@ -11,6 +11,7 @@ if (typeof require !== 'undefined') {
 /**
  * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
+ * @typedef {import('./Externals').Organizer} Organizer
  * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
  * @typedef {import('./RideManagerCore').default} RideManagerCoreType
  */
@@ -58,6 +59,41 @@ const RideManager = (function () {
         // NOTE: extractLatLong exists in RideManagerCore (see RideManagerCore.js:33, test coverage: 100%)
         // TypeScript error is false positive due to namespace export pattern
         return RideManagerCore.extractLatLong(route);
+    }
+
+    /**
+     * Look up organizers by name using RWGPSMembersAdapter (cached sheet lookup)
+     * 
+     * @param {string[]} leaderNames - Array of leader names to look up
+     * @returns {Organizer[]} Array of Organizer objects with id and text properties
+     */
+    function _lookupOrganizers(leaderNames) {
+        if (!leaderNames || !leaderNames.length) {
+            return [];
+        }
+        
+        const membersAdapter = new RWGPSMembersAdapter();
+        /** @type {Organizer[]} */
+        const organizers = [];
+        
+        for (const name of leaderNames) {
+            if (!name || name.trim() === '') {
+                continue;
+            }
+            
+            const result = membersAdapter.lookupUserIdByName(name);
+            if (result.success && result.userId) {
+                organizers.push({
+                    id: result.userId,
+                    text: result.name || name
+                });
+            } else {
+                console.warn(`_lookupOrganizers: Could not find organizer "${name}": ${result.error || 'Not found'}`);
+                // Skip this organizer - don't add to array
+            }
+        }
+        
+        return organizers;
     }
 
     /**
@@ -412,24 +448,35 @@ const RideManager = (function () {
     }
     /**
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
+     * @param {RWGPS} _rwgps - Legacy parameter, no longer used (client created from factory)
      */
-    function updateRow_(row, rwgps) {
+    function updateRow_(row, _rwgps) {
         const names = getGroupNames();
+        const client = RWGPSClientFactory.create();
 
         let rideEvent
         // Use SCCCCEvent.getGroupName directly (the correct implementation)
         const originalGroup = SCCCCEvent.getGroupName(row.rideName, names);
         // Use SCCCCEvent.managedEventName directly (the correct implementation)
         if (!SCCCCEvent.managedEventName(row.rideName, names)) {
-            rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
+            // Unmanaged ride: get event from RWGPS
+            const result = client.getEvent(row.rideURL);
+            if (!result.success || !result.event) {
+                throw new Error(`Failed to get event from RWGPS: ${result.error || 'Unknown error'}`);
+            }
+            rideEvent = EventFactory.fromRwgpsEvent(result.event);
             // DEBUG ISSUE 22
             // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
             // TypeScript error is false positive due to namespace export pattern
             RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'RWGPS');
         } else {
+            // Managed ride: create event from row data
             const event_id = _extractEventID(row.rideURL);
-            rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
+            
+            // Look up organizers using RWGPSMembersAdapter (cached sheet lookup)
+            const organizers = _lookupOrganizers(row.leaders);
+            
+            rideEvent = EventFactory.newEvent(row, organizers, event_id);
             if (ValidationCore.isCancelled(row)) {
                 rideEvent.cancel();
             }
@@ -437,12 +484,24 @@ const RideManager = (function () {
             // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
             // TypeScript error is false positive due to namespace export pattern
             RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'newEvent');
+            
+            // Set route expiration via client
             const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
-            rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
+            const expiryResult = client.setRouteExpiration(row.routeURL, expiryDate, true);
+            if (!expiryResult.success) {
+                console.warn(`RideManager.updateRow_: Failed to set route expiration: ${expiryResult.error}`);
+                // Non-fatal - continue with update
+            }
         }
 
         row.setRideLink(rideEvent.name, row.rideURL);
-        rwgps.edit_event(row.rideURL, rideEvent);
+        
+        // Convert SCCCCEvent to v1 API format for editEvent
+        const v1EventData = RWGPSClientCore.convertSCCCCEventToV1Format(rideEvent);
+        const editResult = client.editEvent(row.rideURL, v1EventData);
+        if (!editResult.success) {
+            throw new Error(`Failed to edit event on RWGPS: ${editResult.error || 'Unknown error'}`);
+        }
         
         // Log to UserLogger
         UserLogger.log('UPDATE_RIDE', `Row ${row.rowNum}, ${row.rideName}`, {

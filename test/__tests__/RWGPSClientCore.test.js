@@ -1224,4 +1224,188 @@ describe('RWGPSClientCore', () => {
             expect(result.start_time).toBe('00:00');
         });
     });
+
+    describe('convertSCCCCEventToV1Format', () => {
+        it('should convert SCCCCEvent fields to v1 API format', () => {
+            const scccEvent = {
+                name: 'Mon A (01/15 10:00) Test Ride',
+                desc: 'Ride Leader: John\nMeet at start location',
+                location: '123 Main St',
+                startDateTime: new Date('2025-01-15T10:00:00'),
+                organizer_tokens: ['12345', '67890'],
+                route_ids: ['99999'],
+                visibility: 0
+            };
+
+            const result = RWGPSClientCore.convertSCCCCEventToV1Format(scccEvent);
+
+            expect(result.name).toBe('Mon A (01/15 10:00) Test Ride');
+            expect(result.description).toBe('Ride Leader: John\nMeet at start location');
+            expect(result.location).toBe('123 Main St');
+            expect(result.start_date).toBe('2025-01-15');
+            expect(result.start_time).toBe('10:00');
+            expect(result.organizer_ids).toEqual(['12345', '67890']);
+            expect(result.route_ids).toEqual(['99999']);
+            expect(result.visibility).toBe(0);
+        });
+
+        it('should handle missing optional fields', () => {
+            const scccEvent = {
+                name: 'Test Ride',
+                startDateTime: new Date('2025-03-20T09:00:00')
+            };
+
+            const result = RWGPSClientCore.convertSCCCCEventToV1Format(scccEvent);
+
+            expect(result.name).toBe('Test Ride');
+            expect(result.start_date).toBe('2025-03-20');
+            expect(result.start_time).toBe('09:00');
+            expect(result.description).toBeUndefined();
+            expect(result.location).toBeUndefined();
+            expect(result.organizer_ids).toBeUndefined();
+            expect(result.route_ids).toBeUndefined();
+        });
+
+        it('should convert organizer_tokens to organizer_ids', () => {
+            const scccEvent = {
+                name: 'Test',
+                startDateTime: new Date('2025-01-01T08:00:00'),
+                organizer_tokens: [123, '456', 789]  // Mix of numbers and strings
+            };
+
+            const result = RWGPSClientCore.convertSCCCCEventToV1Format(scccEvent);
+
+            // Should convert all to strings
+            expect(result.organizer_ids).toEqual(['123', '456', '789']);
+        });
+
+        it('should handle empty organizer_tokens', () => {
+            const scccEvent = {
+                name: 'Test',
+                startDateTime: new Date('2025-01-01T08:00:00'),
+                organizer_tokens: []
+            };
+
+            const result = RWGPSClientCore.convertSCCCCEventToV1Format(scccEvent);
+
+            expect(result.organizer_ids).toEqual([]);
+        });
+
+        it('should handle undefined organizer_tokens', () => {
+            const scccEvent = {
+                name: 'Test',
+                startDateTime: new Date('2025-01-01T08:00:00'),
+                organizer_tokens: undefined
+            };
+
+            const result = RWGPSClientCore.convertSCCCCEventToV1Format(scccEvent);
+
+            expect(result.organizer_ids).toBeUndefined();
+        });
+    });
+
+    describe('buildExpirationTag', () => {
+        it('should format date as "expires: MM/DD/YYYY" tag', () => {
+            const date = new Date('2025-03-15T10:00:00');
+
+            const result = RWGPSClientCore.buildExpirationTag(date);
+
+            expect(result).toBe('expires: 03/15/2025');
+        });
+
+        it('should zero-pad single digit month and day', () => {
+            const date = new Date('2025-01-05T10:00:00');
+
+            const result = RWGPSClientCore.buildExpirationTag(date);
+
+            expect(result).toBe('expires: 01/05/2025');
+        });
+
+        it('should handle end of year dates', () => {
+            const date = new Date('2025-12-31T10:00:00');
+
+            const result = RWGPSClientCore.buildExpirationTag(date);
+
+            expect(result).toBe('expires: 12/31/2025');
+        });
+    });
+
+    describe('parseExpirationTag', () => {
+        it('should extract date from expiration tag', () => {
+            const tag = 'expires: 03/15/2025';
+
+            const result = RWGPSClientCore.parseExpirationTag(tag);
+
+            expect(result.month).toBe(3);
+            expect(result.day).toBe(15);
+            expect(result.year).toBe(2025);
+        });
+
+        it('should return null for non-expiration tag', () => {
+            const tag = 'some-other-tag';
+
+            const result = RWGPSClientCore.parseExpirationTag(tag);
+
+            expect(result).toBeNull();
+        });
+
+        it('should return null for null input', () => {
+            const result = RWGPSClientCore.parseExpirationTag(null);
+
+            expect(result).toBeNull();
+        });
+
+        it('should return null for empty string', () => {
+            const result = RWGPSClientCore.parseExpirationTag('');
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('isExpirationTagNewer', () => {
+        it('should return true if new date is after existing tag date', () => {
+            const existingTag = 'expires: 03/15/2025';
+            const newDate = new Date('2025-04-01T10:00:00');
+
+            const result = RWGPSClientCore.isExpirationTagNewer(existingTag, newDate);
+
+            expect(result).toBe(true);
+        });
+
+        it('should return false if new date is before existing tag date', () => {
+            const existingTag = 'expires: 03/15/2025';
+            const newDate = new Date('2025-03-01T10:00:00');
+
+            const result = RWGPSClientCore.isExpirationTagNewer(existingTag, newDate);
+
+            expect(result).toBe(false);
+        });
+
+        it('should return false if dates are equal', () => {
+            const existingTag = 'expires: 03/15/2025';
+            const newDate = new Date('2025-03-15T10:00:00');
+
+            const result = RWGPSClientCore.isExpirationTagNewer(existingTag, newDate);
+
+            expect(result).toBe(false);
+        });
+
+        it('should return true if existing tag is invalid', () => {
+            const existingTag = 'not a valid tag';
+            const newDate = new Date('2025-03-15T10:00:00');
+
+            const result = RWGPSClientCore.isExpirationTagNewer(existingTag, newDate);
+
+            expect(result).toBe(true);
+        });
+
+        it('should return true if existing tag is null', () => {
+            const newDate = new Date('2025-03-15T10:00:00');
+
+            const result = RWGPSClientCore.isExpirationTagNewer(null, newDate);
+
+            expect(result).toBe(true);
+        });
+    });
 });
+

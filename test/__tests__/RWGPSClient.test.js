@@ -1571,4 +1571,109 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('status 500');
         });
     });
+
+    describe('setRouteExpiration', () => {
+        it('should add expiration tag to route', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            jest.spyOn(client, 'getRoute').mockReturnValue({
+                success: true,
+                route: { id: 53715433, name: 'Test Route', tag_names: ['B', 'expires: 01/01/2025'] }
+            });
+            jest.spyOn(client, '_addRouteTags').mockReturnValue({ success: true });
+            
+            // Use local time format (no 'Z' suffix) to avoid timezone issues
+            const expiryDate = new Date('2025-03-15T12:00:00');
+            const result = client.setRouteExpiration('https://ridewithgps.com/routes/53715433', expiryDate);
+            
+            expect(result.success).toBe(true);
+            expect(client._addRouteTags).toHaveBeenCalledWith(
+                'https://ridewithgps.com/routes/53715433',
+                ['expires: 03/15/2025']
+            );
+        });
+
+        it('should skip if new date is not newer than existing tag', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            // Existing tag is 03/15/2025
+            jest.spyOn(client, 'getRoute').mockReturnValue({
+                success: true,
+                route: { id: 53715433, name: 'Test Route', tag_names: ['B', 'expires: 03/15/2025'] }
+            });
+            jest.spyOn(client, '_addRouteTags');
+            
+            // New date is 02/01/2025 (earlier than existing) - use local time
+            const expiryDate = new Date('2025-02-01T12:00:00');
+            const result = client.setRouteExpiration('https://ridewithgps.com/routes/53715433', expiryDate);
+            
+            expect(result.success).toBe(true);
+            expect(result.skipped).toBe(true);
+            expect(client._addRouteTags).not.toHaveBeenCalled();
+        });
+
+        it('should update if forceUpdate is true even when not newer', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            jest.spyOn(client, 'getRoute').mockReturnValue({
+                success: true,
+                route: { id: 53715433, name: 'Test Route', tag_names: ['B', 'expires: 03/15/2025'] }
+            });
+            jest.spyOn(client, '_addRouteTags').mockReturnValue({ success: true });
+            
+            // Earlier date but forceUpdate=true - use local time
+            const expiryDate = new Date('2025-02-01T12:00:00');
+            const result = client.setRouteExpiration('https://ridewithgps.com/routes/53715433', expiryDate, true);
+            
+            expect(result.success).toBe(true);
+            expect(result.skipped).toBeFalsy();
+            expect(client._addRouteTags).toHaveBeenCalled();
+        });
+
+        it('should return error if login fails', () => {
+            jest.spyOn(client, 'login').mockReturnValue(false);
+            
+            const result = client.setRouteExpiration('https://ridewithgps.com/routes/53715433', new Date());
+            
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Login failed');
+        });
+
+        it('should return error if getRoute fails', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            jest.spyOn(client, 'getRoute').mockReturnValue({
+                success: false,
+                error: 'Route not found'
+            });
+            
+            const result = client.setRouteExpiration('https://ridewithgps.com/routes/53715433', new Date());
+            
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Route not found');
+        });
+
+        it('should return error if addRouteTags fails', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            jest.spyOn(client, 'getRoute').mockReturnValue({
+                success: true,
+                route: { id: 53715433, name: 'Test Route', tag_names: [] }
+            });
+            jest.spyOn(client, '_addRouteTags').mockReturnValue({
+                success: false,
+                error: 'Tag addition failed'
+            });
+            
+            const result = client.setRouteExpiration('https://ridewithgps.com/routes/53715433', new Date());
+            
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Tag addition failed');
+        });
+    });
 });
