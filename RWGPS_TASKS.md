@@ -1000,12 +1000,12 @@ updateEvent(eventUrl, eventData, organizerIds)
 - [x] 5.3.5.6 Update `RWGPSClient.d.ts` - update method signatures
 - [x] 5.3.5.8 Run `npm run typecheck` - PASSED (zero errors)
 - [x] 5.3.5.9 Run `npm test` - PASSED (809 tests)
-- [ ] 5.3.5.10 Test in GAS - schedule a ride, verify organizers set correctly
-- [ ] Commit: "Task 5.3.5: Remove templateUrl and _lookupOrganizer, use sheet-based organizer lookup"
+- [x] 5.3.5.10 Test in GAS - schedule a ride, verified organizers set correctly ✅
+- [x] Commit: "Task 5.3.5: Remove templateUrl and _lookupOrganizer, use sheet-based organizer lookup"
 
 ---
 
-### Task 5.4: Remove rwgps parameter from RideCoordinator
+### Task 5.4: Remove rwgps parameter from RideCoordinator ⏳ IN PROGRESS
 
 **Status**: Not started
 
