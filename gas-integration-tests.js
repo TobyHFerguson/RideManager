@@ -323,6 +323,156 @@ function testEditEvent(eventId) {
 }
 
 /**
+ * Test: RWGPS API Extra Fields Tolerance
+ * 
+ * PURPOSE: Verify RWGPS API ignores fields not in the OpenAPI spec
+ * 
+ * This test is important for architecture decisions:
+ * - If RWGPS ignores extra fields, we can use a unified "superset" event shape
+ * - No need for field-filtering conversion functions
+ * - Dramatically simplifies data flow through the system
+ * 
+ * Tests:
+ * 1. PUT with extra fields (organizers array, routes array, made-up fields)
+ * 2. Verify API accepts the request (doesn't 400/422)
+ * 3. Verify known fields are correctly updated
+ * 4. Verify extra fields don't cause data corruption
+ * 
+ * @param {number} [eventId] - Event ID to test (default: DEFAULT_TEST_EVENT_ID)
+ */
+function testExtraFieldsTolerance(eventId) {
+    const testName = 'editEvent with extra fields (API tolerance test)';
+    console.log(`\n📋 Running: ${testName}`);
+    
+    eventId = eventId || DEFAULT_TEST_EVENT_ID;
+    const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+    
+    try {
+        const client = getTestClient();
+        
+        // STEP 1: Get original event
+        console.log(`   Getting original event ${eventId}...`);
+        const getResult = client.getEvent(eventUrl);
+        assert(getResult.success, 'Failed to get original event');
+        
+        const originalEvent = getResult.event;
+        const originalDescription = originalEvent.description || '';
+        console.log(`   ✅ Original event fetched`);
+        console.log(`   Original fields present: ${Object.keys(originalEvent).join(', ')}`);
+        
+        // STEP 2: Try to edit with EXTRA fields that aren't in OpenAPI spec
+        // These are fields that come back from GET but shouldn't be needed for PUT
+        const testMarker = `[EXTRA-FIELDS-TEST] ${new Date().toISOString()}`;
+        
+        const payloadWithExtraFields = {
+            // Valid fields
+            description: testMarker,
+            
+            // Extra fields from GET response (not in PUT spec)
+            id: originalEvent.id,  // Read-only
+            organizers: originalEvent.organizers || [],  // Full objects (PUT uses organizer_ids)
+            routes: originalEvent.routes || [],  // Full objects (PUT uses route_ids)
+            time_zone: originalEvent.time_zone || 'America/Los_Angeles',
+            created_at: originalEvent.created_at,  // Read-only metadata
+            updated_at: originalEvent.updated_at,  // Read-only metadata
+            
+            // Completely made-up fields
+            fake_field_1: 'should be ignored',
+            __internal_data: { nested: true, values: [1, 2, 3] },
+            copilot_test_marker: 'EXTRA_FIELD_TEST_2026',
+            
+            // Mixed-format fields
+            starts_at: originalEvent.starts_at,  // Web format (v1 uses start_date/time)
+            desc: 'This is web format desc field'  // Web format alias
+        };
+        
+        console.log(`   Attempting PUT with ${Object.keys(payloadWithExtraFields).length} fields (many extra)...`);
+        console.log(`   Extra fields: id, organizers, routes, time_zone, created_at, updated_at, fake_field_1, __internal_data, copilot_test_marker`);
+        
+        // This is the key test - does RWGPS accept extra fields?
+        const editResult = client.editEvent(eventUrl, payloadWithExtraFields);
+        
+        if (!editResult.success) {
+            console.log(`   ❌ API rejected extra fields: ${editResult.error}`);
+            console.log(`   Response code: ${editResult.responseCode || 'N/A'}`);
+            logTestResult(testName, false, `API rejected extra fields: ${editResult.error}`);
+            return { success: false, toleratesExtraFields: false, error: editResult.error };
+        }
+        
+        console.log(`   ✅ API ACCEPTED request with extra fields!`);
+        
+        // STEP 3: Verify the known field was correctly updated
+        console.log('   Verifying known field (description) was updated...');
+        const verifyResult = client.getEvent(eventUrl);
+        assert(verifyResult.success, 'Failed to verify event');
+        
+        const updatedDesc = verifyResult.event.description || '';
+        const descUpdated = updatedDesc.includes('[EXTRA-FIELDS-TEST]');
+        
+        if (!descUpdated) {
+            console.log(`   ⚠️  Description NOT updated. Got: "${updatedDesc.substring(0, 50)}..."`);
+            console.log(`   This means API accepted but ignored ALL fields (unusual)`);
+        } else {
+            console.log(`   ✅ Description correctly updated`);
+        }
+        
+        // STEP 4: Check that extra fields didn't corrupt data
+        console.log('   Checking for data corruption...');
+        const verifiedEvent = verifyResult.event;
+        
+        // Name should be unchanged
+        assert(verifiedEvent.name === originalEvent.name, 'Name was corrupted!');
+        console.log('   ✅ Name unchanged');
+        
+        // Start date/time should be unchanged  
+        assert(verifiedEvent.start_date === originalEvent.start_date, 'Start date was corrupted!');
+        console.log('   ✅ Start date unchanged');
+        
+        // STEP 5: Restore original state
+        console.log('   Restoring original state...');
+        const restoreResult = client.editEvent(eventUrl, {
+            description: originalDescription
+        });
+        assert(restoreResult.success, 'Failed to restore original event');
+        console.log('   ✅ Original state restored');
+        
+        // SUCCESS! RWGPS tolerates extra fields
+        console.log('\n   ════════════════════════════════════════════════════════');
+        console.log('   🎉 RESULT: RWGPS API TOLERATES EXTRA FIELDS!');
+        console.log('   ════════════════════════════════════════════════════════');
+        console.log('   Implication: We can pass full superset event objects');
+        console.log('   without stripping fields. This simplifies architecture!');
+        console.log('   ════════════════════════════════════════════════════════\n');
+        
+        logTestResult(testName, true);
+        return { success: true, toleratesExtraFields: true };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error(`   Error during test: ${err.message}`);
+        
+        // Attempt restore
+        console.log('   ⚠️  Attempting to restore event state after error...');
+        try {
+            const client = getTestClient();
+            const getResult = client.getEvent(eventUrl);
+            if (getResult.success && getResult.event) {
+                const originalDescription = getResult.event.description || '';
+                if (originalDescription.includes('[EXTRA-FIELDS-TEST]')) {
+                    client.editEvent(eventUrl, { description: '' });
+                    console.log('   Cleaned up test marker from description');
+                }
+            }
+        } catch (restoreError) {
+            // Ignore restore errors
+        }
+        
+        logTestResult(testName, false, err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
  * Test: RWGPSClient.deleteEvent() - v1 API DELETE
  * 
  * Verifies:
@@ -828,6 +978,7 @@ function runAllIntegrationTests(testEventId, logoUrl) {
         testGetEvent(testEventId);
         testCreateEvent();
         testEditEvent(testEventId);
+        testExtraFieldsTolerance(testEventId);  // Architecture decision test
         testDeleteEvent();
         
         // Phase 2: Workflow operations

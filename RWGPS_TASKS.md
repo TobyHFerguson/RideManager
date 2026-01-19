@@ -1080,6 +1080,39 @@ All Phase 5 tasks completed (2026-01-19):
 
 ---
 
+## Extra Fields Tolerance Discovery (2026-01-19)
+
+### Key Finding: RWGPS API Tolerates Extra Fields! 🎉
+
+**GAS Integration Test**: `testExtraFieldsTolerance()` in `gas-integration-tests.js`
+
+**What we tested**:
+PUT request with extra fields that aren't in the OpenAPI spec:
+- Read-only fields: `id`, `created_at`, `updated_at`, `time_zone`
+- Nested objects: `organizers: [{id, name}]`, `routes: [{id, name}]`
+- Web format fields: `starts_at`, `desc`
+- Completely made-up fields: `fake_field_1`, `__internal_data`, `copilot_test_marker`
+
+**Result**: ✅ API ACCEPTED the request and correctly updated known fields!
+
+**Implications**:
+This enables major architectural simplification in a future Phase 7:
+1. **No field stripping needed**: Can pass superset event objects to PUT
+2. **Unified event shape**: Single shape works for both GET response and PUT payload
+3. **Delete conversion functions**: `transformV1EventToWebFormat()`, `convertSCCCCEventToV1Format()` may be unnecessary
+4. **Simpler data flow**: Fewer transformation layers between components
+
+**Current Conversion Functions** (candidates for removal in Phase 7):
+- `RWGPSClientCore.transformV1EventToWebFormat()` - GET response normalization
+- `RWGPSClientCore.convertSCCCCEventToV1Format()` - SCCCCEvent to v1 format
+- `RWGPSClientCore.buildV1EditEventPayload()` - Field filtering for PUT
+- `RWGPSClientCore.buildEditEventPayload()` - Original edit payload builder
+- `EventFactory.fromRwgpsEvent()` - May need review
+
+**Deferred**: This simplification is Phase 7 work. Phase 6 (delete legacy files) should be completed first.
+
+---
+
 ## Phase 6: Delete Legacy Adapter Layers
 
 **Model recommendation**: Claude 4 Sonnet (straightforward cleanup with verification)
