@@ -1236,6 +1236,99 @@ src/rwgpslib/
 
 ---
 
+## Phase 7: Simplify Event Data Flow
+
+**Model recommendation**: Claude 4 Opus (TDD approach, careful refactoring with tests)
+
+### Goal
+
+Leverage the "extra fields tolerance" discovery to simplify the event data flow:
+1. **Delete dead code** - Functions that are tested but never called
+2. **Simplify buildV1EditEventPayload** - No need to strip fields
+3. **Clean up tests** - Remove tests for deleted functions
+
+### Analysis: Active vs Dead Code
+
+**DEAD CODE** (tested but never called in production):
+| Function | Location | Notes |
+|----------|----------|-------|
+| `transformV1EventToWebFormat()` | RWGPSClientCore.js:153 | 16 tests, 0 production usages |
+| `buildEditEventPayload()` | RWGPSClientCore.js:233 | Tests only, 0 production usages |
+
+**ACTIVE CODE** (called in production):
+| Function | Location | Called From |
+|----------|----------|-------------|
+| `buildV1EditEventPayload()` | RWGPSClientCore.js:294 | RWGPSClient.editEvent(), createEvent() |
+| `convertSCCCCEventToV1Format()` | RWGPSClientCore.js:605 | RideManager.js:172 |
+| `_transformV1ToWebFormat()` | RWGPSClient.js:1115 | RWGPSClient.getEvent() (instance method) |
+
+### Task 7.1: Delete transformV1EventToWebFormat (TDD)
+
+This function is defined in RWGPSClientCore but NEVER called in production.
+RWGPSClient uses its own instance method `_transformV1ToWebFormat()` instead.
+
+- [ ] 7.1.1 Search codebase to confirm no production usages
+- [ ] 7.1.2 Delete `transformV1EventToWebFormat()` from RWGPSClientCore.js
+- [ ] 7.1.3 Delete tests for `transformV1EventToWebFormat` in RWGPSClientCore.test.js
+- [ ] 7.1.4 Update RWGPSClientCore.d.ts to remove the type declaration
+- [ ] 7.1.5 Run `npm test` - verify remaining tests pass
+- [ ] 7.1.6 Run `npm run typecheck` - ZERO errors
+- [ ] 7.1.7 Commit: "Task 7.1: Delete unused transformV1EventToWebFormat"
+
+### Task 7.2: Delete buildEditEventPayload (TDD)
+
+This function builds web-format edit payloads but production uses `buildV1EditEventPayload()`.
+
+- [ ] 7.2.1 Search codebase to confirm no production usages
+- [ ] 7.2.2 Delete `buildEditEventPayload()` from RWGPSClientCore.js
+- [ ] 7.2.3 Delete tests for `buildEditEventPayload` in RWGPSClientCore.test.js
+- [ ] 7.2.4 Update RWGPSClientCore.d.ts to remove the type declaration
+- [ ] 7.2.5 Run `npm test` - verify remaining tests pass
+- [ ] 7.2.6 Run `npm run typecheck` - ZERO errors
+- [ ] 7.2.7 Commit: "Task 7.2: Delete unused buildEditEventPayload"
+
+### Task 7.3: Simplify buildV1EditEventPayload (TDD)
+
+Since RWGPS API tolerates extra fields, we can simplify this function to pass through
+all fields instead of filtering to only known fields.
+
+**Current behavior**: Explicitly picks 11 known v1 fields
+**New behavior**: Pass through all fields (API ignores unknown ones)
+
+- [ ] 7.3.1 Write test for new behavior (passthrough mode)
+- [ ] 7.3.2 Verify existing tests still define expected contract
+- [ ] 7.3.3 Simplify implementation to spread input and only transform date fields
+- [ ] 7.3.4 Run `npm test` - all tests pass
+- [ ] 7.3.5 Run `npm run typecheck` - ZERO errors
+- [ ] 7.3.6 Commit: "Task 7.3: Simplify buildV1EditEventPayload to passthrough mode"
+
+### Task 7.4: Review convertSCCCCEventToV1Format
+
+Check if this function can be simplified given extra fields tolerance.
+
+- [ ] 7.4.1 Analyze current implementation
+- [ ] 7.4.2 Determine if simplification is possible
+- [ ] 7.4.3 If simplifiable, apply TDD approach
+- [ ] 7.4.4 Run `npm test` - all tests pass
+- [ ] 7.4.5 Commit if changes made
+
+### Task 7.5: Final verification and cleanup
+
+- [ ] 7.5.1 Run `npm run validate-all`
+- [ ] 7.5.2 Run coverage check on RWGPSClientCore.js
+- [ ] 7.5.3 Update documentation as needed
+- [ ] 7.5.4 Commit: "Phase 7 complete: Simplified event data flow"
+
+### Phase 7 Complete Checkpoint
+
+- [ ] All Jest tests pass
+- [ ] `npm run typecheck` passes (zero errors)
+- [ ] `npm run validate-exports` passes
+- [ ] Dead code removed
+- [ ] Coverage maintained for remaining code
+
+---
+
 ## Future Work
 
 ### When RWGPS Improves v1 API
@@ -1263,25 +1356,31 @@ Monitor the RWGPS OpenAPI spec for improvements:
 
 ## Summary
 
-### Current Status (January 18, 2026)
+### Current Status (January 19, 2026)
 
 - **Phase 1-4**: Complete ✅ (7/7 GAS tests passing)
-- **Phase 5**: Not started
-  - 🔜 Task 5.0: Create RWGPSClientFactory
-  - 🔜 Task 5.1: Migrate updateRow_() 
-  - 🔜 Task 5.2: Migrate unscheduleRows()
-  - 🔜 Task 5.3-5.5: Remove rwgps parameter, cleanup
-- **Phase 6**: Not started (delete legacy adapter layers)
+- **Phase 5**: Complete ✅
+  - Created RWGPSClientFactory as single creation point
+  - Migrated all ride operations to RWGPSClient
+  - Removed rwgps parameter threading
+- **Phase 6**: Complete ✅
+  - Deleted 19 legacy files from rwgpslib/
+  - 655 tests pass
+- **Phase 7**: In Progress ⏳
+  - 🔜 Task 7.1: Delete transformV1EventToWebFormat (dead code)
+  - 🔜 Task 7.2: Delete buildEditEventPayload (dead code)
+  - 🔜 Task 7.3: Simplify buildV1EditEventPayload
+  - 🔜 Task 7.4: Review convertSCCCCEventToV1Format
+  - 🔜 Task 7.5: Final verification
 
 ### Key Discoveries
 
 1. **Double-edit NOT required** - Single v1 PUT updates all 11 working fields
 2. **Undocumented fields work**: `organizer_ids`, `route_ids`
 3. **Only `organizers` array fails** - Use `organizer_ids` instead
-4. **RWGPSClient is already tested** - Use it directly, don't add layers
-5. **Only 2 operations need migration** - updateRow_() and unscheduleRows() (4 others already done!)
+4. **RWGPS API tolerates extra fields** - No need to strip unknown fields from PUT
+5. **Dead code identified** - transformV1EventToWebFormat, buildEditEventPayload never called
 6. **RWGPSMembersAdapter is good architecture** - Keep it! Provides cached organizer lookup
-7. **Keep rwgpslib/** - Contains canonical RWGPSClient, just delete legacy adapter layers
 
 ### Reference Documents
 
