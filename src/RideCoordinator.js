@@ -32,6 +32,8 @@ function convertToDate(date) {
  * Orchestration layer for ride operations
  * Implements validate → confirm → execute pattern for all operations
  */
+var RideCoordinator = (function() {
+
 class RideCoordinator {
     /**
      * Schedule rides operation
@@ -476,6 +478,9 @@ class RideCoordinator {
             }
     }
 }
+
+return RideCoordinator;
+})();
 
 if (typeof module !== 'undefined') {
     module.exports = RideCoordinator;

@@ -5,6 +5,8 @@ if (typeof require !== 'undefined') {
   var dates = require('./common/dates');
 }
 
+var SCCCCEvent = (function() {
+
 class SCCCCEvent {
   // Managed names can be of the form:
   // Mon A 1/1 10:00 AM Ride route name
@@ -107,6 +109,9 @@ class SCCCCEvent {
 
 // For GAS: Ensure SCCCCEvent is available globally regardless of file load order
 // The Exports pattern with getters handles lazy evaluation
+return SCCCCEvent;
+})();
+
 if (typeof module !== 'undefined') {
   module.exports = SCCCCEvent;
 }

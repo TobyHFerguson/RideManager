@@ -25,6 +25,8 @@ if (typeof require !== 'undefined') {
     // RWGPSMembersCore is globally available via gas-globals.d.ts
 }
 
+var RWGPSMembersAdapter = (function() {
+
 class RWGPSMembersAdapter {
     /**
      * Creates a new RWGPSMembersAdapter
@@ -185,6 +187,9 @@ class RWGPSMembersAdapter {
 }
 
 // Node.js/Jest export
+return RWGPSMembersAdapter;
+})();
+
 if (typeof module !== 'undefined') {
     module.exports = RWGPSMembersAdapter;
 }

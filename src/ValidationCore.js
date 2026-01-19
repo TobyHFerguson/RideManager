@@ -41,6 +41,8 @@ if (typeof require !== 'undefined') {
  * Pure validation logic (no GAS dependencies)
  * All methods return validation results without side effects
  */
+var ValidationCore = (function() {
+
 class ValidationCore {
     /**
      * Validate rows for scheduling operation
@@ -464,6 +466,9 @@ class ValidationCore {
             return undefined;
     }
 }
+
+return ValidationCore;
+})();
 
 if (typeof module !== 'undefined') {
     module.exports = ValidationCore;

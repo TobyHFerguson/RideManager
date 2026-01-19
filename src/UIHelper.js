@@ -10,6 +10,8 @@
  * Simple UI utilities for Google Apps Script
  * Handles user interaction dialogs and messages
  */
+var UIHelper = (function() {
+
 class UIHelper {
     /**
      * Confirm operation with user
@@ -259,6 +261,9 @@ class UIHelper {
             };
     }
 }
+
+return UIHelper;
+})();
 
 if (typeof module !== 'undefined') {
     module.exports = UIHelper;

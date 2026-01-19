@@ -9,6 +9,8 @@ if (typeof require !== 'undefined') {
  * RideManagerCore - Pure JavaScript business logic for ride management
  * All functions are testable without GAS dependencies
  */
+var RideManagerCore = (function() {
+
 class RideManagerCore {
     /**
      * Extracts event ID from an event URL
@@ -92,6 +94,9 @@ class RideManagerCore {
         };
     }
 }
+
+return RideManagerCore;
+})();
 
 if (typeof module !== 'undefined') {
     module.exports = RideManagerCore;

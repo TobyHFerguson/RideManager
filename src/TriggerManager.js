@@ -22,6 +22,8 @@ if (typeof require !== 'undefined') {
     // TriggerManagerCore is globally available via gas-globals.d.ts
 }
 
+var TriggerManager = (function() {
+
 class TriggerManager {
     constructor() {
         this.docProps = PropertiesService.getDocumentProperties();
@@ -449,6 +451,9 @@ class TriggerManager {
 }
 
 // Node.js compatibility
+return TriggerManager;
+})();
+
 if (typeof module !== 'undefined') {
     module.exports = TriggerManager;
 }

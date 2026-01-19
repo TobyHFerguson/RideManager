@@ -8,6 +8,8 @@
  * This module extracts first_name and last_name from the user object and formats them.
  */
 
+var RWGPSMembersCore = (function() {
+
 class RWGPSMembersCore {
     /**
      * Transform RWGPS API member data to spreadsheet format
@@ -189,6 +191,9 @@ class RWGPSMembersCore {
 }
 
 // Node.js/Jest export
+return RWGPSMembersCore;
+})();
+
 if (typeof module !== 'undefined') {
     module.exports = RWGPSMembersCore;
 }
