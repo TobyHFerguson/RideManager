@@ -817,9 +817,9 @@ for (const leader of row.leaders) {
 
 ---
 
-### Task 5.0: Create RWGPSClientFactory ⏳ NEXT
+### Task 5.0: Create RWGPSClientFactory ✅
 
-**Status**: Not started
+**Status**: Complete (f0d489c)
 
 **What**:
 Create a simple factory for RWGPSClient instances.
@@ -845,17 +845,17 @@ var RWGPSClientFactory = {
 ```
 
 **Steps**:
-- [ ] 5.0.1 Create `src/rwgpslib/RWGPSClientFactory.js`
-- [ ] 5.0.2 Create `src/rwgpslib/RWGPSClientFactory.d.ts`
-- [ ] 5.0.3 Add to gas-globals.d.ts
-- [ ] 5.0.4 Update existing `RWGPSLibAdapter.newClient()` calls to use factory
-- [ ] 5.0.5 Run `npm run validate-all`
-- [ ] 5.0.6 Test in GAS (cancel/reinstate still work)
-- [ ] Commit: "Task 5.0: Create RWGPSClientFactory"
+- [x] 5.0.1 Create `src/rwgpslib/RWGPSClientFactory.js`
+- [x] 5.0.2 Create `src/rwgpslib/RWGPSClientFactory.d.ts`
+- [x] 5.0.3 Add to gas-globals.d.ts
+- [x] 5.0.4 Update existing `RWGPSLibAdapter.newClient()` calls to use factory
+- [x] 5.0.5 Run `npm run validate-all`
+- [x] 5.0.6 Test in GAS (cancel/reinstate still work) - Added GAS integration test
+- [x] Commit: "Task 5.0: Create RWGPSClientFactory" (f0d489c)
 
 ---
 
-### Task 5.1: Migrate updateRow_() to RWGPSClient
+### Task 5.1: Migrate updateRow_() to RWGPSClient ⏳ NEXT
 
 **Status**: Not started (was marked complete but that was importRow_)
 
