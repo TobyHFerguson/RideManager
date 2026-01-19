@@ -903,33 +903,36 @@ var RWGPSClientFactory = {
 
 ---
 
-### Task 5.3: Remove rwgps parameter from RideManager ⏳ NEXT
+### Task 5.3: Remove rwgps parameter from RideManager ✅
 
-**Status**: Not started
+**Status**: Complete
 
 **What needs to happen**:
 1. Remove `rwgps` parameter from all RideManager methods
 2. Update method signatures in RideManager.d.ts
 3. Operations now get client from factory internally
 
-**Methods to update**:
-- `cancelRows(rows)` - remove rwgps param
-- `reinstateRows(rows)` - remove rwgps param
-- `scheduleRows(rows)` - remove rwgps param
-- `importRows(rows)` - remove rwgps param
-- `updateRows(rows)` - remove rwgps param
-- `unscheduleRows(rows)` - remove rwgps param
+**Methods updated**:
+- `cancelRows(rows)` - rwgps param removed
+- `reinstateRows(rows)` - rwgps param removed  
+- `scheduleRows(rows)` - rwgps param removed
+- `importRows(rows)` - rwgps param removed
+- `updateRows(rows)` - rwgps param removed
+- `unscheduleRows(rows)` - rwgps param removed
 
 **Steps**:
-- [ ] 5.3.1 Update RideManager.js - remove rwgps from all public methods
-- [ ] 5.3.2 Update RideManager.d.ts - remove rwgps from signatures
-- [ ] 5.3.3 Update processRows_() internal helper - remove rwgps
-- [ ] 5.3.4 Run `npm run typecheck`
-- [ ] Commit: "Task 5.3: Remove rwgps parameter from RideManager"
+- [x] 5.3.1 Update RideManager.js - remove rwgps from all public methods
+- [x] 5.3.2 Update RideManager.d.ts - remove rwgps from signatures
+- [x] 5.3.3 Update processRows_() internal helper - remove rwgps
+- [x] 5.3.4 Update internal functions (cancelRow_, importRow_, etc.) - remove rwgps
+- [x] 5.3.5 Update RideCoordinator calls to RideManager - remove rwgps
+- [x] 5.3.6 Run `npm run typecheck` - passes
+- [x] 5.3.7 Run tests - 824 pass
+- [x] Commit: "Task 5.3: Remove rwgps parameter from RideManager"
 
 ---
 
-### Task 5.4: Remove rwgps parameter from RideCoordinator
+### Task 5.4: Remove rwgps parameter from RideCoordinator ⏳ NEXT
 
 **Status**: Not started
 

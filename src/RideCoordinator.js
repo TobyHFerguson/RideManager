@@ -69,7 +69,7 @@ class RideCoordinator {
             }
 
             // 3. Execute operation
-            RideManager.scheduleRows(confirmation.processableRows, rwgps);
+            RideManager.scheduleRows(confirmation.processableRows);
 
             // 4. Save changes to spreadsheet (before showing dialog)
             adapter.save();
@@ -143,17 +143,17 @@ class RideCoordinator {
                         try {
                             if (!row.announcementCell || !row.status) {
                                 // No announcement - simple cancellation
-                                RideManager.cancelRows([row], rwgps, false, '');
+                                RideManager.cancelRows([row], false, '');
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled`);
                             } else if (confirmation.sendCancellationNotice) {
                                 // Cancel with email using the shared reason
-                                RideManager.cancelRows([row], rwgps, true, cancellationReason);
+                                RideManager.cancelRows([row], true, cancellationReason);
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled (notice sent)`);
                             } else {
                                 // Cancel without email
-                                RideManager.cancelRows([row], rwgps, false, '');
+                                RideManager.cancelRows([row], false, '');
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled (no notice)`);
                             }
@@ -190,7 +190,7 @@ class RideCoordinator {
                     }
 
                     // Execute operation
-                    RideManager.cancelRows(confirmation.processableRows, rwgps, false, '');
+                    RideManager.cancelRows(confirmation.processableRows, false, '');
                     
                     // Save changes to spreadsheet (before showing dialog)
                     adapter.save();
@@ -241,7 +241,7 @@ class RideCoordinator {
                 }
 
                 // 3. Execute operation
-                RideManager.updateRows(confirmation.processableRows, rwgps);
+                RideManager.updateRows(confirmation.processableRows);
 
                 // 4. Save changes to spreadsheet (before showing dialog)
                 adapter.save();
@@ -315,17 +315,17 @@ class RideCoordinator {
                         try {
                             if (!row.announcementCell || !row.status || row.status !== 'cancelled') {
                                 // No announcement - simple reinstatement
-                                RideManager.reinstateRows([row], rwgps, false, '');
+                                RideManager.reinstateRows([row], false, '');
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated`);
                             } else if (confirmation.sendReinstatementNotice) {
                                 // Reinstate with email using the shared reason
-                                RideManager.reinstateRows([row], rwgps, true, reinstatementReason);
+                                RideManager.reinstateRows([row], true, reinstatementReason);
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated (notice sent)`);
                             } else {
                                 // Reinstate without email
-                                RideManager.reinstateRows([row], rwgps, false, '');
+                                RideManager.reinstateRows([row], false, '');
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated (no notice)`);
                             }
@@ -362,7 +362,7 @@ class RideCoordinator {
                     }
 
                     // Execute operation
-                    RideManager.reinstateRows(confirmation.processableRows, rwgps, false, '');
+                    RideManager.reinstateRows(confirmation.processableRows, false, '');
                     
                     // Save changes to spreadsheet (before showing dialog)
                     adapter.save();
@@ -410,7 +410,7 @@ class RideCoordinator {
                 }
 
                 // 3. Execute operation
-                RideManager.unscheduleRows(confirmation.processableRows, rwgps);
+                RideManager.unscheduleRows(confirmation.processableRows);
 
                 // 4. Save changes to spreadsheet (before showing dialog)
                 adapter.save();
@@ -460,7 +460,7 @@ class RideCoordinator {
                 }
 
                 // 3. Execute operation
-                RideManager.importRows(confirmation.processableRows, rwgps);
+                RideManager.importRows(confirmation.processableRows);
 
                 // 4. Save changes to spreadsheet (before showing dialog)
                 adapter.save();

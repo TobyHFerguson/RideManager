@@ -97,11 +97,10 @@ const RideManager = (function () {
 
     /**
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
-    function cancelRow_(row, rwgps, sendEmail = false, reason = '') {
+    function cancelRow_(row, sendEmail = false, reason = '') {
         // Get RWGPSClient via factory
         const client = RWGPSClientFactory.create();
         
@@ -140,11 +139,10 @@ const RideManager = (function () {
         }
     }
     /**
-     * Import a foreign route to club library using NEW RWGPSClient code path
+     * Import a foreign route to club library using RWGPSClient
      * @param {RowCoreInstance} row
-     * @param {RWGPS} _rwgps - DEPRECATED: Not used, kept for interface compatibility
      */
-    function importRow_(row, _rwgps) {
+    function importRow_(row) {
         const globals = getGlobals();
         
         // Create RWGPSClient via factory
@@ -183,8 +181,6 @@ const RideManager = (function () {
      */
     function updateEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
-        // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - rideEvent is SCCCCEvent instance, TypeScript sees class constructor type
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             GoogleCalendarManager.updateEvent(
@@ -224,8 +220,6 @@ const RideManager = (function () {
      */
     function createEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
-        // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - rideEvent is SCCCCEvent instance, TypeScript sees class constructor type
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             const eventId = GoogleCalendarManager.createEvent(
@@ -285,11 +279,10 @@ const RideManager = (function () {
     }
     /**
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
-    function reinstateRow_(row, rwgps, sendEmail = false, reason = '') {
+    function reinstateRow_(row, sendEmail = false, reason = '') {
         // Get RWGPSClient via factory
         const client = RWGPSClientFactory.create();
         
@@ -333,9 +326,8 @@ const RideManager = (function () {
      * Uses RWGPSClient.scheduleEvent() directly - NO templates, NO facade!
      * 
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      */
-    function schedule_row_(row, rwgps) {
+    function schedule_row_(row) {
         // Get group specs for logo URL
         const groupSpecs = Groups.getGroupSpecs();
         const groupSpec = groupSpecs[row.group];
@@ -357,7 +349,7 @@ const RideManager = (function () {
         
         // Build ride name using EventFactory logic (we need this for the event name)
         // Create a temporary organizer list for name generation
-        const tempOrganizers = organizerNames.map(name => ({ id: -1, text: name }));
+        const tempOrganizers = organizerNames.map((/** @type {string} */ name) => ({ id: -1, text: name }));
         const rideEvent = EventFactory.newEvent(row, tempOrganizers, 0);
         
         const eventData = {
@@ -447,9 +439,8 @@ const RideManager = (function () {
     }
     /**
      * @param {RowCoreInstance} row
-     * @param {RWGPS} _rwgps - Legacy parameter, no longer used (client created from factory)
      */
-    function updateRow_(row, _rwgps) {
+    function updateRow_(row) {
         const names = Groups.getGroupNames();
         const client = RWGPSClientFactory.create();
 
@@ -554,17 +545,16 @@ const RideManager = (function () {
 
     /**
      * @param {RowCoreInstance[]} rows
-     * @param {RWGPS} rwgps
-     * @param {Function} fn
+     * @param {(row: RowCoreInstance, sendEmail?: boolean, reason?: string) => void} fn
      * @param {boolean} sendEmail
      * @param {string} reason
      */
-    function processRows_(rows, rwgps, fn, sendEmail = false, reason = '') {
+    function processRows_(rows, fn, sendEmail = false, reason = '') {
         /** @type {Error[]} */
         const errors = [];
         rows.forEach(row => {
             try {
-                fn(row, rwgps, sendEmail, reason);
+                fn(row, sendEmail, reason);
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(String(e));
                 err.message = `Error processing row ${row.rowNum}: ${err.message}`;
@@ -578,41 +568,40 @@ const RideManager = (function () {
     return {
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
-        cancelRows: function (rows, rwgps, sendEmail = false, reason = '') {
-            processRows_(rows, rwgps, cancelRow_, sendEmail, reason)
+        cancelRows: function (rows, sendEmail = false, reason = '') {
+            processRows_(rows, cancelRow_, sendEmail, reason)
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          */
-        importRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, importRow_);
+        importRows: function (rows) {
+            processRows_(rows, importRow_);
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
-        reinstateRows: function (rows, rwgps, sendEmail = false, reason = '') {
-            processRows_(rows, rwgps, reinstateRow_, sendEmail, reason);
+        reinstateRows: function (rows, sendEmail = false, reason = '') {
+            processRows_(rows, reinstateRow_, sendEmail, reason);
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          */
-        scheduleRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, schedule_row_);
+        scheduleRows: function (rows) {
+            processRows_(rows, schedule_row_);
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
+         * @param {RWGPS} _rwgps - DEPRECATED: Not used, kept for interface compatibility
          */
-        unscheduleRows: function (rows, rwgps) {
+        unscheduleRows: function (rows, _rwgps) {
+            // Create RWGPSClient via factory
+            const client = RWGPSClientFactory.create();
+            
             // Collect RideURLs and GoogleEventIds BEFORE any modifications
             const rideData = rows.map(row => ({
                 rideUrl: row.rideURL || null,
@@ -620,43 +609,39 @@ const RideManager = (function () {
                 group: row.group
             }));
 
-            // Step 1: Delete rides from RWGPS (batch operation, but handle errors gracefully)
+            // Step 1: Delete rides from RWGPS (loop over each, handle errors per-event)
             /** @type {string[]} */
             const rideUrlsToDelete = rideData.map(data => data.rideUrl).filter(url => url !== null && url !== undefined);
             if (rideUrlsToDelete.length > 0) {
-                try {
-                    rwgps.batch_delete_events(rideUrlsToDelete);
-                    console.log(`RideManager.unscheduleRows: Deleted ${rideUrlsToDelete.length} ride(s) from RWGPS`);
-                } catch (err) {
-                    const error = err instanceof Error ? err : new Error(String(err));
-                    const is404 = error.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
-                    const is500 = error.message.indexOf('Request failed for https://ridewithgps.com returned code 500') !== -1;
-
-                    if (is404) {
-                        // 404 = Not Found - rides already deleted, continue
-                        console.log('RideManager.unscheduleRows: Rides already deleted on RWGPS (404)');
-                    } else if (is500) {
-                        // 500 could be transient server error - retry to confirm deletion
-                        console.log('RideManager.unscheduleRows: Got 500 error, retrying to confirm rides deleted');
-                        try {
-                            rwgps.batch_delete_events(rideUrlsToDelete);
-                            // Retry succeeded - this was a transient error, log but continue
-                            console.error('RideManager.unscheduleRows: Retry succeeded - original 500 was transient, continuing');
-                        } catch (retryErr) {
-                            const retryError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
-                            const retryIs404 = retryError.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
-                            if (retryIs404) {
-                                // Retry got 404 - rides are indeed deleted
-                                console.log('RideManager.unscheduleRows: Retry confirmed rides deleted (404)');
+                let deletedCount = 0;
+                /** @type {string[]} */
+                const failedUrls = [];
+                
+                rideUrlsToDelete.forEach(url => {
+                    try {
+                        const result = client.deleteEvent(url);
+                        if (result.success) {
+                            deletedCount++;
+                        } else {
+                            // Check for 404 (already deleted)
+                            if (result.error && result.error.includes('404')) {
+                                console.log(`RideManager.unscheduleRows: Ride already deleted (404): ${url}`);
+                                deletedCount++; // Count as success
                             } else {
-                                // Different error on retry - log but continue with cleanup
-                                console.error('RideManager.unscheduleRows: RWGPS deletion failed, continuing with cleanup:', retryError.message);
+                                console.error(`RideManager.unscheduleRows: Failed to delete ${url}: ${result.error}`);
+                                failedUrls.push(url);
                             }
                         }
-                    } else {
-                        // Other error - log but continue with cleanup
-                        console.error('RideManager.unscheduleRows: RWGPS deletion failed, continuing with cleanup:', error.message);
+                    } catch (err) {
+                        const error = err instanceof Error ? err : new Error(String(err));
+                        console.error(`RideManager.unscheduleRows: Error deleting ${url}: ${error.message}`);
+                        failedUrls.push(url);
                     }
+                });
+                
+                console.log(`RideManager.unscheduleRows: Deleted ${deletedCount}/${rideUrlsToDelete.length} ride(s) from RWGPS`);
+                if (failedUrls.length > 0) {
+                    console.warn(`RideManager.unscheduleRows: Failed to delete ${failedUrls.length} ride(s), continuing with cleanup`);
                 }
             }
 
@@ -729,11 +714,10 @@ const RideManager = (function () {
 
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          */
-        updateRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, updateRow_);
+        updateRows: function (rows) {
+            processRows_(rows, updateRow_);
         }
     }
-})()
+})();
 
