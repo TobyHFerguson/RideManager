@@ -56,8 +56,10 @@
 
 ## Current Status
 
-**Phase**: 3 - Simplify Architecture
+**Phase**: 8 - Complete v1 API Migration  
 **Model recommendation**: Sonnet 4.5 or Opus 4.5
+
+**IMPORTANT**: Phase 7 is PAUSED until Phase 8 completes. We discovered two gaps in the v1 API migration that must be fixed first.
 
 ---
 
@@ -304,9 +306,9 @@ AFTER:  RWGPSClient → UrlFetchApp
 
 ---
 
-## Phase 4: Migrate to v1 API ⏳ IN PROGRESS
+## Phase 4: Migrate to v1 API ✅ COMPLETE (with gaps)
 
-**Status**: Incomplete - needs cleanup, Core/Adapter refactoring, full GAS test coverage
+**Status**: Complete for RWGPSClient operations. **GAPS FOUND** - see Phase 8 for remaining migrations.
 
 ### Goal
 1. Replace web API calls with v1 API calls where possible
@@ -1052,7 +1054,7 @@ updateEvent(eventUrl, eventData, organizerIds)
   - [x] Unschedule ride ✅
   - [x] Import route ✅
 - [x] 5.5.4 Verify no `rwgps.` calls remain: `grep -r "rwgps\." src/` - Main files clean
-  - Note: RWGPSMembersAdapter still uses rwgps.get_club_members() - this is for club member sync, not ride operations
+  - Note: RWGPSMembersAdapter still uses rwgps.get_club_members() - ⚠️ TO MIGRATE: v1 API has `/api/v1/members.json` endpoint (see "Pending: Migrate Get Members to v1 API" section)
 - [x] Commit: "Phase 5 complete: All operations use RWGPSClientFactory"
 
 ---
@@ -1236,8 +1238,159 @@ src/rwgpslib/
 
 ---
 
-## Phase 7: Unified Event Domain Object
+## Phase 8: Complete v1 API Migration ⏳ PENDING
 
+**Priority**: HIGH - Must complete before resuming Phase 7
+**Model recommendation**: Sonnet 4.5 or Opus 4.5 (straightforward TDD)
+
+### Goal
+
+Complete the migration to v1 API by addressing TWO gaps missed in Phase 4:
+
+1. **`utils.js getRoute()`** - Uses unauthenticated web API (`GET /{url}.json`)
+   - Should use: v1 API `GET /api/v1/routes/{id}.json` with Basic Auth
+   - `RWGPSClient.getRoute()` already exists and uses v1 API!
+
+2. **`RWGPSMembersAdapter.updateMembers()`** - Uses legacy `rwgps.get_club_members()`
+   - Should use: v1 API `GET /api/v1/members.json` with Basic Auth
+   - v1 API supports pagination and filtering by name/email
+
+### Why These Were Missed
+
+- **utils.js getRoute()**: Legacy code from before RWGPSClient existed
+- **RWGPSMembersAdapter**: Treated as "separate from ride operations" but should use same v1 API
+
+### Non-v1 Operations That CANNOT Be Migrated
+
+These operations have NO v1 API equivalent and must stay on web API:
+
+| Operation | Web API | Why No v1 |
+|-----------|---------|-----------|
+| `login()` | `POST /organizations/{id}/sign_in` | Session cookies for web-only ops |
+| `_removeEventTags()` | `POST /events/batch_update_tags.json` | No tag endpoints in v1 API |
+| `_addEventTags()` | `POST /events/batch_update_tags.json` | No tag endpoints in v1 API |
+| `_copyRoute()` | `POST /routes/{id}/copy.json` | No route copy in v1 API |
+| `_addRouteTags()` | `POST /routes/batch_update_tags.json` | No tag endpoints in v1 API |
+
+---
+
+### Task 8.1: Replace utils.js getRoute() with RWGPSClient.getRoute() (TDD)
+
+**Current Code** (`src/utils.js`):
+```javascript
+function getRoute(url, readThrough = false) {
+    // ...caching logic...
+    const response = UrlFetchApp.fetch(url + ".json", { muteHttpExceptions: true });
+    // ... error handling ...
+    return JSON.parse(response.getContentText());
+}
+```
+
+**Problem**: Uses unauthenticated web API, no v1 Basic Auth.
+
+**Solution Options**:
+1. **Option A**: Replace with `RWGPSClient.getRoute()` (reuse existing v1 implementation)
+2. **Option B**: Update utils.js to use v1 API directly (duplicate code)
+
+**Recommended**: Option A - use existing RWGPSClient
+
+**Steps**:
+- [ ] 8.1.1 Find all callers of `getRoute()` from utils.js
+- [ ] 8.1.2 Analyze if callers have access to RWGPSClient instance
+- [ ] 8.1.3 Write tests for the migration approach
+- [ ] 8.1.4 Implement the migration (either inline RWGPSClient or refactor callers)
+- [ ] 8.1.5 Update utils.d.ts
+- [ ] 8.1.6 Run `npm test` - all tests pass
+- [ ] 8.1.7 Run `npm run typecheck` - ZERO errors
+- [ ] 8.1.8 Add GAS integration test
+- [ ] 8.1.9 Commit: "Task 8.1: Replace utils.js getRoute() with v1 API"
+
+---
+
+### Task 8.2: Migrate RWGPSMembersAdapter to v1 API (TDD)
+
+**Current Code** (`src/RWGPSMembersAdapter.js`):
+```javascript
+updateMembers() {
+    // Uses legacy RWGPSLib
+    const rawData = this.rwgps.get_club_members();
+    // ...
+}
+```
+
+**Problem**: Depends on legacy RWGPSLib web API call.
+
+**v1 API Endpoint**: `GET /api/v1/members.json`
+- **Auth**: Basic Auth with api_key:auth_token  
+- **Pagination**: `page` (1-based), `page_size` (20-200, default 20)
+- **Filtering**: `name`, `email` query parameters
+- **Response**: `{members: ClubMember[], meta: {pagination: {...}}}`
+
+**ClubMember fields** (from OpenAPI):
+```javascript
+{
+    id: number,
+    url: string,
+    active: boolean,
+    admin: boolean,
+    manages_routes: boolean,
+    manages_members: boolean,
+    manages_billing: boolean,
+    approved_at: string | null,
+    created_at: string,
+    updated_at: string,
+    user: {
+        id: number,
+        name: string,
+        email: string,
+        // ...other user fields
+    }
+}
+```
+
+**Steps**:
+- [ ] 8.2.1 Add `RWGPSClient.getClubMembers()` method
+- [ ] 8.2.2 Write Core helper `buildClubMembersUrl(page, pageSize)` in RWGPSClientCore.js
+- [ ] 8.2.3 Write tests for RWGPSClient.getClubMembers()
+- [ ] 8.2.4 Handle pagination (loop until all pages fetched)
+- [ ] 8.2.5 Update RWGPSMembersAdapter to use RWGPSClient instead of legacy rwgps
+- [ ] 8.2.6 Remove rwgps constructor parameter from RWGPSMembersAdapter
+- [ ] 8.2.7 Update RWGPSMembersCore if response format differs
+- [ ] 8.2.8 Update type definitions (.d.ts files)
+- [ ] 8.2.9 Run `npm test` - all tests pass
+- [ ] 8.2.10 Run `npm run typecheck` - ZERO errors
+- [ ] 8.2.11 Add GAS integration test: `testRWGPSClientGetClubMembers()`
+- [ ] 8.2.12 Commit: "Task 8.2: Migrate RWGPSMembersAdapter to v1 API"
+
+---
+
+### Task 8.3: Final v1 Migration Verification
+
+- [ ] 8.3.1 Search for any remaining non-v1 API calls: `grep -r 'ridewithgps.com' src/ | grep -v '/api/v1'`
+- [ ] 8.3.2 Verify all found calls are in the "Cannot Migrate" list above
+- [ ] 8.3.3 Update API Coverage table to show all green
+- [ ] 8.3.4 Run full test suite: `npm test`
+- [ ] 8.3.5 Run GAS integration tests
+- [ ] 8.3.6 Commit: "Phase 8 complete: All v1-compatible operations migrated"
+
+---
+
+### Phase 8 Complete Checkpoint
+
+- [ ] No more web API calls for operations that have v1 equivalents
+- [ ] utils.js getRoute() uses v1 API
+- [ ] RWGPSMembersAdapter uses RWGPSClient.getClubMembers()
+- [ ] Legacy rwgps dependency removed from RWGPSMembersAdapter
+- [ ] All Jest tests pass
+- [ ] All GAS integration tests pass
+- [ ] `npm run typecheck` passes (zero errors)
+- [ ] Ready to resume Phase 7
+
+---
+
+## Phase 7: Unified Event Domain Object ⏸️ PAUSED
+
+**Status**: PAUSED - Awaiting Phase 8 completion  
 **Model recommendation**: Claude 4 Opus (TDD approach, careful refactoring with tests)
 
 ### Goal
@@ -1479,10 +1632,26 @@ Monitor the RWGPS OpenAPI spec for improvements:
 | Create event | v1 POST | ✅ Works with multipart for logo |
 | Edit event | v1 PUT | ✅ 11 of 12 fields work |
 | Delete events | v1 DELETE | ✅ Works |
-| Import route | Web | v1 has no equivalent |
+| Get route (RWGPSClient) | v1 GET | ✅ Works |
+| Get route (utils.js) | ⚠️ Web | **PHASE 8**: Should use RWGPSClient.getRoute() |
+| Import route | Web | v1 has no equivalent (copy is web-only) |
 | Tag operations | Web | v1 has no tag endpoints |
 | Get organizers | Local lookup | ✅ Uses cached "RWGPS Members" sheet |
-| Get members | Web | Synced to sheet, then local lookup |
+| Get members | ⚠️ Legacy Web | **PHASE 8**: Should use v1 GET `/api/v1/members.json` |
+
+### Pending: Migrate Get Members to v1 API
+
+**Current State:** `RWGPSMembersAdapter.updateMembers()` calls `rwgps.get_club_members()` from legacy RWGPSLib
+
+**Should Be:** Use v1 API endpoint `GET /api/v1/members.json` with Basic Auth
+
+The v1 API endpoint is documented in `docs/rwgps-openapi.yaml`:
+- Supports pagination (`page`, `page_size`)
+- Supports filtering (`name`, `email`)
+- Returns `{members: ClubMember[], meta: {pagination: ...}}`
+- Uses Basic Auth (api_key:auth_token)
+
+**Task**: Add `RWGPSClient.getClubMembers()` method and update `RWGPSMembersAdapter` to use it instead of legacy RWGPSLib. This will eliminate the last dependency on the legacy library for member sync.
 
 ---
 
@@ -1498,16 +1667,14 @@ Monitor the RWGPS OpenAPI spec for improvements:
 - **Phase 6**: Complete ✅
   - Deleted 19 legacy files from rwgpslib/
   - 628 tests pass (was 655, removed dead code tests)
-- **Phase 7**: In Progress ⏳ (Unified Event Domain Object)
+- **Phase 7**: PAUSED ⏸️ (Unified Event Domain Object) - Awaiting Phase 8 completion
   - ✅ Task 7.1: Delete transformV1EventToWebFormat (dead code) - Commit 297190c
   - ✅ Task 7.2: Delete buildEditEventPayload (dead code) - Commit 297190c
-  - 🔜 Task 7.3: Refactor SCCCCEvent to use v1 field names
-  - 🔜 Task 7.4: Update EventFactory to use new field names
-  - 🔜 Task 7.5: Delete convertSCCCCEventToV1Format
-  - 🔜 Task 7.6: Simplify buildV1EditEventPayload
-  - 🔜 Task 7.7: Evaluate _transformV1ToWebFormat
-  - 🔜 Task 7.8: Simplify EventFactory.fromRwgpsEvent
-  - 🔜 Task 7.9: Final verification
+  - ✅ Task 7.3: Refactor SCCCCEvent to use v1 field names - Commit 17b7811
+  - ⏸️ Task 7.4-7.9: PAUSED - Complete Phase 8 first
+- **Phase 8**: PENDING ⏳ (Complete v1 API Migration)
+  - 🔜 Task 8.1: Migrate RWGPSMembersAdapter to use v1 API
+  - 🔜 Task 8.2: Replace utils.js getRoute() with RWGPSClient.getRoute()
 
 ### Key Discoveries
 
