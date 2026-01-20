@@ -1805,23 +1805,48 @@ Complete the migration from external RWGPSLib to internal vendored library by en
 Current coverage: ~76% (many GAS adapter paths untested)
 
 - [ ] 10.1.1 Identify uncovered lines in RWGPSClient.js: `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`
+  - **📋 REMINDER**: Read coverage report carefully. Note which LINES are uncovered, not just which methods.
+  
 - [ ] 10.1.2 Add tests for `updateEventLogo()` method
+  - **📋 REMINDER**: Check existing tests first (`grep -r "updateEventLogo" test/`). Mock UrlFetchApp, DriveApp. After edit: `get_errors(['test/__tests__/RWGPSClient.test.js'])`.
+  
 - [ ] 10.1.3 Add tests for `setRouteExpiration()` method
+  - **📋 REMINDER**: Check existing tests first. After edit: `get_errors()` then `npm test`.
+  
 - [ ] 10.1.4 Add tests for `getClubMembers()` pagination
+  - **📋 REMINDER**: Check existing tests first. Test edge cases: empty results, single page, multiple pages. After edit: `get_errors()` then `npm test`.
+  
 - [ ] 10.1.5 Add tests for error handling paths (login failures, HTTP errors)
+  - **📋 REMINDER**: Check existing error tests first. Test: HTTP 401, 403, 500, network errors. After edit: `get_errors()` then `npm test`.
+  
 - [ ] 10.1.6 Achieve 90%+ statement coverage
+  - **📋 REMINDER**: Run `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`. If <90%, identify remaining uncovered lines and add targeted tests.
+  
 - [ ] 10.1.7 Commit: "Task 10.1: Increase RWGPSClient test coverage to 90%+"
+  - **📋 REMINDER**: Before commit: `npm run validate-all` must pass. Verify `get_errors(['src/'])` shows ZERO errors.
 
 ### Task 10.2: Add API contract integration tests
 
 Validate that our type definitions match actual RWGPS API behavior.
+Add to existing `gas-integration-tests.js` (already has RWGPS tests, structured framework).
 
-- [ ] 10.2.1 Create `gas-integration-tests-rwgps.js` with GAS-runnable tests
-- [ ] 10.2.2 Add test: `testRWGPSEventResponseMatchesType()` - verify GET response fields
+- [ ] 10.2.1 Add "Phase 4: Type Contract Validation" section to `gas-integration-tests.js`
+  - **📋 REMINDER**: **SEARCH FIRST**: Read existing file structure before adding. Follow existing patterns (test utilities, logTestResult, TEST_STATE). Use existing `getTestClient()`. After edit: `get_errors(['gas-integration-tests.js'])`.
+  
+- [ ] 10.2.2 Add test: `testRWGPSEventResponseMatchesType()` - verify GET response has expected fields
+  - **📋 REMINDER**: Compare response against `RWGPSEvent` type in `src/rwgpslib/RWGPSEvent.d.ts`. Check for required fields: id, name, starts_at, visibility, etc. Use `assert()` helper from existing tests. After edit: `get_errors()`.
+  
 - [ ] 10.2.3 Add test: `testRWGPSEventInputAccepted()` - verify PUT with our types works
+  - **📋 REMINDER**: Create minimal valid input matching `RWGPSEventInput` type. Verify API accepts it without error. Clean up test event after. After edit: `get_errors()`.
+  
 - [ ] 10.2.4 Add test: `testUndocumentedFieldsStillWork()` - verify organizer_ids, route_ids
-- [ ] 10.2.5 Document test procedure in README or test file header
+  - **📋 REMINDER**: These fields work but aren't in OpenAPI spec. Test that they're accepted in PUT and returned in GET. Document behavior in test comments. After edit: `get_errors()`.
+  
+- [ ] 10.2.5 Update `runAllIntegrationTests()` to include Phase 4 tests
+  - **📋 REMINDER**: **SEARCH FIRST**: Find existing Phase 3 section in `runAllIntegrationTests()`. Add Phase 4 section following same pattern. After edit: `get_errors()`.
+  
 - [ ] 10.2.6 Commit: "Task 10.2: Add RWGPS API contract integration tests"
+  - **📋 REMINDER**: Before commit: `npm run validate-all` must pass. Verify `get_errors(['gas-integration-tests.js'])` shows ZERO errors. Note: These tests run manually in GAS, not in Jest.
 
 ### Phase 10 Complete Checkpoint
 
