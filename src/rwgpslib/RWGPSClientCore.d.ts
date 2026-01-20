@@ -210,31 +210,6 @@ declare class RWGPSClientCore {
     static formatDateForV1Api(date: Date): { start_date: string; start_time: string };
 
     /**
-     * Convert SCCCCEvent object to v1 API format
-     * 
-     * @param {object} scccEvent - SCCCCEvent-like object with startDateTime, desc, organizer_tokens
-     * @returns {object} v1 API format with start_date, start_time, description, organizer_ids
-     */
-    static convertSCCCCEventToV1Format(scccEvent: {
-        name?: string;
-        desc?: string;
-        location?: string;
-        startDateTime?: Date;
-        organizer_tokens?: (string | number)[];
-        route_ids?: (string | number)[];
-        visibility?: number;
-    }): {
-        name?: string;
-        description?: string;
-        location?: string;
-        start_date?: string;
-        start_time?: string;
-        organizer_ids?: string[];
-        route_ids?: string[];
-        visibility?: number;
-    };
-
-    /**
      * Build expiration tag for a route
      * 
      * @param {Date} date - Expiration date

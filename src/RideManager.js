@@ -168,9 +168,8 @@ const RideManager = (function () {
                 // Non-fatal - continue with update
             }
             
-            // Convert SCCCCEvent to v1 API format and edit event on RWGPS
-            const v1EventData = RWGPSClientCore.convertSCCCCEventToV1Format(rideEvent);
-            const editResult = client.editEvent(row.rideURL, v1EventData);
+            // Pass SCCCCEvent directly - it now uses v1 field names natively
+            const editResult = client.editEvent(row.rideURL, rideEvent);
             if (!editResult.success) {
                 throw new Error(`Failed to edit event on RWGPS: ${editResult.error || 'Unknown error'}`);
             }
