@@ -68,11 +68,12 @@ class EventFactory {
         if (!row) throw new Error("no row object given");
         const event = new SCCCCEvent();
         event.location = row.location && !(row.location.startsWith("#")) ? row.location : "";
-        event.route_ids = [row.routeURL.split('/')[4]];
+        // Route ID from URL is a number (OpenAPI spec compliance)
+        event.route_ids = [parseInt(row.routeURL.split('/')[4], 10)];
         event.startDateTime = row.startDateTime;
         event.name = makeRideName_(row);
-        // Use v1 field name directly (organizer_tokens is deprecated alias)
-        event.organizer_ids = organizers.map(o => o.id + "");
+        // Use v1 field name directly - organizer.id is already a number (OpenAPI spec compliance)
+        event.organizer_ids = organizers.map(o => o.id);
         let address = row.address && !(row.address.startsWith("#")) ? row.address : "";
         let meet_time = dates.addMinutes(row.startTime, -15);
         const startTime = row.startTime instanceof Date ? row.startTime : new Date(row.startTime);
@@ -88,8 +89,10 @@ class EventFactory {
      */
     static fromRwgpsEvent(rwgpsEvent) {
         const event = new SCCCCEvent();
-        // Note: API-only fields (all_day, visibility, auto_expire_participants) are NOT stored on SCCCCEvent.
-        // They are added with defaults in buildV1EditEventPayload when sending to RWGPS API.
+        // Note: API-only fields (all_day, visibility) are NOT stored on SCCCCEvent.
+        // They are added with defaults in buildV1EditEventPayload when sending to RWGPS API:
+        // - visibility: 'public' (string per OpenAPI)
+        // - all_day: false (boolean per OpenAPI)
         
         // Use v1 field name directly (desc is deprecated alias)
         // Note: RWGPS response may use 'desc' or 'description' depending on endpoint
@@ -99,14 +102,15 @@ class EventFactory {
         event.name = rwgpsEvent.name;
         
         // Handle organizer_ids: accept v1 organizer_ids array OR organizers array of {id, name}
+        // IDs are numbers per OpenAPI spec - convert strings if needed, keep numbers as-is
         if (rwgpsEvent.organizer_ids) {
-            event.organizer_ids = rwgpsEvent.organizer_ids.map(id => String(id));
+            event.organizer_ids = rwgpsEvent.organizer_ids.map((/** @type {string | number} */ id) => typeof id === 'number' ? id : parseInt(String(id), 10));
         } else if (Array.isArray(rwgpsEvent.organizers)) {
-            event.organizer_ids = rwgpsEvent.organizers.map((/** @type {{id: any}} */ o) => String(o.id));
+            event.organizer_ids = rwgpsEvent.organizers.map((/** @type {{id: number}} */ o) => o.id);
         }
         
-        // Handle route_ids: accept routes array of {id, name}
-        event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map((/** @type {{id: any}} */ r) => r.id + "") : [];
+        // Handle route_ids: accept routes array of {id, name} - IDs are numbers per OpenAPI spec
+        event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map((/** @type {{id: string | number}} */ r) => typeof r.id === 'number' ? r.id : parseInt(String(r.id), 10)) : [];
         
         // Handle start date/time: prefer v1 format (start_date + start_time) over web format (starts_at)
         if (rwgpsEvent.start_date && rwgpsEvent.start_time) {

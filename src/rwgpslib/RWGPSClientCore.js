@@ -187,19 +187,16 @@ var RWGPSClientCore = (function() {
      * 
      * Adds API-only defaults for fields not in domain SCCCCEvent:
      * - visibility: 'public' (default)
-     * - auto_expire_participants: '1' (default)
-     * - all_day: passed as parameter
+     * - all_day: passed as parameter (boolean per OpenAPI spec)
      * 
-     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string, auto_expire_participants?: string}} eventData - Event data in v1 format
-     * @param {string} allDay - "0" or "1" for all_day flag
-     * @returns {{event: {name?: string, description?: string, start_date?: string, start_time?: string, all_day?: string, visibility?: string, auto_expire_participants?: string, organizer_ids?: string[], route_ids?: string[], location?: string, time_zone?: string}}} Payload wrapped in "event" key
+     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: number[], route_ids?: number[], location?: string, time_zone?: string}} eventData - Event data in v1 format
+     * @param {boolean} allDay - All-day event flag (boolean per OpenAPI spec)
+     * @returns {{event: {name?: string, description?: string, start_date?: string, start_time?: string, all_day?: boolean, visibility?: string, organizer_ids?: number[], route_ids?: number[], location?: string, time_zone?: string}}} Payload wrapped in "event" key
      */
     static buildV1EditEventPayload(eventData, allDay) {
         /** @type {Record<string, any>} */
         const event = {
-            all_day: String(allDay),
-            // API defaults for fields not in domain SCCCCEvent (Task 7.8)
-            auto_expire_participants: eventData.auto_expire_participants || '1'
+            all_day: Boolean(allDay)  // OpenAPI spec: boolean (not string "0"/"1")
         };
 
         // Copy v1 fields directly
@@ -229,14 +226,14 @@ var RWGPSClientCore = (function() {
             event.visibility = 'public';
         }
 
-        // Handle organizer_ids (convert to strings)
+        // Handle organizer_ids - keep as numbers (OpenAPI spec compliance)
         if (eventData.organizer_ids && Array.isArray(eventData.organizer_ids)) {
-            event.organizer_ids = eventData.organizer_ids.map((/** @type {string | number} */ id) => String(id));
+            event.organizer_ids = eventData.organizer_ids;
         }
 
-        // Handle route_ids (convert to strings)
+        // Handle route_ids - keep as numbers (OpenAPI spec compliance)
         if (eventData.route_ids && Array.isArray(eventData.route_ids)) {
-            event.route_ids = eventData.route_ids.map((/** @type {string | number} */ id) => String(id));
+            event.route_ids = eventData.route_ids;
         }
 
         return { event };
@@ -295,7 +292,7 @@ var RWGPSClientCore = (function() {
      */
     static buildMultipartTextParts(eventData, logoBlob, boundary) {
         // Build v1 event payload structure (nested under 'event' key)
-        const v1Payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+        const v1Payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
         
         /** @type {string[]} */
         const parts = [];

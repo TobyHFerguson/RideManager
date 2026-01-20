@@ -4,23 +4,44 @@
  * (Renamed from Event to avoid DOM Event shadowing)
  * 
  * Uses v1 API field names natively so events can be passed directly to/from RWGPS API.
+ * 
+ * Date/Time Model:
+ * - _startDateTime (Date) is the PRIMARY storage - a single source of truth
+ * - start_date/start_time are COMPUTED getters/setters for v1 API compatibility
+ * 
+ * API-only fields (visibility, all_day) are NOT stored here.
+ * They are added by buildV1EditEventPayload with sensible defaults per OpenAPI spec:
+ * - visibility: 'public' (string)
+ * - all_day: false (boolean)
  */
 declare class SCCCCEvent {
-    // === v1 API NATIVE FIELDS (passed directly to API) ===
-    all_day: string;
-    auto_expire_participants: string;
+    // === DOMAIN FIELDS ===
     /** Event description (v1 API field name) */
     description: string | undefined;
     location: string | undefined;
     name: string | undefined;
-    /** Organizer IDs (v1 API field name) */
-    organizer_ids: string[] | undefined;
-    route_ids: string[] | undefined;
-    /** Start date string: "2025-01-20" (v1 API field) */
-    start_date: string | undefined;
-    /** Start time string: "09:00" (v1 API field) */
-    start_time: string | undefined;
-    visibility: number;
+    /** Organizer IDs (v1 API field name) - numbers per OpenAPI spec */
+    organizer_ids: number[] | undefined;
+    /** Route IDs - numbers per OpenAPI spec */
+    route_ids: number[] | undefined;
+    
+    // === PRIMARY DATE/TIME STORAGE ===
+    /** Primary storage for start date/time (private, use startDateTime getter/setter) */
+    _startDateTime: Date | undefined;
+    
+    /** Primary accessor: get/set the start date/time as a Date object */
+    get startDateTime(): Date | undefined;
+    set startDateTime(value: Date | undefined);
+    
+    // === API-COMPATIBLE COMPUTED ACCESSORS ===
+    /** Computed from _startDateTime: "2025-01-20" (v1 API field format) */
+    get start_date(): string | undefined;
+    /** Sets date portion of _startDateTime, preserving time or defaulting to midnight */
+    set start_date(value: string | undefined);
+    /** Computed from _startDateTime: "09:00" (v1 API field format) */
+    get start_time(): string | undefined;
+    /** Sets time portion of _startDateTime, preserving date */
+    set start_time(value: string | undefined);
     
     // === LEGACY ALIASES (deprecated, for backward compatibility) ===
     /** @deprecated Use description instead */
@@ -28,14 +49,9 @@ declare class SCCCCEvent {
     /** @deprecated Use description instead */
     set desc(value: string | undefined);
     /** @deprecated Use organizer_ids instead */
-    get organizer_tokens(): string[] | undefined;
+    get organizer_tokens(): number[] | undefined;
     /** @deprecated Use organizer_ids instead */
-    set organizer_tokens(value: string[] | undefined);
-    
-    // === CONVENIENCE GETTER/SETTER ===
-    /** Computed from start_date + start_time; setter splits Date into those fields */
-    get startDateTime(): Date | undefined;
-    set startDateTime(value: Date | undefined);
+    set organizer_tokens(value: number[] | undefined);
 
     constructor();
 

@@ -343,46 +343,46 @@ describe('RWGPSClientCore', () => {
                 start_time: '11:00'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event).toBeDefined();
             expect(payload.event.name).toBe('Test Event');
             expect(payload.event.description).toBe('Test description');
             expect(payload.event.start_date).toBe('2030-03-01');
             expect(payload.event.start_time).toBe('11:00');
-            expect(payload.event.all_day).toBe('0');
+            expect(payload.event.all_day).toBe(false);
         });
 
-        it('should convert organizer_ids to strings', () => {
+        it('should keep organizer_ids as numbers (OpenAPI compliance)', () => {
             const eventData = {
                 name: 'Test',
-                organizer_ids: [123, 456, '789']
+                organizer_ids: [123, 456, 789]
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
-            expect(payload.event.organizer_ids).toEqual(['123', '456', '789']);
+            expect(payload.event.organizer_ids).toEqual([123, 456, 789]);
         });
 
-        it('should convert route_ids to strings', () => {
+        it('should keep route_ids as numbers (OpenAPI compliance)', () => {
             const eventData = {
                 name: 'Test',
-                route_ids: [50969472, '12345678']
+                route_ids: [50969472, 12345678]
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
-            expect(payload.event.route_ids).toEqual(['50969472', '12345678']);
+            expect(payload.event.route_ids).toEqual([50969472, 12345678]);
         });
 
-        it('should set all_day flag', () => {
+        it('should set all_day flag as boolean', () => {
             const eventData = { name: 'Test' };
 
-            const payload1 = RWGPSClientCore.buildV1EditEventPayload(eventData, '1');
-            expect(payload1.event.all_day).toBe('1');
+            const payload1 = RWGPSClientCore.buildV1EditEventPayload(eventData, true);
+            expect(payload1.event.all_day).toBe(true);
 
-            const payload0 = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
-            expect(payload0.event.all_day).toBe('0');
+            const payload0 = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
+            expect(payload0.event.all_day).toBe(false);
         });
 
         it('should include optional fields when provided', () => {
@@ -393,7 +393,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 'public'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.location).toBe('Test Location');
             expect(payload.event.time_zone).toBe('America/Los_Angeles');
@@ -407,7 +407,7 @@ describe('RWGPSClientCore', () => {
                 // No description or desc field
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.description).toBeUndefined();
         });
@@ -418,7 +418,7 @@ describe('RWGPSClientCore', () => {
                 // No location field
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.location).toBeUndefined();
         });
@@ -429,7 +429,7 @@ describe('RWGPSClientCore', () => {
                 // No time_zone field
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.time_zone).toBeUndefined();
         });
@@ -441,7 +441,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 0
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('public');
         });
@@ -452,7 +452,7 @@ describe('RWGPSClientCore', () => {
                 visibility: '0'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('public');
         });
@@ -463,7 +463,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 1
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('private');
         });
@@ -474,7 +474,7 @@ describe('RWGPSClientCore', () => {
                 visibility: '1'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('private');
         });
@@ -485,7 +485,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 2
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('friends_only');
         });
@@ -496,7 +496,7 @@ describe('RWGPSClientCore', () => {
                 visibility: '2'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('friends_only');
         });
@@ -507,7 +507,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 'public'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('public');
         });
@@ -518,7 +518,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 'private'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('private');
         });
@@ -529,7 +529,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 'friends_only'
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('friends_only');
         });
@@ -540,7 +540,7 @@ describe('RWGPSClientCore', () => {
                 visibility: 99
             };
 
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
             expect(payload.event.visibility).toBe('99');
         });
@@ -554,21 +554,9 @@ describe('RWGPSClientCore', () => {
                     // No visibility - should default to 'public'
                 };
 
-                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
                 expect(payload.event.visibility).toBe('public');
-            });
-            
-            it('should add auto_expire_participants default "1" when not provided', () => {
-                const eventData = {
-                    name: 'Test Event',
-                    description: 'Test'
-                    // No auto_expire_participants - should default to '1'
-                };
-
-                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
-
-                expect(payload.event.auto_expire_participants).toBe('1');
             });
             
             it('should use provided visibility instead of default', () => {
@@ -577,9 +565,71 @@ describe('RWGPSClientCore', () => {
                     visibility: 'friends_only'
                 };
 
-                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
 
                 expect(payload.event.visibility).toBe('friends_only');
+            });
+            
+            it('should NOT include auto_expire_participants (removed - undocumented legacy field)', () => {
+                const eventData = {
+                    name: 'Test Event',
+                    description: 'Test'
+                };
+
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
+
+                expect(payload.event.auto_expire_participants).toBeUndefined();
+            });
+        });
+        
+        // OpenAPI spec compliance (Task 7.8 - use spec-native types)
+        describe('OpenAPI spec compliance', () => {
+            it('should use boolean for all_day (not string)', () => {
+                const eventData = { name: 'Test' };
+
+                const payloadFalse = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
+                expect(payloadFalse.event.all_day).toBe(false);
+                expect(typeof payloadFalse.event.all_day).toBe('boolean');
+
+                const payloadTrue = RWGPSClientCore.buildV1EditEventPayload(eventData, true);
+                expect(payloadTrue.event.all_day).toBe(true);
+                expect(typeof payloadTrue.event.all_day).toBe('boolean');
+            });
+
+            it('should keep organizer_ids as numbers (not convert to strings)', () => {
+                const eventData = {
+                    name: 'Test',
+                    organizer_ids: [123, 456]
+                };
+
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
+
+                expect(payload.event.organizer_ids).toEqual([123, 456]);
+                expect(typeof payload.event.organizer_ids[0]).toBe('number');
+            });
+
+            it('should keep route_ids as numbers (not convert to strings)', () => {
+                const eventData = {
+                    name: 'Test',
+                    route_ids: [50969472, 12345678]
+                };
+
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
+
+                expect(payload.event.route_ids).toEqual([50969472, 12345678]);
+                expect(typeof payload.event.route_ids[0]).toBe('number');
+            });
+
+            it('should use string for visibility (OpenAPI enum: public, private, friends_only)', () => {
+                const eventData = {
+                    name: 'Test',
+                    visibility: 'friends_only'
+                };
+
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
+
+                expect(payload.event.visibility).toBe('friends_only');
+                expect(typeof payload.event.visibility).toBe('string');
             });
         });
     });

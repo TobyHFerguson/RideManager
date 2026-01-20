@@ -215,7 +215,7 @@ describe('RWGPSClient', () => {
             expect(result.error).toBeUndefined();
         });
 
-        it('should make single PUT request with all_day=0', () => {
+        it('should make single PUT request with all_day=false (boolean per OpenAPI)', () => {
             RWGPSMockServer.loadFixture('edit');
 
             const eventUrl = 'https://ridewithgps.com/events/444070';
@@ -237,11 +237,11 @@ describe('RWGPSClient', () => {
             const putCalls = calls.filter((/** @type {any} */ c) => c.method === 'PUT');
             expect(putCalls.length).toBe(1);
             
-            // Single PUT should have all_day=0 and use v1 endpoint
+            // Single PUT should have all_day=false (boolean per OpenAPI spec) and use v1 endpoint
             const put = putCalls[0];
             expect(put.url).toBe('https://ridewithgps.com/api/v1/events/444070.json');
             const payload = JSON.parse(put.options.payload);
-            expect(payload.event.all_day).toBe('0');
+            expect(payload.event.all_day).toBe(false);
             expect(payload.event.name).toBe(eventData.name);
             expect(payload.event.start_date).toBe(eventData.start_date);
             expect(payload.event.start_time).toBe(eventData.start_time);
@@ -411,7 +411,7 @@ describe('RWGPSClient', () => {
             expect(result.error).toBeDefined();
         });
 
-        it('should set all_day to 0 by default', () => {
+        it('should set all_day to false by default (boolean per OpenAPI spec)', () => {
             RWGPSMockServer.loadFixture('create');
 
             const eventData = {
@@ -425,7 +425,7 @@ describe('RWGPSClient', () => {
             const calls = RWGPSMockServer.actualCalls;
             const postCalls = calls.filter((/** @type {any} */ c) => c.method === 'POST');
             const payload = JSON.parse(postCalls[postCalls.length - 1].options.payload);
-            expect(payload.event.all_day).toBe('0');
+            expect(payload.event.all_day).toBe(false);
         });
 
         it('should create event with logo using multipart/form-data', () => {

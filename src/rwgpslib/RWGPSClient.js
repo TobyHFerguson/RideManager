@@ -451,8 +451,8 @@ var RWGPSClient = (function() {
             const v1PutUrl = `https://ridewithgps.com/api/v1/events/${parsed.eventId}.json`;
             const basicAuthHeader = this._getBasicAuthHeader();
             
-            // Single PUT with all_day=0 and actual data
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+            // Single PUT with all_day=false and actual data
+            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
             const options = RWGPSClientCore.buildV1EditEventOptions(basicAuthHeader, payload);
             
             const response = this._fetch(v1PutUrl, options);
@@ -564,7 +564,7 @@ var RWGPSClient = (function() {
                 };
             } else {
                 // Create event without logo using JSON POST
-                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, false);
                 options = RWGPSClientCore.buildV1CreateEventOptions(basicAuthHeader, payload);
             }
 

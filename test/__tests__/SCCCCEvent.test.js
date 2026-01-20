@@ -49,56 +49,77 @@ describe('SCCCCEvent Tests', () => {
     });
 
     describe('start_date and start_time fields', () => {
-      test('should have start_date field', () => {
+      // Task 7.8.1/7.8.2: _startDateTime is primary storage, start_date/start_time are computed
+      
+      test('startDateTime should be the primary storage mechanism', () => {
         const event = new SCCCCEvent();
-        event.start_date = '2025-01-20';
+        const testDate = new Date('2025-01-20T09:30:00');
+        event.startDateTime = testDate;
+        
+        // startDateTime is the source of truth
+        expect(event.startDateTime).toBeInstanceOf(Date);
+        expect(event.startDateTime.getTime()).toBe(testDate.getTime());
+      });
+
+      test('start_date getter should compute from _startDateTime', () => {
+        const event = new SCCCCEvent();
+        event.startDateTime = new Date('2025-01-20T09:30:00');
         expect(event.start_date).toBe('2025-01-20');
       });
 
-      test('should have start_time field', () => {
+      test('start_time getter should compute from _startDateTime', () => {
         const event = new SCCCCEvent();
-        event.start_time = '09:00';
-        expect(event.start_time).toBe('09:00');
+        event.startDateTime = new Date('2025-01-20T09:30:00');
+        expect(event.start_time).toBe('09:30');
       });
 
-      test('startDateTime getter should compute from start_date and start_time', () => {
+      test('start_date setter should update _startDateTime preserving time', () => {
         const event = new SCCCCEvent();
-        event.start_date = '2025-01-20';
-        event.start_time = '09:30';
-        const result = event.startDateTime;
-        expect(result).toBeInstanceOf(Date);
-        expect(result.getFullYear()).toBe(2025);
-        expect(result.getMonth()).toBe(0); // January
-        expect(result.getDate()).toBe(20);
-        expect(result.getHours()).toBe(9);
-        expect(result.getMinutes()).toBe(30);
-      });
-
-      test('startDateTime getter should return undefined when start_date is missing', () => {
-        const event = new SCCCCEvent();
-        event.start_time = '09:30';
-        expect(event.startDateTime).toBeUndefined();
-      });
-
-      test('startDateTime getter should return undefined when start_time is missing', () => {
-        const event = new SCCCCEvent();
-        event.start_date = '2025-01-20';
-        expect(event.startDateTime).toBeUndefined();
-      });
-
-      test('startDateTime setter should split into start_date and start_time', () => {
-        const event = new SCCCCEvent();
-        // Set using Date object (local time)
-        event.startDateTime = new Date('2025-03-15T14:45:00');
+        event.startDateTime = new Date('2025-01-20T09:30:00');
+        event.start_date = '2025-03-15';
+        // Date changed, time preserved
         expect(event.start_date).toBe('2025-03-15');
+        expect(event.start_time).toBe('09:30');
+      });
+
+      test('start_time setter should update _startDateTime preserving date', () => {
+        const event = new SCCCCEvent();
+        event.startDateTime = new Date('2025-01-20T09:30:00');
+        event.start_time = '14:45';
+        // Time changed, date preserved
+        expect(event.start_date).toBe('2025-01-20');
         expect(event.start_time).toBe('14:45');
+      });
+
+      test('start_date and start_time setters should work when _startDateTime is undefined', () => {
+        const event = new SCCCCEvent();
+        // Set date first (should create date with midnight time)
+        event.start_date = '2025-01-20';
+        expect(event.start_date).toBe('2025-01-20');
+        expect(event.start_time).toBe('00:00'); // Default time when only date is set
+        
+        // Now set time
+        event.start_time = '09:30';
+        expect(event.start_date).toBe('2025-01-20');
+        expect(event.start_time).toBe('09:30');
+      });
+
+      test('startDateTime getter should return undefined when not set', () => {
+        const event = new SCCCCEvent();
+        expect(event.startDateTime).toBeUndefined();
       });
 
       test('startDateTime setter should handle undefined', () => {
         const event = new SCCCCEvent();
-        event.start_date = '2025-01-20';
-        event.start_time = '09:30';
+        event.startDateTime = new Date('2025-01-20T09:30:00');
         event.startDateTime = undefined;
+        expect(event.startDateTime).toBeUndefined();
+        expect(event.start_date).toBeUndefined();
+        expect(event.start_time).toBeUndefined();
+      });
+
+      test('start_date/start_time should return undefined when _startDateTime is undefined', () => {
+        const event = new SCCCCEvent();
         expect(event.start_date).toBeUndefined();
         expect(event.start_time).toBeUndefined();
       });
@@ -313,6 +334,65 @@ describe('SCCCCEvent Tests', () => {
 
     test('getGroupName - foobar [12]', () => {
       expect(SCCCCEvent.getGroupName("foobar [12]")).toBe("");
+    });
+  });
+
+  // Task 7.8: organizer_ids and route_ids should store numbers (matching OpenAPI spec)
+  describe('ID fields store numbers (OpenAPI compliance)', () => {
+    describe('organizer_ids', () => {
+      test('should store numbers directly without conversion', () => {
+        const event = new SCCCCEvent();
+        event.organizer_ids = [302732, 498406];
+        expect(event.organizer_ids).toEqual([302732, 498406]);
+        expect(typeof event.organizer_ids[0]).toBe('number');
+      });
+
+      test('should accept single number in array', () => {
+        const event = new SCCCCEvent();
+        event.organizer_ids = [12345];
+        expect(event.organizer_ids).toEqual([12345]);
+      });
+
+      test('should handle empty array', () => {
+        const event = new SCCCCEvent();
+        event.organizer_ids = [];
+        expect(event.organizer_ids).toEqual([]);
+      });
+
+      test('should handle undefined', () => {
+        const event = new SCCCCEvent();
+        expect(event.organizer_ids).toBeUndefined();
+        event.organizer_ids = undefined;
+        expect(event.organizer_ids).toBeUndefined();
+      });
+    });
+
+    describe('route_ids', () => {
+      test('should store numbers directly without conversion', () => {
+        const event = new SCCCCEvent();
+        event.route_ids = [50969472, 12345678];
+        expect(event.route_ids).toEqual([50969472, 12345678]);
+        expect(typeof event.route_ids[0]).toBe('number');
+      });
+
+      test('should accept single number in array', () => {
+        const event = new SCCCCEvent();
+        event.route_ids = [17166902];
+        expect(event.route_ids).toEqual([17166902]);
+      });
+
+      test('should handle empty array', () => {
+        const event = new SCCCCEvent();
+        event.route_ids = [];
+        expect(event.route_ids).toEqual([]);
+      });
+
+      test('should handle undefined', () => {
+        const event = new SCCCCEvent();
+        expect(event.route_ids).toBeUndefined();
+        event.route_ids = undefined;
+        expect(event.route_ids).toBeUndefined();
+      });
     });
   });
 });

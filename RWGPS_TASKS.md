@@ -1611,14 +1611,15 @@ With unified event shape, this function only needs to:
 | `location` | ✅ Used (from row) | ✅ Required | KEEP |
 | `organizer_ids` | ✅ Used (ride leaders) | ✅ Required | KEEP |
 | `route_ids` | ✅ Used (route from row) | ✅ Required | KEEP |
-| `start_date` | ⚠️ Stored for v1 API | ✅ v1 API format | KEEP (part of v1 format) |
-| `start_time` | ⚠️ Stored for v1 API | ✅ v1 API format | KEEP (part of v1 format) |
-| `startDateTime` | ✅ Computed getter/setter | ⚠️ Derived from start_date/start_time | KEEP (convenience accessor) |
-| `visibility` | ❌ Never read by domain (always 0) | ✅ API required | REMOVED - added in API layer |
+| `_startDateTime` | ✅ Primary storage (Date) | ⚠️ Internal | PRIMARY - single source of truth |
+| `startDateTime` | ✅ Domain accessor (Date) | ⚠️ Domain use | Getter/setter for _startDateTime |
+| `start_date` | ⚠️ Computed for v1 API | ✅ v1 API format | COMPUTED getter/setter |
+| `start_time` | ⚠️ Computed for v1 API | ✅ v1 API format | COMPUTED getter/setter |
+| `visibility` | ❌ Never read by domain | ✅ API required | REMOVED - added in API layer |
 | `all_day` | ❌ Always "0" | ✅ API required | REMOVED - added in API layer |
 | `auto_expire_participants` | ❌ Always "1" | ✅ API required | REMOVED - added in API layer |
 
-**Changes Implemented:**
+**Changes Implemented (Task 7.8 Part 1 - API Cleanup):**
 
 1. **Removed API-only fields** (`visibility`, `all_day`, `auto_expire_participants`) from SCCCCEvent
 2. **Updated `buildV1EditEventPayload`** to add defaults: `visibility='public'`, `all_day` from parameter, `auto_expire_participants='1'`
@@ -1626,17 +1627,25 @@ With unified event shape, this function only needs to:
 4. **Updated test fixtures** (managedEvent.js) to remove API-only fields
 5. **Updated EventFactory tests** to not assert on removed fields
 
-**Note**: The `startDateTime` refactoring to make `_startDateTime` the primary storage (with `start_date`/`start_time` as computed getters) was deferred. The current design works correctly - `startDateTime` is a computed getter/setter that delegates to `start_date`/`start_time`.
+**Changes Implemented (Task 7.8 Part 2 - Date/Time Refactoring):**
 
+6. **Made `_startDateTime` the primary storage** - single Date object as source of truth
+7. **Made `start_date`/`start_time` computed getters/setters** - derive from `_startDateTime` for v1 API compatibility
+8. **Updated tests** to verify new behavior (date setting preserves time, time setting preserves date)
+9. **Updated SCCCCEvent.d.ts** to reflect new type structure
+
+- [x] 7.8.1 Write tests for _startDateTime as primary storage (TDD RED)
+- [x] 7.8.2 Refactor SCCCCEvent: _startDateTime as primary, start_date/start_time as computed getters (TDD GREEN)
 - [x] 7.8.3 Write tests for API-only field defaults in buildV1EditEventPayload (TDD RED)
 - [x] 7.8.4 Write tests for API-only fields removal from SCCCCEvent (TDD RED)
 - [x] 7.8.5 Update buildV1EditEventPayload to add API defaults (TDD GREEN)
 - [x] 7.8.6 Update SCCCCEvent constructor to remove API-only fields (TDD GREEN)
 - [x] 7.8.7 Update EventFactory.fromRwgpsEvent to not set API-only fields
 - [x] 7.8.8 Update test fixtures and assertions to match new domain model
-- [x] 7.8.9 Run `npm test` - all 689 tests pass
-- [x] 7.8.10 Run `npm run typecheck` - zero errors
-- [x] 7.8.11 Commit: 230c77a "Task 7.8: Clean SCCCCEvent - remove API artifacts from domain"
+- [x] 7.8.9 Update SCCCCEvent.d.ts to reflect new type structure
+- [x] 7.8.10 Run `npm test` - all 691 tests pass
+- [x] 7.8.11 Run `npm run typecheck` - zero errors
+- [ ] 7.8.12 Commit: "Task 7.8: Clean SCCCCEvent - _startDateTime primary, API artifacts removed"
 
 ### Task 7.9: Final verification and cleanup
 

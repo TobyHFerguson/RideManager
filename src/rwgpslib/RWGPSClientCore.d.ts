@@ -100,9 +100,10 @@ declare class RWGPSClientCore {
     /**
      * Build payload for v1 API editEvent PUT request
      * Uses native v1 API format (description, start_date, start_time, organizer_ids, route_ids)
+     * Per OpenAPI spec: all_day is boolean, organizer_ids/route_ids are number[]
      * 
      * @param eventData - Event data in v1 format
-     * @param allDay - "0" or "1" for all_day flag
+     * @param allDay - boolean for all_day flag (per OpenAPI spec)
      * @returns Payload wrapped in "event" key
      */
     static buildV1EditEventPayload(
@@ -112,12 +113,12 @@ declare class RWGPSClientCore {
             start_date?: string;
             start_time?: string;
             visibility?: string | number;
-            organizer_ids?: (string | number)[];
-            route_ids?: (string | number)[];
+            organizer_ids?: number[];
+            route_ids?: number[];
             location?: string;
             time_zone?: string;
         },
-        allDay: string
+        allDay: boolean
     ): { event: any };
 
     /**

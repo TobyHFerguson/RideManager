@@ -67,10 +67,18 @@ describe("Event Factory Tests", () => {
                 expect(event.description).toContain('Ride Leader');
             });
             
-            test("should set organizer_ids (not just organizer_tokens alias)", () => {
+            test("should set organizer_ids as numbers (OpenAPI spec compliance)", () => {
                 const event = EventFactory.newEvent(managedRow, organizers, 1234);
                 expect(event.organizer_ids).toBeDefined();
-                expect(event.organizer_ids).toEqual(['302732']);
+                expect(event.organizer_ids).toEqual([302732]);
+                expect(typeof event.organizer_ids[0]).toBe('number');
+            });
+
+            test("should set route_ids as numbers (OpenAPI spec compliance)", () => {
+                const event = EventFactory.newEvent(managedRow, organizers, 1234);
+                expect(event.route_ids).toBeDefined();
+                expect(event.route_ids).toEqual([17166902]);
+                expect(typeof event.route_ids[0]).toBe('number');
             });
             
             test("should set start_date and start_time", () => {
@@ -96,10 +104,17 @@ describe("Event Factory Tests", () => {
                 expect(event.description).toContain('Ride Leader');
             });
             
-            test("should set organizer_ids from rwgps organizer_ids", () => {
+            test("should set organizer_ids as numbers from rwgps organizer_ids", () => {
                 const event = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
                 expect(event.organizer_ids).toBeDefined();
-                expect(event.organizer_ids).toEqual(['302732']);
+                expect(event.organizer_ids).toEqual([302732]);
+                expect(typeof event.organizer_ids[0]).toBe('number');
+            });
+
+            test("should set route_ids as numbers from rwgps routes", () => {
+                const event = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
+                expect(event.route_ids).toBeDefined();
+                expect(typeof event.route_ids[0]).toBe('number');
             });
             
             test("should set start_date and start_time from starts_at", () => {
@@ -154,14 +169,14 @@ describe("Event Factory Tests", () => {
                 expect(() => EventFactory.newEvent()).toThrow("no row object given");
             })
             test("should return an event even if organizers is missing", () => {
-                // Build expected with v1 field names
+                // Build expected with v1 field names - IDs are numbers per OpenAPI spec
                 const expectedDescription = managedEvent.description.replace("Toby Ferguson", "To Be Determined");
                 const expected = { 
                     ...managedEvent,
                     description: expectedDescription,
                     desc: expectedDescription,
-                    organizer_ids: [getGlobals().RIDE_LEADER_TBD_ID + ""],
-                    organizer_tokens: [getGlobals().RIDE_LEADER_TBD_ID + ""],
+                    organizer_ids: [getGlobals().RIDE_LEADER_TBD_ID],
+                    organizer_tokens: [getGlobals().RIDE_LEADER_TBD_ID],
                 };
                 // Remove legacy aliases from expected since we compare using toMatchObject
                 delete expected.desc;
@@ -234,7 +249,7 @@ describe("Event Factory Tests", () => {
                 expect(actual.name).toBe('Test Event');
                 expect(actual.description).toBe('Test description');
                 expect(actual.location).toBe('Test Location');
-                expect(actual.route_ids).toEqual(['12345']);
+                expect(actual.route_ids).toEqual([12345]);
                 // Check start_date and start_time are parsed correctly
                 expect(actual.start_date).toBe('2025-03-15');
                 expect(actual.start_time).toBe('09:30');
@@ -270,8 +285,8 @@ describe("Event Factory Tests", () => {
                 
                 const actual = EventFactory.fromRwgpsEvent(v1Event);
                 
-                // Should extract IDs as strings
-                expect(actual.organizer_ids).toEqual(['111', '222']);
+                // Should extract IDs as numbers (OpenAPI spec compliance)
+                expect(actual.organizer_ids).toEqual([111, 222]);
             })
             
             test("should log error when event name ends with ]", () => {

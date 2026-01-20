@@ -10,6 +10,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
 
 // Task 7.8: SCCCCEvent no longer has API-only fields (visibility, all_day, auto_expire_participants)
 // Those are added by buildV1EditEventPayload with sensible defaults
+// Task 7.8: organizer_ids and route_ids are now numbers (OpenAPI spec compliance)
 const payload = {
     // v1 API field name
     description: descriptionText,
@@ -17,11 +18,11 @@ const payload = {
     desc: descriptionText,
     location: 'Seascape County Park',
     name: 'Sun A (1/1 10:00) SCP - Seascape/Corralitos',
-    // v1 API field name
-    organizer_ids: ['302732'],
+    // v1 API field name - numbers per OpenAPI spec
+    organizer_ids: [302732],
     // Legacy alias for backward compatibility (enumerable for spread)
-    organizer_tokens: ['302732'],
-    route_ids: ['17166902'],
+    organizer_tokens: [302732],
+    route_ids: [17166902],
     // v1 API field names
     start_date: '2023-01-01',
     start_time: '10:00',

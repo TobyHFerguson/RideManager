@@ -71,21 +71,20 @@ class SCCCCEvent {
     this.location = undefined;
     /** @type {string | undefined} */
     this.name = undefined;
-    /** @type {string[] | undefined} v1 API field name */
+    /** @type {number[] | undefined} v1 API field name - numbers per OpenAPI spec */
     this.organizer_ids = undefined;
-    /** @type {string[] | undefined} */
+    /** @type {number[] | undefined} numbers per OpenAPI spec */
     this.route_ids = undefined;
-    /** @type {string | undefined} v1 API field: "2025-01-20" */
-    this.start_date = undefined;
-    /** @type {string | undefined} v1 API field: "09:00" */
-    this.start_time = undefined;
     
-    // NOTE: API-only fields (visibility, all_day, auto_expire_participants)
-    // are NOT stored in SCCCCEvent. They are added by buildV1EditEventPayload
-    // with sensible defaults:
-    // - visibility: 'public' (default)
-    // - all_day: '0' (passed as parameter to buildV1EditEventPayload)
-    // - auto_expire_participants: '1' (default)
+    // PRIMARY DATE/TIME STORAGE: Domain uses Date object
+    // start_date and start_time are computed getters/setters for API compatibility
+    /** @type {Date | undefined} Primary storage for start date/time */
+    this._startDateTime = undefined;
+    
+    // NOTE: API-only fields (visibility, all_day) are NOT stored in SCCCCEvent.
+    // They are added by buildV1EditEventPayload with sensible defaults:
+    // - visibility: 'public' (string per OpenAPI spec)
+    // - all_day: false (boolean per OpenAPI spec)
   }
 
   // === LEGACY ALIASES (for backward compatibility during migration) ===
@@ -100,38 +99,85 @@ class SCCCCEvent {
   /** @deprecated Use organizer_ids instead */
   set organizer_tokens(v) { this.organizer_ids = v; }
 
-  // === CONVENIENCE GETTER/SETTER for startDateTime ===
+  // === PRIMARY DATE/TIME ACCESSORS ===
   
   /**
-   * Get startDateTime computed from start_date and start_time
+   * Get the start date/time as a Date object (primary storage)
    * @returns {Date | undefined}
    */
   get startDateTime() {
-    if (this.start_date && this.start_time) {
-      return new Date(`${this.start_date}T${this.start_time}`);
-    }
-    return undefined;
+    return this._startDateTime;
   }
 
   /**
-   * Set start_date and start_time from a Date object
+   * Set the start date/time from a Date object (primary storage)
    * @param {Date | undefined} value
    */
   set startDateTime(value) {
+    this._startDateTime = value;
+  }
+
+  // === API-COMPATIBLE COMPUTED GETTERS/SETTERS ===
+  
+  /**
+   * Get start_date in v1 API format (YYYY-MM-DD), computed from _startDateTime
+   * @returns {string | undefined}
+   */
+  get start_date() {
+    if (!this._startDateTime) return undefined;
+    const year = this._startDateTime.getFullYear();
+    const month = String(this._startDateTime.getMonth() + 1).padStart(2, '0');
+    const day = String(this._startDateTime.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Set start_date from v1 API format (YYYY-MM-DD), preserving existing time or defaulting to midnight
+   * @param {string | undefined} value
+   */
+  set start_date(value) {
     if (!value) {
-      this.start_date = undefined;
-      this.start_time = undefined;
+      this._startDateTime = undefined;
       return;
     }
-    // Format as YYYY-MM-DD
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, '0');
-    const day = String(value.getDate()).padStart(2, '0');
-    this.start_date = `${year}-${month}-${day}`;
-    // Format as HH:MM
-    const hours = String(value.getHours()).padStart(2, '0');
-    const minutes = String(value.getMinutes()).padStart(2, '0');
-    this.start_time = `${hours}:${minutes}`;
+    // Parse date, preserve existing time or use midnight
+    const existingTime = this._startDateTime 
+      ? { hours: this._startDateTime.getHours(), minutes: this._startDateTime.getMinutes() }
+      : { hours: 0, minutes: 0 };
+    this._startDateTime = new Date(`${value}T00:00:00`);
+    this._startDateTime.setHours(existingTime.hours, existingTime.minutes, 0, 0);
+  }
+
+  /**
+   * Get start_time in v1 API format (HH:MM), computed from _startDateTime
+   * @returns {string | undefined}
+   */
+  get start_time() {
+    if (!this._startDateTime) return undefined;
+    const hours = String(this._startDateTime.getHours()).padStart(2, '0');
+    const minutes = String(this._startDateTime.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  /**
+   * Set start_time from v1 API format (HH:MM), preserving existing date or using today
+   * @param {string | undefined} value
+   */
+  set start_time(value) {
+    if (!value) {
+      // Setting time to undefined clears the whole datetime
+      this._startDateTime = undefined;
+      return;
+    }
+    const [hours, minutes] = value.split(':').map(Number);
+    if (!this._startDateTime) {
+      // Create a date with today and the given time
+      this._startDateTime = new Date();
+      this._startDateTime.setHours(hours, minutes, 0, 0);
+    } else {
+      // Preserve existing date, update time
+      this._startDateTime.setHours(hours, minutes, 0, 0);
+    }
   }
   isCancelled() {
     return this.name ? this.name.startsWith('CANCELLED: ') : false;
