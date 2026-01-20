@@ -1376,7 +1376,7 @@ updateMembers() {
 - [x] 8.2.8 Update type definitions (.d.ts files)
 - [x] 8.2.9 Run `npm test` - 686 tests pass
 - [x] 8.2.10 Run `npm run typecheck` - ZERO errors
-- [ ] 8.2.11 Add GAS integration test: `testRWGPSClientGetClubMembers()` - TODO (manual testing)
+- [x] 8.2.11 Add GAS integration test: `testGetClubMembers()` in gas-integration-tests.js
 - [x] 8.2.12 Commit: "Task 8.2: Migrate RWGPSMembersAdapter to v1 API"
 
 ---

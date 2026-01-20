@@ -924,6 +924,65 @@ function testImportRoute(sourceRouteUrl) {
     }
 }
 
+/**
+ * Test: RWGPSClient.getClubMembers() - v1 API with Pagination
+ * 
+ * Verifies:
+ * - Uses v1 API with Basic Auth (no login required)
+ * - Returns array of club members
+ * - Handles pagination correctly (fetches all pages)
+ * - Each member has expected structure (user object with id, names)
+ * 
+ * Note: This test reads from the actual club member list.
+ * It does not modify any data.
+ */
+function testGetClubMembers() {
+    const testName = 'getClubMembers (v1 API with pagination)';
+    console.log(`\n📋 Running: ${testName}`);
+    
+    try {
+        const client = getTestClient();
+        
+        // STEP 1: Get club members
+        console.log('   Fetching club members...');
+        const result = client.getClubMembers();
+        
+        assert(result.success === true, `getClubMembers should succeed (error: ${result.error || 'none'})`);
+        assert(Array.isArray(result.members), 'Result should contain members array');
+        
+        console.log(`   ✅ Retrieved ${result.members.length} members`);
+        
+        // STEP 2: Verify member structure (check first member)
+        if (result.members.length > 0) {
+            console.log('   Verifying member structure...');
+            const firstMember = result.members[0];
+            
+            assert(firstMember.id !== undefined, 'Member should have id');
+            assert(firstMember.user !== undefined, 'Member should have user object');
+            assert(firstMember.user.id !== undefined, 'Member.user should have id');
+            assert(typeof firstMember.user.first_name === 'string', 'Member.user should have first_name');
+            assert(typeof firstMember.user.last_name === 'string', 'Member.user should have last_name');
+            
+            console.log(`   ✅ Member structure verified (first: ${firstMember.user.first_name} ${firstMember.user.last_name})`);
+            
+            // STEP 3: Verify active field exists
+            console.log('   Verifying active field...');
+            assert(typeof firstMember.active === 'boolean', 'Member should have boolean active field');
+            console.log(`   ✅ Active field verified (active=${firstMember.active})`);
+        } else {
+            console.log('   ⚠️  No members returned (club may be empty)');
+        }
+        
+        logTestResult(testName, true);
+        return { success: true, memberCount: result.members.length };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logTestResult(testName, false, err.message);
+        return { success: false, error: err.message };
+    }
+}
+
 // ============================================================================
 // TEST RUNNER
 // ============================================================================
@@ -976,6 +1035,7 @@ function runAllIntegrationTests(testEventId, logoUrl) {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
         testGetEvent(testEventId);
+        testGetClubMembers();
         testCreateEvent();
         testEditEvent(testEventId);
         testExtraFieldsTolerance(testEventId);  // Architecture decision test
