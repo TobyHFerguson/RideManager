@@ -88,7 +88,9 @@ class EventFactory {
      */
     static fromRwgpsEvent(rwgpsEvent) {
         const event = new SCCCCEvent();
-        event.all_day = rwgpsEvent.all_day ? "1" : "0";
+        // Note: API-only fields (all_day, visibility, auto_expire_participants) are NOT stored on SCCCCEvent.
+        // They are added with defaults in buildV1EditEventPayload when sending to RWGPS API.
+        
         // Use v1 field name directly (desc is deprecated alias)
         // Note: RWGPS response may use 'desc' or 'description' depending on endpoint
         const descValue = rwgpsEvent.description || rwgpsEvent.desc || '';
@@ -118,7 +120,6 @@ class EventFactory {
             event.startDateTime = new Date();
         }
         
-        event.visibility = rwgpsEvent.visibility || 0;
         if (event.name && event.name.trim().endsWith(']')) {
             console.error(`Event name '${event.name}' should not end with ']' - this is likely a bug in the RWGPS event import code`);
         }

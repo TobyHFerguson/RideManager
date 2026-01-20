@@ -544,6 +544,44 @@ describe('RWGPSClientCore', () => {
 
             expect(payload.event.visibility).toBe('99');
         });
+        
+        // Task 7.8: API defaults for fields not in domain SCCCCEvent
+        describe('API defaults for domain-clean SCCCCEvent (Task 7.8)', () => {
+            it('should add visibility default "public" when not provided', () => {
+                const eventData = {
+                    name: 'Test Event',
+                    description: 'Test'
+                    // No visibility - should default to 'public'
+                };
+
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+                expect(payload.event.visibility).toBe('public');
+            });
+            
+            it('should add auto_expire_participants default "1" when not provided', () => {
+                const eventData = {
+                    name: 'Test Event',
+                    description: 'Test'
+                    // No auto_expire_participants - should default to '1'
+                };
+
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+                expect(payload.event.auto_expire_participants).toBe('1');
+            });
+            
+            it('should use provided visibility instead of default', () => {
+                const eventData = {
+                    name: 'Test Event',
+                    visibility: 'friends_only'
+                };
+
+                const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
+
+                expect(payload.event.visibility).toBe('friends_only');
+            });
+        });
     });
 
     describe('buildV1EditEventOptions', () => {

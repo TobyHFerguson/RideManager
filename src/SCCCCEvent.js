@@ -64,9 +64,7 @@ class SCCCCEvent {
 
 
   constructor() {
-    // === v1 API NATIVE FIELDS (passed directly to API) ===
-    this.all_day = '0';
-    this.auto_expire_participants = '1';
+    // === DOMAIN FIELDS (used by business logic) ===
     /** @type {string | undefined} v1 API field name */
     this.description = undefined;
     /** @type {string | undefined} */
@@ -81,8 +79,13 @@ class SCCCCEvent {
     this.start_date = undefined;
     /** @type {string | undefined} v1 API field: "09:00" */
     this.start_time = undefined;
-    /** @type {number} */
-    this.visibility = 0;
+    
+    // NOTE: API-only fields (visibility, all_day, auto_expire_participants)
+    // are NOT stored in SCCCCEvent. They are added by buildV1EditEventPayload
+    // with sensible defaults:
+    // - visibility: 'public' (default)
+    // - all_day: '0' (passed as parameter to buildV1EditEventPayload)
+    // - auto_expire_participants: '1' (default)
   }
 
   // === LEGACY ALIASES (for backward compatibility during migration) ===

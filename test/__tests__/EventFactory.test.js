@@ -163,6 +163,9 @@ describe("Event Factory Tests", () => {
                     organizer_ids: [getGlobals().RIDE_LEADER_TBD_ID + ""],
                     organizer_tokens: [getGlobals().RIDE_LEADER_TBD_ID + ""],
                 };
+                // Remove legacy aliases from expected since we compare using toMatchObject
+                delete expected.desc;
+                delete expected.organizer_tokens;
 
                 const actual = EventFactory.newEvent(managedRow, [], 1234)
                 expect(actual).toMatchObject(expected);
@@ -173,13 +176,10 @@ describe("Event Factory Tests", () => {
             test("should return the managedEvent", () => {
                 let actual = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
                 const expected = managedEvent;
-                // Check direct properties
-                expect(actual.all_day).toBe(expected.all_day);
-                expect(actual.auto_expire_participants).toBe(expected.auto_expire_participants);
+                // Check domain properties (NOT API-only fields like visibility, all_day, auto_expire_participants)
                 expect(actual.location).toBe(expected.location);
                 expect(actual.name).toBe(expected.name);
                 expect(actual.route_ids).toEqual(expected.route_ids);
-                expect(actual.visibility).toBe(expected.visibility);
                 // Check via legacy aliases (organizer_tokens is getter for organizer_ids)
                 expect(actual.organizer_tokens).toEqual(expected.organizer_tokens);
                 // Check startDateTime (getter that computes from start_date/start_time)

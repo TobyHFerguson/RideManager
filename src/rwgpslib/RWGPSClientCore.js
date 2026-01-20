@@ -185,14 +185,21 @@ var RWGPSClientCore = (function() {
      * Build payload for v1 API editEvent PUT request
      * Uses native v1 API format (description, start_date, start_time, organizer_ids, route_ids)
      * 
-     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string}} eventData - Event data in v1 format
+     * Adds API-only defaults for fields not in domain SCCCCEvent:
+     * - visibility: 'public' (default)
+     * - auto_expire_participants: '1' (default)
+     * - all_day: passed as parameter
+     * 
+     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string, auto_expire_participants?: string}} eventData - Event data in v1 format
      * @param {string} allDay - "0" or "1" for all_day flag
-     * @returns {{event: {name?: string, description?: string, start_date?: string, start_time?: string, all_day?: string, visibility?: string, organizer_ids?: string[], route_ids?: string[], location?: string, time_zone?: string}}} Payload wrapped in "event" key
+     * @returns {{event: {name?: string, description?: string, start_date?: string, start_time?: string, all_day?: string, visibility?: string, auto_expire_participants?: string, organizer_ids?: string[], route_ids?: string[], location?: string, time_zone?: string}}} Payload wrapped in "event" key
      */
     static buildV1EditEventPayload(eventData, allDay) {
         /** @type {Record<string, any>} */
         const event = {
-            all_day: String(allDay)
+            all_day: String(allDay),
+            // API defaults for fields not in domain SCCCCEvent (Task 7.8)
+            auto_expire_participants: eventData.auto_expire_participants || '1'
         };
 
         // Copy v1 fields directly
@@ -204,6 +211,7 @@ var RWGPSClientCore = (function() {
         if (eventData.time_zone !== undefined) event.time_zone = eventData.time_zone;
         
         // Convert visibility: legacy numeric values → API string values
+        // Default to 'public' if not provided (Task 7.8: visibility not in domain)
         if (eventData.visibility !== undefined) {
             const vis = eventData.visibility;
             // Accept both string ('public') and legacy numeric (0) formats
@@ -216,6 +224,9 @@ var RWGPSClientCore = (function() {
             } else {
                 event.visibility = String(vis); // Pass through unknown values
             }
+        } else {
+            // Default visibility for domain SCCCCEvent without visibility field
+            event.visibility = 'public';
         }
 
         // Handle organizer_ids (convert to strings)

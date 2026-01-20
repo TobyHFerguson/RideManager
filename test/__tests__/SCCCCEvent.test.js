@@ -103,6 +103,30 @@ describe('SCCCCEvent Tests', () => {
         expect(event.start_time).toBeUndefined();
       });
     });
+    
+    // Task 7.8: Clean SCCCCEvent - API artifacts should NOT be domain fields
+    describe('API-only fields removed from domain (Task 7.8)', () => {
+      test('should NOT have visibility as own property (API artifact)', () => {
+        const event = new SCCCCEvent();
+        // visibility should NOT be a direct property on SCCCCEvent
+        // It's an API-only field that should be added by buildV1EditEventPayload
+        expect(Object.prototype.hasOwnProperty.call(event, 'visibility')).toBe(false);
+      });
+      
+      test('should NOT have all_day as own property (API artifact)', () => {
+        const event = new SCCCCEvent();
+        // all_day should NOT be a direct property on SCCCCEvent
+        // It's an API-only field that should be added by buildV1EditEventPayload
+        expect(Object.prototype.hasOwnProperty.call(event, 'all_day')).toBe(false);
+      });
+      
+      test('should NOT have auto_expire_participants as own property (API artifact)', () => {
+        const event = new SCCCCEvent();
+        // auto_expire_participants should NOT be a direct property on SCCCCEvent
+        // It's an API-only field that should be added by buildV1EditEventPayload
+        expect(Object.prototype.hasOwnProperty.call(event, 'auto_expire_participants')).toBe(false);
+      });
+    });
   });
 
   // =========================================================================

@@ -8,9 +8,9 @@ All participants are assumed to have read and agreed to the clubs ride policy: h
 
 Note: When using a browser use the "Go to route" link below to open up the route.`;
 
+// Task 7.8: SCCCCEvent no longer has API-only fields (visibility, all_day, auto_expire_participants)
+// Those are added by buildV1EditEventPayload with sensible defaults
 const payload = {
-    all_day: '0',
-    auto_expire_participants: '1',
     // v1 API field name
     description: descriptionText,
     // Legacy alias for backward compatibility (enumerable for spread)
@@ -25,7 +25,6 @@ const payload = {
     // v1 API field names
     start_date: '2023-01-01',
     start_time: '10:00',
-    visibility: 0,
 }
 
 // Add computed startDateTime getter for backward compatibility
