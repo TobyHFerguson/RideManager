@@ -1800,53 +1800,108 @@ Routes (discovered from API response, not fully in spec):
 ### Goal
 Complete the migration from external RWGPSLib to internal vendored library by ensuring adequate test coverage and API contract validation. This is the final phase of the RWGPS library migration.
 
+**Model recommendation**: Sonnet 4 or Haiku for most tasks. These are mechanical test additions following existing patterns.
+
 ### Task 10.1: Increase RWGPSClient.js test coverage to 90%+
+
+**Model**: Sonnet 4 (pattern-following test additions) or Haiku (if budget-conscious)
 
 Current coverage: ~76% (many GAS adapter paths untested)
 
+**TDD Approach for Coverage Tasks:**
+Since the code already exists, we use "Coverage-Driven Testing":
+1. Identify uncovered lines from coverage report
+2. Write test that exercises that specific code path
+3. Run test - should pass (code exists)
+4. If test fails, understand why before fixing
+
 - [ ] 10.1.1 Identify uncovered lines in RWGPSClient.js: `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`
-  - **📋 REMINDER**: Read coverage report carefully. Note which LINES are uncovered, not just which methods.
+  - **📋 REMINDER**: Read coverage report carefully. Note which LINES are uncovered, not just which methods. List specific line numbers.
+  - **🤖 MODEL**: Haiku is sufficient - just running a command and reading output.
   
 - [ ] 10.1.2 Add tests for `updateEventLogo()` method
   - **📋 REMINDER**: Check existing tests first (`grep -r "updateEventLogo" test/`). Mock UrlFetchApp, DriveApp. After edit: `get_errors(['test/__tests__/RWGPSClient.test.js'])`.
+  - **🧪 TDD**: 
+    1. Write test describing expected behavior (logo upload flow)
+    2. Run test - should pass if mocks are correct
+    3. If fails, check mock setup matches actual implementation
+  - **🤖 MODEL**: Sonnet 4 - needs to understand existing mock patterns.
   
 - [ ] 10.1.3 Add tests for `setRouteExpiration()` method
   - **📋 REMINDER**: Check existing tests first. After edit: `get_errors()` then `npm test`.
+  - **🧪 TDD**: Write test first → verify passes → check coverage increased.
+  - **🤖 MODEL**: Haiku - straightforward method, follow existing patterns.
   
 - [ ] 10.1.4 Add tests for `getClubMembers()` pagination
   - **📋 REMINDER**: Check existing tests first. Test edge cases: empty results, single page, multiple pages. After edit: `get_errors()` then `npm test`.
+  - **🧪 TDD**: 
+    1. Write test for empty results → run → should pass
+    2. Write test for single page → run → should pass
+    3. Write test for multi-page → run → should pass
+  - **🤖 MODEL**: Sonnet 4 - pagination logic requires understanding control flow.
   
 - [ ] 10.1.5 Add tests for error handling paths (login failures, HTTP errors)
   - **📋 REMINDER**: Check existing error tests first. Test: HTTP 401, 403, 500, network errors. After edit: `get_errors()` then `npm test`.
+  - **🧪 TDD**: For each error type:
+    1. Write test that triggers error condition
+    2. Assert expected error handling behavior
+    3. Run → should pass
+  - **🤖 MODEL**: Sonnet 4 - error handling patterns need careful mock setup.
   
 - [ ] 10.1.6 Achieve 90%+ statement coverage
   - **📋 REMINDER**: Run `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`. If <90%, identify remaining uncovered lines and add targeted tests.
+  - **🤖 MODEL**: Haiku - verification step only.
   
 - [ ] 10.1.7 Commit: "Task 10.1: Increase RWGPSClient test coverage to 90%+"
   - **📋 REMINDER**: Before commit: `npm run validate-all` must pass. Verify `get_errors(['src/'])` shows ZERO errors.
+  - **🤖 MODEL**: Haiku - just git commands.
 
 ### Task 10.2: Add API contract integration tests
+
+**Model**: Sonnet 4 (needs to understand type definitions and API contracts)
 
 Validate that our type definitions match actual RWGPS API behavior.
 Add to existing `gas-integration-tests.js` (already has RWGPS tests, structured framework).
 
+**TDD Approach for Contract Tests:**
+These tests validate that our *types* match *reality*. Write tests that:
+1. Assert specific fields exist in API responses
+2. Assert specific input shapes are accepted
+3. Document any discrepancies found
+
 - [ ] 10.2.1 Add "Phase 4: Type Contract Validation" section to `gas-integration-tests.js`
   - **📋 REMINDER**: **SEARCH FIRST**: Read existing file structure before adding. Follow existing patterns (test utilities, logTestResult, TEST_STATE). Use existing `getTestClient()`. After edit: `get_errors(['gas-integration-tests.js'])`.
+  - **🧪 TDD**: Write section header and empty test stubs first. Verify file still valid.
+  - **🤖 MODEL**: Sonnet 4 - needs to match existing file structure.
   
 - [ ] 10.2.2 Add test: `testRWGPSEventResponseMatchesType()` - verify GET response has expected fields
   - **📋 REMINDER**: Compare response against `RWGPSEvent` type in `src/rwgpslib/RWGPSEvent.d.ts`. Check for required fields: id, name, starts_at, visibility, etc. Use `assert()` helper from existing tests. After edit: `get_errors()`.
+  - **🧪 TDD**: 
+    1. Read RWGPSEvent.d.ts - list required fields
+    2. Write assertions for each required field
+    3. Deploy to GAS and run - discover any mismatches
+  - **🤖 MODEL**: Sonnet 4 - needs to cross-reference type definitions.
   
 - [ ] 10.2.3 Add test: `testRWGPSEventInputAccepted()` - verify PUT with our types works
   - **📋 REMINDER**: Create minimal valid input matching `RWGPSEventInput` type. Verify API accepts it without error. Clean up test event after. After edit: `get_errors()`.
+  - **🧪 TDD**: 
+    1. Read RWGPSEventInput type
+    2. Build minimal valid object
+    3. Test that API accepts it
+  - **🤖 MODEL**: Sonnet 4 - needs to construct valid API payload.
   
 - [ ] 10.2.4 Add test: `testUndocumentedFieldsStillWork()` - verify organizer_ids, route_ids
   - **📋 REMINDER**: These fields work but aren't in OpenAPI spec. Test that they're accepted in PUT and returned in GET. Document behavior in test comments. After edit: `get_errors()`.
+  - **🧪 TDD**: Document expected behavior in comments FIRST, then write assertions to match.
+  - **🤖 MODEL**: Sonnet 4 - needs to understand undocumented API behavior.
   
 - [ ] 10.2.5 Update `runAllIntegrationTests()` to include Phase 4 tests
   - **📋 REMINDER**: **SEARCH FIRST**: Find existing Phase 3 section in `runAllIntegrationTests()`. Add Phase 4 section following same pattern. After edit: `get_errors()`.
+  - **🤖 MODEL**: Haiku - just adding function calls following existing pattern.
   
 - [ ] 10.2.6 Commit: "Task 10.2: Add RWGPS API contract integration tests"
   - **📋 REMINDER**: Before commit: `npm run validate-all` must pass. Verify `get_errors(['gas-integration-tests.js'])` shows ZERO errors. Note: These tests run manually in GAS, not in Jest.
+  - **🤖 MODEL**: Haiku - just git commands.
 
 ### Phase 10 Complete Checkpoint
 
