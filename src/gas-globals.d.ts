@@ -20,7 +20,6 @@ import type { Externals as ExternalsType } from './Externals';
 import type Globals from './Globals';
 import type { GlobalsObject } from './Globals';
 import type GoogleEventCore from './GoogleEventCore';
-import type GroupLogoManager from './GroupLogoManager';
 import type Groups from './Groups';
 import type HyperlinkUtils from './HyperlinkUtils';
 import type { MenuFunctions as MenuFunctionsType } from './MenuFunctions';
@@ -78,7 +77,6 @@ declare global {
     const AnnouncementCore: typeof AnnouncementCore;
     const RideCoordinator: typeof RideCoordinator;
     const UserLogger: typeof UserLogger;
-    const GroupLogoManager: typeof GroupLogoManager;
     const CredentialManager: typeof CredentialManager;
     const RWGPSClient: typeof RWGPSClient;
     const RWGPSClientCore: typeof RWGPSClientCore;

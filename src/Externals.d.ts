@@ -81,13 +81,6 @@ export type {
     importRoute(route: { url: string; expiry: string; tags: string[]; name?: string }): string;
 
     /**
-     * Copies a template event to create a new event.
-     * @param templateUrl The URL of the template event.
-     * @returns The URL of the newly created event.
-     */
-    copy_template_(templateUrl: string): string;
-
-    /**
      * Gets organizer objects for the given ride leader names.
      * @param rideLeaders Array of ride leader names or comma-separated string.
      * @returns Array of Organizer objects with id and text properties.
