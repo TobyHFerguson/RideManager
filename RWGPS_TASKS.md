@@ -1355,19 +1355,29 @@ updateMembers() {
 }
 ```
 
+**Completed**: 2026-01-19 (commit c7373ac)
+
+**Deliverables**:
+- `RWGPSClientCore.buildClubMembersUrl(page, pageSize)` - URL builder with pagination
+- `RWGPSClientCore.hasMorePages(pagination)` - Pagination helper
+- `RWGPSClient.getClubMembers()` - Fetches all members with automatic pagination
+- Updated `RWGPSMembersAdapter` to use `RWGPSClientFactory.create().getClubMembers()`
+- Removed legacy `rwgps` constructor parameter
+- 18 new tests (12 Core + 6 Client), all 686 tests pass, typecheck ZERO errors
+
 **Steps**:
-- [ ] 8.2.1 Add `RWGPSClient.getClubMembers()` method
-- [ ] 8.2.2 Write Core helper `buildClubMembersUrl(page, pageSize)` in RWGPSClientCore.js
-- [ ] 8.2.3 Write tests for RWGPSClient.getClubMembers()
-- [ ] 8.2.4 Handle pagination (loop until all pages fetched)
-- [ ] 8.2.5 Update RWGPSMembersAdapter to use RWGPSClient instead of legacy rwgps
-- [ ] 8.2.6 Remove rwgps constructor parameter from RWGPSMembersAdapter
-- [ ] 8.2.7 Update RWGPSMembersCore if response format differs
-- [ ] 8.2.8 Update type definitions (.d.ts files)
-- [ ] 8.2.9 Run `npm test` - all tests pass
-- [ ] 8.2.10 Run `npm run typecheck` - ZERO errors
-- [ ] 8.2.11 Add GAS integration test: `testRWGPSClientGetClubMembers()`
-- [ ] 8.2.12 Commit: "Task 8.2: Migrate RWGPSMembersAdapter to v1 API"
+- [x] 8.2.1 Add `RWGPSClient.getClubMembers()` method
+- [x] 8.2.2 Write Core helper `buildClubMembersUrl(page, pageSize)` in RWGPSClientCore.js
+- [x] 8.2.3 Write tests for RWGPSClient.getClubMembers()
+- [x] 8.2.4 Handle pagination (loop until all pages fetched)
+- [x] 8.2.5 Update RWGPSMembersAdapter to use RWGPSClient instead of legacy rwgps
+- [x] 8.2.6 Remove rwgps constructor parameter from RWGPSMembersAdapter
+- [x] 8.2.7 Update RWGPSMembersCore if response format differs (not needed - format compatible)
+- [x] 8.2.8 Update type definitions (.d.ts files)
+- [x] 8.2.9 Run `npm test` - 686 tests pass
+- [x] 8.2.10 Run `npm run typecheck` - ZERO errors
+- [ ] 8.2.11 Add GAS integration test: `testRWGPSClientGetClubMembers()` - TODO (manual testing)
+- [x] 8.2.12 Commit: "Task 8.2: Migrate RWGPSMembersAdapter to v1 API"
 
 ---
 
@@ -1386,11 +1396,12 @@ updateMembers() {
 
 - [ ] No more web API calls for operations that have v1 equivalents
 - [x] utils.js getRoute() uses v1 API (Task 8.1 ✅)
-- [ ] RWGPSMembersAdapter uses RWGPSClient.getClubMembers()
-- [ ] Legacy rwgps dependency removed from RWGPSMembersAdapter
-- [x] All Jest tests pass (668 tests)
+- [x] RWGPSMembersAdapter uses RWGPSClient.getClubMembers() (Task 8.2 ✅)
+- [x] Legacy rwgps dependency removed from RWGPSMembersAdapter (Task 8.2 ✅)
+- [x] All Jest tests pass (686 tests)
 - [ ] All GAS integration tests pass
 - [x] `npm run typecheck` passes (zero errors)
+- [ ] Task 8.3: Final v1 migration verification
 - [ ] Ready to resume Phase 7
 
 ---
