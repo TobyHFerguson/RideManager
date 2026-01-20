@@ -1,17 +1,37 @@
 /**
+ * Globals - Manage global configuration variables
+ * 
+ * Type definitions for global configuration retrieval.
+ */
+
+/**
  * Type representing the global variables object
  */
 export type GlobalsObject = Record<string, any>;
 
 /**
- * Initializes global variables from the 'Globals' sheet and caches them.
- * @returns {GlobalsObject} An object containing global key-value pairs.
+ * Type representing personal templates configuration
  */
-declare function initializeGlobals(): GlobalsObject;
+export type PersonalTemplatesObject = Record<string, any>;
 
 /**
- * Retrieves global variables from cache, or initializes them if not present.
- * @returns {GlobalsObject} An object containing global key-value pairs.
+ * Globals class with static methods for global configuration management
  */
-declare function getGlobals(): GlobalsObject;
+declare class Globals {
+    /**
+     * Retrieves global variables from cache, or initializes them if not present.
+     * @returns An object containing global key-value pairs.
+     */
+    static getGlobals(): GlobalsObject;
 
+    /**
+     * Retrieves personal templates configuration.
+     * @returns An object containing personal template key-value pairs.
+     */
+    static getPersonalTemplates(): PersonalTemplatesObject;
+}
+
+// Global function alias for backward compatibility (declared in gas-globals.d.ts)
+export function getGlobals(): GlobalsObject;
+
+export default Globals;

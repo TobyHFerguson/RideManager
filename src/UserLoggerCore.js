@@ -9,6 +9,8 @@
  * Design: 100% testable in Jest, zero GAS dependencies
  */
 
+var UserLoggerCore = (function() {
+
 class UserLoggerCore {
     /**
      * Format log entry with all required fields
@@ -57,6 +59,9 @@ class UserLoggerCore {
 }
 
 // Node.js/Jest export
+return UserLoggerCore;
+})();
+
 if (typeof module !== 'undefined') {
     module.exports = UserLoggerCore;
 }

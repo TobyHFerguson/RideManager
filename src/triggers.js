@@ -79,6 +79,10 @@ function createMenu_() {
     .addItem('Install Triggers', installTriggers_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addItem('Clear Cache', clearCache_.name)
+    .addSeparator()
+    .addSubMenu(ui.createMenu('Developer')
+      .addItem('Clear API Log', clearApiLog_.name)
+      .addItem('View API Log Stats', viewApiLogStats_.name))
     .addToUi();
 }
 
@@ -106,6 +110,45 @@ function clearCache_() {
   Exports.CacheManager.clearCache();
   var ui = SpreadsheetApp.getUi();
   ui.alert('Cache Cleared', 'All caches (Globals, Groups, PersonalTemplates) have been cleared and will reload from sheets on next use.', ui.ButtonSet.OK);
+}
+
+/**
+ * Clears all entries in the RWGPS API Log sheet.
+ * Developer menu function for API logging.
+ */
+function clearApiLog_() {
+  RWGPSApiLogger.clear();
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('API Log Cleared', 'The RWGPS API Log sheet has been cleared.', ui.ButtonSet.OK);
+}
+
+/**
+ * Shows statistics about the API log entries.
+ * Developer menu function for API logging.
+ */
+function viewApiLogStats_() {
+  var ui = SpreadsheetApp.getUi();
+  var entries = RWGPSApiLogger.getAll();
+  
+  if (entries.length === 0) {
+    ui.alert('API Log Stats', 'No API log entries found.\n\nPerform some operations to start capturing API traffic.', ui.ButtonSet.OK);
+    return;
+  }
+  
+  // Group by operation
+  var opCounts = {};
+  entries.forEach(function(entry) {
+    var op = entry.operation || 'unknown';
+    opCounts[op] = (opCounts[op] || 0) + 1;
+  });
+  
+  var stats = 'Total Entries: ' + entries.length + '\n\n';
+  stats += 'Operations:\n';
+  Object.keys(opCounts).sort().forEach(function(op) {
+    stats += '  ' + op + ': ' + opCounts[op] + '\n';
+  });
+  
+  ui.alert('API Log Stats', stats, ui.ButtonSet.OK);
 }
 
 function cancelSelectedRides_() {
@@ -227,6 +270,15 @@ function handleCRSheetEdit_(event, adapter) {
  * @param {boolean} scheduled - Whether the ride is currently scheduled
  */
 function editRouteColumn_(event, adapter, scheduled) {
+  // Check if this is a re-trigger from our own RichText write
+  // When USER edits, event.value is populated (raw text they typed/pasted)
+  // When OUR CODE writes RichText, event.value is undefined but cell has RichText
+  const existingRichText = event.range.getRichTextValue();
+  if (!event.value && existingRichText && existingRichText.getLinkUrl()) {
+    console.log('editRouteColumn_: Programmatic RichText change detected (no event.value), skipping re-trigger');
+    return;
+  }
+
   // Get raw input from various possible sources
   const inputValue = event.value ||
     event.range.getRichTextValue()?.getLinkUrl() ||
@@ -279,6 +331,8 @@ function editRouteColumn_(event, adapter, scheduled) {
       .setLinkUrl(link.url)
       .build();
     event.range.setRichTextValue(richText);
+    // Flush to ensure the write is committed before we reload for import
+    SpreadsheetApp.flush();
   } else {
     event.range.setValue('');
   }
@@ -583,8 +637,7 @@ function installTriggers_() {
  */
 function dailyRWGPSMembersDownload() {
   try {
-    // @ts-expect-error - getRWGPS is defined in RWGPSFunctions.js
-    const adapter = new RWGPSMembersAdapter(getRWGPS());
+    const adapter = new RWGPSMembersAdapter();
     const result = adapter.updateMembers();
 
     console.log(`dailyRWGPSMembersDownload: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total)`);

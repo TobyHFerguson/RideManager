@@ -426,7 +426,9 @@ var AnnouncementManager = (function () {
 
                 // Update status to cancelled regardless of whether email was sent
                 row.setStatus('cancelled');
-                // Note: Row will be saved automatically by adapter.save() in calling code
+
+                // Update announcement document to match cancelled ride name
+                this.updateAnnouncement(row);
 
                 console.log(`AnnouncementManager.handleCancellation: Row ${row.rowNum} cancelled, email sent: ${sendEmail}`);
                 return { announcementSent: sendEmail, emailAddress };
@@ -464,7 +466,9 @@ var AnnouncementManager = (function () {
 
                 // Update status to pending regardless of whether email was sent
                 row.setStatus('pending');
-                // Note: Row will be saved automatically by adapter.save() in calling code
+
+                // Update announcement document to match reinstated ride name
+                this.updateAnnouncement(row);
 
                 console.log(`AnnouncementManager.handleReinstatement: Row ${row.rowNum} reinstated, email sent: ${sendEmail}`);
                 return { announcementSent: sendEmail, emailAddress };
@@ -536,6 +540,8 @@ var AnnouncementManager = (function () {
                 if (updates.needsDocumentRename && updates.newDocumentName) {
                     try {
                         doc.setName(updates.newDocumentName);
+                        // Also update the spreadsheet cell's display text to match new document name
+                        row.setAnnouncement(row.announcementURL, updates.newDocumentName);
                         console.log(`AnnouncementManager.updateAnnouncement: Renamed document to ${updates.newDocumentName} for row ${row.rowNum}`);
                     } catch (renameError) {
                         const err = renameError instanceof Error ? renameError : new Error(String(renameError));
@@ -1056,8 +1062,7 @@ var AnnouncementManager = (function () {
             const userEmail = Session.getActiveUser().getEmail().toLowerCase();
 
             // Try personal templates first
-            // @ts-expect-error - getPersonalTemplates is global but VS Code sees module import type
-            const personalTemplates = getPersonalTemplates();
+            const personalTemplates = Globals.getPersonalTemplates();
             console.log('Personal templates loaded:', personalTemplates);
             if (personalTemplates[userEmail]) {
                 console.log(`AnnouncementManager: Using personal template for ${userEmail}`);

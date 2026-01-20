@@ -35,11 +35,35 @@ const globalDeclarations = new Map(); // identifier -> [{file, line, type}]
 
 // Scan all JS files for global declarations
 const srcDir = path.join(__dirname, '../src');
-const allJsFiles = fs.readdirSync(srcDir).filter(f => f.endsWith('.js'));
 
-allJsFiles.forEach(file => {
-    const filePath = path.join(srcDir, file);
-    const content = fs.readFileSync(filePath, 'utf8');
+// Recursive function to get all .js files
+function getAllJsFiles(dir, baseDir = dir) {
+    const files = fs.readdirSync(dir);
+    let allFiles = [];
+    
+    files.forEach(file => {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        
+        if (stat.isDirectory()) {
+            // Recursively scan subdirectories
+            allFiles = allFiles.concat(getAllJsFiles(fullPath, baseDir));
+        } else if (file.endsWith('.js')) {
+            // Store relative path from baseDir
+            allFiles.push({
+                absolutePath: fullPath,
+                relativePath: path.relative(baseDir, fullPath)
+            });
+        }
+    });
+    
+    return allFiles;
+}
+
+const allJsFiles = getAllJsFiles(srcDir);
+
+allJsFiles.forEach(({ absolutePath, relativePath }) => {
+    const content = fs.readFileSync(absolutePath, 'utf8');
     const lines = content.split('\n');
     
     let inNodeOnlyBlock = false; // Track if we're inside a Node.js-only if block
@@ -60,14 +84,11 @@ allJsFiles.forEach(file => {
         // Skip lines inside Node.js-only blocks - these don't execute in GAS
         if (inNodeOnlyBlock) return;
         
-        // Only match top-level declarations (no indentation or minimal indentation from comments)
-        // Skip lines inside functions/blocks (indented)
-        if (/^\s{4,}/.test(line)) return; // Skip lines with 4+ spaces indent
-        if (/^\t/.test(line)) return; // Skip tab-indented lines
-        
-        // Match var/const/let declarations and class declarations at top level
+        // Match var/const/let declarations at top level (no deep indentation)
         const varMatch = line.match(/^(var|const|let)\s+(\w+)\s*=/);
-        const classMatch = line.match(/^class\s+(\w+)\s*(?:{|extends)/);
+        
+        // Match class declarations - allow some indentation since JSDoc can indent code
+        const classMatch = line.match(/^\s{0,8}class\s+(\w+)\s*(?:{|extends)/);
         
         if (varMatch) {
             const [, declType, identifier] = varMatch;
@@ -75,7 +96,7 @@ allJsFiles.forEach(file => {
                 globalDeclarations.set(identifier, []);
             }
             globalDeclarations.get(identifier).push({
-                file: `src/${file}`,
+                file: `src/${relativePath}`,
                 line: idx + 1,
                 type: declType
             });
@@ -87,7 +108,7 @@ allJsFiles.forEach(file => {
                 globalDeclarations.set(identifier, []);
             }
             globalDeclarations.get(identifier).push({
-                file: `src/${file}`,
+                file: `src/${relativePath}`,
                 line: idx + 1,
                 type: 'class'
             });
@@ -95,9 +116,34 @@ allJsFiles.forEach(file => {
     });
 });
 
-// Check for duplicate declarations
+// Check for duplicate declarations (ignore IIFE pattern: var X = (function() { class X ... return X; })())
 globalDeclarations.forEach((declarations, identifier) => {
     if (declarations.length > 1) {
+        // Check if all declarations are in the same file
+        const uniqueFiles = new Set(declarations.map(d => d.file));
+        if (uniqueFiles.size === 1) {
+            const file = declarations[0].file;
+            const absolutePath = path.join(__dirname, '..', file);
+            const content = fs.readFileSync(absolutePath, 'utf8');
+            
+            // Check for IIFE pattern: var X = (function() { ... class X ... return X; })()
+            // This is the correct GAS-compatible class pattern per copilot-instructions.md
+            const iifePattern = new RegExp(
+                `var\\s+${identifier}\\s*=\\s*\\(function\\s*\\(\\)\\s*\\{[\\s\\S]*?class\\s+${identifier}\\s*(?:\\{|extends)[\\s\\S]*?return\\s+${identifier};?\\s*\\}\\)\\(\\)`,
+                'm'
+            );
+            if (iifePattern.test(content)) {
+                // This is the correct IIFE pattern - var X = (function() { class X { } return X; })()
+                return;
+            }
+            
+            // Also check for consecutive lines (simpler pattern like const X = X;)
+            const lines = declarations.map(d => d.line).sort((a, b) => a - b);
+            const isConsecutive = lines.every((line, i) => i === 0 || line - lines[i-1] <= 5);
+            if (isConsecutive) {
+                return;
+            }
+        }
         errors.push(`  ❌ ${identifier} - declared ${declarations.length} times:\n` +
             declarations.map(d => `     ${d.file}:${d.line} (${d.type})`).join('\n'));
     }
@@ -105,48 +151,26 @@ globalDeclarations.forEach((declarations, identifier) => {
 
 // For each module, check if a corresponding file exists that defines it
 modules.forEach(({property, module: moduleName}) => {
-    // Check common file naming patterns, including subdirectories
-    const possibleFiles = [
-        `src/${moduleName}.js`,
-        `src/${moduleName.toLowerCase()}.js`,
-        `src/${moduleName.replace(/([A-Z])/g, '-$1').toLowerCase().slice(1)}.js`,
-        `src/common/${moduleName}.js`,
-        `src/common/${moduleName.toLowerCase()}.js`
-    ];
-    
-    let found = false;
-    for (const filePath of possibleFiles) {
-        const fullPath = path.join(__dirname, '..', filePath);
-        if (fs.existsSync(fullPath)) {
-            const content = fs.readFileSync(fullPath, 'utf8');
-            
-            // Check if the file defines the module as a var/const or class
-            const varPattern = new RegExp(`(var|const|let)\\s+${moduleName}\\s*=`, 'm');
-            const classPattern = new RegExp(`class\\s+${moduleName}\\s*(?:{|extends)`, 'm');
-            
-            if (varPattern.test(content) || classPattern.test(content)) {
-                console.log(`  ✅ ${property}${property !== moduleName ? ` (returns ${moduleName})` : ''} - defined in ${filePath}`);
-                found = true;
-                break;
-            }
-        }
-    }
-    
-    if (!found) {
+    // Check if module is in globalDeclarations (found during scan)
+    if (globalDeclarations.has(moduleName)) {
+        const declarations = globalDeclarations.get(moduleName);
+        const firstDecl = declarations[0];
+        console.log(`  ✅ ${property}${property !== moduleName ? ` (returns ${moduleName})` : ''} - defined in ${firstDecl.file}`);
+    } else {
         errors.push(`  ❌ ${property}${property !== moduleName ? ` (returns ${moduleName})` : ''} - no corresponding file found or module not defined`);
     }
 });
 
 // Check for modules used in code but not in Exports
-const jsFiles = allJsFiles.filter(f => f !== 'Exports.js');
+const jsFiles = allJsFiles.filter(f => !f.relativePath.endsWith('Exports.js'));
 
 // Create a Set of module names (the actual variables returned by getters)
 const moduleNamesInExports = new Set(modules.map(m => m.module));
 
 const potentialModules = new Set();
 
-jsFiles.forEach(file => {
-    const content = fs.readFileSync(path.join(srcDir, file), 'utf8');
+jsFiles.forEach(({ absolutePath, relativePath }) => {
+    const content = fs.readFileSync(absolutePath, 'utf8');
     
     // Look for var/const declarations that look like modules (objects or IIFEs)
     const modulePattern = /(var|const)\s+(\w+)\s*=\s*(\{|[\(\)])/g;

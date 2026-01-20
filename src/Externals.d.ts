@@ -1,6 +1,29 @@
 /**
  * Typedefs etc for objects defined elsewhere
  */
+
+// Import types from RWGPSEvent module for re-export
+import type {
+    RWGPSEventSummary,
+    RWGPSEvent,
+    RWGPSEventInput,
+    RWGPSEventPayload,
+    RWGPSEventResult,
+    RWGPSOrganizer,
+    RWGPSRoute
+} from './rwgpslib/RWGPSEvent';
+
+// Re-export the imported types (augments what's available from this module)
+export type {
+    RWGPSEventSummary,
+    RWGPSEvent,
+    RWGPSEventInput,
+    RWGPSEventPayload,
+    RWGPSEventResult,
+    RWGPSOrganizer,
+    RWGPSRoute
+};
+
 /*----------------------- RWGPSLIB -----------------------*/
 /**
    * Library for RWGPS services.
@@ -32,15 +55,15 @@
     /**
      * Edits a single event on RWGPS.
      * @param eventUrl The URL of the event to edit.
-     * @param event The event object with updated data.
+     * @param event The event input object with updated data.
      */
-    edit_event(eventUrl: string, event: RWGPSEvent): void;
+    edit_event(eventUrl: string, event: RWGPSEventInput): void;
 
     /**
      * Edits multiple events on RWGPS.
      * @param edits An array of edits to be applied.
      */
-    edit_events(edits: { url: string; event: RWGPSEvent }[]): Promise<any>;
+    edit_events(edits: { url: string; event: RWGPSEventInput }[]): Promise<any>;
 
     /**
      * Retrieves RSVP counts for events.
@@ -56,13 +79,6 @@
      * @returns The URL of the imported route.
      */
     importRoute(route: { url: string; expiry: string; tags: string[]; name?: string }): string;
-
-    /**
-     * Copies a template event to create a new event.
-     * @param templateUrl The URL of the template event.
-     * @returns The URL of the newly created event.
-     */
-    copy_template_(templateUrl: string): string;
 
     /**
      * Gets organizer objects for the given ride leader names.
@@ -92,39 +108,6 @@
      */
     batch_delete_events(eventUrls: string[]): void;
   }
-
-/**
- * Represents a RWGPS event object as returned by the RWGPS API.
- * This is the raw event structure from RideWithGPS.
- */
-interface RWGPSEvent {
-  /** Whether the event is an all-day event */
-  all_day?: boolean | number;
-  
-  /** Event description text */
-  desc?: string;
-  
-  /** Location name */
-  location?: string;
-  
-  /** Event name/title */
-  name?: string;
-  
-  /** Array of organizer IDs */
-  organizer_ids?: (string | number)[];
-  
-  /** Array of route objects associated with the event */
-  routes?: Array<{ id: string | number; [key: string]: any }>;
-  
-  /** ISO date string when the event starts */
-  starts_at?: string;
-  
-  /** Visibility setting for the event */
-  visibility?: number;
-  
-  /** Additional properties that may be present */
-  [key: string]: any;
-}
 
 /**
  * Represents an organizer entry with an identifier and display text.
@@ -196,4 +179,5 @@ declare namespace dates {
 }
 
 // Export types for use in other modules
-export { RWGPS, RWGPSEvent, Organizer, dates };
+// Note: RWGPSEvent and related types are imported and re-exported at the top of the file
+export { RWGPS, Organizer, dates };

@@ -33,6 +33,134 @@
 
 ---
 
+## 🔍 STOP: Search Before Implementing (MANDATORY)
+
+**CRITICAL: Before writing ANY new functionality, you MUST search for existing implementations.**
+
+**Why This Matters:**
+- This codebase has evolved over time with working, tested implementations
+- Reinventing existing code wastes time and introduces bugs
+- The "new" code you write is often worse than existing tested code
+
+**MANDATORY Search Checklist:**
+
+1. ✅ **Search for existing implementations:**
+   ```bash
+   grep -r "functionName\|methodName\|featureName" src/
+   grep -r "logo\|multipart\|upload" src/rwgpslib/  # Example for logo upload
+   ```
+
+2. ✅ **Check the canonical modules FIRST** (see Module Inventory below):
+   - `RWGPSClientCore.js` - Working RWGPS API implementations (multipart uploads, logo handling)
+   - `RWGPSClient.js` - Working high-level RWGPS operations
+   - `ValidationCore.js` - All validation logic
+   - `AnnouncementCore.js` - Announcement scheduling logic
+
+3. ✅ **If similar code exists:**
+   - **REUSE IT** - call the existing function/method
+   - **REFACTOR IT** - if it needs modification, refactor don't rewrite
+   - **NEVER DUPLICATE** - don't write parallel implementations
+
+4. ✅ **Only write new code when:**
+   - No existing implementation found after thorough search
+   - Existing code cannot be adapted (rare)
+   - You've documented WHY new code is needed
+
+**Example of WRONG vs RIGHT:**
+```javascript
+// ❌ WRONG: Writing new multipart upload code
+_createEventWithLogo(eventData, logoBlob) {
+    // Reinventing multipart upload badly...
+    const parts = [];
+    parts.push(`--${boundary}\r\n`);
+    // ... 50 lines of buggy code
+}
+
+// ✅ RIGHT: Reusing existing tested implementation
+_createEventWithLogo(eventData, logoBlob) {
+    // RWGPSClientCore.buildMultipartCreateEventPayload is tested and works!
+    const payload = RWGPSClientCore.buildMultipartCreateEventPayload(eventData, logoBlob, boundary);
+    return UrlFetchApp.fetch(url, { payload: payload.getBytes(), ... });
+}
+```
+
+---
+
+## 📦 Module Inventory (Canonical Implementations)
+
+**CRITICAL: These modules contain the authoritative implementations. ALWAYS check here first.**
+
+### RWGPS API Layer (`src/rwgpslib/`)
+
+| Module | Purpose | Canonical For |
+|--------|---------|---------------|
+| `RWGPSClientCore.js` | **Pure JS logic for RWGPS API** | Multipart uploads, payload building, logo handling, event data transformation |
+| `RWGPSClient.js` | **High-level RWGPS operations** | `scheduleEvent()`, `createEventWithLogo()`, `editEvent()`, login/session management |
+| `RWGPSFacade.js` | Simplified API surface | Should delegate to RWGPSClientCore for complex operations |
+| `RWGPSAdapter.js` | HTTP transport layer | Low-level fetch operations only |
+| `RWGPSCore.js` | API payload helpers | Secondary to RWGPSClientCore for event operations |
+
+**Logo/Multipart Upload:** Use `RWGPSClientCore.buildMultipartCreateEventPayload()` - it's tested and works.
+
+### Domain Layer (`src/`)
+
+| Module | Purpose | Canonical For |
+|--------|---------|---------------|
+| `SCCCCEvent.js` | Ride event domain model | Event name formatting, date handling, cancellation |
+| `EventFactory.js` | Creates SCCCCEvent instances | `newEvent()` from Row, `fromRwgpsEvent()` from API response |
+| `RowCore.js` | Row data domain model | All row field access, computed properties |
+| `ValidationCore.js` | All validation logic | Row validation, scheduling validation, cancellation validation |
+| `AnnouncementCore.js` | Announcement scheduling | Send time calculation, queue management, template expansion |
+| `GoogleEventCore.js` | Google Calendar helpers | Calendar URL building, RichText link creation |
+
+### Adapters (`src/`)
+
+| Module | Purpose | Notes |
+|--------|---------|-------|
+| `RideManager.js` | Orchestrates ride operations | Calls domain modules, thin adapter |
+| `RideCoordinator.js` | UI-to-business bridge | Validation, confirmation, then delegates to RideManager |
+| `ScheduleAdapter.js` | Spreadsheet I/O | Fiddler-based, handles RichText |
+| `AnnouncementManager.js` | GAS adapter for announcements | Gmail, Drive, triggers |
+
+---
+
+## 🚫 DEPRECATED: Templates Are GONE
+
+**CRITICAL: This codebase NO LONGER uses RWGPS event templates.**
+
+**Old Pattern (NEVER USE):**
+```javascript
+// ❌ WRONG - Templates are deprecated
+const eventUrl = rwgps.copy_template_(templateUrl);  // NO!
+rwgps.edit_event(eventUrl, eventData);               // NO!
+
+// ❌ WRONG - Looking up logos from templates
+for (const [group, specs] of Object.entries(groupSpecs)) {
+    if (specs.Template === templateUrl) {  // NO! Don't match templates
+        logoUrl = specs.LogoURL;
+    }
+}
+```
+
+**New Pattern (ALWAYS USE):**
+```javascript
+// ✅ RIGHT - Direct event creation with logo from group
+const groupSpec = getGroupSpecs()[row.group];
+const logoUrl = groupSpec.LogoURL;  // Logo comes from Groups table, not template
+const result = facade.createEvent(eventData, logoUrl);  // Direct creation
+```
+
+**What Changed:**
+- **Before:** Copy template → Edit event → Logo came from template
+- **After:** Create event directly → Logo from Groups table → No templates involved
+
+**If you see template references in code:**
+1. They are LEGACY code paths being phased out
+2. Do NOT add new template references
+3. Do NOT try to "fix" template lookup - remove it entirely
+
+---
+
 ## Quick Start (READ THIS FIRST)
 
 **AUDIENCE**: These instructions apply to:
@@ -83,6 +211,8 @@ npm run validate-all
 7. ✅ **ZERO TOLERANCE**: NEVER use `@param {any}` - use proper types to catch errors at compile-time, not runtime
 8. ✅ **CREATE TYPES FIRST**: Always create `.d.ts` files BEFORE writing implementation code
 9. ✅ **RICHTEXT HYPERLINKS**: Route, Ride, and GoogleEventId columns use native GAS RichText (NOT HYPERLINK formulas). See `docs/MIGRATION_FIDDLER_TO_RICHTEXT.md` for details.
+10. ✅ **SEARCH BEFORE IMPLEMENTING**: Check Module Inventory for existing implementations. NEVER reinvent working code.
+11. ✅ **NO TEMPLATES**: RWGPS templates are GONE. Logos come from Groups table, events created directly.
 
 **Architecture Pattern**:
 ```javascript
@@ -141,6 +271,8 @@ class AnnouncementManager {
 - ⚠️ `async` / `await` - Available but limited (GAS uses synchronous model)
 - ⚠️ Top-level `await` - Not available
 - ⚠️ Dynamic `import()` - Not available
+- ❌ `static FIELD = value` - Static class fields NOT supported (use `static get FIELD() { return value; }`)
+- ❌ Bare `class` declarations - Cause "Identifier already declared" (wrap in IIFE: `var X = (function() { class X {} return X; })()`)
 
 ### ✅ ALWAYS USE GAS-Compatible Alternatives:
 
@@ -633,15 +765,27 @@ createQueueItem(operation) { id: Utilities.getUuid() }
 
 **Rule 4.5: MANDATORY Class Pattern for All New Code**
 - **ALL new modules MUST use class pattern with static methods**
-- **NEVER create new namespace pattern modules** (IIFE returning object)
+- **Classes MUST be wrapped in IIFE** for GAS compatibility (avoids "Identifier already declared" errors)
+- **NEVER create new namespace pattern modules** (IIFE returning plain object)
 - Namespace pattern creates TypeScript blind spots requiring `@ts-expect-error` suppressions
 - `@ts-expect-error` suppresses ALL errors on line, not just namespace resolution (hides real bugs)
 
+**GAS Syntax Limitations**:
+- ❌ `static FIELD = value` - Static class fields NOT supported in GAS V8 runtime
+- ✅ `static get FIELD() { return value; }` - Use static getters instead
+
 ```javascript
-// ✅ CORRECT: Class pattern with static methods
+// ✅ CORRECT: Class wrapped in IIFE with static getters (GAS-compatible)
+var ValidationCore = (function() {
+
 class ValidationCore {
+    // Static getter (NOT static field assignment)
+    static get MAX_RETRIES() {
+        return 3;
+    }
+    
     static validateForScheduling(rows, options) {
-        // Call other static methods
+        // Call other static methods directly
         const error = ValidationCore.isUnmanagedRide(row, options.managedEventName);
         return result;
     }
@@ -651,8 +795,17 @@ class ValidationCore {
     }
 }
 
+return ValidationCore;
+})();
+
 if (typeof module !== 'undefined') {
     module.exports = ValidationCore;
+}
+
+// ❌ WRONG: Bare class without IIFE (causes "Identifier already declared" in GAS)
+class ValidationCore {
+    static MAX_RETRIES = 3;  // ❌ Static fields not supported in GAS
+    static validateForScheduling(rows, options) { }
 }
 
 // ❌ WRONG: Namespace pattern (DEPRECATED - creates type safety blind spots)

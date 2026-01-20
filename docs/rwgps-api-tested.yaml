@@ -1,0 +1,486 @@
+# RWGPS API - Tested Behavior Specification
+# 
+# This spec documents the ACTUAL behavior of RWGPS v1 API as verified through
+# our integration testing (January 2026). It supplements the official OpenAPI
+# spec at docs/rwgps-openapi.yaml by documenting:
+#
+# 1. UNDOCUMENTED fields that work (organizer_ids, route_ids)
+# 2. Fields that DON'T work as documented (organizers array)
+# 3. Correct behavior we've verified through testing
+#
+# This is NOT a replacement for the official spec - it's our tested subset.
+
+openapi: 3.0.1
+info:
+  title: RWGPS v1 API - Tested Behavior
+  version: "1.0.0"
+  description: |
+    Documented behavior based on actual integration testing (January 2026).
+    
+    KEY DISCOVERIES:
+    - `organizer_ids` and `route_ids` are UNDOCUMENTED but work correctly
+    - `organizers` array in EventPayload is silently ignored
+    - Single PUT updates all 11 working fields (no double-edit needed)
+    - `start_date` DOES update correctly (our earlier test was buggy)
+
+servers:
+  - url: https://ridewithgps.com/api/v1
+    description: Production v1 API
+
+security:
+  - basicAuth: []
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: |
+        Basic Auth using apiKey:authToken
+        - Username = your API key
+        - Password = your auth token
+        Do NOT use username:password - that's for login flow only.
+
+  schemas:
+    # =========================================================================
+    # EVENT PAYLOAD - What we send in PUT/POST requests
+    # =========================================================================
+    EventPayload:
+      type: object
+      description: |
+        Fields accepted by PUT /api/v1/events/{id}.json
+        
+        TESTED: All 11 working fields update with a single PUT request.
+        NO double-edit required (our earlier conclusion was based on buggy test code).
+      properties:
+        name:
+          type: string
+          description: Event title
+          example: "Thursday Fun Ride"
+        
+        description:
+          type: string
+          description: |
+            Event description. 
+            NOTE: Use 'description' for v1 API, NOT 'desc' (web API uses 'desc').
+          example: "Join us for a scenic ride through the hills"
+        
+        start_date:
+          type: string
+          format: date
+          description: Event start date (YYYY-MM-DD)
+          example: "2025-03-15"
+        
+        start_time:
+          type: string
+          description: Event start time (HH:MM in 24-hour format)
+          example: "09:00"
+        
+        end_date:
+          type: string
+          format: date
+          description: Event end date (YYYY-MM-DD)
+          example: "2025-03-15"
+        
+        end_time:
+          type: string
+          description: Event end time (HH:MM in 24-hour format)
+          example: "12:00"
+        
+        location:
+          type: string
+          description: Meeting location address or description
+          example: "Starbucks, 123 Main St, Los Gatos, CA"
+        
+        lat:
+          type: number
+          format: float
+          description: Latitude of meeting point
+          example: 37.2358
+        
+        lng:
+          type: number
+          format: float
+          description: Longitude of meeting point
+          example: -121.9624
+        
+        time_zone:
+          type: string
+          description: IANA timezone identifier
+          example: "America/Los_Angeles"
+        
+        visibility:
+          type: integer
+          enum: [0, 1, 2]
+          description: |
+            0 = Public (visible to everyone)
+            1 = Private (visible only to organizers)
+            2 = Club members only
+          example: 0
+        
+        # UNDOCUMENTED FIELDS THAT WORK
+        organizer_ids:
+          type: array
+          items:
+            type: integer
+          description: |
+            UNDOCUMENTED but WORKS.
+            Array of user IDs to set as organizers.
+            This is the CORRECT way to set organizers via PUT.
+            The 'organizers' array documented in OpenAPI is SILENTLY IGNORED.
+          example: [498406, 799754]
+        
+        route_ids:
+          type: array
+          items:
+            type: integer
+          description: |
+            UNDOCUMENTED but WORKS.
+            Array of route IDs to associate with the event.
+            Verified working in PUT requests (January 2026).
+          example: [53253553]
+        
+        # DOCUMENTED BUT DOESN'T WORK
+        # organizers:
+        #   description: |
+        #     DOCUMENTED IN OFFICIAL SPEC BUT SILENTLY IGNORED.
+        #     Do NOT use this - use organizer_ids instead.
+        #   deprecated: true
+
+    # =========================================================================
+    # EVENT RESPONSE - What we get back from GET/PUT requests
+    # =========================================================================
+    EventResponse:
+      type: object
+      description: Response wrapper for event operations
+      properties:
+        event:
+          $ref: '#/components/schemas/Event'
+    
+    Event:
+      type: object
+      description: Full event object returned by API
+      properties:
+        id:
+          type: integer
+          description: Unique event ID
+          example: 453456
+        
+        name:
+          type: string
+          example: "Thursday Fun Ride"
+        
+        description:
+          type: string
+          description: Full event description (v1 API uses 'description', web uses 'desc')
+        
+        start_date:
+          type: string
+          format: date
+          description: Start date (YYYY-MM-DD)
+          example: "2025-03-15"
+        
+        start_time:
+          type: string
+          description: Start time (HH:MM)
+          example: "09:00"
+        
+        end_date:
+          type: string
+          format: date
+          example: "2025-03-15"
+        
+        end_time:
+          type: string
+          example: "12:00"
+        
+        all_day:
+          type: boolean
+          description: Whether this is an all-day event
+          example: false
+        
+        time_zone:
+          type: string
+          example: "America/Los_Angeles"
+        
+        location:
+          type: string
+          example: "Starbucks, 123 Main St"
+        
+        lat:
+          type: number
+          format: float
+        
+        lng:
+          type: number
+          format: float
+        
+        visibility:
+          type: integer
+          enum: [0, 1, 2]
+        
+        logo_url:
+          type: string
+          format: uri
+          description: URL to event logo image (read-only, set via multipart upload)
+        
+        banner_url:
+          type: string
+          format: uri
+          description: URL to event banner image (read-only, set via multipart upload)
+        
+        organizers:
+          type: array
+          description: Array of organizer user objects (read-only in responses)
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              text:
+                type: string
+                description: Username or display name
+        
+        routes:
+          type: array
+          description: Array of associated route objects (read-only in responses)
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+        
+        created_at:
+          type: string
+          format: date-time
+        
+        updated_at:
+          type: string
+          format: date-time
+
+    # =========================================================================
+    # ROUTE OPERATIONS
+    # =========================================================================
+    RouteResponse:
+      type: object
+      properties:
+        route:
+          $ref: '#/components/schemas/Route'
+    
+    Route:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        distance:
+          type: number
+          format: float
+          description: Distance in meters
+        elevation_gain:
+          type: number
+          format: float
+          description: Total elevation gain in meters
+        user_id:
+          type: integer
+          description: Owner user ID
+
+paths:
+  # ===========================================================================
+  # EVENT ENDPOINTS (v1 API - Basic Auth)
+  # ===========================================================================
+  /events/{id}.json:
+    get:
+      summary: Get event details
+      operationId: getEvent
+      tags: [Events]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Event ID
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '404':
+          description: Event not found
+    
+    put:
+      summary: Update event
+      operationId: updateEvent
+      tags: [Events]
+      description: |
+        Updates event fields. 
+        
+        IMPORTANT FINDINGS:
+        - Single PUT updates all 11 fields correctly (no double-edit needed)
+        - Use `organizer_ids` to set organizers (NOT `organizers` array)
+        - Use `route_ids` to associate routes (UNDOCUMENTED but works)
+        - Use `description` not `desc` (v1 API field name)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  $ref: '#/components/schemas/EventPayload'
+      responses:
+        '200':
+          description: Event updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+    
+    delete:
+      summary: Delete event
+      operationId: deleteEvent
+      tags: [Events]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event deleted
+        '404':
+          description: Event not found
+  
+  /events.json:
+    post:
+      summary: Create new event
+      operationId: createEvent
+      tags: [Events]
+      description: |
+        Creates a new event.
+        
+        For events WITH logo/banner:
+        - Use multipart/form-data 
+        - Send image as event[logo] or event[banner] binary field
+        
+        For events WITHOUT logo:
+        - Use application/json
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  $ref: '#/components/schemas/EventPayload'
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                event[name]:
+                  type: string
+                event[description]:
+                  type: string
+                event[start_date]:
+                  type: string
+                event[start_time]:
+                  type: string
+                event[visibility]:
+                  type: integer
+                event[organizer_ids][]:
+                  type: integer
+                event[route_ids][]:
+                  type: integer
+                event[logo]:
+                  type: string
+                  format: binary
+                  description: Logo image file
+      responses:
+        '201':
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+  
+  # ===========================================================================
+  # ROUTE ENDPOINTS (v1 API - Basic Auth)
+  # ===========================================================================
+  /routes/{id}.json:
+    get:
+      summary: Get route details
+      operationId: getRoute
+      tags: [Routes]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Route details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+
+  # ===========================================================================
+  # WEB API ENDPOINTS (Session Cookie Auth)
+  # These use the web session, not v1 Basic Auth
+  # ===========================================================================
+  # Note: These are NOT v1 API but needed for full functionality
+  
+  # /routes/{id}/copy.json - Copy route (web session required)
+  # /events/batch_update_tags.json - Add/remove event tags (web session required)  
+  # /routes/batch_update_tags.json - Add/remove route tags (web session required)
+  # /clubs/{id}/table_members.json - Get club members list
+
+# ===========================================================================
+# KEY LESSONS LEARNED
+# ===========================================================================
+# 
+# 1. DOUBLE-EDIT NOT REQUIRED
+#    Our earlier tests showed start_time not updating, but this was due to 
+#    bugs in our test code (using wrong field names like 'desc' instead of 
+#    'description'). Single PUT works correctly for all 11 fields.
+#
+# 2. UNDOCUMENTED FIELDS
+#    - organizer_ids: Array of integers - THE correct way to set organizers
+#    - route_ids: Array of integers - Associates routes with events
+#    Both work on both POST and PUT operations.
+#
+# 3. FIELD NAME DIFFERENCES
+#    | Concept     | v1 API        | Web API    |
+#    |-------------|---------------|------------|
+#    | Description | description   | desc       |
+#    | Organizers  | organizer_ids | organizer_tokens |
+#    | Routes      | route_ids     | route_ids  |
+#    | Start time  | start_date + start_time | starts_at |
+#
+# 4. TAG OPERATIONS
+#    v1 API has NO tag endpoints. Must use web API:
+#    - POST /events/batch_update_tags.json
+#    - POST /routes/batch_update_tags.json
+#    These require web session login, not Basic Auth.
+#
+# 5. LOGO/BANNER UPLOAD
+#    Cannot set logo_url via JSON - it's read-only.
+#    Must use multipart/form-data with binary file upload.

@@ -11,6 +11,8 @@
  * Uses UserLoggerCore for formatting logic, handles only GAS-specific operations.
  * Logs to "User Activity Log" sheet only (Drive file duplication removed).
  */
+var UserLogger = (function() {
+
 class UserLogger {
   /**
    * Logs user activity to a dedicated sheet in the spreadsheet
@@ -48,4 +50,11 @@ class UserLogger {
       console.error('Failed to log:', err.message);
     }
   }
+}
+
+return UserLogger;
+})();
+
+if (typeof module !== 'undefined') {
+    module.exports = UserLogger;
 }

@@ -44,8 +44,8 @@ interface RowCoreParams {
     sendAt?: Date;
     /** Announcement status */
     status?: string;
-    /** Number of send attempts */
-    attempts?: number;
+    /** Number of send attempts (or empty string when cleared) */
+    attempts?: number | string;
     /** Last error message */
     lastError?: string;
     /** Last attempt timestamp */
@@ -99,8 +99,8 @@ declare class RowCore {
     sendAt?: Date;
     /** Announcement status: 'pending' | 'sent' | 'failed' | 'abandoned' */
     status: string;
-    /** Number of send attempts */
-    attempts: number;
+    /** Number of send attempts (or empty string when cleared) */
+    attempts: number | string;
     /** Last error message */
     lastError: string;
     /** Timestamp of last send attempt */
@@ -119,6 +119,9 @@ declare class RowCore {
     constructor(params: RowCoreParams);
 
     // ===== COMPUTED PROPERTIES (GETTERS) =====
+
+    /** Start date/time as a Date object - canonical domain property */
+    get startDateTime(): Date;
 
     /** Start time (alias for startDate) */
     get startTime(): Date;

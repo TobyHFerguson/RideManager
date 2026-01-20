@@ -1,0 +1,20 @@
+{
+  "operation": "Unschedule",
+  "description": "Unschedule (delete) a ride - permanently removes the event from RWGPS using v1 API with Basic Auth (no login required)",
+  "capturedAt": "2026-01-13T00:32:36.277Z",
+  "apiCalls": [
+    {
+      "operation": "delete_event",
+      "description": "Delete the event using v1 API with Basic Auth",
+      "url": "https://ridewithgps.com/api/v1/events/444070.json",
+      "method": "DELETE",
+      "request": {
+        "headers": {
+          "Authorization": "[REDACTED]"
+        }
+      },
+      "status": 204,
+      "response": ""
+    }
+  ]
+}

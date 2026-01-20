@@ -1,7 +1,5 @@
 /// <reference path="./gas-globals.d.ts" />
 
-import type { RWGPS } from './Externals';
-
 /**
  * Orchestration layer for ride operations
  */
@@ -11,7 +9,6 @@ declare class RideCoordinator {
      */
     static scheduleRides(
         rows: InstanceType<typeof RowCore>[],
-        rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
         force?: boolean
     ): void;
@@ -21,7 +18,6 @@ declare class RideCoordinator {
      */
     static cancelRides(
         rows: InstanceType<typeof RowCore>[],
-        rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
         force?: boolean
     ): void;
@@ -31,7 +27,6 @@ declare class RideCoordinator {
      */
     static updateRides(
         rows: InstanceType<typeof RowCore>[],
-        rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
         force?: boolean
     ): void;
@@ -41,7 +36,6 @@ declare class RideCoordinator {
      */
     static reinstateRides(
         rows: InstanceType<typeof RowCore>[],
-        rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
         force?: boolean
     ): void;
@@ -51,7 +45,6 @@ declare class RideCoordinator {
      */
     static unscheduleRides(
         rows: InstanceType<typeof RowCore>[],
-        rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
         force?: boolean
     ): void;
@@ -61,7 +54,6 @@ declare class RideCoordinator {
      */
     static importRoutes(
         rows: InstanceType<typeof RowCore>[],
-        rwgps: RWGPS,
         adapter: InstanceType<typeof ScheduleAdapter>,
         force?: boolean
     ): void;

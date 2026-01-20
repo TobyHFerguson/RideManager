@@ -40,6 +40,8 @@ const PROPERTY_KEYS = {
     ON_EDIT_TRIGGER_ID: 'ON_EDIT_TRIGGER_ID'
 };
 
+var TriggerManagerCore = (function() {
+
 class TriggerManagerCore {
         /**
          * Get trigger configuration for a specific type
@@ -274,6 +276,9 @@ class TriggerManagerCore {
 }
 
 // Node.js compatibility
+return TriggerManagerCore;
+})();
+
 if (typeof module !== 'undefined') {
     module.exports = TriggerManagerCore;
 }

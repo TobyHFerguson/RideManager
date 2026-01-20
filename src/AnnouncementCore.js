@@ -9,6 +9,8 @@
  * - Send time calculations
  * - Statistics and formatting
  */
+var AnnouncementCore = (function() {
+
 class AnnouncementCore {
     /**
      * Calculate the send time for a ride announcement
@@ -357,6 +359,9 @@ class AnnouncementCore {
         return updates;
     }
 }
+
+return AnnouncementCore;
+})();
 
 // Export for Node.js/Jest
 if (typeof module !== 'undefined') {

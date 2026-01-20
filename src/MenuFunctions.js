@@ -3,61 +3,17 @@
 if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
-const head = (PropertiesService.getScriptProperties().getProperty('RWGPSLIB_VERSION') || ' ');
 
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
-/**
- * Execute the given command with the given credentials.
- * 
- * If no credentials are found then collect them from the user and try again.
- */
-
-function getRWGPSLib_() {
-  let lib;
-  switch (head.trim()) {
-    case '12':
-      lib = RWGPSLib12;
-      break;
-    case '13':
-      lib = RWGPSLib13;
-      break;
-    default:
-      lib = RWGPSLib;
-  }
-  return lib;
-}
-
-function getGlobals_() {
-  const g2 = getGroupSpecs();
-  const globals = getGlobals();
-  globals["A_TEMPLATE"] = g2.A.TEMPLATE
-  return globals;
-}
-function getRWGPSService_() {
-  const credentialManager = getRWGPSLib_().newCredentialManager(PropertiesService.getScriptProperties())
-  return getRWGPSLib_().newRWGPSService(getGlobals_(), credentialManager);
-}
-
-function getRWGPS() {
-  const rwgpsService = getRWGPSService_();
-  return getRWGPSLib_().newRWGPS(rwgpsService); 
-}
 
 const MenuFunctions = (() => {
   /**
    * Execute a ride operation using RideCoordinator
-   * @param {(rows: InstanceType<typeof RowCore>[], rwgps: any, adapter: InstanceType<typeof ScheduleAdapter>, force?: boolean) => void} operation
+   * @param {(rows: InstanceType<typeof RowCore>[], adapter: InstanceType<typeof ScheduleAdapter>, force?: boolean) => void} operation
    * @param {boolean} [force]
    */
   function executeOperation(operation, force = false) {
-    const g2 = getGroupSpecs();
-    const globals = getGlobals();
-    globals["A_TEMPLATE"] = g2.A.TEMPLATE // Needed because RWGPSLib expects globals["A_TEMPLATE"]
-
-    const rwgpsService = getRWGPSService_();
-    const rwgps = getRWGPSLib_().newRWGPS(rwgpsService);
-    
     // Create adapter and load selected rows
     const adapter = new ScheduleAdapter();
     let rows = adapter.loadSelected();
@@ -65,7 +21,7 @@ const MenuFunctions = (() => {
     
     try {
       // Execute operation (validation and confirmation handled by RideCoordinator)
-      operation(rows, rwgps, adapter, force);
+      operation(rows, adapter, force);
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
       // Log errors

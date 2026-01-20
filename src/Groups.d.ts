@@ -1,30 +1,45 @@
 /**
- * Returns an array of group names (e.g., ["A", "B", "C", ...]).
- * @returns {string[]} Array of group names.
+ * Groups - Manage group specifications
+ * 
+ * Type definitions for group name and specification retrieval.
  */
+
+/**
+ * Group specification type
+ */
+export type GroupSpec = {
+    Template?: string;
+    MIN_LENGTH?: number;
+    LogoURL?: string;
+    GoogleCalendarId?: string;
+    [key: string]: any;
+};
+
+/**
+ * Groups class with static methods for group management
+ */
+declare class Groups {
+    /**
+     * Returns an array of group names (e.g., ["A", "B", "C", ...]).
+     * @returns Array of group names.
+     */
+    static getGroupNames(): string[];
+
+    /**
+     * Returns an object mapping group names to their specifications.
+     * @returns Object of group specs keyed by group name.
+     */
+    static getGroupSpecs(): Record<string, GroupSpec>;
+
+    /**
+     * Initializes the group cache and returns the group specs.
+     * @returns Object of group specs keyed by group name.
+     */
+    static initializeGroupCache(): Record<string, GroupSpec>;
+}
+
+// Global function aliases for backward compatibility (declared in gas-globals.d.ts)
 export function getGroupNames(): string[];
+export function getGroupSpecs(): Record<string, GroupSpec>;
 
-/**
- * Returns an object mapping group names to their specifications.
- * @returns {Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>} Object of group specs.
- */
-declare function getGroupSpecs(): Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>;
-
-/**
- * Initializes the group cache and returns the group specs.
- * @returns {Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>} Object of group specs.
- */
-declare function initializeGroupCache(): Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>;
-
-/**
- * Retrieves group data from the sheet and returns group specs.
- * @returns {Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>} Object of group specs.
- */
-declare function getGroupsFromSheet_(): Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>;
-
-/**
- * Flattens an array of group objects into a mapping from group name to group spec.
- * @param {Array<{Group: string, [key: string]: any}>} groups - Array of group objects.
- * @returns {Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>} Object of group specs.
- */
-declare function flatten_(groups: Array<{Group: string, [key: string]: any}>): Record<string, {Template?: string, MIN_LENGTH?: number, [key: string]: any}>;
+export default Groups;

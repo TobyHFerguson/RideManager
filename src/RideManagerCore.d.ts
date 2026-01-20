@@ -75,13 +75,14 @@ declare class RideManagerCore {
 
     /**
      * Prepares calendar event data from row and ride event
-     * @param rideEvent - Ride event object
+     * @param rideEvent - Ride event object (uses startDateTime for domain, start_time for API compat)
      * @param rowData - Row data
      * @returns Calendar event data with name, start, end
      */
     static prepareCalendarEventData(
         rideEvent: {
             name?: string;
+            startDateTime?: Date;
             start_time?: string | Date;
         },
         rowData: {

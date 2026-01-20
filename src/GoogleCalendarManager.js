@@ -1,5 +1,7 @@
 // @ts-check
 // @ts-expect-error
+var GoogleCalendarManager = (function() {
+
 class GoogleCalendarManager {
     /**
      * Gets a calendar by ID with retry logic to handle temporary unavailability
@@ -85,4 +87,11 @@ class GoogleCalendarManager {
             throw new Error(`Event not found: ${eventId} in calendar ${calendarId}`);
         }
     }
+}
+
+return GoogleCalendarManager;
+})();
+
+if (typeof module !== 'undefined') {
+    module.exports = GoogleCalendarManager;
 }

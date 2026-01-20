@@ -17,101 +17,101 @@ describe('RWGPSMembersCore', () => {
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: 'John Doe' }]);
+            expect(result).toEqual([{ Name: 'John Doe', UserID: 131258 }]);
         });
 
         it('should handle multiple members', () => {
             const input = [
                 {
-                    user: { first_name: 'John', last_name: 'Doe' }
+                    user: { id: 100, first_name: 'John', last_name: 'Doe' }
                 },
                 {
-                    user: { first_name: 'Jane', last_name: 'Smith' }
+                    user: { id: 200, first_name: 'Jane', last_name: 'Smith' }
                 },
                 {
-                    user: { first_name: 'Bob', last_name: 'Johnson' }
+                    user: { id: 300, first_name: 'Bob', last_name: 'Johnson' }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
             expect(result).toEqual([
-                { Name: 'John Doe' },
-                { Name: 'Jane Smith' },
-                { Name: 'Bob Johnson' }
-            ].sort((a, b) => a.Name.localeCompare(b.Name)));
+                { Name: 'Bob Johnson', UserID: 300 },
+                { Name: 'Jane Smith', UserID: 200 },
+                { Name: 'John Doe', UserID: 100 }
+            ]);
         });
 
         it('should handle member with only first name', () => {
             const input = [
                 {
-                    user: { first_name: 'John', last_name: null }
+                    user: { id: 100, first_name: 'John', last_name: null }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: 'John' }]);
+            expect(result).toEqual([{ Name: 'John', UserID: 100 }]);
         });
 
         it('should handle member with only last name', () => {
             const input = [
                 {
-                    user: { first_name: null, last_name: 'Doe' }
+                    user: { id: 100, first_name: null, last_name: 'Doe' }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: 'Doe' }]);
+            expect(result).toEqual([{ Name: 'Doe', UserID: 100 }]);
         });
 
         it('should handle member with missing first_name field', () => {
             const input = [
                 {
-                    user: { last_name: 'Doe' }
+                    user: { id: 100, last_name: 'Doe' }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: 'Doe' }]);
+            expect(result).toEqual([{ Name: 'Doe', UserID: 100 }]);
         });
 
         it('should handle member with missing last_name field', () => {
             const input = [
                 {
-                    user: { first_name: 'John' }
+                    user: { id: 100, first_name: 'John' }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: 'John' }]);
+            expect(result).toEqual([{ Name: 'John', UserID: 100 }]);
         });
 
         it('should handle member with both names null', () => {
             const input = [
                 {
-                    user: { first_name: null, last_name: null }
+                    user: { id: 100, first_name: null, last_name: null }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: '' }]);
+            expect(result).toEqual([{ Name: '', UserID: 100 }]);
         });
 
         it('should handle member with both names missing', () => {
             const input = [
                 {
-                    user: {}
+                    user: { id: 100 }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: '' }]);
+            expect(result).toEqual([{ Name: '', UserID: 100 }]);
         });
 
         it('should handle empty array', () => {
@@ -123,14 +123,14 @@ describe('RWGPSMembersCore', () => {
         it('should handle names with extra spaces', () => {
             const input = [
                 {
-                    user: { first_name: '  John  ', last_name: '  Doe  ' }
+                    user: { id: 100, first_name: '  John  ', last_name: '  Doe  ' }
                 }
             ];
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
             // trim() removes leading/trailing spaces but preserves internal spaces
-            expect(result).toEqual([{ Name: 'John     Doe' }]);
+            expect(result).toEqual([{ Name: 'John     Doe', UserID: 100 }]);
         });
 
         it('should throw error if input is not an array', () => {
@@ -211,7 +211,7 @@ describe('RWGPSMembersCore', () => {
 
             const result = RWGPSMembersCore.transformMembersData(input);
 
-            expect(result).toEqual([{ Name: 'Santa Cruz Cycling Club' }]);
+            expect(result).toEqual([{ Name: 'Santa Cruz Cycling Club', UserID: 131258 }]);
         });
     });
 
@@ -221,6 +221,7 @@ describe('RWGPSMembersCore', () => {
                 {
                     id: 799,
                     user: {
+                        id: 131258,
                         first_name: 'John',
                         last_name: 'Doe'
                     }

@@ -8,20 +8,22 @@
  * This module extracts first_name and last_name from the user object and formats them.
  */
 
+var RWGPSMembersCore = (function() {
+
 class RWGPSMembersCore {
     /**
      * Transform RWGPS API member data to spreadsheet format
-     * Extracts first_name and last_name from user object, concatenates with space
+     * Extracts first_name, last_name, and user ID from API response
      * 
      * @param {any[]} membersData - Raw JSON array from RWGPS API
-     * @returns {Array<{Name: string}>} Array of objects with Name field: [{Name: "First Last"}, ...]
+     * @returns {Array<{Name: string, UserID: number}>} Array of objects with Name and UserID: [{Name: "First Last", UserID: 456}, ...]
      * 
      * @example
      * const input = [{
-     *   user: { first_name: "John", last_name: "Doe" }
+     *   user: { id: 456, first_name: "John", last_name: "Doe" }
      * }];
      * const output = transformMembersData(input);
-     * // output: [{Name: "John Doe"}]
+     * // output: [{Name: "John Doe", UserID: 456}]
      */
     static transformMembersData(membersData) {
         if (!Array.isArray(membersData)) {
@@ -38,7 +40,12 @@ class RWGPSMembersCore {
                 throw new Error('Member missing user object');
             }
 
-            const { first_name, last_name } = member.user;
+            const { id, first_name, last_name } = member.user;
+
+            // Validate user ID is present
+            if (id === undefined || id === null) {
+                throw new Error('User missing id field');
+            }
 
             // Handle missing names - use empty string if not present
             const firstName = first_name || '';
@@ -47,7 +54,10 @@ class RWGPSMembersCore {
             // Concatenate with space, trim to handle cases where one name is missing
             const fullName = `${firstName} ${lastName}`.trim();
 
-            return { Name: fullName };
+            return { 
+                Name: fullName,
+                UserID: Number(id)
+            };
         }).sort((a, b) => a.Name.localeCompare(b.Name));
     }
 
@@ -89,8 +99,8 @@ class RWGPSMembersCore {
      * Filter out members with empty names
      * Useful for cleaning up data where both first and last names are missing
      * 
-     * @param {Array<{Name: string}>} members - Array of {Name: string} objects
-     * @returns {Array<{Name: string}>} Filtered array excluding empty names
+     * @param {Array<{Name: string, UserID: number}>} members - Array of {Name, UserID} objects
+     * @returns {Array<{Name: string, UserID: number}>} Filtered array excluding empty names
      */
     static filterEmptyNames(members) {
         if (!Array.isArray(members)) {
@@ -106,9 +116,84 @@ class RWGPSMembersCore {
             return name && typeof name === 'string' && name.trim().length > 0;
         });
     }
+
+    /**
+     * Look up a member's user ID by name
+     * Supports exact and partial name matching (case-insensitive)
+     * 
+     * @param {Array<{Name: string, UserID: number}>} members - Array of {Name, UserID} objects from sheet
+     * @param {string} nameToFind - Name to search for (e.g., "Toby Ferguson")
+     * @returns {{success: boolean, userId?: number, name?: string, error?: string}} Result object
+     * 
+     * @example
+     * const members = [{Name: "Toby Ferguson", UserID: 123}];
+     * const result = lookupUserIdByName(members, "toby");
+     * // result: {success: true, userId: 123, name: "Toby Ferguson"}
+     */
+    static lookupUserIdByName(members, nameToFind) {
+        if (!Array.isArray(members)) {
+            return {
+                success: false,
+                error: 'Members must be an array'
+            };
+        }
+
+        if (!nameToFind || typeof nameToFind !== 'string') {
+            return {
+                success: false,
+                error: 'Name to find must be a non-empty string'
+            };
+        }
+
+        const searchTerm = nameToFind.trim().toLowerCase();
+        
+        if (searchTerm.length === 0) {
+            return {
+                success: false,
+                error: 'Search name cannot be empty'
+            };
+        }
+
+        // Try exact match first (case-insensitive)
+        const exactMatch = members.find((/** @type {any} */ member) => {
+            if (!member || !member.Name) return false;
+            return member.Name.toLowerCase() === searchTerm;
+        });
+
+        if (exactMatch) {
+            return {
+                success: true,
+                userId: exactMatch.UserID,
+                name: exactMatch.Name
+            };
+        }
+
+        // Try partial match (contains, case-insensitive)
+        const partialMatch = members.find((/** @type {any} */ member) => {
+            if (!member || !member.Name) return false;
+            return member.Name.toLowerCase().includes(searchTerm);
+        });
+
+        if (partialMatch) {
+            return {
+                success: true,
+                userId: partialMatch.UserID,
+                name: partialMatch.Name
+            };
+        }
+
+        // No match found
+        return {
+            success: false,
+            error: `No member found matching "${nameToFind}"`
+        };
+    }
 }
 
 // Node.js/Jest export
+return RWGPSMembersCore;
+})();
+
 if (typeof module !== 'undefined') {
     module.exports = RWGPSMembersCore;
 }

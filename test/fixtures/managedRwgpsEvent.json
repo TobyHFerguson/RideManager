@@ -6,7 +6,7 @@
 		"cost_in_cents": null,
 		"created_at": "2022-11-15T14:38:47-08:00",
 		"custom_tabs": "[]",
-		"desc": "Ride Leader: Toby Ferguson\r\n\r\nAddress: Seascape County Park, Sumner Ave, Aptos, CA 95003\n\nArrive 9:45 AM for a 10:00 AM rollout.\n\nParticipant List: https://tinyurl.com/3k29mpdr?event=1234\n\nAll participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709\n\nNote: In a browser use the \"Go to route\" link below to open up the route.",
+		"desc": "Ride Leader: Toby Ferguson\r\n\r\nAddress: Seascape County Park, Sumner Ave, Aptos, CA 95003\n\nArrive 9:45 AM for a 10:00 AM rollout.\n\nAll participants are assumed to have read and agreed to the clubs ride policy: https://scccc.clubexpress.com/content.aspx?page_id=22&club_id=575722&module_id=137709\n\nNote: When using a browser use the \"Go to route\" link below to open up the route.",
 		"ends_at": "2023-01-01T23:59:59-08:00",
 		"ends_on": null,
 		"event_series_id": null,
@@ -22,7 +22,7 @@
 		"name": "Sun A (1/1 10:00) SCP - Seascape/Corralitos",
 		"official": false,
 		"organizer_ids": [
-			"302732"
+			302732
 		],
 		"participant_duration": null,
 		"photo_ids": [

@@ -1,66 +1,55 @@
 /**
  * RideManager provides functions to manage ride events, including scheduling, importing,
- * canceling, reinstating, updating, and unschedules rides, as well as updating rider counts.
+ * canceling, reinstating, updating, and unscheduling rides.
  * 
  * **Architecture**: RideManager is a thin GAS adapter that delegates business logic to RideManagerCore.
  * - Business logic (route preparation, validation, event data) is in RideManagerCore (pure JS, 100% tested)
- * - GAS API calls (RWGPS, Calendar, Spreadsheet) are in this adapter
+ * - GAS API calls (RWGPS via RWGPSClientFactory, Calendar, Spreadsheet) are in this adapter
+ * - No rwgps parameter needed - operations use RWGPSClientFactory.create() internally
  * 
  * @see RideManagerCore for testable business logic
+ * @see RWGPSClientFactory for RWGPS API access
  */
 declare const RideManager: {
     /**
      * Cancels the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to cancel.
-     * @param {any} rwgps - RWGPS connector/service.
      * @param {boolean} sendEmail - Whether to send cancellation email.
      * @param {string} reason - Optional cancellation reason.
      */
-    cancelRows(rows: Row[], rwgps: any, sendEmail?: boolean, reason?: string): void;
+    cancelRows(rows: Row[], sendEmail?: boolean, reason?: string): void;
 
     /**
      * Imports the given rows' routes.
      * @param {Row[]} rows - Array of Row objects to import.
-     * @param {any} rwgps - RWGPS connector/service.
      */
-    importRows(rows: Row[], rwgps: any): void;
+    importRows(rows: Row[]): void;
 
     /**
      * Reinstates the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to reinstate.
-     * @param {any} rwgps - RWGPS connector/service.
      * @param {boolean} sendEmail - Whether to send reinstatement email.
      * @param {string} reason - Optional reinstatement reason.
      */
-    reinstateRows(rows: Row[], rwgps: any, sendEmail?: boolean, reason?: string): void;
+    reinstateRows(rows: Row[], sendEmail?: boolean, reason?: string): void;
 
     /**
      * Schedules the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to schedule.
-     * @param {any} rwgps - RWGPS connector/service.
      */
-    scheduleRows(rows: Row[], rwgps: any): void;
+    scheduleRows(rows: Row[]): void;
 
     /**
      * Unschedules the given rows' rides and deletes associated calendar events.
      * @param {Row[]} rows - Array of Row objects to unschedule.
-     * @param {any} rwgps - RWGPS connector/service.
      */
-    unscheduleRows(rows: Row[], rwgps: any): void;
-
-    /**
-     * Updates the rider counts for the given rows using the RWGPS connector.
-     * @param {Row[]} rows - Array of Row objects to update.
-     * @param {any} rwgps - RWGPS connector/service.
-     */
-    updateRiderCounts(rows: Row[], rwgps: any): void;
+    unscheduleRows(rows: Row[]): void;
 
     /**
      * Updates the given rows' rides.
      * @param {Row[]} rows - Array of Row objects to update.
-     * @param {any} rwgps - RWGPS connector/service.
      */
-    updateRows(rows: Row[], rwgps: any): void;
+    updateRows(rows: Row[]): void;
 };
 
 /**

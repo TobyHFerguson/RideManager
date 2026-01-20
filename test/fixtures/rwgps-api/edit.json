@@ -1,0 +1,94 @@
+{
+  "operation": "Edit",
+  "description": "Edit an existing event using v1 API - double-edit pattern (all_day=1, then all_day=0)",
+  "capturedAt": "2026-01-13T00:31:21.027Z",
+  "apiVersion": "v1",
+  "apiCalls": [
+    {
+      "operation": "edit_event_1",
+      "description": "First edit - sets all_day=1 (workaround for RWGPS API) via v1 API",
+      "url": "https://ridewithgps.com/api/v1/events/444070.json",
+      "method": "PUT",
+      "request": {
+        "headers": {
+          "Authorization": "Basic [REDACTED]",
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "payload": {
+          "event": {
+            "all_day": "1",
+            "name": "Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+            "description": "Ride Leader: Albert Saporta",
+            "start_date": "2030-03-01",
+            "start_time": "11:00",
+            "visibility": "0",
+            "organizer_ids": ["498406"],
+            "route_ids": ["50969472"]
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "event": {
+          "id": 444070,
+          "name": "Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+          "all_day": true,
+          "start_date": "2030-03-01",
+          "start_time": null,
+          "visibility": "public"
+        }
+      }
+    },
+    {
+      "operation": "edit_event_2",
+      "description": "Second edit - sets all_day=0 to set actual start time via v1 API",
+      "url": "https://ridewithgps.com/api/v1/events/444070.json",
+      "method": "PUT",
+      "request": {
+        "headers": {
+          "Authorization": "Basic [REDACTED]",
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "payload": {
+          "event": {
+            "all_day": "0",
+            "name": "Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+            "description": "Ride Leader: Albert Saporta",
+            "start_date": "2030-03-01",
+            "start_time": "11:00",
+            "visibility": "0",
+            "organizer_ids": ["498406"],
+            "route_ids": ["50969472"]
+          }
+        }
+      },
+      "status": 200,
+      "response": {
+        "event": {
+          "id": 444070,
+          "name": "Fri B (3/1 11:00) CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir",
+          "description": "Ride Leader: Albert Saporta",
+          "all_day": false,
+          "start_date": "2030-03-01",
+          "start_time": "11:00",
+          "time_zone": "America/Los_Angeles",
+          "visibility": "public",
+          "organizers": [
+            {
+              "id": 498406,
+              "name": "Toby Ferguson"
+            }
+          ],
+          "routes": [
+            {
+              "id": 50969472,
+              "name": "CCP - Rancho San Vicente Open Space-Bald Peak-Calero Reservoir"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

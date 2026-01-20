@@ -41,6 +41,8 @@ if (typeof require !== 'undefined') {
  * Pure validation logic (no GAS dependencies)
  * All methods return validation results without side effects
  */
+var ValidationCore = (function() {
+
 class ValidationCore {
     /**
      * Validate rows for scheduling operation
@@ -82,12 +84,7 @@ class ValidationCore {
                 if (errors.length === 0) {
                     const leaderWarning = ValidationCore.validateRideLeader(row);
                     if (leaderWarning) warnings.push(leaderWarning);
-                    
-                    const locationWarning = ValidationCore.validateLocation(row);
-                    if (locationWarning) warnings.push(locationWarning);
-                    
-                    const addressWarning = ValidationCore.validateAddress(row);
-                    if (addressWarning) warnings.push(addressWarning);
+                    // Note: location/address warnings removed - we use map links now
                 }
                 
                 validationMap.set(row, { errors, warnings });
@@ -170,12 +167,7 @@ class ValidationCore {
                 if (errors.length === 0) {
                     const leaderWarning = ValidationCore.validateRideLeader(row);
                     if (leaderWarning) warnings.push(leaderWarning);
-                    
-                    const locationWarning = ValidationCore.validateLocation(row);
-                    if (locationWarning) warnings.push(locationWarning);
-                    
-                    const addressWarning = ValidationCore.validateAddress(row);
-                    if (addressWarning) warnings.push(addressWarning);
+                    // Note: location/address warnings removed - we use map links now
                 }
                 
                 validationMap.set(row, { errors, warnings });
@@ -474,6 +466,9 @@ class ValidationCore {
             return undefined;
     }
 }
+
+return ValidationCore;
+})();
 
 if (typeof module !== 'undefined') {
     module.exports = ValidationCore;

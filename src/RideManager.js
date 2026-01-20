@@ -3,14 +3,14 @@
 
 
 if (typeof require !== 'undefined') {
-    // @ts-ignore
-    const { getGroupNames } = require("./Groups");
+    var Groups = require("./Groups");
     var dates = require('./common/dates');
 }
 
 /**
  * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
+ * @typedef {import('./Externals').Organizer} Organizer
  * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
  * @typedef {import('./RideManagerCore').default} RideManagerCoreType
  */
@@ -61,30 +61,199 @@ const RideManager = (function () {
     }
 
     /**
+     * Look up organizers by name using RWGPSMembersAdapter (cached sheet lookup)
+     * 
+     * @param {string[]} leaderNames - Array of leader names to look up
+     * @returns {Organizer[]} Array of Organizer objects with id and text properties
+     */
+    function _lookupOrganizers(leaderNames) {
+        if (!leaderNames || !leaderNames.length) {
+            return [];
+        }
+        
+        const membersAdapter = new RWGPSMembersAdapter();
+        /** @type {Organizer[]} */
+        const organizers = [];
+        
+        for (const name of leaderNames) {
+            if (!name || name.trim() === '') {
+                continue;
+            }
+            
+            const result = membersAdapter.lookupUserIdByName(name);
+            if (result.success && result.userId) {
+                organizers.push({
+                    id: result.userId,
+                    text: result.name || name
+                });
+            } else {
+                console.warn(`_lookupOrganizers: Could not find organizer "${name}": ${result.error || 'Not found'}`);
+                // Skip this organizer - don't add to array
+            }
+        }
+        
+        return organizers;
+    }
+
+    /**
+     * Common sync logic for update, cancel, and reinstate operations.
+     * Syncs all row data (columns A-F) with RWGPS event, updates logo if group changed,
+     * and handles Google Calendar event updates/migrations.
+     * 
+     * @param {RowCoreInstance} row - Row to sync
+     * @param {{forceCancel?: boolean, forceReinstate?: boolean}} [options] - Options
+     *   - forceCancel: If true, mark event as cancelled (add CANCELLED: prefix)
+     *   - forceReinstate: If true, ensure event is NOT cancelled (for unmanaged rides)
+     * @returns {{rideEvent: SCCCCEvent, success: boolean}} Result with the built ride event
+     */
+    function _syncRowWithRwgps(row, options = {}) {
+        const { forceCancel = false, forceReinstate = false } = options;
+        const names = Groups.getGroupNames();
+        const client = RWGPSClientFactory.create();
+
+        /** @type {SCCCCEvent} */
+        let rideEvent;
+        
+        // Determine original group from ride name (handles CANCELLED: prefix)
+        const baseRideName = row.rideName.replace(/^CANCELLED:\s*/, '');
+        const originalGroup = SCCCCEvent.getGroupName(baseRideName, names);
+        
+        // Check if managed or unmanaged ride
+        if (!SCCCCEvent.managedEventName(baseRideName, names)) {
+            // Unmanaged ride: can't sync row data, just handle cancel/reinstate title change
+            if (forceCancel) {
+                const result = client.cancelEvent(row.rideURL);
+                if (!result.success) {
+                    throw new Error(`Cancel failed: ${result.error}`);
+                }
+                rideEvent = EventFactory.fromRwgpsEvent(result.event);
+            } else if (forceReinstate) {
+                const result = client.reinstateEvent(row.rideURL);
+                if (!result.success) {
+                    throw new Error(`Reinstate failed: ${result.error}`);
+                }
+                rideEvent = EventFactory.fromRwgpsEvent(result.event);
+            } else {
+                // Regular update for unmanaged ride
+                const result = client.getEvent(row.rideURL);
+                if (!result.success || !result.event) {
+                    throw new Error(`Failed to get event from RWGPS: ${result.error || 'Unknown error'}`);
+                }
+                rideEvent = EventFactory.fromRwgpsEvent(result.event);
+            }
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'RWGPS');
+        } else {
+            // Managed ride: sync all row data (columns A-F)
+            const event_id = _extractEventID(row.rideURL);
+            const organizers = _lookupOrganizers(row.leaders);
+            
+            rideEvent = EventFactory.newEvent(row, organizers, event_id);
+            
+            // Determine cancelled state
+            if (forceCancel) {
+                rideEvent.cancel();  // Add CANCELLED: prefix
+            } else if (!forceReinstate && ValidationCore.isCancelled(row)) {
+                // Regular update: preserve cancelled state from row
+                rideEvent.cancel();
+            }
+            // Note: forceReinstate means DON'T call cancel(), so event is not cancelled
+            
+            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'newEvent');
+            
+            // Set route expiration via client
+            const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
+            const expiryResult = client.setRouteExpiration(row.routeURL, expiryDate, true);
+            if (!expiryResult.success) {
+                console.warn(`RideManager._syncRowWithRwgps: Failed to set route expiration: ${expiryResult.error}`);
+                // Non-fatal - continue with update
+            }
+            
+            // Pass SCCCCEvent directly - it now uses v1 field names natively
+            const editResult = client.editEvent(row.rideURL, rideEvent);
+            if (!editResult.success) {
+                throw new Error(`Failed to edit event on RWGPS: ${editResult.error || 'Unknown error'}`);
+            }
+        }
+
+        // Update ride link in spreadsheet
+        row.setRideLink(rideEvent.name, row.rideURL);
+        
+        // Update logo if group changed (logo is per-group from Groups sheet)
+        if (originalGroup !== row.group) {
+            const groupSpecs = Groups.getGroupSpecs();
+            const newGroupSpec = groupSpecs[row.group];
+            if (newGroupSpec && newGroupSpec.LogoURL) {
+                console.log(`RideManager._syncRowWithRwgps: Group changed from ${originalGroup} to ${row.group}, updating logo...`);
+                const logoResult = client.updateEventLogo(row.rideURL, newGroupSpec.LogoURL);
+                if (!logoResult.success) {
+                    console.warn(`RideManager._syncRowWithRwgps: Failed to update logo: ${logoResult.error}`);
+                    // Non-fatal - continue
+                } else {
+                    console.log(`RideManager._syncRowWithRwgps: Logo updated successfully for row ${row.rowNum}`);
+                }
+            }
+        }
+        
+        // Log the operation
+        const operation = forceCancel ? 'CANCEL_RIDE' : (forceReinstate ? 'REINSTATE_RIDE' : 'UPDATE_RIDE');
+        UserLogger.log(operation, `Row ${row.rowNum}, ${rideEvent.name}`, {
+            rideUrl: row.rideURL,
+            groupChanged: originalGroup !== row.group
+        });
+        
+        // Handle Google Calendar: delete old if group changed
+        if (originalGroup !== row.group && row.googleEventId) {
+            const eventId = row.googleEventId;
+            // @ts-ignore - googleEventId getter returns string (never null per RowCore.js implementation)
+            if (!deleteEvent_(originalGroup, eventId)) {
+                return { rideEvent, success: false };
+            } else {
+                row.setGoogleEventId(''); // Clear so new event is created below
+            }
+        }
+
+        // Handle Google Calendar: update existing or create new
+        const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
+        let success = false;
+        if (row.googleEventId) {
+            if (updateEvent_(row, rideEvent, description)) {
+                success = true;
+            }
+        } else {
+            const eventId = createEvent_(row, rideEvent, description);
+            if (eventId) {
+                // Create RichText link to calendar with event ID as display text
+                const calendarId = getCalendarId(row.group);
+                const link = GoogleEventCore.buildRichTextLink(eventId, calendarId, row.startDate);
+                row.setGoogleEventIdLink(link.text, link.url);
+                success = true;
+            }
+        }
+
+        return { rideEvent, success };
+    }
+
+    /**
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
-    function cancelRow_(row, rwgps, sendEmail = false, reason = '') {
-        const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
-        rideEvent.cancel();
-        row.setRideLink(rideEvent.name, row.rideURL);
-        rwgps.edit_event(row.rideURL, rideEvent)
-        const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
-        updateEvent_(row, rideEvent, description);
+    function cancelRow_(row, sendEmail = false, reason = '') {
+        // Use common sync logic with forceCancel=true
+        // This syncs all row data (columns A-F) AND marks as cancelled
+        _syncRowWithRwgps(row, { forceCancel: true });
 
-        // Handle announcement cancellation
+        // Handle announcement cancellation (specific to cancel operation)
         if (row.announcementCell && row.status) {
             try {
                 const manager = new AnnouncementManager();
-                const result = manager.handleCancellation(row, sendEmail, reason);
+                const announcementResult = manager.handleCancellation(row, sendEmail, reason);
 
                 // Log to UserLogger
                 UserLogger.log('CANCEL_RIDE', `Row ${row.rowNum}, ${row.rideName}, Reason: ${reason || '(none)'}`, {
-                    announcementSent: result.announcementSent,
-                    emailAddress: result.emailAddress || '(not sent)',
-                    error: result.error
+                    announcementSent: announcementResult.announcementSent,
+                    emailAddress: announcementResult.emailAddress || '(not sent)',
+                    error: announcementResult.error
                 });
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
@@ -94,41 +263,37 @@ const RideManager = (function () {
         }
     }
     /**
+     * Import a foreign route to club library using RWGPSClient
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      */
-    function importRow_(row, rwgps) {
-        // Prepare route configuration using Core logic
-        const rowData = {
-            routeURL: row.routeURL,
-            routeName: row.routeName,
-            startDate: row.startDate,
-            group: row.group
-        };
-        // NOTE: prepareRouteImport exists in RideManagerCore (see RideManagerCore.js:46, test coverage: 100%)
-        // TypeScript error is false positive due to namespace export pattern
+    function importRow_(row) {
         const globals = getGlobals();
-        // Wrap dates functions to satisfy RideManagerCore's stricter signatures
-        const addDays = (/** @type {Date | string} */ date, /** @type {number} */ days) => {
-            const result = dates.add(date, days);
-            return result instanceof Date ? result : new Date(); // Return Date, not NaN
-        };
-        const formatDate = (/** @type {Date} */ date) => {
-            const result = dates.MMDDYYYY(date);
-            return typeof result === 'string' ? result : ''; // Return string, not NaN
-        };
-        const route = RideManagerCore.prepareRouteImport(
-            rowData,
-            { EXPIRY_DELAY: globals.EXPIRY_DELAY, FOREIGN_PREFIX: globals.FOREIGN_PREFIX },
-            addDays,
-            formatDate
-        );
         
-        // GAS API call: import route to RWGPS
-        const url = rwgps.importRoute(route);
+        // Create RWGPSClient via factory
+        const client = RWGPSClientFactory.create();
         
-        // Update spreadsheet (dirty tracking handles save automatically)
-        row.setRouteLink(route.name || url, url);
+        // Calculate expiry date
+        const expiryDate = /** @type {Date} */ (dates.add(row.startDate, globals.EXPIRY_DELAY));
+        const expiryStr = `${expiryDate.getMonth() + 1}/${expiryDate.getDate()}/${expiryDate.getFullYear()}`;
+        
+        // Use route name as-is from spreadsheet (including FOREIGN prefix if present)
+        // User's choice of name (with or without prefix) should be preserved
+        const routeName = row.routeName;
+        
+        // Import route using new client (copies to club library, adds tags, sets expiry)
+        const result = client.importRoute(row.routeURL, {
+            name: routeName,
+            expiry: expiryStr,
+            tags: row.group ? [row.group] : [],
+            userId: globals.SCCCC_USER_ID
+        });
+        
+        if (!result.success) {
+            throw new Error(`Route import failed: ${result.error}`);
+        }
+        
+        // Update spreadsheet with new route URL (keeping the same name user chose)
+        row.setRouteLink(routeName || result.routeUrl, result.routeUrl);
     }
 
     /**
@@ -140,8 +305,6 @@ const RideManager = (function () {
      */
     function updateEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
-        // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - rideEvent is SCCCCEvent instance, TypeScript sees class constructor type
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             GoogleCalendarManager.updateEvent(
@@ -181,8 +344,6 @@ const RideManager = (function () {
      */
     function createEvent_(row, rideEvent, description) {
         // NOTE: prepareCalendarEventData exists in RideManagerCore (see RideManagerCore.js:73, test coverage: 100%)
-        // TypeScript error is false positive due to namespace export pattern
-        // @ts-expect-error - rideEvent is SCCCCEvent instance, TypeScript sees class constructor type
         const eventData = RideManagerCore.prepareCalendarEventData(rideEvent, row);
         try {
             const eventId = GoogleCalendarManager.createEvent(
@@ -242,28 +403,25 @@ const RideManager = (function () {
     }
     /**
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      * @param {boolean} sendEmail
      * @param {string} [reason]
      */
-    function reinstateRow_(row, rwgps, sendEmail = false, reason = '') {
-        const rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
-        rideEvent.reinstate();
-        row.setRideLink(rideEvent.name, row.rideURL);
-        rwgps.edit_event(row.rideURL, rideEvent)
-        const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
-        updateEvent_(row, rideEvent, description)
-        // Handle announcement reinstatement
+    function reinstateRow_(row, sendEmail = false, reason = '') {
+        // Use common sync logic with forceReinstate=true
+        // This syncs all row data (columns A-F) AND ensures NOT cancelled
+        _syncRowWithRwgps(row, { forceReinstate: true });
+        
+        // Handle announcement reinstatement (specific to reinstate operation)
         if (row.announcementCell && row.status === 'cancelled') {
             try {
                 const manager = new AnnouncementManager();
-                const result = manager.handleReinstatement(row, sendEmail, reason);
+                const announcementResult = manager.handleReinstatement(row, sendEmail, reason);
 
                 // Log to UserLogger
                 UserLogger.log('REINSTATE_RIDE', `Row ${row.rowNum}, ${row.rideName}, Reason: ${reason || '(none)'}`, {
-                    announcementSent: result.announcementSent,
-                    emailAddress: result.emailAddress || '(not sent)',
-                    error: result.error
+                    announcementSent: announcementResult.announcementSent,
+                    emailAddress: announcementResult.emailAddress || '(not sent)',
+                    error: announcementResult.error
                 });
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
@@ -274,29 +432,76 @@ const RideManager = (function () {
     }
 
     /**
+     * Schedule a new ride event on RWGPS
+     * Uses RWGPSClient.scheduleEvent() directly - NO templates, NO facade!
+     * 
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      */
-    function schedule_row_(row, rwgps) {
-        /**
-         * @param {string} groupName
-         */
-        function get_template_(groupName) {
-            try {
-                return getGroupSpecs()[groupName].TEMPLATE
-            } catch {
-                throw new Error(`Unknown group: ${groupName}. Expected one of ${getGroupNames().join(', ')}`);
-            }
+    function schedule_row_(row) {
+        // Get group specs for logo URL
+        const groupSpecs = Groups.getGroupSpecs();
+        const groupSpec = groupSpecs[row.group];
+        if (!groupSpec) {
+            throw new Error(`Unknown group: ${row.group}. Expected one of ${Groups.getGroupNames().join(', ')}`);
         }
-
-        const new_event_url = rwgps.copy_template_(get_template_(row.group));
-        const event_id = _extractEventID(new_event_url);
-        const rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
-        rwgps.edit_event(new_event_url, rideEvent);
-        const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
-        rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
+        
+        const globals = getGlobals();
+        
+        // Create RWGPSClient via factory
+        const client = RWGPSClientFactory.create();
+        
+        // Build event data for v1 API format
+        const dateParts = RWGPSClientCore.formatDateForV1Api(row.startDateTime);
+        const routeId = row.routeURL ? row.routeURL.split('/')[4] : null;
+        
+        // Look up organizer IDs from cached RWGPS Members sheet
+        const organizerNames = Array.isArray(row.leaders) ? row.leaders : [row.leaders];
+        const organizers = _lookupOrganizers(organizerNames);
+        const organizerIds = organizers.map((/** @type {{id: number}} */ o) => o.id);
+        
+        // Build ride name using EventFactory logic (we need this for the event name)
+        const rideEvent = EventFactory.newEvent(row, organizers, 0);
+        
+        const eventData = {
+            name: rideEvent.name,
+            description: rideEvent.desc,
+            start_date: dateParts.start_date,
+            start_time: dateParts.start_time,
+            route_ids: routeId ? [routeId] : [],
+            visibility: 1  // 1 = friends_only/members_only
+        };
+        
+        const logoUrl = groupSpec.LogoURL || null;
+        
+        // Create event with RWGPSClient (handles login, logo upload, editing)
+        // Organizer IDs pre-looked up from members sheet - no API lookup needed
+        const createResult = client.scheduleEvent(eventData, organizerIds, logoUrl);
+        
+        if (!createResult.success) {
+            throw new Error(`Failed to create RWGPS event: ${createResult.error}`);
+        }
+        
+        const new_event_url = createResult.eventUrl;
+        const newEventId = RWGPSClientCore.extractEventId(new_event_url);
+        
+        // Add group tag
+        if (row.group) {
+            client._addEventTags(newEventId, [row.group]);
+        }
+        
+        // Set route expiration via importRoute (RWGPSClient handles this)
+        const expiryDate = /** @type {Date} */ (dates.add(row.startDate, globals.EXPIRY_DELAY));
+        const expiryStr = `${expiryDate.getMonth() + 1}/${expiryDate.getDate()}/${expiryDate.getFullYear()}`;
+        client.importRoute(row.routeURL, { 
+            expiry: expiryStr, 
+            userId: globals.SCCCC_USER_ID,
+            tags: []
+        });
+        
+        // Update row with ride link
         row.setRideLink(rideEvent.name, new_event_url);
-        rwgps.unTagEvents([new_event_url], ["template"]);
+        
+        // Create Google Calendar event
         const description = `<a href="${new_event_url}">${rideEvent.name}</a>`;
         console.log('RideManager.schedule_row_', `Creating Google Calendar event with rideEvent:`, rideEvent);
         const eventId = createEvent_(row, rideEvent, description);
@@ -331,7 +536,6 @@ const RideManager = (function () {
         }
         
         // Log to UserLogger
-        const globals = getGlobals();
         const emailKey = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
         const announcementEmail = row.announcementCell ? (globals[emailKey] || '(not configured)') : '(no announcement)';
         
@@ -344,69 +548,10 @@ const RideManager = (function () {
     }
     /**
      * @param {RowCoreInstance} row
-     * @param {RWGPS} rwgps
      */
-    function updateRow_(row, rwgps) {
-        const names = getGroupNames();
-
-        let rideEvent
-        // Use SCCCCEvent.getGroupName directly (the correct implementation)
-        const originalGroup = SCCCCEvent.getGroupName(row.rideName, names);
-        // Use SCCCCEvent.managedEventName directly (the correct implementation)
-        if (!SCCCCEvent.managedEventName(row.rideName, names)) {
-            rideEvent = EventFactory.fromRwgpsEvent(rwgps.get_event(row.rideURL));
-            // DEBUG ISSUE 22
-            // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
-            // TypeScript error is false positive due to namespace export pattern
-            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'RWGPS');
-        } else {
-            const event_id = _extractEventID(row.rideURL);
-            rideEvent = EventFactory.newEvent(row, rwgps.getOrganizers(row.leaders), event_id);
-            if (ValidationCore.isCancelled(row)) {
-                rideEvent.cancel();
-            }
-            // DEBUG ISSUE 22
-            // NOTE: validateEventNameFormat exists in RideManagerCore (see RideManagerCore.js:120, test coverage: 100%)
-            // TypeScript error is false positive due to namespace export pattern
-            RideManagerCore.validateEventNameFormat(rideEvent.name, row.rowNum || 0, row.rideName, 'newEvent');
-            const expiryDate = /** @type {Date} */ (dates.add(row.startDate, getGlobals().EXPIRY_DELAY));
-            rwgps.setRouteExpiration(row.routeURL, expiryDate, true);
-        }
-
-        row.setRideLink(rideEvent.name, row.rideURL);
-        rwgps.edit_event(row.rideURL, rideEvent);
-        
-        // Log to UserLogger
-        UserLogger.log('UPDATE_RIDE', `Row ${row.rowNum}, ${row.rideName}`, {
-            rideUrl: row.rideURL,
-            groupChanged: originalGroup !== row.group
-        });
-        if (originalGroup !== row.group && row.googleEventId) {
-            const eventId = row.googleEventId;
-            // @ts-ignore - googleEventId getter returns string (never null per RowCore.js implementation), VS Code false positive
-            if (!deleteEvent_(originalGroup, eventId)) {
-                return;
-            } else {
-                row.setGoogleEventId(''); // Clear so new event is created below
-            }
-        }
-
-        const description = `<a href="${row.rideURL}">${rideEvent.name}</a>`;
-        let success = false;
-        if (row.googleEventId) {
-            if (updateEvent_(row, rideEvent, description)) {
-                success = true;
-            };
-        } else {
-            const eventId = createEvent_(row, rideEvent, description);
-            if (eventId) {
-                // Create RichText link to calendar with event ID as display text
-                const calendarId = getCalendarId(row.group);
-                const link = GoogleEventCore.buildRichTextLink(eventId, calendarId, row.startDate);
-                row.setGoogleEventIdLink(link.text, link.url);
-            }
-        }
-
+    function updateRow_(row) {
+        // Use common sync logic (no forceCancel/forceReinstate - preserves row's cancelled state)
+        const { success } = _syncRowWithRwgps(row, {});
 
         // Update announcement (will create one if it doesn't exist)
         try {
@@ -428,17 +573,16 @@ const RideManager = (function () {
 
     /**
      * @param {RowCoreInstance[]} rows
-     * @param {RWGPS} rwgps
-     * @param {Function} fn
+     * @param {(row: RowCoreInstance, sendEmail?: boolean, reason?: string) => void} fn
      * @param {boolean} sendEmail
      * @param {string} reason
      */
-    function processRows_(rows, rwgps, fn, sendEmail = false, reason = '') {
+    function processRows_(rows, fn, sendEmail = false, reason = '') {
         /** @type {Error[]} */
         const errors = [];
         rows.forEach(row => {
             try {
-                fn(row, rwgps, sendEmail, reason);
+                fn(row, sendEmail, reason);
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(String(e));
                 err.message = `Error processing row ${row.rowNum}: ${err.message}`;
@@ -452,41 +596,40 @@ const RideManager = (function () {
     return {
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
-        cancelRows: function (rows, rwgps, sendEmail = false, reason = '') {
-            processRows_(rows, rwgps, cancelRow_, sendEmail, reason)
+        cancelRows: function (rows, sendEmail = false, reason = '') {
+            processRows_(rows, cancelRow_, sendEmail, reason)
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          */
-        importRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, importRow_);
+        importRows: function (rows) {
+            processRows_(rows, importRow_);
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          * @param {boolean} sendEmail
          * @param {string} reason
          */
-        reinstateRows: function (rows, rwgps, sendEmail = false, reason = '') {
-            processRows_(rows, rwgps, reinstateRow_, sendEmail, reason);
+        reinstateRows: function (rows, sendEmail = false, reason = '') {
+            processRows_(rows, reinstateRow_, sendEmail, reason);
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          */
-        scheduleRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, schedule_row_);
+        scheduleRows: function (rows) {
+            processRows_(rows, schedule_row_);
         },
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
+         * @param {RWGPS} _rwgps - DEPRECATED: Not used, kept for interface compatibility
          */
-        unscheduleRows: function (rows, rwgps) {
+        unscheduleRows: function (rows, _rwgps) {
+            // Create RWGPSClient via factory
+            const client = RWGPSClientFactory.create();
+            
             // Collect RideURLs and GoogleEventIds BEFORE any modifications
             const rideData = rows.map(row => ({
                 rideUrl: row.rideURL || null,
@@ -494,43 +637,39 @@ const RideManager = (function () {
                 group: row.group
             }));
 
-            // Step 1: Delete rides from RWGPS (batch operation, but handle errors gracefully)
+            // Step 1: Delete rides from RWGPS (loop over each, handle errors per-event)
             /** @type {string[]} */
             const rideUrlsToDelete = rideData.map(data => data.rideUrl).filter(url => url !== null && url !== undefined);
             if (rideUrlsToDelete.length > 0) {
-                try {
-                    rwgps.batch_delete_events(rideUrlsToDelete);
-                    console.log(`RideManager.unscheduleRows: Deleted ${rideUrlsToDelete.length} ride(s) from RWGPS`);
-                } catch (err) {
-                    const error = err instanceof Error ? err : new Error(String(err));
-                    const is404 = error.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
-                    const is500 = error.message.indexOf('Request failed for https://ridewithgps.com returned code 500') !== -1;
-
-                    if (is404) {
-                        // 404 = Not Found - rides already deleted, continue
-                        console.log('RideManager.unscheduleRows: Rides already deleted on RWGPS (404)');
-                    } else if (is500) {
-                        // 500 could be transient server error - retry to confirm deletion
-                        console.log('RideManager.unscheduleRows: Got 500 error, retrying to confirm rides deleted');
-                        try {
-                            rwgps.batch_delete_events(rideUrlsToDelete);
-                            // Retry succeeded - this was a transient error, log but continue
-                            console.error('RideManager.unscheduleRows: Retry succeeded - original 500 was transient, continuing');
-                        } catch (retryErr) {
-                            const retryError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
-                            const retryIs404 = retryError.message.indexOf('Request failed for https://ridewithgps.com returned code 404') !== -1;
-                            if (retryIs404) {
-                                // Retry got 404 - rides are indeed deleted
-                                console.log('RideManager.unscheduleRows: Retry confirmed rides deleted (404)');
+                let deletedCount = 0;
+                /** @type {string[]} */
+                const failedUrls = [];
+                
+                rideUrlsToDelete.forEach(url => {
+                    try {
+                        const result = client.deleteEvent(url);
+                        if (result.success) {
+                            deletedCount++;
+                        } else {
+                            // Check for 404 (already deleted)
+                            if (result.error && result.error.includes('404')) {
+                                console.log(`RideManager.unscheduleRows: Ride already deleted (404): ${url}`);
+                                deletedCount++; // Count as success
                             } else {
-                                // Different error on retry - log but continue with cleanup
-                                console.error('RideManager.unscheduleRows: RWGPS deletion failed, continuing with cleanup:', retryError.message);
+                                console.error(`RideManager.unscheduleRows: Failed to delete ${url}: ${result.error}`);
+                                failedUrls.push(url);
                             }
                         }
-                    } else {
-                        // Other error - log but continue with cleanup
-                        console.error('RideManager.unscheduleRows: RWGPS deletion failed, continuing with cleanup:', error.message);
+                    } catch (err) {
+                        const error = err instanceof Error ? err : new Error(String(err));
+                        console.error(`RideManager.unscheduleRows: Error deleting ${url}: ${error.message}`);
+                        failedUrls.push(url);
                     }
+                });
+                
+                console.log(`RideManager.unscheduleRows: Deleted ${deletedCount}/${rideUrlsToDelete.length} ride(s) from RWGPS`);
+                if (failedUrls.length > 0) {
+                    console.warn(`RideManager.unscheduleRows: Failed to delete ${failedUrls.length} ride(s), continuing with cleanup`);
                 }
             }
 
@@ -603,11 +742,10 @@ const RideManager = (function () {
 
         /**
          * @param {RowCoreInstance[]} rows
-         * @param {RWGPS} rwgps
          */
-        updateRows: function (rows, rwgps) {
-            processRows_(rows, rwgps, updateRow_);
+        updateRows: function (rows) {
+            processRows_(rows, updateRow_);
         }
     }
-})()
+})();
 

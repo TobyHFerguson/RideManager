@@ -9,6 +9,8 @@ if (typeof require !== 'undefined') {
  * RideManagerCore - Pure JavaScript business logic for ride management
  * All functions are testable without GAS dependencies
  */
+var RideManagerCore = (function() {
+
 class RideManagerCore {
     /**
      * Extracts event ID from an event URL
@@ -78,18 +80,23 @@ class RideManagerCore {
 
     /**
      * Prepares calendar event data from row and ride event
-     * @param {{name: string, start_time: Date | string}} rideEvent - Ride event object
+     * @param {{name: string, startDateTime?: Date, start_time?: Date | string}} rideEvent - Ride event object (uses startDateTime for domain, start_time for API compat)
      * @param {{endTime: Date}} rowData - Row data with end time
      * @returns {{name: string, start: Date, end: Date}} Calendar event data with name, start, end
      */
     static prepareCalendarEventData(rideEvent, rowData) {
+        // Support both domain (startDateTime) and legacy API (start_time) formats
+        const startTime = rideEvent.startDateTime || rideEvent.start_time;
         return {
             name: rideEvent.name || '',
-            start: rideEvent.start_time ? new Date(rideEvent.start_time) : new Date(),
+            start: startTime ? new Date(startTime) : new Date(),
             end: rowData.endTime ? new Date(rowData.endTime) : new Date()
         };
     }
 }
+
+return RideManagerCore;
+})();
 
 if (typeof module !== 'undefined') {
     module.exports = RideManagerCore;

@@ -10,7 +10,6 @@ if (typeof require !== 'undefined') {
 }
 
 /**
- * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
  */
 
@@ -32,15 +31,16 @@ function convertToDate(date) {
  * Orchestration layer for ride operations
  * Implements validate → confirm → execute pattern for all operations
  */
+var RideCoordinator = (function() {
+
 class RideCoordinator {
     /**
      * Schedule rides operation
      * @param {RowCoreInstance[]} rows - Rows to schedule
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static scheduleRides(rows, rwgps, adapter, force = false) {
+    static scheduleRides(rows, adapter, force = false) {
         try {
             // 1. Validate
             // NOTE: validateForScheduling exists in ValidationCore (see ValidationCore.d.ts:59, test coverage: TBD)
@@ -67,7 +67,7 @@ class RideCoordinator {
             }
 
             // 3. Execute operation
-            RideManager.scheduleRows(confirmation.processableRows, rwgps);
+            RideManager.scheduleRows(confirmation.processableRows);
 
             // 4. Save changes to spreadsheet (before showing dialog)
             adapter.save();
@@ -88,11 +88,10 @@ class RideCoordinator {
     /**
      * Cancel rides operation
      * @param {RowCoreInstance[]} rows - Rows to cancel
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static cancelRides(rows, rwgps, adapter, force = false) {
+    static cancelRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForCancellation exists in ValidationCore (see ValidationCore.d.ts:68, implementation: ValidationCore.js)
@@ -141,17 +140,17 @@ class RideCoordinator {
                         try {
                             if (!row.announcementCell || !row.status) {
                                 // No announcement - simple cancellation
-                                RideManager.cancelRows([row], rwgps, false, '');
+                                RideManager.cancelRows([row], false, '');
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled`);
                             } else if (confirmation.sendCancellationNotice) {
                                 // Cancel with email using the shared reason
-                                RideManager.cancelRows([row], rwgps, true, cancellationReason);
+                                RideManager.cancelRows([row], true, cancellationReason);
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled (notice sent)`);
                             } else {
                                 // Cancel without email
-                                RideManager.cancelRows([row], rwgps, false, '');
+                                RideManager.cancelRows([row], false, '');
                                 cancelled++;
                                 results.push(`Row ${row.rowNum}: Cancelled (no notice)`);
                             }
@@ -188,7 +187,7 @@ class RideCoordinator {
                     }
 
                     // Execute operation
-                    RideManager.cancelRows(confirmation.processableRows, rwgps, false, '');
+                    RideManager.cancelRows(confirmation.processableRows, false, '');
                     
                     // Save changes to spreadsheet (before showing dialog)
                     adapter.save();
@@ -209,11 +208,10 @@ class RideCoordinator {
     /**
      * Update rides operation
      * @param {RowCoreInstance[]} rows - Rows to update
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static updateRides(rows, rwgps, adapter, force = false) {
+    static updateRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForUpdate exists in ValidationCore (see ValidationCore.d.ts:77)
@@ -239,7 +237,7 @@ class RideCoordinator {
                 }
 
                 // 3. Execute operation
-                RideManager.updateRows(confirmation.processableRows, rwgps);
+                RideManager.updateRows(confirmation.processableRows);
 
                 // 4. Save changes to spreadsheet (before showing dialog)
                 adapter.save();
@@ -260,11 +258,10 @@ class RideCoordinator {
     /**
      * Reinstate rides operation
      * @param {RowCoreInstance[]} rows - Rows to reinstate
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static reinstateRides(rows, rwgps, adapter, force = false) {
+    static reinstateRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForReinstatement exists in ValidationCore (see ValidationCore.d.ts:86)
@@ -313,17 +310,17 @@ class RideCoordinator {
                         try {
                             if (!row.announcementCell || !row.status || row.status !== 'cancelled') {
                                 // No announcement - simple reinstatement
-                                RideManager.reinstateRows([row], rwgps, false, '');
+                                RideManager.reinstateRows([row], false, '');
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated`);
                             } else if (confirmation.sendReinstatementNotice) {
                                 // Reinstate with email using the shared reason
-                                RideManager.reinstateRows([row], rwgps, true, reinstatementReason);
+                                RideManager.reinstateRows([row], true, reinstatementReason);
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated (notice sent)`);
                             } else {
                                 // Reinstate without email
-                                RideManager.reinstateRows([row], rwgps, false, '');
+                                RideManager.reinstateRows([row], false, '');
                                 reinstated++;
                                 results.push(`Row ${row.rowNum}: Reinstated (no notice)`);
                             }
@@ -360,7 +357,7 @@ class RideCoordinator {
                     }
 
                     // Execute operation
-                    RideManager.reinstateRows(confirmation.processableRows, rwgps, false, '');
+                    RideManager.reinstateRows(confirmation.processableRows, false, '');
                     
                     // Save changes to spreadsheet (before showing dialog)
                     adapter.save();
@@ -381,11 +378,10 @@ class RideCoordinator {
     /**
      * Unschedule rides operation
      * @param {RowCoreInstance[]} rows - Rows to unschedule
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static unscheduleRides(rows, rwgps, adapter, force = false) {
+    static unscheduleRides(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForUnschedule exists in ValidationCore (see ValidationCore.d.ts:95)
@@ -408,7 +404,7 @@ class RideCoordinator {
                 }
 
                 // 3. Execute operation
-                RideManager.unscheduleRows(confirmation.processableRows, rwgps);
+                RideManager.unscheduleRows(confirmation.processableRows);
 
                 // 4. Save changes to spreadsheet (before showing dialog)
                 adapter.save();
@@ -429,11 +425,10 @@ class RideCoordinator {
     /**
      * Import routes operation
      * @param {RowCoreInstance[]} rows - Rows to import
-     * @param {RWGPS} rwgps - RWGPS service
      * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
-    static importRoutes(rows, rwgps, adapter, force = false) {
+    static importRoutes(rows, adapter, force = false) {
             try {
                 // 1. Validate
                 // NOTE: validateForRouteImport exists in ValidationCore (see ValidationCore.d.ts:104)
@@ -458,7 +453,7 @@ class RideCoordinator {
                 }
 
                 // 3. Execute operation
-                RideManager.importRows(confirmation.processableRows, rwgps);
+                RideManager.importRows(confirmation.processableRows);
 
                 // 4. Save changes to spreadsheet (before showing dialog)
                 adapter.save();
@@ -476,6 +471,9 @@ class RideCoordinator {
             }
     }
 }
+
+return RideCoordinator;
+})();
 
 if (typeof module !== 'undefined') {
     module.exports = RideCoordinator;

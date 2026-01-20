@@ -9,56 +9,80 @@
  */
 
 // Import the actual types we need
-import type ScheduleAdapterClass from './ScheduleAdapter';
-import type RowCoreClass from './RowCore';
-import type { MenuFunctions as MenuFunctionsType } from './MenuFunctions';
-import type RouteColumnEditorClass from './RouteColumnEditor';
-import type AnnouncementManagerClass from './AnnouncementManager';
-import type TriggerManagerClass from './TriggerManager';
-import type ExportsType from './Exports';
-import type { GlobalsObject } from './Globals';
+// Pattern: import type ModuleName from './ModuleName'
+// All modules now follow IIFE pattern: var ModuleName = (function() { class ModuleName { ... } return ModuleName; })()
+import type AnnouncementCore from './AnnouncementCore';
+import type AnnouncementManager from './AnnouncementManager';
+import type CacheManager from './CacheManager';
+import type EventFactory from './EventFactory';
+import type Exports from './Exports';
 import type { Externals as ExternalsType } from './Externals';
-import type SCCCCEventClass from './SCCCCEvent';
-import type EventFactoryNamespace from './EventFactory';
-import type RideManagerNamespace from './RideManager';
-import type RideManagerCoreClass from './RideManagerCore';
-import type AnnouncementCoreClass from './AnnouncementCore';
-import type RWGPSMembersAdapterClass from './RWGPSMembersAdapter';
-import type RWGPSMembersCoreClass from './RWGPSMembersCore';
-import type ValidationCoreClass from './ValidationCore';
-import type UIHelperClass from './UIHelper';
-import type RideCoordinatorClass from './RideCoordinator';
-import type UserLoggerCoreClass from './UserLoggerCore';
-import type UserLoggerType from './UserLogger';
-import type * as GoogleEventCoreModule from './GoogleEventCore';
+import type Globals from './Globals';
+import type { GlobalsObject } from './Globals';
+import type GoogleEventCore from './GoogleEventCore';
+import type Groups from './Groups';
+import type HyperlinkUtils from './HyperlinkUtils';
+import type { MenuFunctions as MenuFunctionsType } from './MenuFunctions';
+import type RideCoordinator from './RideCoordinator';
+import type RideManager from './RideManager';
+import type RideManagerCore from './RideManagerCore';
+import type RouteColumnEditor from './RouteColumnEditor';
+import type RouteService from './RouteService';
+import type RouteServiceCore from './RouteServiceCore';
+import type RowCore from './RowCore';
+import type CredentialManager from './rwgpslib/CredentialManager';
+import type RWGPSClient from './rwgpslib/RWGPSClient';
+import type RWGPSClientCore from './rwgpslib/RWGPSClientCore';
+import type RWGPSClientFactory from './rwgpslib/RWGPSClientFactory';
+import type RWGPSMembersAdapter from './RWGPSMembersAdapter';
+import type RWGPSMembersCore from './RWGPSMembersCore';
+import type SCCCCEvent from './SCCCCEvent';
+import type ScheduleAdapter from './ScheduleAdapter';
+import type TriggerManager from './TriggerManager';
+import type TriggerManagerCore from './TriggerManagerCore';
+import type UIHelper from './UIHelper';
+import type UserLogger from './UserLogger';
+import type UserLoggerCore from './UserLoggerCore';
+import type ValidationCore from './ValidationCore';
 
 // Declare all module exports as global variables for GAS runtime
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
 
 declare global {
     // Classes - use 'typeof' to get the constructor type (can use 'new')
-    const ScheduleAdapter: typeof ScheduleAdapterClass;
-    const RowCore: typeof RowCoreClass;
-    const RouteColumnEditor: typeof RouteColumnEditorClass;
-    const AnnouncementManager: typeof AnnouncementManagerClass;
-    const TriggerManager: typeof TriggerManagerClass;
-    const SCCCCEvent: typeof SCCCCEventClass;
-    const RWGPSMembersAdapter: typeof RWGPSMembersAdapterClass;
-    const ValidationCore: typeof ValidationCoreClass;
-    const UIHelper: typeof UIHelperClass;
-    const UserLoggerCore: typeof UserLoggerCoreClass;
-    const GoogleEventCore: typeof GoogleEventCoreModule;
+    const ScheduleAdapter: typeof ScheduleAdapter;
+    const RowCore: typeof RowCore;
+    const RouteColumnEditor: typeof RouteColumnEditor;
+    const AnnouncementManager: typeof AnnouncementManager;
+    const TriggerManager: typeof TriggerManager;
+    const TriggerManagerCore: typeof TriggerManagerCore;
+    const SCCCCEvent: typeof SCCCCEvent;
+    const RWGPSMembersAdapter: typeof RWGPSMembersAdapter;
+    const RWGPSMembersCore: typeof RWGPSMembersCore;
+    const ValidationCore: typeof ValidationCore;
+    const UIHelper: typeof UIHelper;
+    const UserLoggerCore: typeof UserLoggerCore;
+    const GoogleEventCore: typeof GoogleEventCore;
+    const HyperlinkUtils: typeof HyperlinkUtils;
+    const CacheManager: typeof CacheManager;
+    const Groups: typeof Groups;
+    const Globals: typeof Globals;
     
-    // Objects/Namespaces - singleton instances or frozen objects
+    // Objects/Namespaces and Adapters
     const MenuFunctions: MenuFunctionsType;
-    const Exports: ExportsType; // This is the interface, not typeof
-    const EventFactory: typeof EventFactoryNamespace;
-    const RideManager: typeof RideManagerNamespace;
-    const RideManagerCore: typeof RideManagerCoreClass;
-    const AnnouncementCore: typeof AnnouncementCoreClass;
-    const RWGPSMembersCore: typeof RWGPSMembersCoreClass;
-    const RideCoordinator: typeof RideCoordinatorClass;
-    const UserLogger: typeof UserLoggerType;
+    const Exports: Exports;
+    const EventFactory: typeof EventFactory;
+    const RideManager: typeof RideManager;
+    const RideManagerCore: typeof RideManagerCore;
+    const AnnouncementCore: typeof AnnouncementCore;
+    const RideCoordinator: typeof RideCoordinator;
+    const UserLogger: typeof UserLogger;
+    const CredentialManager: typeof CredentialManager;
+    const RWGPSClient: typeof RWGPSClient;
+    const RWGPSClientCore: typeof RWGPSClientCore;
+    const RWGPSClientFactory: typeof RWGPSClientFactory;
+    const RouteService: typeof RouteService;
+    const RouteServiceCore: typeof RouteServiceCore;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;
@@ -80,4 +104,6 @@ declare global {
     function getGroupSpecs(): any;
 }
 
-export {};
+export { };
+
+
