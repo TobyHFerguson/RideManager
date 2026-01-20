@@ -1383,26 +1383,26 @@ updateMembers() {
 
 ### Task 8.3: Final v1 Migration Verification
 
-- [ ] 8.3.1 Search for any remaining non-v1 API calls: `grep -r 'ridewithgps.com' src/ | grep -v '/api/v1'`
-- [ ] 8.3.2 Verify all found calls are in the "Cannot Migrate" list above
-- [ ] 8.3.3 Update API Coverage table to show all green
-- [ ] 8.3.4 Run full test suite: `npm test`
-- [ ] 8.3.5 Run GAS integration tests
+- [x] 8.3.1 Search for any remaining non-v1 API calls: `grep -r 'ridewithgps.com' src/ | grep -v '/api/v1'`
+- [x] 8.3.2 Verify all found calls are in the "Cannot Migrate" list (login, tag ops, route copy)
+- [x] 8.3.3 Update API Coverage table to show all green
+- [x] 8.3.4 Run full test suite: `npm test` - 686 tests pass
+- [x] 8.3.5 GAS integration tests verified (testGetClubMembers passed with 474 members)
 - [ ] 8.3.6 Commit: "Phase 8 complete: All v1-compatible operations migrated"
 
 ---
 
-### Phase 8 Complete Checkpoint
+### Phase 8 Complete Checkpoint ✅
 
-- [ ] No more web API calls for operations that have v1 equivalents
+- [x] No more web API calls for operations that have v1 equivalents
 - [x] utils.js getRoute() uses v1 API (Task 8.1 ✅)
 - [x] RWGPSMembersAdapter uses RWGPSClient.getClubMembers() (Task 8.2 ✅)
 - [x] Legacy rwgps dependency removed from RWGPSMembersAdapter (Task 8.2 ✅)
 - [x] All Jest tests pass (686 tests)
-- [ ] All GAS integration tests pass
+- [x] All GAS integration tests pass (11/11 including getClubMembers)
 - [x] `npm run typecheck` passes (zero errors)
-- [ ] Task 8.3: Final v1 migration verification
-- [ ] Ready to resume Phase 7
+- [x] Task 8.3: Final v1 migration verification
+- [x] Ready to resume Phase 7
 
 ---
 
@@ -1650,24 +1650,16 @@ Monitor the RWGPS OpenAPI spec for improvements:
 | Create event | v1 POST | ✅ Works with multipart for logo |
 | Edit event | v1 PUT | ✅ 11 of 12 fields work |
 | Delete events | v1 DELETE | ✅ Works |
-| Get route (RWGPSClient) | v1 GET | ✅ Works |
-| Get route (utils.js) | ⚠️ Web | **PHASE 8**: Should use RWGPSClient.getRoute() |
-| Import route | Web | v1 has no equivalent (copy is web-only) |
-| Tag operations | Web | v1 has no tag endpoints |
+| Get route | v1 GET | ✅ Works (utils.js + RWGPSClient) |
+| Import route | Web | ⚠️ v1 has no equivalent (copy is web-only) |
+| Tag operations | Web | ⚠️ v1 has no tag endpoints |
 | Get organizers | Local lookup | ✅ Uses cached "RWGPS Members" sheet |
-| Get members | ⚠️ Legacy Web | **PHASE 8**: Should use v1 GET `/api/v1/members.json` |
+| Get members | v1 GET | ✅ Uses v1 `/api/v1/members.json` with pagination |
 
-### Pending: Migrate Get Members to v1 API
-
-**Current State:** `RWGPSMembersAdapter.updateMembers()` calls `rwgps.get_club_members()` from legacy RWGPSLib
-
-**Should Be:** Use v1 API endpoint `GET /api/v1/members.json` with Basic Auth
-
-The v1 API endpoint is documented in `docs/rwgps-openapi.yaml`:
-- Supports pagination (`page`, `page_size`)
-- Supports filtering (`name`, `email`)
-- Returns `{members: ClubMember[], meta: {pagination: ...}}`
-- Uses Basic Auth (api_key:auth_token)
+**Phase 8 Complete**: All operations that CAN use v1 API now do. Remaining web API calls are for:
+- Route copy (no v1 equivalent)
+- Tag operations (no v1 endpoint)
+- Login for web session (only needed for above operations)
 
 **Task**: Add `RWGPSClient.getClubMembers()` method and update `RWGPSMembersAdapter` to use it instead of legacy RWGPSLib. This will eliminate the last dependency on the legacy library for member sync.
 
@@ -1685,14 +1677,15 @@ The v1 API endpoint is documented in `docs/rwgps-openapi.yaml`:
 - **Phase 6**: Complete ✅
   - Deleted 19 legacy files from rwgpslib/
   - 628 tests pass (was 655, removed dead code tests)
-- **Phase 7**: PAUSED ⏸️ (Unified Event Domain Object) - Awaiting Phase 8 completion
+- **Phase 7**: READY TO RESUME (Unified Event Domain Object)
   - ✅ Task 7.1: Delete transformV1EventToWebFormat (dead code) - Commit 297190c
   - ✅ Task 7.2: Delete buildEditEventPayload (dead code) - Commit 297190c
   - ✅ Task 7.3: Refactor SCCCCEvent to use v1 field names - Commit 17b7811
-  - ⏸️ Task 7.4-7.9: PAUSED - Complete Phase 8 first
-- **Phase 8**: PENDING ⏳ (Complete v1 API Migration)
-  - 🔜 Task 8.1: Migrate RWGPSMembersAdapter to use v1 API
-  - 🔜 Task 8.2: Replace utils.js getRoute() with RWGPSClient.getRoute()
+  - 🔜 Task 7.4-7.9: Ready to proceed
+- **Phase 8**: COMPLETE ✅ (Complete v1 API Migration)
+  - ✅ Task 8.1: Replace utils.js getRoute() with v1 API - Commit 8fe82fc
+  - ✅ Task 8.2: Migrate RWGPSMembersAdapter to v1 API - Commit c7373ac
+  - ✅ Task 8.3: Final v1 migration verification
 
 ### Key Discoveries
 
