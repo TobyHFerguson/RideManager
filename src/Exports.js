@@ -99,6 +99,12 @@ var Exports = {
     },
     get GroupLogoManager() {
         return GroupLogoManager;
+    },
+    get RouteService() {
+        return RouteService;
+    },
+    get RouteServiceCore() {
+        return RouteServiceCore;
     }
 };
 

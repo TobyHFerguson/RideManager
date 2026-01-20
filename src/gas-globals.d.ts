@@ -28,6 +28,8 @@ import type RideCoordinator from './RideCoordinator';
 import type RideManager from './RideManager';
 import type RideManagerCore from './RideManagerCore';
 import type RouteColumnEditor from './RouteColumnEditor';
+import type RouteService from './RouteService';
+import type RouteServiceCore from './RouteServiceCore';
 import type RowCore from './RowCore';
 import type CredentialManager from './rwgpslib/CredentialManager';
 import type RWGPSClient from './rwgpslib/RWGPSClient';
@@ -81,6 +83,8 @@ declare global {
     const RWGPSClient: typeof RWGPSClient;
     const RWGPSClientCore: typeof RWGPSClientCore;
     const RWGPSClientFactory: typeof RWGPSClientFactory;
+    const RouteService: typeof RouteService;
+    const RouteServiceCore: typeof RouteServiceCore;
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;
