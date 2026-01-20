@@ -412,42 +412,6 @@ describe('RWGPSClientCore', () => {
             expect(payload.event.description).toBeUndefined();
         });
 
-        it('should use desc field when description field is missing', () => {
-            const eventData = {
-                name: 'Test',
-                desc: 'Event description from desc field'
-                // No description field, only desc
-            };
-
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
-
-            expect(payload.event.description).toBe('Event description from desc field');
-        });
-
-        it('should parse starts_at to start_date when start_date missing', () => {
-            const eventData = {
-                name: 'Test',
-                starts_at: '2025-01-18T10:00:00-08:00'
-                // No start_date field
-            };
-
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
-
-            expect(payload.event.start_date).toBe('2025-01-18');
-        });
-
-        it('should parse starts_at to start_time when start_time missing', () => {
-            const eventData = {
-                name: 'Test',
-                starts_at: '2025-01-18T10:00:00-08:00'
-                // No start_time field
-            };
-
-            const payload = RWGPSClientCore.buildV1EditEventPayload(eventData, '0');
-
-            expect(payload.event.start_time).toBe('10:00');
-        });
-
         it('should handle missing location field', () => {
             const eventData = {
                 name: 'Test'

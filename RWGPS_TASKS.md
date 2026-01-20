@@ -1532,8 +1532,8 @@ class SCCCCEvent {
 - [x] Task 7.1: Delete transformV1EventToWebFormat (dead code) ✅ Commit 297190c
 - [x] Task 7.2: Delete buildEditEventPayload (dead code) ✅ Commit 297190c
 - [x] Task 7.3: Refactor SCCCCEvent to use v1 field names ✅
-- [ ] Task 7.4: Update EventFactory to use new field names
-- [ ] Task 7.5: Delete convertSCCCCEventToV1Format
+- [x] Task 7.4: Update EventFactory to use new field names ✅ Commit 0f8f780
+- [x] Task 7.5: Delete convertSCCCCEventToV1Format ✅ Commit 0ea6663
 - [ ] Task 7.6: Simplify buildV1EditEventPayload
 - [ ] Task 7.7: Delete _transformV1ToWebFormat (or keep as optional enhancement layer)
 - [ ] Task 7.8: Update EventFactory.fromRwgpsEvent to accept v1 directly
@@ -1554,26 +1554,26 @@ class SCCCCEvent {
 - [x] 7.3.7 Run `npm run typecheck` - ZERO errors
 - [x] 7.3.8 Commit: "Task 7.3: Add v1 API field names to SCCCCEvent with legacy aliases"
 
-### Task 7.4: Update EventFactory to use new field names (TDD)
+### Task 7.4: Update EventFactory to use new field names (TDD) ✅
 
-- [ ] 7.4.1 Update EventFactory.newEvent() to set description, start_date, start_time, organizer_ids
-- [ ] 7.4.2 Update EventFactory.fromRwgpsEvent() to copy v1 fields directly
-- [ ] 7.4.3 Update tests in EventFactory.test.js
-- [ ] 7.4.4 Run `npm test` - all tests pass
-- [ ] 7.4.5 Run `npm run typecheck` - ZERO errors
-- [ ] 7.4.6 Commit: "Task 7.4: Update EventFactory to use v1 field names"
+- [x] 7.4.1 Update EventFactory.newEvent() to set description, start_date, start_time, organizer_ids
+- [x] 7.4.2 Update EventFactory.fromRwgpsEvent() to copy v1 fields directly
+- [x] 7.4.3 Update tests in EventFactory.test.js
+- [x] 7.4.4 Run `npm test` - all tests pass (693 tests)
+- [x] 7.4.5 Run `npm run typecheck` - ZERO errors
+- [x] 7.4.6 Commit: "Task 7.4: Update EventFactory to use v1 field names" (0f8f780)
 
-### Task 7.5: Delete convertSCCCCEventToV1Format (TDD)
+### Task 7.5: Delete convertSCCCCEventToV1Format (TDD) ✅
 
 Now that SCCCCEvent uses v1 field names, this conversion is unnecessary.
 
-- [ ] 7.5.1 Update RideManager.js to pass SCCCCEvent directly (no conversion)
-- [ ] 7.5.2 Delete `convertSCCCCEventToV1Format()` from RWGPSClientCore.js
-- [ ] 7.5.3 Delete tests for `convertSCCCCEventToV1Format` in RWGPSClientCore.test.js
-- [ ] 7.5.4 Update RWGPSClientCore.d.ts to remove the type declaration
-- [ ] 7.5.5 Run `npm test` - all tests pass
-- [ ] 7.5.6 Run `npm run typecheck` - ZERO errors
-- [ ] 7.5.7 Commit: "Task 7.5: Delete convertSCCCCEventToV1Format (SCCCCEvent now uses v1 format)"
+- [x] 7.5.1 Update RideManager.js to pass SCCCCEvent directly (no conversion)
+- [x] 7.5.2 Delete `convertSCCCCEventToV1Format()` from RWGPSClientCore.js
+- [x] 7.5.3 Delete tests for `convertSCCCCEventToV1Format` in RWGPSClientCore.test.js
+- [x] 7.5.4 Update RWGPSClientCore.d.ts to remove the type declaration
+- [x] 7.5.5 Run `npm test` - all tests pass (688 tests)
+- [x] 7.5.6 Run `npm run typecheck` - ZERO errors
+- [x] 7.5.7 Commit: "Task 7.5: Delete convertSCCCCEventToV1Format" (0ea6663)
 
 ### Task 7.6: Simplify buildV1EditEventPayload (TDD)
 

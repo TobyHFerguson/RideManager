@@ -195,35 +195,11 @@ var RWGPSClientCore = (function() {
             all_day: String(allDay)
         };
 
-        // Copy string fields
+        // Copy v1 fields directly
         if (eventData.name !== undefined) event.name = eventData.name;
-        
-        // Handle description - accept both 'description' and 'desc' (web format alias)
-        if (eventData.description !== undefined) {
-            event.description = eventData.description;
-        } else if (eventData.desc !== undefined) {
-            event.description = eventData.desc;
-        }
-        
-        // Handle start date/time - accept both v1 format AND starts_at (web format)
-        if (eventData.start_date !== undefined) {
-            event.start_date = eventData.start_date;
-        } else if (eventData.starts_at) {
-            // Parse starts_at ISO format: "2025-01-18T10:00:00-08:00"
-            const startsAt = eventData.starts_at;
-            // Extract date (first 10 chars)
-            event.start_date = startsAt.substring(0, 10);
-        }
-        
-        if (eventData.start_time !== undefined) {
-            event.start_time = eventData.start_time;
-        } else if (eventData.starts_at) {
-            // Parse starts_at ISO format: "2025-01-18T10:00:00-08:00"
-            const startsAt = eventData.starts_at;
-            // Extract time (chars 11-16, format HH:MM)
-            event.start_time = startsAt.substring(11, 16);
-        }
-        
+        if (eventData.description !== undefined) event.description = eventData.description;
+        if (eventData.start_date !== undefined) event.start_date = eventData.start_date;
+        if (eventData.start_time !== undefined) event.start_time = eventData.start_time;
         if (eventData.location !== undefined) event.location = eventData.location;
         if (eventData.time_zone !== undefined) event.time_zone = eventData.time_zone;
         
