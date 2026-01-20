@@ -1388,7 +1388,7 @@ updateMembers() {
 - [x] 8.3.3 Update API Coverage table to show all green
 - [x] 8.3.4 Run full test suite: `npm test` - 686 tests pass
 - [x] 8.3.5 GAS integration tests verified (testGetClubMembers passed with 474 members)
-- [ ] 8.3.6 Commit: "Phase 8 complete: All v1-compatible operations migrated"
+- [x] 8.3.6 Commit: "Phase 8 complete: All v1-compatible operations migrated" - Commit cd80203
 
 ---
 
