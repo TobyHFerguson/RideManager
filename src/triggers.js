@@ -637,8 +637,7 @@ function installTriggers_() {
  */
 function dailyRWGPSMembersDownload() {
   try {
-    // @ts-expect-error - getRWGPS is defined in RWGPSFunctions.js
-    const adapter = new RWGPSMembersAdapter(getRWGPS());
+    const adapter = new RWGPSMembersAdapter();
     const result = adapter.updateMembers();
 
     console.log(`dailyRWGPSMembersDownload: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total)`);

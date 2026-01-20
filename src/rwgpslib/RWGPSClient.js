@@ -978,6 +978,58 @@ var RWGPSClient = (function() {
     }
 
     /**
+     * Get all club members via v1 API
+     * Handles pagination automatically to fetch all pages
+     * 
+     * @returns {{success: boolean, members?: any[], error?: string}} Result with all members
+     */
+    getClubMembers() {
+        try {
+            /** @type {any[]} */
+            const allMembers = [];
+            let currentPage = 1;
+            let hasMore = true;
+
+            while (hasMore) {
+                const apiUrl = RWGPSClientCore.buildClubMembersUrl(currentPage);
+                const options = {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': this._getBasicAuthHeader(),
+                        'Accept': 'application/json'
+                    },
+                    muteHttpExceptions: true
+                };
+
+                const response = this._fetch(apiUrl, options);
+                const statusCode = response.getResponseCode();
+
+                if (statusCode !== 200) {
+                    return { success: false, error: `Get club members failed with status ${statusCode}` };
+                }
+
+                const data = JSON.parse(response.getContentText());
+                
+                // Add members from this page
+                if (data.members && Array.isArray(data.members)) {
+                    allMembers.push(...data.members);
+                }
+
+                // Check for more pages
+                const pagination = data.meta && data.meta.pagination;
+                hasMore = RWGPSClientCore.hasMorePages(pagination);
+                currentPage++;
+            }
+
+            return { success: true, members: allMembers };
+
+        } catch (/** @type {any} */ error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            return { success: false, error: err.message };
+        }
+    }
+
+    /**
      * Add tags to a route
      * 
      * @param {string} routeUrl - Route URL

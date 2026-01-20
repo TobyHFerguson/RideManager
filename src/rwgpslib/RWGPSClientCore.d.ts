@@ -258,6 +258,33 @@ declare class RWGPSClientCore {
      * @returns {boolean} True if newDate is after existing tag date
      */
     static isExpirationTagNewer(existingTag: string, newDate: Date): boolean;
+
+    /**
+     * Build URL for club members v1 API endpoint
+     * 
+     * @param {number} [page=1] - Page number (1-based, minimum 1)
+     * @param {number} [pageSize=200] - Page size (20-200, default 200 for efficiency)
+     * @returns {string} Full URL for members endpoint
+     */
+    static buildClubMembersUrl(page?: number, pageSize?: number): string;
+
+    /**
+     * Check if pagination indicates more pages are available
+     * 
+     * @param {PaginationMeta | null | undefined} pagination - Pagination metadata from API response
+     * @returns {boolean} True if more pages are available
+     */
+    static hasMorePages(pagination: PaginationMeta | null | undefined): boolean;
+}
+
+/**
+ * Pagination metadata from RWGPS API response
+ */
+export interface PaginationMeta {
+    record_count: number;
+    page_count: number;
+    page_size: number;
+    next_page_url: string | null;
 }
 
 export default RWGPSClientCore;

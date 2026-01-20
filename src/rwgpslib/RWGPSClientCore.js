@@ -603,6 +603,39 @@ var RWGPSClientCore = (function() {
         
         return newDateOnly.getTime() > existingDate.getTime();
     }
+
+    /**
+     * Build URL for club members v1 API endpoint
+     * 
+     * @param {number} [page=1] - Page number (1-based, minimum 1)
+     * @param {number} [pageSize=200] - Page size (20-200, default 200 for efficiency)
+     * @returns {string} Full URL for members endpoint
+     */
+    static buildClubMembersUrl(page = 1, pageSize = 200) {
+        // Enforce minimum page of 1
+        const validPage = Math.max(1, page || 1);
+        
+        // Enforce pageSize bounds: min 20, max 200
+        let validPageSize = pageSize || 200;
+        validPageSize = Math.max(20, validPageSize);
+        validPageSize = Math.min(200, validPageSize);
+        
+        return `https://ridewithgps.com/api/v1/members.json?page=${validPage}&page_size=${validPageSize}`;
+    }
+
+    /**
+     * Check if pagination indicates more pages are available
+     * 
+     * @param {{next_page_url?: string | null, record_count?: number, page_count?: number, page_size?: number} | null | undefined} pagination - Pagination metadata from API response
+     * @returns {boolean} True if more pages are available
+     */
+    static hasMorePages(pagination) {
+        if (!pagination) {
+            return false;
+        }
+        
+        return !!pagination.next_page_url;
+    }
 }
 
 return RWGPSClientCore;

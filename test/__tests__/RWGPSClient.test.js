@@ -1522,4 +1522,159 @@ describe('RWGPSClient', () => {
             expect(result.error).toContain('Tag addition failed');
         });
     });
+
+    describe('getClubMembers', () => {
+        it('should fetch all members with single page response', () => {
+            // Mock single page response (no next_page_url = last page)
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/members.json?page=1&page_size=200',
+                method: 'GET',
+                response: JSON.stringify({
+                    members: [
+                        { id: 1, user: { id: 100, first_name: 'John', last_name: 'Doe' } },
+                        { id: 2, user: { id: 101, first_name: 'Jane', last_name: 'Smith' } }
+                    ],
+                    meta: {
+                        pagination: {
+                            record_count: 2,
+                            page_count: 1,
+                            page_size: 200,
+                            next_page_url: null
+                        }
+                    }
+                }),
+                status: 200
+            });
+
+            const result = client.getClubMembers();
+
+            expect(result.success).toBe(true);
+            expect(result.members).toHaveLength(2);
+            expect(result.members[0].user.first_name).toBe('John');
+            expect(result.members[1].user.first_name).toBe('Jane');
+        });
+
+        it('should fetch all members across multiple pages', () => {
+            // Page 1
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/members.json?page=1&page_size=200',
+                method: 'GET',
+                response: JSON.stringify({
+                    members: [
+                        { id: 1, user: { id: 100, first_name: 'John', last_name: 'Doe' } }
+                    ],
+                    meta: {
+                        pagination: {
+                            record_count: 2,
+                            page_count: 2,
+                            page_size: 1,
+                            next_page_url: '/api/v1/members.json?page=2'
+                        }
+                    }
+                }),
+                status: 200
+            });
+
+            // Page 2
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/members.json?page=2&page_size=200',
+                method: 'GET',
+                response: JSON.stringify({
+                    members: [
+                        { id: 2, user: { id: 101, first_name: 'Jane', last_name: 'Smith' } }
+                    ],
+                    meta: {
+                        pagination: {
+                            record_count: 2,
+                            page_count: 2,
+                            page_size: 1,
+                            next_page_url: null
+                        }
+                    }
+                }),
+                status: 200
+            });
+
+            const result = client.getClubMembers();
+
+            expect(result.success).toBe(true);
+            expect(result.members).toHaveLength(2);
+            expect(result.members[0].user.first_name).toBe('John');
+            expect(result.members[1].user.first_name).toBe('Jane');
+        });
+
+        it('should return error on non-200 status', () => {
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/members.json?page=1&page_size=200',
+                method: 'GET',
+                response: JSON.stringify({ error: 'Unauthorized' }),
+                status: 401
+            });
+
+            const result = client.getClubMembers();
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('401');
+        });
+
+        it('should return error on network exception', () => {
+            // Turn off strict mode to allow no calls (exception thrown)
+            RWGPSMockServer.strictMode = false;
+            
+            // Override _fetch to throw
+            client._fetch = () => {
+                throw new Error('Network timeout');
+            };
+
+            const result = client.getClubMembers();
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Network timeout');
+        });
+
+        it('should return empty array for club with no members', () => {
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/members.json?page=1&page_size=200',
+                method: 'GET',
+                response: JSON.stringify({
+                    members: [],
+                    meta: {
+                        pagination: {
+                            record_count: 0,
+                            page_count: 0,
+                            page_size: 200,
+                            next_page_url: null
+                        }
+                    }
+                }),
+                status: 200
+            });
+
+            const result = client.getClubMembers();
+
+            expect(result.success).toBe(true);
+            expect(result.members).toHaveLength(0);
+        });
+
+        it('should use Basic Auth header', () => {
+            let capturedHeaders = null;
+            
+            // Override _fetch to capture headers
+            client._fetch = (url, options) => {
+                capturedHeaders = options.headers;
+                return {
+                    getResponseCode: () => 200,
+                    getContentText: () => JSON.stringify({
+                        members: [],
+                        meta: { pagination: { next_page_url: null } }
+                    })
+                };
+            };
+
+            client.getClubMembers();
+
+            expect(capturedHeaders).toBeDefined();
+            expect(capturedHeaders.Authorization).toMatch(/^Basic /);
+        });
+    });
 });

@@ -205,6 +205,14 @@ declare class RWGPSClient {
     getRoute(routeUrl: string): { success: boolean; route?: any; error?: string };
 
     /**
+     * Get all club members via v1 API
+     * Handles pagination automatically to fetch all pages
+     * 
+     * @returns {{success: boolean, members?: any[], error?: string}} Result with all members
+     */
+    getClubMembers(): { success: boolean; members?: any[]; error?: string };
+
+    /**
      * Copy a route to club library
      * @private
      */

@@ -1,22 +1,21 @@
 /**
  * RWGPSMembersAdapter - GAS adapter for RWGPS club members data
+ * Uses RWGPSClientFactory to fetch members via v1 API
  */
 
 declare class RWGPSMembersAdapter {
-    clubId: number;
     sheetName: string;
     spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet;
 
     /**
      * Creates a new RWGPSMembersAdapter
-     * @param clubId - RWGPS club ID (default is SCCCC = 47)
      * @param sheetName - Name of the sheet to manage (default 'RWGPS Members')
      */
-    constructor(clubId?: number, sheetName?: string);
+    constructor(sheetName?: string);
 
     /**
      * Fetch and update club members data
-     * Main entry point - fetches from API, transforms, and saves to sheet
+     * Main entry point - fetches from v1 API via RWGPSClientFactory, transforms, and saves to sheet
      * Creates sheet if it doesn't exist
      * 
      * @returns Result object with success status and counts

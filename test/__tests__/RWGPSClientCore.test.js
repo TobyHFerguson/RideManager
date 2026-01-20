@@ -980,5 +980,91 @@ describe('RWGPSClientCore', () => {
             expect(result).toBe(true);
         });
     });
+
+    describe('buildClubMembersUrl', () => {
+        it('should build URL with default pagination (page 1, pageSize 200)', () => {
+            const url = RWGPSClientCore.buildClubMembersUrl();
+            
+            expect(url).toBe('https://ridewithgps.com/api/v1/members.json?page=1&page_size=200');
+        });
+
+        it('should build URL with custom page number', () => {
+            const url = RWGPSClientCore.buildClubMembersUrl(3);
+            
+            expect(url).toBe('https://ridewithgps.com/api/v1/members.json?page=3&page_size=200');
+        });
+
+        it('should build URL with custom page and pageSize', () => {
+            const url = RWGPSClientCore.buildClubMembersUrl(2, 50);
+            
+            expect(url).toBe('https://ridewithgps.com/api/v1/members.json?page=2&page_size=50');
+        });
+
+        it('should enforce minimum page of 1', () => {
+            const url = RWGPSClientCore.buildClubMembersUrl(0);
+            
+            expect(url).toBe('https://ridewithgps.com/api/v1/members.json?page=1&page_size=200');
+        });
+
+        it('should enforce minimum pageSize of 20', () => {
+            const url = RWGPSClientCore.buildClubMembersUrl(1, 5);
+            
+            expect(url).toBe('https://ridewithgps.com/api/v1/members.json?page=1&page_size=20');
+        });
+
+        it('should enforce maximum pageSize of 200', () => {
+            const url = RWGPSClientCore.buildClubMembersUrl(1, 500);
+            
+            expect(url).toBe('https://ridewithgps.com/api/v1/members.json?page=1&page_size=200');
+        });
+
+        it('should handle negative page number', () => {
+            const url = RWGPSClientCore.buildClubMembersUrl(-5);
+            
+            expect(url).toBe('https://ridewithgps.com/api/v1/members.json?page=1&page_size=200');
+        });
+    });
+
+    describe('hasMorePages', () => {
+        it('should return true when next_page_url is present', () => {
+            const pagination = {
+                record_count: 250,
+                page_count: 2,
+                page_size: 200,
+                next_page_url: '/api/v1/members.json?page=2'
+            };
+
+            expect(RWGPSClientCore.hasMorePages(pagination)).toBe(true);
+        });
+
+        it('should return false when next_page_url is null', () => {
+            const pagination = {
+                record_count: 150,
+                page_count: 1,
+                page_size: 200,
+                next_page_url: null
+            };
+
+            expect(RWGPSClientCore.hasMorePages(pagination)).toBe(false);
+        });
+
+        it('should return false when next_page_url is undefined', () => {
+            const pagination = {
+                record_count: 150,
+                page_count: 1,
+                page_size: 200
+            };
+
+            expect(RWGPSClientCore.hasMorePages(pagination)).toBe(false);
+        });
+
+        it('should return false when pagination is null', () => {
+            expect(RWGPSClientCore.hasMorePages(null)).toBe(false);
+        });
+
+        it('should return false when pagination is undefined', () => {
+            expect(RWGPSClientCore.hasMorePages(undefined)).toBe(false);
+        });
+    });
 });
 
