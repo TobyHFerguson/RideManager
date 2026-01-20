@@ -58,6 +58,60 @@ describe("Event Factory Tests", () => {
     const managedRow = makeRow();
     const unmanagedRow = makeRow({ rideName: 'Tobys Ride' });
     
+    // Task 7.4: Tests for v1 API field names
+    describe("v1 API field names (Task 7.4)", () => {
+        describe("newEvent() uses v1 fields directly", () => {
+            test("should set description (not just desc alias)", () => {
+                const event = EventFactory.newEvent(managedRow, organizers, 1234);
+                expect(event.description).toBeDefined();
+                expect(event.description).toContain('Ride Leader');
+            });
+            
+            test("should set organizer_ids (not just organizer_tokens alias)", () => {
+                const event = EventFactory.newEvent(managedRow, organizers, 1234);
+                expect(event.organizer_ids).toBeDefined();
+                expect(event.organizer_ids).toEqual(['302732']);
+            });
+            
+            test("should set start_date and start_time", () => {
+                const event = EventFactory.newEvent(managedRow, organizers, 1234);
+                expect(event.start_date).toBeDefined();
+                expect(event.start_time).toBeDefined();
+                // Verify format matches v1 API expectations
+                expect(event.start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+                expect(event.start_time).toMatch(/^\d{2}:\d{2}$/);
+            });
+            
+            test("startDateTime getter should compute from start_date and start_time", () => {
+                const event = EventFactory.newEvent(managedRow, organizers, 1234);
+                const expectedDateTime = managedRow.startDateTime;
+                expect(event.startDateTime).toEqual(expectedDateTime);
+            });
+        });
+        
+        describe("fromRwgpsEvent() uses v1 fields directly", () => {
+            test("should set description from rwgps desc field", () => {
+                const event = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
+                expect(event.description).toBeDefined();
+                expect(event.description).toContain('Ride Leader');
+            });
+            
+            test("should set organizer_ids from rwgps organizer_ids", () => {
+                const event = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
+                expect(event.organizer_ids).toBeDefined();
+                expect(event.organizer_ids).toEqual(['302732']);
+            });
+            
+            test("should set start_date and start_time from starts_at", () => {
+                const event = EventFactory.fromRwgpsEvent(managedRwgpsEvent);
+                expect(event.start_date).toBeDefined();
+                expect(event.start_time).toBeDefined();
+                expect(event.start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+                expect(event.start_time).toMatch(/^\d{2}:\d{2}$/);
+            });
+        });
+    });
+
     describe("Basic Construction", () => {
         describe("fromRow()", () => {
             test("should build from a row", () => {
@@ -79,12 +133,18 @@ describe("Event Factory Tests", () => {
             test("should create a new ride name for managed events", () => {
                 const start = new Date("2023-06-01T18:00:00.000Z");
                 const hour = dates.T24(start)
-                const expected = { ...managedEvent, 
+                // Build expected with v1 field names
+                const expectedDescription = hour === "11:00" 
+                    ? managedEvent.description.replace("Arrive 9:45 AM for a 10:00 AM rollout.", "Arrive 10:45 AM for a 11:00 AM rollout.")
+                    : managedEvent.description;
+                const expected = { 
+                    ...managedEvent, 
                     name: `Thu A (6/1 ${hour}) SCP - Seascape/Corralitos`,
-                    startDateTime: start,
-                }
-                if (hour === "11:00") { 
-                    expected.desc = expected.desc.replace("Arrive 9:45 AM for a 10:00 AM rollout.", "Arrive 10:45 AM for a 11:00 AM rollout.");
+                    // Use v1 field names
+                    description: expectedDescription,
+                    desc: expectedDescription,
+                    start_date: '2023-06-01',
+                    start_time: hour,
                 }
                 const mr = makeRow({ startDate: start });
                 const actual = EventFactory.newEvent(mr, organizers, 1234);
@@ -94,9 +154,15 @@ describe("Event Factory Tests", () => {
                 expect(() => EventFactory.newEvent()).toThrow("no row object given");
             })
             test("should return an event even if organizers is missing", () => {
-                const expected = { ...managedEvent };
-                expected.desc = expected.desc.replace("Toby Ferguson", "To Be Determined")
-                expected.organizer_tokens = [getGlobals().RIDE_LEADER_TBD_ID + ""];
+                // Build expected with v1 field names
+                const expectedDescription = managedEvent.description.replace("Toby Ferguson", "To Be Determined");
+                const expected = { 
+                    ...managedEvent,
+                    description: expectedDescription,
+                    desc: expectedDescription,
+                    organizer_ids: [getGlobals().RIDE_LEADER_TBD_ID + ""],
+                    organizer_tokens: [getGlobals().RIDE_LEADER_TBD_ID + ""],
+                };
 
                 const actual = EventFactory.newEvent(managedRow, [], 1234)
                 expect(actual).toMatchObject(expected);

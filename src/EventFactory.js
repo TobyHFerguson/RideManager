@@ -71,12 +71,14 @@ class EventFactory {
         event.route_ids = [row.routeURL.split('/')[4]];
         event.startDateTime = row.startDateTime;
         event.name = makeRideName_(row);
-        event.organizer_tokens = organizers.map(o => o.id + "");
+        // Use v1 field name directly (organizer_tokens is deprecated alias)
+        event.organizer_ids = organizers.map(o => o.id + "");
         let address = row.address && !(row.address.startsWith("#")) ? row.address : "";
         let meet_time = dates.addMinutes(row.startTime, -15);
         const startTime = row.startTime instanceof Date ? row.startTime : new Date(row.startTime);
         const meetTimeDate = meet_time instanceof Date ? meet_time : (typeof meet_time === 'number' ? new Date(meet_time) : new Date());
-        event.desc = createDescription_(organizers.map(o => o.text), address, meetTimeDate, startTime, event_id, globals);
+        // Use v1 field name directly (desc is deprecated alias)
+        event.description = createDescription_(organizers.map(o => o.text), address, meetTimeDate, startTime, event_id, globals);
         return event;
     }
 
@@ -87,10 +89,14 @@ class EventFactory {
     static fromRwgpsEvent(rwgpsEvent) {
         const event = new SCCCCEvent();
         event.all_day = rwgpsEvent.all_day ? "1" : "0";
-        event.desc = rwgpsEvent.desc ? rwgpsEvent.desc.replaceAll('\r', '') : '';
+        // Use v1 field name directly (desc is deprecated alias)
+        // Note: RWGPS response may use 'desc' or 'description' depending on endpoint
+        const descValue = rwgpsEvent.description || rwgpsEvent.desc || '';
+        event.description = typeof descValue === 'string' ? descValue.replaceAll('\r', '') : '';
         event.location = rwgpsEvent.location;
         event.name = rwgpsEvent.name;
-        event.organizer_tokens = rwgpsEvent.organizer_ids ? rwgpsEvent.organizer_ids.map(id => String(id)) : undefined;
+        // Use v1 field name directly (organizer_tokens is deprecated alias)
+        event.organizer_ids = rwgpsEvent.organizer_ids ? rwgpsEvent.organizer_ids.map(id => String(id)) : undefined;
         event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map((/** @type {{id: any}} */ r) => r.id + "") : [];
         event.startDateTime = rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date();
         event.visibility = rwgpsEvent.visibility || 0;
