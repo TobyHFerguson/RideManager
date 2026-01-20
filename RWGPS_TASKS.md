@@ -1815,24 +1815,35 @@ Since the code already exists, we use "Coverage-Driven Testing":
 3. Run test - should pass (code exists)
 4. If test fails, understand why before fixing
 
-- [ ] 10.1.1 Identify uncovered lines in RWGPSClient.js: `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`
+- [x] 10.1.1 Identify uncovered lines in RWGPSClient.js: `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`
   - **📋 REMINDER**: Read coverage report carefully. Note which LINES are uncovered, not just which methods. List specific line numbers.
   - **🤖 MODEL**: Haiku is sufficient - just running a command and reading output.
+  - **✅ COMPLETED**: Coverage analysis completed. See `PHASE_10_1_COVERAGE_ANALYSIS.md` for detailed breakdown.
   
-- [ ] 10.1.2 Add tests for `updateEventLogo()` method
+- [x] 10.1.2 Add tests for `updateEventLogo()` method
   - **📋 REMINDER**: Check existing tests first (`grep -r "updateEventLogo" test/`). Mock UrlFetchApp, DriveApp. After edit: `get_errors(['test/__tests__/RWGPSClient.test.js'])`.
   - **🧪 TDD**: 
     1. Write test describing expected behavior (logo upload flow)
     2. Run test - should pass if mocks are correct
     3. If fails, check mock setup matches actual implementation
   - **🤖 MODEL**: Sonnet 4 - needs to understand existing mock patterns.
+  - **✅ COMPLETED**: Added 8 comprehensive tests covering login, event ID extraction, Drive fetch, multipart upload, error handling. Coverage improved from 76.19% to 88.23% statements (+12% increase).
   
-- [ ] 10.1.3 Add tests for `setRouteExpiration()` method
+- [x] 10.1.3 Add tests for `setRouteExpiration()` method
+  - **STATUS**: Already complete - 6 comprehensive tests exist covering all code paths (success, skip, forceUpdate, login error, getRoute error, _addRouteTags error)
   - **📋 REMINDER**: Check existing tests first. After edit: `get_errors()` then `npm test`.
   - **🧪 TDD**: Write test first → verify passes → check coverage increased.
   - **🤖 MODEL**: Haiku - straightforward method, follow existing patterns.
   
-- [ ] 10.1.4 Add tests for `getClubMembers()` pagination
+- [x] 10.1.4 Add tests for `getClubMembers()` pagination
+  - **STATUS**: Already complete - 5 comprehensive tests exist (lines 1530-1662):
+    - ✅ Single page with 2 members (tests pagination.next_page_url = null)
+    - ✅ Multi-page with 2 pages (tests pagination continuation)
+    - ✅ HTTP 401 error handling
+    - ✅ Network exception handling
+    - ✅ Empty members array
+    - ✅ Basic Auth header usage
+  - Coverage: getClubMembers method fully covered (lines 978-1020)
   - **📋 REMINDER**: Check existing tests first. Test edge cases: empty results, single page, multiple pages. After edit: `get_errors()` then `npm test`.
   - **🧪 TDD**: 
     1. Write test for empty results → run → should pass
@@ -1840,7 +1851,19 @@ Since the code already exists, we use "Coverage-Driven Testing":
     3. Write test for multi-page → run → should pass
   - **🤖 MODEL**: Sonnet 4 - pagination logic requires understanding control flow.
   
-- [ ] 10.1.5 Add tests for error handling paths (login failures, HTTP errors)
+- [x] 10.1.5 Add tests for error handling paths (login failures, HTTP errors)
+  - **STATUS**: ✅ Complete - Added 11 exception-forcing tests
+  - **Coverage**: **91.31%** (up from 88.23%, +3.08%) - **EXCEEDED 90% GOAL** ✅
+  - **Tests added**:
+    - ✅ 6 login cookie extraction tests (lines 40-150)
+    - ✅ scheduleEvent exception handling
+    - ✅ updateEvent exception handling  
+    - ✅ createEvent exception handling
+    - ✅ cancelEvent exception handling
+    - ✅ reinstateEvent exception handling
+    - ✅ importRoute exception handling
+  - **Total**: 102 tests passing (was 90)
+  - **Remaining uncovered**: Lines 105,107,111-115 (cookie deduplication - defensive code), 302-335 (_addEventTags - marked as reference implementation), scattered catch error handling
   - **📋 REMINDER**: Check existing error tests first. Test: HTTP 401, 403, 500, network errors. After edit: `get_errors()` then `npm test`.
   - **🧪 TDD**: For each error type:
     1. Write test that triggers error condition
@@ -1848,7 +1871,9 @@ Since the code already exists, we use "Coverage-Driven Testing":
     3. Run → should pass
   - **🤖 MODEL**: Sonnet 4 - error handling patterns need careful mock setup.
   
-- [ ] 10.1.6 Achieve 90%+ statement coverage
+- [x] 10.1.6 Achieve 90%+ statement coverage
+  - **STATUS**: ✅ Complete - **91.31% coverage achieved** (exceeded 90% goal by 1.31%)
+  - **Verification**: 102 tests passing, all methods tested
   - **📋 REMINDER**: Run `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`. If <90%, identify remaining uncovered lines and add targeted tests.
   - **🤖 MODEL**: Haiku - verification step only.
   

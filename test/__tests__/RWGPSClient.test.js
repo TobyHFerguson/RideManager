@@ -37,6 +37,124 @@ describe('RWGPSClient', () => {
         delete global.Utilities;
     });
     
+    describe('login', () => {
+        it('should extract session cookie from Set-Cookie header (string)', () => {
+            // Mock login response with Set-Cookie header as string
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/organizations/47/sign_in',
+                method: 'POST',
+                response: '',
+                status: 302,
+                responseHeaders: {
+                    'Set-Cookie': '_rwgps_3_session=abc123xyz; path=/; HttpOnly'
+                }
+            });
+
+            const result = client.login();
+
+            expect(result).toBe(true);
+            expect(client.webSessionCookie).toBe('_rwgps_3_session=abc123xyz');
+        });
+
+        it('should extract session cookie from Set-Cookie header (array)', () => {
+            // Mock login response with Set-Cookie as array
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/organizations/47/sign_in',
+                method: 'POST',
+                response: '',
+                status: 302,
+                responseHeaders: {
+                    'Set-Cookie': [
+                        'other_cookie=value; path=/',
+                        '_rwgps_3_session=def456uvw; path=/; HttpOnly'
+                    ]
+                }
+            });
+
+            const result = client.login();
+
+            expect(result).toBe(true);
+            expect(client.webSessionCookie).toBe('_rwgps_3_session=def456uvw');
+        });
+
+        it('should return false when no Set-Cookie header', () => {
+            // Mock login response without Set-Cookie
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/organizations/47/sign_in',
+                method: 'POST',
+                response: '',
+                status: 302,
+                responseHeaders: {}
+            });
+
+            const result = client.login();
+
+            expect(result).toBe(false);
+            expect(client.webSessionCookie).toBeNull();
+        });
+
+        it('should return false when Set-Cookie has no rwgps session', () => {
+            // Mock login response with non-RWGPS cookies
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/organizations/47/sign_in',
+                method: 'POST',
+                response: '',
+                status: 302,
+                responseHeaders: {
+                    'Set-Cookie': 'other_cookie=value; path=/'
+                }
+            });
+
+            const result = client.login();
+
+            expect(result).toBe(false);
+            expect(client.webSessionCookie).toBeNull();
+        });
+
+        it('should update existing cookie when new one received', () => {
+            // First login
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/organizations/47/sign_in',
+                method: 'POST',
+                response: '',
+                status: 302,
+                responseHeaders: {
+                    'Set-Cookie': '_rwgps_3_session=old123; path=/'
+                }
+            });
+            client.login();
+            expect(client.webSessionCookie).toBe('_rwgps_3_session=old123');
+
+            // Second login with new cookie
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/organizations/47/sign_in',
+                method: 'POST',
+                response: '',
+                status: 302,
+                responseHeaders: {
+                    'Set-Cookie': '_rwgps_3_session=new456; path=/'
+                }
+            });
+            client.login();
+            expect(client.webSessionCookie).toBe('_rwgps_3_session=new456');
+        });
+
+        it('should return false on network exception', () => {
+            // Turn off strict mode to allow exception
+            RWGPSMockServer.strictMode = false;
+            
+            // Override _fetch to throw
+            client._fetch = () => {
+                throw new Error('Network timeout');
+            };
+
+            const result = client.login();
+
+            expect(result).toBe(false);
+            expect(client.webSessionCookie).toBeNull();
+        });
+    });
+    
     describe('deleteEvent', () => {
         it('should successfully delete an event', () => {
             // Add only DELETE call (no login required)
@@ -495,6 +613,27 @@ describe('RWGPSClient', () => {
             expect(result.success).toBe(false);
             expect(result.error).toContain('Invalid Drive URL format');
         });
+
+        it('should handle exception in createEvent logic', () => {
+            // Turn off strict mode to allow exception
+            RWGPSMockServer.strictMode = false;
+            
+            // Override _fetch to throw on any call
+            client._fetch = () => {
+                throw new Error('Server timeout');
+            };
+
+            const eventData = {
+                name: 'Test Event',
+                start_date: '2030-03-15',
+                start_time: '10:00'
+            };
+
+            const result = client.createEvent(eventData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Create failed: Server timeout');
+        });
     });
 
     describe('cancelEvent', () => {
@@ -633,6 +772,23 @@ describe('RWGPSClient', () => {
             client.getEvent = originalGetEvent;
             client.editEvent = originalEditEvent;
         });
+
+        it('should handle exception in cancelEvent logic', () => {
+            // Force exception by making getEvent throw
+            const originalGetEvent = client.getEvent;
+            client.getEvent = () => {
+                throw new Error('API rate limit exceeded');
+            };
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const result = client.cancelEvent(eventUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('API rate limit exceeded');
+
+            // Restore
+            client.getEvent = originalGetEvent;
+        });
     });
 
     describe('reinstateEvent', () => {
@@ -770,6 +926,23 @@ describe('RWGPSClient', () => {
             // Restore
             client.getEvent = originalGetEvent;
             client.editEvent = originalEditEvent;
+        });
+
+        it('should handle exception in reinstateEvent logic', () => {
+            // Force exception by making getEvent throw
+            const originalGetEvent = client.getEvent;
+            client.getEvent = () => {
+                throw new Error('Connection refused');
+            };
+
+            const eventUrl = 'https://ridewithgps.com/events/444070';
+            const result = client.reinstateEvent(eventUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Connection refused');
+
+            // Restore
+            client.getEvent = originalGetEvent;
         });
     });
 
@@ -958,6 +1131,24 @@ describe('RWGPSClient', () => {
 
             expect(result.success).toBe(true);
         });
+
+        it('should handle exception in scheduleEvent logic', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            // Force exception by making createEvent throw
+            jest.spyOn(client, 'createEvent').mockImplementation(() => {
+                throw new Error('Unexpected network failure');
+            });
+
+            const result = client.scheduleEvent(
+                { name: 'Test Event', starts_at: '2030-01-01T10:00:00Z' },
+                []
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Unexpected network failure');
+        });
     });
 
     describe('updateEvent', () => {
@@ -1088,6 +1279,24 @@ describe('RWGPSClient', () => {
             );
 
             expect(result.success).toBe(true);
+        });
+
+        it('should handle exception in updateEvent logic', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            // Force exception by making editEvent throw
+            jest.spyOn(client, 'editEvent').mockImplementation(() => {
+                throw new Error('Database connection lost');
+            });
+
+            const result = client.updateEvent(
+                'https://ridewithgps.com/events/444070',
+                { name: 'Updated Event' }
+            );
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Database connection lost');
         });
     });
 
@@ -1264,6 +1473,24 @@ describe('RWGPSClient', () => {
             expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Tag addition failed'));
 
             warnSpy.mockRestore();
+        });
+
+        it('should handle exception in importRoute logic', () => {
+            jest.spyOn(client, 'login').mockReturnValue(true);
+            client.webSessionCookie = 'test-cookie';
+            
+            // Force exception by making _copyRoute throw
+            jest.spyOn(client, '_copyRoute').mockImplementation(() => {
+                throw new Error('Disk quota exceeded');
+            });
+
+            const routeUrl = 'https://ridewithgps.com/routes/53253553';
+            const routeData = { userId: 621846 };
+
+            const result = client.importRoute(routeUrl, routeData);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Disk quota exceeded');
         });
     });
 
@@ -1675,6 +1902,234 @@ describe('RWGPSClient', () => {
 
             expect(capturedHeaders).toBeDefined();
             expect(capturedHeaders.Authorization).toMatch(/^Basic /);
+        });
+    });
+
+    describe('updateEventLogo', () => {
+        beforeEach(() => {
+            // Mock Utilities for UUID and blob operations (needed for multipart)
+            global.Utilities = {
+                ...global.Utilities, // Keep existing base64Encode
+                getUuid: jest.fn().mockReturnValue('12345678-1234-1234-1234-123456789012'),
+                newBlob: jest.fn().mockImplementation((data) => {
+                    const blobData = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+                    return {
+                        getBytes: () => blobData,
+                        setContentType: jest.fn().mockReturnThis()
+                    };
+                })
+            };
+        });
+
+        it('should successfully update event logo', () => {
+            // Mock login success
+            jest.spyOn(client, 'login').mockReturnValue(true);
+
+            // Mock DriveApp for logo fetch
+            const mockLogoBytes = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]); // JPEG magic bytes
+            const mockLogoBlob = {
+                getContentType: jest.fn().mockReturnValue('image/jpeg'),
+                getBytes: jest.fn().mockReturnValue(mockLogoBytes)
+            };
+            global.DriveApp = {
+                getFileById: jest.fn().mockReturnValue({
+                    getBlob: jest.fn().mockReturnValue(mockLogoBlob)
+                })
+            };
+
+            // Mock successful PUT request
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/12345.json',
+                method: 'PUT',
+                response: JSON.stringify({ success: true }),
+                status: 200
+            });
+
+            const eventUrl = 'https://ridewithgps.com/events/12345-test-event';
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.updateEventLogo(eventUrl, logoUrl);
+
+            expect(result.success).toBe(true);
+            expect(result.error).toBeUndefined();
+
+            // Verify login was called
+            expect(client.login).toHaveBeenCalled();
+
+            // Verify DriveApp was called
+            expect(DriveApp.getFileById).toHaveBeenCalledWith('1234567890abcdef');
+
+            // Verify PUT request was made
+            const calls = RWGPSMockServer.actualCalls;
+            const putCall = calls.find(c => c.method === 'PUT');
+            expect(putCall).toBeDefined();
+            expect(putCall.url).toBe('https://ridewithgps.com/api/v1/events/12345.json');
+            expect(putCall.options.headers['Content-Type']).toContain('multipart/form-data');
+            expect(putCall.options.headers['Authorization']).toMatch(/^Basic /);
+        });
+
+        it('should return error if login fails', () => {
+            // Mock login failure
+            jest.spyOn(client, 'login').mockReturnValue(false);
+
+            const eventUrl = 'https://ridewithgps.com/events/12345-test-event';
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.updateEventLogo(eventUrl, logoUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Login failed');
+
+            // Verify login was attempted
+            expect(client.login).toHaveBeenCalled();
+        });
+
+        it('should return error for invalid event URL', () => {
+            // Mock login success
+            jest.spyOn(client, 'login').mockReturnValue(true);
+
+            const invalidEventUrl = 'https://invalid-url.com/not-an-event';
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.updateEventLogo(invalidEventUrl, logoUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Could not extract event ID');
+        });
+
+        it('should return error for invalid Drive URL format', () => {
+            // Mock login success
+            jest.spyOn(client, 'login').mockReturnValue(true);
+
+            const eventUrl = 'https://ridewithgps.com/events/12345-test-event';
+            const invalidLogoUrl = 'https://invalid-drive-url.com/image.jpg';
+            const result = client.updateEventLogo(eventUrl, invalidLogoUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Invalid Drive URL format');
+        });
+
+        it('should handle DriveApp error when fetching logo', () => {
+            // Mock login success
+            jest.spyOn(client, 'login').mockReturnValue(true);
+
+            // Mock DriveApp to throw error
+            global.DriveApp = {
+                getFileById: jest.fn().mockImplementation(() => {
+                    throw new Error('File not found');
+                })
+            };
+
+            const eventUrl = 'https://ridewithgps.com/events/12345-test-event';
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.updateEventLogo(eventUrl, logoUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('File not found');
+        });
+
+        it('should handle PNG content type correctly', () => {
+            // Mock login success
+            jest.spyOn(client, 'login').mockReturnValue(true);
+
+            // Mock DriveApp for PNG logo
+            const mockLogoBytes = new Uint8Array([0x89, 0x50, 0x4E, 0x47]); // PNG magic bytes
+            const mockLogoBlob = {
+                getContentType: jest.fn().mockReturnValue('image/png'),
+                getBytes: jest.fn().mockReturnValue(mockLogoBytes)
+            };
+            global.DriveApp = {
+                getFileById: jest.fn().mockReturnValue({
+                    getBlob: jest.fn().mockReturnValue(mockLogoBlob)
+                })
+            };
+
+            // Mock successful PUT request
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/12345.json',
+                method: 'PUT',
+                response: JSON.stringify({ success: true }),
+                status: 200
+            });
+
+            const eventUrl = 'https://ridewithgps.com/events/12345-test-event';
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.updateEventLogo(eventUrl, logoUrl);
+
+            expect(result.success).toBe(true);
+
+            // Verify PNG content type was detected
+            expect(mockLogoBlob.getContentType).toHaveBeenCalled();
+
+            // Check that multipart includes PNG filename
+            const calls = RWGPSMockServer.actualCalls;
+            const putCall = calls.find(c => c.method === 'PUT');
+            expect(putCall.options.payload).toBeDefined();
+        });
+
+        it('should handle HTTP error response from RWGPS API', () => {
+            // Mock login success
+            jest.spyOn(client, 'login').mockReturnValue(true);
+
+            // Mock DriveApp for logo fetch
+            const mockLogoBytes = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
+            const mockLogoBlob = {
+                getContentType: jest.fn().mockReturnValue('image/jpeg'),
+                getBytes: jest.fn().mockReturnValue(mockLogoBytes)
+            };
+            global.DriveApp = {
+                getFileById: jest.fn().mockReturnValue({
+                    getBlob: jest.fn().mockReturnValue(mockLogoBlob)
+                })
+            };
+
+            // Mock 400 error response
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/12345.json',
+                method: 'PUT',
+                response: JSON.stringify({ error: 'Invalid event data' }),
+                status: 400
+            });
+
+            const eventUrl = 'https://ridewithgps.com/events/12345-test-event';
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.updateEventLogo(eventUrl, logoUrl);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Logo update failed with status 400');
+            expect(result.error).toContain('Invalid event data');
+        });
+
+        it('should accept 201 status code as success', () => {
+            // Mock login success
+            jest.spyOn(client, 'login').mockReturnValue(true);
+
+            // Mock DriveApp for logo fetch
+            const mockLogoBytes = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0]);
+            const mockLogoBlob = {
+                getContentType: jest.fn().mockReturnValue('image/jpeg'),
+                getBytes: jest.fn().mockReturnValue(mockLogoBytes)
+            };
+            global.DriveApp = {
+                getFileById: jest.fn().mockReturnValue({
+                    getBlob: jest.fn().mockReturnValue(mockLogoBlob)
+                })
+            };
+
+            // Mock 201 Created response
+            RWGPSMockServer.addExpectedCall({
+                url: 'https://ridewithgps.com/api/v1/events/67890.json',
+                method: 'PUT',
+                response: JSON.stringify({ success: true }),
+                status: 201
+            });
+
+            const eventUrl = 'https://ridewithgps.com/events/67890-another-event';
+            const logoUrl = 'https://drive.google.com/file/d/1234567890abcdef/view';
+            const result = client.updateEventLogo(eventUrl, logoUrl);
+
+            expect(result.success).toBe(true);
+        });
+
+        afterEach(() => {
+            delete global.DriveApp;
         });
     });
 });

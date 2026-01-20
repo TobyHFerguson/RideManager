@@ -307,9 +307,14 @@ var RWGPSClient = (function() {
     /**
      * Add tags to an event
      * 
+     * NOTE: Currently unused in codebase, but kept as reference implementation.
+     * This demonstrates the web session-based batch tag update pattern for RWGPS events,
+     * which was non-trivial to develop. May be useful for future event tag operations.
+     * 
      * @param {string} eventId - Event ID
      * @param {string[]} tags - Tag names to add
      * @returns {{success: boolean, error?: string}} Result
+     * @private
      */
     _addEventTags(eventId, tags) {
         try {
