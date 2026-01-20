@@ -215,6 +215,65 @@ describe("Event Factory Tests", () => {
                 expect(actual.name).toBe(managedRwgpsEvent.name);
                 expect(actual.location).toBe(managedRwgpsEvent.location);
             })
+            
+            // Task 7.7: v1 format support
+            test("should handle v1 format with start_date and start_time", () => {
+                const v1Event = {
+                    name: 'Test Event',
+                    description: 'Test description',
+                    start_date: '2025-03-15',
+                    start_time: '09:30',
+                    location: 'Test Location',
+                    visibility: 'public',
+                    routes: [{ id: 12345, name: 'Test Route' }],
+                    organizers: [{ id: 99999, name: 'Test Leader' }]
+                };
+                
+                const actual = EventFactory.fromRwgpsEvent(v1Event);
+                
+                expect(actual.name).toBe('Test Event');
+                expect(actual.description).toBe('Test description');
+                expect(actual.location).toBe('Test Location');
+                expect(actual.route_ids).toEqual(['12345']);
+                // Check start_date and start_time are parsed correctly
+                expect(actual.start_date).toBe('2025-03-15');
+                expect(actual.start_time).toBe('09:30');
+            })
+            
+            test("should prefer start_date/start_time over starts_at when both present", () => {
+                const mixedEvent = {
+                    name: 'Test Event',
+                    start_date: '2025-06-01',
+                    start_time: '14:00',
+                    starts_at: '2025-01-01T10:00:00-08:00', // should be ignored
+                    routes: []
+                };
+                
+                const actual = EventFactory.fromRwgpsEvent(mixedEvent);
+                
+                // Should use start_date/start_time, not starts_at
+                expect(actual.start_date).toBe('2025-06-01');
+                expect(actual.start_time).toBe('14:00');
+            })
+            
+            test("should extract organizer_ids from organizers array", () => {
+                const v1Event = {
+                    name: 'Test Event',
+                    start_date: '2025-03-15',
+                    start_time: '09:30',
+                    organizers: [
+                        { id: 111, name: 'Leader 1' },
+                        { id: 222, name: 'Leader 2' }
+                    ],
+                    routes: []
+                };
+                
+                const actual = EventFactory.fromRwgpsEvent(v1Event);
+                
+                // Should extract IDs as strings
+                expect(actual.organizer_ids).toEqual(['111', '222']);
+            })
+            
             test("should log error when event name ends with ]", () => {
                 const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
                 const testcase = { ...managedRwgpsEvent, name: "Bad Event Name ]" };

@@ -95,10 +95,29 @@ class EventFactory {
         event.description = typeof descValue === 'string' ? descValue.replaceAll('\r', '') : '';
         event.location = rwgpsEvent.location;
         event.name = rwgpsEvent.name;
-        // Use v1 field name directly (organizer_tokens is deprecated alias)
-        event.organizer_ids = rwgpsEvent.organizer_ids ? rwgpsEvent.organizer_ids.map(id => String(id)) : undefined;
+        
+        // Handle organizer_ids: accept v1 organizer_ids array OR organizers array of {id, name}
+        if (rwgpsEvent.organizer_ids) {
+            event.organizer_ids = rwgpsEvent.organizer_ids.map(id => String(id));
+        } else if (Array.isArray(rwgpsEvent.organizers)) {
+            event.organizer_ids = rwgpsEvent.organizers.map((/** @type {{id: any}} */ o) => String(o.id));
+        }
+        
+        // Handle route_ids: accept routes array of {id, name}
         event.route_ids = rwgpsEvent.routes ? rwgpsEvent.routes.map((/** @type {{id: any}} */ r) => r.id + "") : [];
-        event.startDateTime = rwgpsEvent.starts_at ? new Date(rwgpsEvent.starts_at) : new Date();
+        
+        // Handle start date/time: prefer v1 format (start_date + start_time) over web format (starts_at)
+        if (rwgpsEvent.start_date && rwgpsEvent.start_time) {
+            // v1 format: separate start_date and start_time fields
+            event.start_date = rwgpsEvent.start_date;
+            event.start_time = rwgpsEvent.start_time;
+        } else if (rwgpsEvent.starts_at) {
+            // Web format: parse starts_at ISO string
+            event.startDateTime = new Date(rwgpsEvent.starts_at);
+        } else {
+            event.startDateTime = new Date();
+        }
+        
         event.visibility = rwgpsEvent.visibility || 0;
         if (event.name && event.name.trim().endsWith(']')) {
             console.error(`Event name '${event.name}' should not end with ']' - this is likely a bug in the RWGPS event import code`);

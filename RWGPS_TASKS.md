@@ -1534,7 +1534,7 @@ class SCCCCEvent {
 - [x] Task 7.3: Refactor SCCCCEvent to use v1 field names ✅
 - [x] Task 7.4: Update EventFactory to use new field names ✅ Commit 0f8f780
 - [x] Task 7.5: Delete convertSCCCCEventToV1Format ✅ Commit 0ea6663
-- [ ] Task 7.6: Simplify buildV1EditEventPayload
+- [x] Task 7.6: Simplify buildV1EditEventPayload ✅ Commit 9994b86
 - [ ] Task 7.7: Delete _transformV1ToWebFormat (or keep as optional enhancement layer)
 - [ ] Task 7.8: Update EventFactory.fromRwgpsEvent to accept v1 directly
 - [ ] Task 7.9: Final verification and cleanup
@@ -1575,18 +1575,18 @@ Now that SCCCCEvent uses v1 field names, this conversion is unnecessary.
 - [x] 7.5.6 Run `npm run typecheck` - ZERO errors
 - [x] 7.5.7 Commit: "Task 7.5: Delete convertSCCCCEventToV1Format" (0ea6663)
 
-### Task 7.6: Simplify buildV1EditEventPayload (TDD)
+### Task 7.6: Simplify buildV1EditEventPayload (TDD) ✅
 
 With unified event shape, this function only needs to:
 1. Wrap event in `{event: ...}`
 2. Convert visibility number → string
 
-- [ ] 7.6.1 Write test for simplified behavior
-- [ ] 7.6.2 Simplify implementation (spread input, only transform visibility)
-- [ ] 7.6.3 Update or remove now-redundant tests
-- [ ] 7.6.4 Run `npm test` - all tests pass
-- [ ] 7.6.5 Run `npm run typecheck` - ZERO errors
-- [ ] 7.6.6 Commit: "Task 7.6: Simplify buildV1EditEventPayload to passthrough mode"
+- [x] 7.6.1 Existing tests already cover simplified behavior
+- [x] 7.6.2 Simplified implementation (removed desc/starts_at fallbacks)
+- [x] 7.6.3 Deleted 8 redundant tests (legacy format aliases)
+- [x] 7.6.4 Run `npm test` - all 680 tests pass
+- [x] 7.6.5 Run `npm run typecheck` - ZERO errors
+- [x] 7.6.6 Commit: "Task 7.6: Simplify buildV1EditEventPayload to passthrough mode" (9994b86)
 
 ### Task 7.7: Evaluate _transformV1ToWebFormat (Decision Point)
 
