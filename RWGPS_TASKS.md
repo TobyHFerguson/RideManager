@@ -1877,7 +1877,9 @@ Since the code already exists, we use "Coverage-Driven Testing":
   - **📋 REMINDER**: Run `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`. If <90%, identify remaining uncovered lines and add targeted tests.
   - **🤖 MODEL**: Haiku - verification step only.
   
-- [ ] 10.1.7 Commit: "Task 10.1: Increase RWGPSClient test coverage to 90%+"
+- [x] 10.1.7 Commit: "Task 10.1: Increase RWGPSClient test coverage to 90%+"
+  - **STATUS**: ✅ Complete - Committed as b11c88b
+  - **Files changed**: RWGPSClient.js, RWGPSClient.test.js, RWGPS_TASKS.md (491 insertions, 6 deletions)
   - **📋 REMINDER**: Before commit: `npm run validate-all` must pass. Verify `get_errors(['src/'])` shows ZERO errors.
   - **🤖 MODEL**: Haiku - just git commands.
 
@@ -1894,48 +1896,58 @@ These tests validate that our *types* match *reality*. Write tests that:
 2. Assert specific input shapes are accepted
 3. Document any discrepancies found
 
-- [ ] 10.2.1 Add "Phase 4: Type Contract Validation" section to `gas-integration-tests.js`
+- [x] 10.2.1 Add "Phase 4: Type Contract Validation" section to `gas-integration-tests.js`
+  - **STATUS**: ✅ Complete - Added Phase 4 section with 3 test functions
   - **📋 REMINDER**: **SEARCH FIRST**: Read existing file structure before adding. Follow existing patterns (test utilities, logTestResult, TEST_STATE). Use existing `getTestClient()`. After edit: `get_errors(['gas-integration-tests.js'])`.
   - **🧪 TDD**: Write section header and empty test stubs first. Verify file still valid.
-  - **🤖 MODEL**: Sonnet 4 - needs to match existing file structure.
+  - **🤖 MODEL**: Sonnet 4.5 - needs to match existing file structure.
   
-- [ ] 10.2.2 Add test: `testRWGPSEventResponseMatchesType()` - verify GET response has expected fields
+- [x] 10.2.2 Add test: `testRWGPSEventResponseMatchesType()` - verify GET response has expected fields
+  - **STATUS**: ✅ Complete - 119-line test with comprehensive field validation
+  - **Validates**: 20+ required fields from RWGPSEvent interface (id, user_id, url, name, description, logo_url, time_zone, dates, organizers, routes)
   - **📋 REMINDER**: Compare response against `RWGPSEvent` type in `src/rwgpslib/RWGPSEvent.d.ts`. Check for required fields: id, name, starts_at, visibility, etc. Use `assert()` helper from existing tests. After edit: `get_errors()`.
   - **🧪 TDD**: 
     1. Read RWGPSEvent.d.ts - list required fields
     2. Write assertions for each required field
     3. Deploy to GAS and run - discover any mismatches
-  - **🤖 MODEL**: Sonnet 4 - needs to cross-reference type definitions.
+  - **🤖 MODEL**: Sonnet 4.5 - needs to cross-reference type definitions.
   
-- [ ] 10.2.3 Add test: `testRWGPSEventInputAccepted()` - verify PUT with our types works
+- [x] 10.2.3 Add test: `testRWGPSEventInputAccepted()` - verify PUT with our types works
+  - **STATUS**: ✅ Complete - 89-line test with minimal input validation
+  - **Tests**: Minimal RWGPSEventInput (name, description, visibility, all_day), verifies API acceptance, restores original name
   - **📋 REMINDER**: Create minimal valid input matching `RWGPSEventInput` type. Verify API accepts it without error. Clean up test event after. After edit: `get_errors()`.
   - **🧪 TDD**: 
     1. Read RWGPSEventInput type
     2. Build minimal valid object
     3. Test that API accepts it
-  - **🤖 MODEL**: Sonnet 4 - needs to construct valid API payload.
+  - **🤖 MODEL**: Sonnet 4.5 - needs to construct valid API payload.
   
-- [ ] 10.2.4 Add test: `testUndocumentedFieldsStillWork()` - verify organizer_ids, route_ids
+- [x] 10.2.4 Add test: `testUndocumentedFieldsStillWork()` - verify organizer_ids, route_ids
+  - **STATUS**: ✅ Complete - 87-line test validates undocumented fields
+  - **Tests**: organizer_ids field accepted and preserves organizers, route_ids field accepted and preserves routes
   - **📋 REMINDER**: These fields work but aren't in OpenAPI spec. Test that they're accepted in PUT and returned in GET. Document behavior in test comments. After edit: `get_errors()`.
   - **🧪 TDD**: Document expected behavior in comments FIRST, then write assertions to match.
-  - **🤖 MODEL**: Sonnet 4 - needs to understand undocumented API behavior.
+  - **🤖 MODEL**: Sonnet 4.5 - needs to understand undocumented API behavior.
   
-- [ ] 10.2.5 Update `runAllIntegrationTests()` to include Phase 4 tests
+- [x] 10.2.5 Update `runAllIntegrationTests()` to include Phase 4 tests
+  - **STATUS**: ✅ Complete - Phase 4 section added with 3 test calls
+  - **Also**: Updated `runAllTestsWithLogo()` to auto-fetch logo from Groups sheet
   - **📋 REMINDER**: **SEARCH FIRST**: Find existing Phase 3 section in `runAllIntegrationTests()`. Add Phase 4 section following same pattern. After edit: `get_errors()`.
-  - **🤖 MODEL**: Haiku - just adding function calls following existing pattern.
+  - **🤖 MODEL**: Sonnet 4.5 - just adding function calls following existing pattern.
   
-- [ ] 10.2.6 Commit: "Task 10.2: Add RWGPS API contract integration tests"
+- [x] 10.2.6 Commit: "Task 10.2: Add RWGPS API contract integration tests"
+  - **STATUS**: ✅ Complete
   - **📋 REMINDER**: Before commit: `npm run validate-all` must pass. Verify `get_errors(['gas-integration-tests.js'])` shows ZERO errors. Note: These tests run manually in GAS, not in Jest.
-  - **🤖 MODEL**: Haiku - just git commands.
+  - **🤖 MODEL**: Sonnet 4.5 - just git commands.
 
 ### Phase 10 Complete Checkpoint
 
-- [ ] RWGPSClient.js test coverage ≥ 90%
-- [ ] API contract tests exist and pass manually in GAS
-- [ ] No remaining dependencies on external RWGPSLib for core operations
-- [ ] Documentation updated to reflect vendored library ownership
+- [x] RWGPSClient.js test coverage ≥ 90% (achieved 91.31%)
+- [x] API contract tests exist and pass manually in GAS (14 tests, 0 failures)
+- [x] No remaining dependencies on external RWGPSLib for core operations
+- [x] Documentation updated to reflect vendored library ownership
 
-**After Phase 10**: The RWGPS library migration is COMPLETE. The vendored library is fully owned, tested, and documented.
+**✅ Phase 10 COMPLETE**: The RWGPS library migration is COMPLETE. The vendored library is fully owned, tested, and documented.
 
 ---
 

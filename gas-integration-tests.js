@@ -984,6 +984,296 @@ function testGetClubMembers() {
 }
 
 // ============================================================================
+// PHASE 4: TYPE CONTRACT VALIDATION
+// ============================================================================
+
+/**
+ * TEST 10.2.2: Verify RWGPSEvent response matches type definition
+ * 
+ * Validates that getEvent() response includes all required fields from RWGPSEvent.d.ts
+ * 
+ * Required fields (from RWGPSEvent interface):
+ * - id, user_id, url, visibility, name, description, logo_url, banner_url, location
+ * - lat, lng, time_zone, start_date, start_time, end_date, end_time, all_day
+ * - created_at, updated_at, organizers, routes
+ * 
+ * @param {number} eventId - Event ID to test
+ * @returns {{success: boolean, error?: string}}
+ */
+function testRWGPSEventResponseMatchesType(eventId) {
+    const testName = 'testRWGPSEventResponseMatchesType';
+    console.log(`\n▶️  ${testName} (eventId: ${eventId})`);
+    
+    try {
+        const client = getTestClient();
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get event
+        console.log('   Getting event...');
+        const result = client.getEvent(eventUrl);
+        
+        assert(result.success === true, `getEvent should succeed (error: ${result.error || 'none'})`);
+        assert(result.event !== undefined, 'Result should contain event object');
+        
+        const event = result.event;
+        console.log(`   ✅ Event retrieved: "${event.name}"`);
+        
+        // STEP 2: Verify required fields from RWGPSEvent interface
+        console.log('   Verifying required fields...');
+        
+        // Basic fields
+        assert(typeof event.id === 'number', 'event.id should be number');
+        assert(typeof event.user_id === 'number', 'event.user_id should be number');
+        assert(typeof event.url === 'string', 'event.url should be string');
+        assert(typeof event.name === 'string', 'event.name should be string');
+        assert(event.description !== undefined, 'event.description should exist (can be null)');
+        assert(event.logo_url !== undefined, 'event.logo_url should exist (can be null)');
+        assert(event.banner_url !== undefined, 'event.banner_url should exist (can be null)');
+        assert(event.location !== undefined, 'event.location should exist (can be null)');
+        
+        // Location fields
+        assert(event.lat !== undefined, 'event.lat should exist (can be null)');
+        assert(event.lng !== undefined, 'event.lng should exist (can be null)');
+        
+        // Time fields
+        assert(typeof event.time_zone === 'string', 'event.time_zone should be string');
+        assert(typeof event.start_date === 'string', 'event.start_date should be string');
+        assert(typeof event.start_time === 'string', 'event.start_time should be string');
+        assert(event.end_date !== undefined, 'event.end_date should exist (can be undefined)');
+        assert(event.end_time !== undefined, 'event.end_time should exist (can be undefined)');
+        assert(typeof event.all_day === 'boolean', 'event.all_day should be boolean');
+        
+        // Metadata fields
+        assert(typeof event.created_at === 'string', 'event.created_at should be string');
+        assert(typeof event.updated_at === 'string', 'event.updated_at should be string');
+        assert(event.visibility !== undefined, 'event.visibility should exist');
+        
+        console.log('   ✅ All basic required fields present');
+        
+        // STEP 3: Verify organizers array (RWGPSEvent extends with organizers)
+        console.log('   Verifying organizers structure...');
+        assert(Array.isArray(event.organizers), 'event.organizers should be array');
+        console.log(`   ✅ Organizers array present (${event.organizers.length} organizers)`);
+        
+        // If organizers exist, verify structure
+        if (event.organizers.length > 0) {
+            const firstOrg = event.organizers[0];
+            assert(typeof firstOrg.id === 'number', 'organizer.id should be number');
+            console.log(`   ✅ Organizer structure valid (id: ${firstOrg.id})`);
+        }
+        
+        // STEP 4: Verify routes array (optional in RWGPSEvent)
+        console.log('   Verifying routes field...');
+        assert(event.routes !== undefined, 'event.routes should exist (can be empty array)');
+        if (event.routes) {
+            assert(Array.isArray(event.routes), 'event.routes should be array when present');
+            console.log(`   ✅ Routes array present (${event.routes.length} routes)`);
+            
+            // If routes exist, verify structure
+            if (event.routes.length > 0) {
+                const firstRoute = event.routes[0];
+                assert(typeof firstRoute.id === 'number', 'route.id should be number');
+                console.log(`   ✅ Route structure valid (id: ${firstRoute.id})`);
+            }
+        }
+        
+        logTestResult(testName, true);
+        return { success: true };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logTestResult(testName, false, err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * TEST 10.2.3: Verify RWGPSEventInput is accepted by API
+ * 
+ * Tests that a minimal valid RWGPSEventInput object is accepted by updateEvent()
+ * 
+ * Creates a minimal input matching RWGPSEventInput type definition:
+ * - name: string
+ * - description: string (optional)
+ * - visibility: number (optional but commonly used)
+ * - all_day: boolean (per OpenAPI spec)
+ * 
+ * @param {number} eventId - Event ID to update
+ * @returns {{success: boolean, error?: string}}
+ */
+function testRWGPSEventInputAccepted(eventId) {
+    const testName = 'testRWGPSEventInputAccepted';
+    console.log(`\n▶️  ${testName} (eventId: ${eventId})`);
+    
+    try {
+        const client = getTestClient();
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get current event to preserve important fields
+        console.log('   Getting current event state...');
+        const getResult = client.getEvent(eventUrl);
+        assert(getResult.success === true, `getEvent should succeed (error: ${getResult.error || 'none'})`);
+        
+        const originalEvent = getResult.event;
+        console.log(`   ✅ Current event: "${originalEvent.name}"`);
+        
+        // STEP 2: Build minimal RWGPSEventInput matching type definition
+        console.log('   Building minimal RWGPSEventInput...');
+        
+        /** @type {import('./src/rwgpslib/RWGPSEvent').RWGPSEventInput} */
+        const minimalInput = {
+            name: originalEvent.name + ' [Type Test]',
+            description: 'Testing RWGPSEventInput type contract',
+            visibility: originalEvent.visibility,
+            all_day: originalEvent.all_day
+        };
+        
+        console.log('   ✅ Minimal input created (4 fields: name, description, visibility, all_day)');
+        
+        // STEP 3: Update event with minimal input
+        console.log('   Updating event with minimal input...');
+        const updateResult = client.updateEvent(eventUrl, minimalInput);
+        
+        assert(updateResult.success === true, `updateEvent should accept minimal input (error: ${updateResult.error || 'none'})`);
+        console.log('   ✅ API accepted minimal RWGPSEventInput');
+        
+        // STEP 4: Verify update was applied
+        console.log('   Verifying update was applied...');
+        const verifyResult = client.getEvent(eventUrl);
+        assert(verifyResult.success === true, `getEvent should succeed after update (error: ${verifyResult.error || 'none'})`);
+        
+        const updatedEvent = verifyResult.event;
+        assert(updatedEvent.name === minimalInput.name, `Event name should be updated to "${minimalInput.name}"`);
+        assert(updatedEvent.description === minimalInput.description, `Event description should be updated`);
+        
+        console.log(`   ✅ Update verified: "${updatedEvent.name}"`);
+        
+        // STEP 5: Restore original name
+        console.log('   Restoring original event name...');
+        const restoreResult = client.updateEvent(eventUrl, {
+            name: originalEvent.name,
+            description: originalEvent.description
+        });
+        
+        assert(restoreResult.success === true, `Restore should succeed (error: ${restoreResult.error || 'none'})`);
+        console.log('   ✅ Original name restored');
+        
+        logTestResult(testName, true);
+        return { success: true };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logTestResult(testName, false, err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * TEST 10.2.4: Verify undocumented fields still work
+ * 
+ * Tests that undocumented but working fields (organizer_ids, route_ids) are accepted
+ * 
+ * CRITICAL FIELDS TESTED:
+ * - organizer_ids: UNDOCUMENTED but WORKS - proper way to set organizers
+ * - route_ids: UNDOCUMENTED but WORKS - proper way to set routes
+ * 
+ * These fields are documented in:
+ * - src/rwgpslib/RWGPSEvent.d.ts (RWGPSEventInput interface)
+ * - docs/rwgps-api-tested.yaml (verified behavior)
+ * 
+ * @param {number} eventId - Event ID to test
+ * @returns {{success: boolean, error?: string}}
+ */
+function testUndocumentedFieldsStillWork(eventId) {
+    const testName = 'testUndocumentedFieldsStillWork';
+    console.log(`\n▶️  ${testName} (eventId: ${eventId})`);
+    
+    try {
+        const client = getTestClient();
+        const eventUrl = `https://ridewithgps.com/events/${eventId}`;
+        
+        // STEP 1: Get current event to capture organizer and route IDs
+        console.log('   Getting current event state...');
+        const getResult = client.getEvent(eventUrl);
+        assert(getResult.success === true, `getEvent should succeed (error: ${getResult.error || 'none'})`);
+        
+        const originalEvent = getResult.event;
+        console.log(`   ✅ Current event: "${originalEvent.name}"`);
+        
+        // STEP 2: Extract organizer_ids from organizers array
+        console.log('   Extracting organizer_ids...');
+        const originalOrganizerIds = originalEvent.organizers.map(org => org.id);
+        console.log(`   ✅ Found ${originalOrganizerIds.length} organizers: [${originalOrganizerIds.join(', ')}]`);
+        
+        // STEP 3: Extract route_ids if routes exist
+        let originalRouteIds = [];
+        if (originalEvent.routes && originalEvent.routes.length > 0) {
+            console.log('   Extracting route_ids...');
+            originalRouteIds = originalEvent.routes.map(route => route.id);
+            console.log(`   ✅ Found ${originalRouteIds.length} routes: [${originalRouteIds.join(', ')}]`);
+        } else {
+            console.log('   ℹ️  No routes associated with this event');
+        }
+        
+        // STEP 4: Test that API accepts organizer_ids field (UNDOCUMENTED)
+        console.log('   Testing organizer_ids field (UNDOCUMENTED)...');
+        
+        const updateWithOrgIds = {
+            name: originalEvent.name,
+            organizer_ids: originalOrganizerIds  // UNDOCUMENTED field
+        };
+        
+        const orgResult = client.updateEvent(eventUrl, updateWithOrgIds);
+        assert(orgResult.success === true, `API should accept organizer_ids field (error: ${orgResult.error || 'none'})`);
+        console.log('   ✅ API accepted organizer_ids field');
+        
+        // STEP 5: Verify organizers preserved
+        console.log('   Verifying organizers preserved...');
+        const verifyOrg = client.getEvent(eventUrl);
+        assert(verifyOrg.success === true, `getEvent should succeed (error: ${verifyOrg.error || 'none'})`);
+        
+        const verifiedOrganizerIds = verifyOrg.event.organizers.map(org => org.id);
+        assert(JSON.stringify(verifiedOrganizerIds.sort()) === JSON.stringify(originalOrganizerIds.sort()),
+               `Organizers should be preserved: expected [${originalOrganizerIds.join(', ')}], got [${verifiedOrganizerIds.join(', ')}]`);
+        console.log('   ✅ Organizers preserved after organizer_ids update');
+        
+        // STEP 6: Test route_ids field if routes exist (UNDOCUMENTED)
+        if (originalRouteIds.length > 0) {
+            console.log('   Testing route_ids field (UNDOCUMENTED)...');
+            
+            const updateWithRouteIds = {
+                name: originalEvent.name,
+                route_ids: originalRouteIds  // UNDOCUMENTED field
+            };
+            
+            const routeResult = client.updateEvent(eventUrl, updateWithRouteIds);
+            assert(routeResult.success === true, `API should accept route_ids field (error: ${routeResult.error || 'none'})`);
+            console.log('   ✅ API accepted route_ids field');
+            
+            // Verify routes preserved
+            console.log('   Verifying routes preserved...');
+            const verifyRoute = client.getEvent(eventUrl);
+            assert(verifyRoute.success === true, `getEvent should succeed (error: ${verifyRoute.error || 'none'})`);
+            
+            const verifiedRouteIds = verifyRoute.event.routes.map(route => route.id);
+            assert(JSON.stringify(verifiedRouteIds.sort()) === JSON.stringify(originalRouteIds.sort()),
+                   `Routes should be preserved: expected [${originalRouteIds.join(', ')}], got [${verifiedRouteIds.join(', ')}]`);
+            console.log('   ✅ Routes preserved after route_ids update');
+        } else {
+            console.log('   ⏭️  Skipping route_ids test (no routes to test with)');
+        }
+        
+        logTestResult(testName, true);
+        return { success: true };
+        
+    } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        logTestResult(testName, false, err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+// ============================================================================
 // TEST RUNNER
 // ============================================================================
 
@@ -1057,6 +1347,15 @@ function runAllIntegrationTests(testEventId, logoUrl) {
         testCreateEventWithLogo(logoUrl);
         testImportRoute();
         
+        // Phase 4: Type contract validation
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('Phase 4: Type Contract Validation');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        testRWGPSEventResponseMatchesType(testEventId);
+        testRWGPSEventInputAccepted(testEventId);
+        testUndocumentedFieldsStillWork(testEventId);
+        
         // Cleanup
         cleanupCreatedEvents();
         
@@ -1111,8 +1410,25 @@ function runAllTests() {
 /**
  * Quick test: Run all tests with logo test enabled
  * 
- * @param {string} logoUrl - Google Drive URL for test logo
+ * Automatically looks up a logo URL from the Groups sheet.
  */
-function runAllTestsWithLogo(logoUrl) {
+function runAllTestsWithLogo() {
+    // Get a logo URL from Group specs
+    const groupSpecs = getGroupSpecs();
+    let logoUrl = null;
+    
+    // Find first group with a LogoURL
+    for (const groupName in groupSpecs) {
+        if (groupSpecs[groupName].LogoURL) {
+            logoUrl = groupSpecs[groupName].LogoURL;
+            console.log(`Using logo from group "${groupName}": ${logoUrl}`);
+            break;
+        }
+    }
+    
+    if (!logoUrl) {
+        console.warn('⚠️  No LogoURL found in any group spec. Logo test will be skipped.');
+    }
+    
     return runAllIntegrationTests(DEFAULT_TEST_EVENT_ID, logoUrl);
 }
