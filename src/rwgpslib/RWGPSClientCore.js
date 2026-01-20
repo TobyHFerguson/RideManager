@@ -111,7 +111,7 @@ var RWGPSClientCore = (function() {
     /**
      * Validate event data has required fields
      * 
-     * @param {any} eventData - Event data object to validate
+     * @param {unknown} eventData - Event data object to validate (unknown input to be checked)
      * @returns {{valid: boolean, errors: string[]}} Validation result with errors if invalid
      */
     static validateEventData(eventData) {
@@ -164,7 +164,7 @@ var RWGPSClientCore = (function() {
      * Build request options for editEvent (PUT request)
      * 
      * @param {string} sessionCookie - Session cookie value
-     * @param {any} payload - Event data payload
+     * @param {import('./RWGPSEvent').RWGPSEventPayload} payload - Event data payload
      * @returns {{method: string, headers: Record<string, string>, payload: string, muteHttpExceptions: boolean}} Request options
      */
     static buildEditEventOptions(sessionCookie, payload) {
@@ -189,9 +189,9 @@ var RWGPSClientCore = (function() {
      * - visibility: 'public' (default)
      * - all_day: passed as parameter (boolean per OpenAPI spec)
      * 
-     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: number[], route_ids?: number[], location?: string, time_zone?: string}} eventData - Event data in v1 format
+     * @param {import('./RWGPSEvent').RWGPSEventInput} eventData - Event data in v1 format
      * @param {boolean} allDay - All-day event flag (boolean per OpenAPI spec)
-     * @returns {{event: {name?: string, description?: string, start_date?: string, start_time?: string, all_day?: boolean, visibility?: string, organizer_ids?: number[], route_ids?: number[], location?: string, time_zone?: string}}} Payload wrapped in "event" key
+     * @returns {import('./RWGPSEvent').RWGPSEventPayload} Payload wrapped in "event" key
      */
     static buildV1EditEventPayload(eventData, allDay) {
         /** @type {Record<string, any>} */
@@ -243,7 +243,7 @@ var RWGPSClientCore = (function() {
      * Build request options for v1 API editEvent (PUT request with Basic Auth)
      * 
      * @param {string} basicAuthHeader - Basic Auth header value (from buildBasicAuthHeader)
-     * @param {{event: any}} payload - Event data payload wrapped in "event" key
+     * @param {import('./RWGPSEvent').RWGPSEventPayload} payload - Event data payload wrapped in "event" key
      * @returns {{method: string, headers: Record<string, string>, payload: string, muteHttpExceptions: boolean}} Request options
      */
     static buildV1EditEventOptions(basicAuthHeader, payload) {
@@ -263,7 +263,7 @@ var RWGPSClientCore = (function() {
      * Build request options for v1 API createEvent (POST request with Basic Auth)
      * 
      * @param {string} basicAuthHeader - Basic Auth header value (from buildBasicAuthHeader)
-     * @param {{event: any}} payload - Event data payload wrapped in "event" key
+     * @param {import('./RWGPSEvent').RWGPSEventPayload} payload - Event data payload wrapped in "event" key
      * @returns {{method: string, headers: Record<string, string>, payload: string, muteHttpExceptions: boolean}} Request options
      */
     static buildV1CreateEventOptions(basicAuthHeader, payload) {
@@ -285,7 +285,7 @@ var RWGPSClientCore = (function() {
      * This method builds the text structure for multipart payload without using GAS Utilities.
      * The Adapter layer (RWGPSClient.js) handles Blob creation and byte concatenation.
      * 
-     * @param {any} eventData - Event data with name, description, start_date, etc.
+     * @param {import('./RWGPSEvent').RWGPSEventInput} eventData - Event data with name, description, start_date, etc.
      * @param {any} logoBlob - Logo object with getContentType() and getName() methods
      * @param {string} boundary - Multipart boundary string
      * @returns {{textPart: string, endBoundary: string}} Text parts structure for multipart payload

@@ -3,6 +3,9 @@
  * NO Google Apps Script dependencies - fully testable in Jest
  */
 
+// Import RWGPS event types
+import type { RWGPSEventInput, RWGPSEventPayload } from './RWGPSEvent';
+
 /**
  * Parsed event URL information
  */
@@ -56,12 +59,13 @@ declare class RWGPSClientCore {
     ): RequestOptions;
 
     /**
-     * Validate event data has required fields
+     * Validate event data has required fields (for web API format)
+     * Note: This validates the older web API format (starts_at), not v1 API format
      * 
-     * @param {any} eventData - Event data object to validate
-     * @returns {ValidationResult} Validation result with errors if invalid
+     * @param eventData - Event data object to validate (unknown input to be checked)
+     * @returns Validation result with errors if invalid
      */
-    static validateEventData(eventData: any): ValidationResult;
+    static validateEventData(eventData: unknown): ValidationResult;
 
     /**
      * Build Basic Auth header value
@@ -92,34 +96,24 @@ declare class RWGPSClientCore {
      * Build request options for editEvent (PUT request)
      * 
      * @param {string} sessionCookie - Session cookie value
-     * @param {any} payload - Event data payload
+     * @param {RWGPSEventPayload} payload - Event data payload
      * @returns {RequestOptions} Request options
      */
-    static buildEditEventOptions(sessionCookie: string, payload: any): RequestOptions;
+    static buildEditEventOptions(sessionCookie: string, payload: RWGPSEventPayload): RequestOptions;
 
     /**
      * Build payload for v1 API editEvent PUT request
      * Uses native v1 API format (description, start_date, start_time, organizer_ids, route_ids)
      * Per OpenAPI spec: all_day is boolean, organizer_ids/route_ids are number[]
      * 
-     * @param eventData - Event data in v1 format
+     * @param eventData - Event data in v1 format (RWGPSEventInput)
      * @param allDay - boolean for all_day flag (per OpenAPI spec)
      * @returns Payload wrapped in "event" key
      */
     static buildV1EditEventPayload(
-        eventData: {
-            name?: string;
-            description?: string;
-            start_date?: string;
-            start_time?: string;
-            visibility?: string | number;
-            organizer_ids?: number[];
-            route_ids?: number[];
-            location?: string;
-            time_zone?: string;
-        },
+        eventData: RWGPSEventInput,
         allDay: boolean
-    ): { event: any };
+    ): RWGPSEventPayload;
 
     /**
      * Build request options for v1 API editEvent (PUT request with Basic Auth)
@@ -130,7 +124,7 @@ declare class RWGPSClientCore {
      */
     static buildV1EditEventOptions(
         basicAuthHeader: string,
-        payload: { event: any }
+        payload: RWGPSEventPayload
     ): { method: string; headers: Record<string, string>; payload: string; muteHttpExceptions: boolean };
 
     /**
@@ -142,19 +136,19 @@ declare class RWGPSClientCore {
      */
     static buildV1CreateEventOptions(
         basicAuthHeader: string,
-        payload: { event: any }
+        payload: RWGPSEventPayload
     ): { method: string; headers: Record<string, string>; payload: string; muteHttpExceptions: boolean };
 
     /**
      * Build multipart/form-data text parts for event creation with logo (pure JS, no Blob operations)
      * 
-     * @param {any} eventData - Event data with name, description, start_date, etc.
+     * @param {RWGPSEventInput} eventData - Event data with name, description, start_date, etc.
      * @param {any} logoBlob - Logo object with getContentType() and getName() methods
      * @param {string} boundary - Multipart boundary string
      * @returns {{textPart: string, endBoundary: string}} Text parts structure for multipart payload
      */
     static buildMultipartTextParts(
-        eventData: any,
+        eventData: RWGPSEventInput,
         logoBlob: any,
         boundary: string
     ): { textPart: string; endBoundary: string };

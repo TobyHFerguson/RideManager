@@ -140,10 +140,10 @@ var RWGPSClient = (function() {
      * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
      * before calling this method.
      * 
-     * @param {any} eventData - Event data (name, desc, start_date, start_time, etc.)
+     * @param {import('./RWGPSEvent').RWGPSEventInput} eventData - Event data (name, desc, start_date, start_time, etc.)
      * @param {number[]} organizerIds - Array of organizer user IDs (pre-looked up)
      * @param {string} [logoUrl] - Optional logo URL to attach to event
-     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with new event URL and data
+     * @returns {import('./RWGPSEvent').RWGPSEventResult} Result with new event URL and data
      */
     scheduleEvent(eventData, organizerIds, logoUrl) {
         try {
@@ -220,9 +220,9 @@ var RWGPSClient = (function() {
      * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
      * 
      * @param {string} eventUrl - Existing event URL
-     * @param {any} eventData - Event data (name, desc, starts_at, etc.)
+     * @param {import('./RWGPSEvent').RWGPSEventInput} eventData - Event data (name, desc, starts_at, etc.)
      * @param {number[]} organizerIds - Array of organizer user IDs (optional)
-     * @returns {{success: boolean, event?: any, error?: string}} Result
+     * @returns {import('./RWGPSEvent').RWGPSEventResult} Result
      */
     updateEvent(eventUrl, eventData, organizerIds) {
         try {
@@ -375,7 +375,7 @@ var RWGPSClient = (function() {
      * Get event details
      * 
      * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, event?: any, error?: string}} Result with event data
+     * @returns {import('./RWGPSEvent').RWGPSEventResult} Result with event data
      */
     getEvent(eventUrl) {
         try {
@@ -439,8 +439,8 @@ var RWGPSClient = (function() {
      * - Uses route_ids[] (not route_ids from web API)
      * 
      * @param {string} eventUrl - Event URL
-     * @param {{name?: string, description?: string, start_date?: string, start_time?: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string}} eventData - Event data in v1 format
-     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data (v1 format)
+     * @param {import('./RWGPSEvent').RWGPSEventInput} eventData - Event data in v1 format
+     * @returns {import('./RWGPSEvent').RWGPSEventResult} Result with updated event data (v1 format)
      */
     editEvent(eventUrl, eventData) {
         try {
@@ -486,19 +486,14 @@ var RWGPSClient = (function() {
     }
 
     /**
-     * Create a new event using v1 API
-     * 
-     * Uses POST /api/v1/events.json with Basic Auth to create a new event.
-     * 
-     * @param {{name: string, description?: string, start_date: string, start_time: string, visibility?: string | number, organizer_ids?: (string | number)[], route_ids?: (string | number)[], location?: string, time_zone?: string}} eventData - Event data in v1 format
-     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
-     */
-    /**
      * Create a new event using v1 API with optional logo
      * 
-     * @param {any} eventData - Event data (name, description, start_date, etc.)
+     * Uses POST /api/v1/events.json with Basic Auth to create a new event.
+     * If logoUrl is provided, uses multipart/form-data to include the logo.
+     * 
+     * @param {import('./RWGPSEvent').RWGPSEventInput} eventData - Event data (name, description, start_date, etc.)
      * @param {string} [logoUrl] - Optional logo image URL to fetch and attach
-     * @returns {{success: boolean, eventUrl?: string, event?: any, error?: string}} Result with event URL and data
+     * @returns {import('./RWGPSEvent').RWGPSEventResult} Result with event URL and data
      */
     createEvent(eventData, logoUrl) {
         try {
@@ -607,7 +602,7 @@ var RWGPSClient = (function() {
      * Cancel an event (adds "CANCELLED: " prefix to name)
      * 
      * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     * @returns {import('./RWGPSEvent').RWGPSEventResult} Result with updated event data
      */
     cancelEvent(eventUrl) {
         try {
@@ -665,7 +660,7 @@ var RWGPSClient = (function() {
      * Reinstate a cancelled event (removes "CANCELLED: " prefix from name)
      * 
      * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     * @returns {import('./RWGPSEvent').RWGPSEventResult} Result with updated event data
      */
     reinstateEvent(eventUrl) {
         try {

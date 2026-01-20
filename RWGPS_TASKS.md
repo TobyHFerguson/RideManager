@@ -56,8 +56,13 @@
 
 ## Current Status
 
-**Phase**: 8 - Complete v1 API Migration  
+**Phase**: 9 - Consolidate Event Types ✅ COMPLETE  
 **Model recommendation**: Sonnet 4.5 or Opus 4.5
+
+**Completed**: Phase 9 consolidated all event types across the codebase:
+- Created `RWGPSEvent.d.ts` with proper API types derived from OpenAPI spec
+- Updated RWGPSClientCore and RWGPSClient to use proper types
+- RideManager layer already used SCCCCEvent correctly
 
 **IMPORTANT**: Phase 7 is PAUSED until Phase 8 completes. We discovered two gaps in the v1 API migration that must be fixed first.
 
@@ -1665,6 +1670,128 @@ With unified event shape, this function only needs to:
 - [ ] Conversion functions deleted
 - [ ] GAS integration tests pass
 - [ ] Coverage maintained for remaining code
+
+---
+
+## Phase 9: Consolidate Event Types ✅ COMPLETE
+
+### Goal
+Replace all `{any}` and ad-hoc inline event types with proper `SCCCCEvent` (domain) and `RWGPSEvent` (API response) types throughout the codebase. Currently, the same event data is typed inconsistently:
+- `@param {any} eventData` - No type safety
+- `@param {{name: string, description: string, ...}} eventData` - Duplicated inline types
+- `event?: any` in return types - Loses all type information
+
+**Target Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Type Hierarchy                          │
+├─────────────────────────────────────────────────────────────────┤
+│ SCCCCEvent (Domain)          │ RWGPSEvent (API Response)        │
+│ - Used in RideManager layer  │ - Used in RWGPSClient returns    │
+│ - Created by EventFactory    │ - Parsed from API JSON           │
+│ - Passed TO API functions    │ - Returned FROM API functions    │
+│ - Has domain methods         │ - Plain data (no methods)        │
+│ - Primary date storage       │ - Uses start_date/start_time     │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                      EventPayload (API Input)                   │
+├─────────────────────────────────────────────────────────────────┤
+│ - Wrapper: { event: {...} }                                     │
+│ - Used in buildV1EditEventPayload return type                   │
+│ - Created from SCCCCEvent for API calls                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Task 9.1: Define RWGPSEvent type from OpenAPI spec (TDD)
+
+**Analysis from OpenAPI spec (docs/rwgps-openapi.yaml):**
+
+EventSummary fields (lines 2561-2618):
+- `id: integer`
+- `user_id: integer`
+- `url: string`
+- `html_url: string`
+- `visibility: string`
+- `name: string`
+- `description: string | null`
+- `logo_url: string | null`
+- `banner_url: string | null`
+- `location: string | null`
+- `lat: number | null`
+- `lng: number | null`
+- `time_zone: string`
+- `start_date: string` (format: date)
+- `start_time: string` (example: '09:00')
+- `end_date: string` (format: date)
+- `end_time: string` (example: '15:00')
+- `all_day: boolean`
+- `created_at: string` (format: date-time)
+- `updated_at: string` (format: date-time)
+
+Event extends EventSummary with:
+- `organizers: Array<{id: number, name: string, created_at: string, updated_at: string}>`
+- `photos: Photo[]`
+
+Routes (discovered from API response, not fully in spec):
+- `routes: Array<{id: number, name?: string, url?: string, ...}>`
+- `route_ids: number[]` (undocumented but used in edits)
+- `organizer_ids: number[]` (undocumented but used in edits)
+
+- [x] 9.1.1 Create `src/rwgpslib/RWGPSEvent.d.ts` with types derived from OpenAPI spec:
+  - `RWGPSEventSummary` - Basic event fields (matches EventSummary schema)
+  - `RWGPSEvent` - Full event with organizers, routes, photos
+  - `RWGPSEventPayload` - Wrapper: `{ event: EventInput }` for create/edit
+  - `RWGPSEventInput` - Fields valid for create/edit (subset of RWGPSEvent)
+- [x] 9.1.2 Export types from `src/Externals.d.ts` for cross-module use
+- [x] 9.1.3 Run `npm run typecheck` - zero errors
+
+### Task 9.2: Update RWGPSClientCore types (TDD)
+
+- [x] 9.2.1 Update `buildV1EditEventPayload` to accept `RWGPSEventInput` instead of `any`
+- [x] 9.2.2 Update `validateEventData` to use `unknown` type (validates unknown input)
+- [x] 9.2.3 Update `buildMultipartTextParts` to use `RWGPSEventInput` type  
+- [x] 9.2.4 Update `RWGPSClientCore.d.ts` with new types
+- [x] 9.2.5 Run `npm run typecheck` - zero errors
+- [x] 9.2.6 Run `npm test` - all tests pass
+
+### Task 9.3: Update RWGPSClient types (TDD)
+
+- [x] 9.3.1 Update return types to use `RWGPSEvent` instead of `any`:
+  - `getEvent(): {success, event?: RWGPSEvent, error?}`
+  - `editEvent(): {success, event?: RWGPSEvent, error?}`
+  - `cancelEvent(): {success, event?: RWGPSEvent, error?}`
+  - `reinstateEvent(): {success, event?: RWGPSEvent, error?}`
+  - `createEvent(): {success, eventUrl?, event?: RWGPSEvent, error?}`
+  - `scheduleEvent(): {success, eventUrl?, event?: RWGPSEvent, error?}`
+  - `updateEvent(): {success, event?, error?}` 
+- [x] 9.3.2 Update `eventData` parameters to use `RWGPSEventInput | SCCCCEvent`
+- [x] 9.3.3 Update `RWGPSClient.d.ts` with new types
+- [x] 9.3.4 Run `npm run typecheck` - zero errors
+- [x] 9.3.5 Run `npm test` - all tests pass
+
+### Task 9.4: Update RideManager layer types
+
+- [x] 9.4.1 Verify `RideManager.js` correctly uses `SCCCCEvent` for input
+- [x] 9.4.2 Update any `@param {any}` to use proper types (already clean)
+- [x] 9.4.3 Run `npm run typecheck` - zero errors
+- [x] 9.4.4 Run `npm test` - all tests pass
+
+### Task 9.5: Final validation
+
+- [x] 9.5.1 Run `npm run validate-all` - passed (705 tests)
+- [x] 9.5.2 Search for remaining `{any}.*event` patterns - one justified (validateEventData uses `unknown`)
+- [x] 9.5.3 Update RWGPS_TASKS.md with completion status
+- [ ] 9.5.4 Commit: "Phase 9 complete: Consolidated event types" (pending user review)
+
+### Phase 9 Complete Checkpoint
+
+- [x] All Jest tests pass (705 tests)
+- [x] `npm run typecheck` passes (zero errors)
+- [x] No `@param {any} eventData` remaining in RWGPSClient/Core (uses proper types)
+- [x] No `event?: any` remaining in return types (uses RWGPSEvent)
+- [x] RWGPSEvent type matches OpenAPI spec
+- [x] SCCCCEvent used for domain, RWGPSEvent for API responses
 
 ---
 

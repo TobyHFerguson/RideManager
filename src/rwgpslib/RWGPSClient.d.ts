@@ -4,6 +4,9 @@
  * Type definitions for RWGPSClient adapter (GAS layer)
  */
 
+// Import RWGPS event types
+import type { RWGPSEvent, RWGPSEventInput, RWGPSEventResult } from './RWGPSEvent';
+
 /**
  * RWGPS credentials
  */
@@ -27,7 +30,7 @@ export interface OperationResult {
  */
 export interface ScheduleResult extends OperationResult {
     eventUrl?: string;
-    event?: any;
+    event?: RWGPSEvent;
 }
 
 /**
@@ -65,12 +68,12 @@ declare class RWGPSClient {
      * 
      * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
      * 
-     * @param {any} eventData - Event data (name, desc, start_date, start_time, etc.)
+     * @param {RWGPSEventInput} eventData - Event data (name, desc, start_date, start_time, etc.)
      * @param {number[]} organizerIds - Array of organizer user IDs (pre-looked up)
      * @param {string} [logoUrl] - Optional logo URL
      * @returns {ScheduleResult} Result with event URL
      */
-    scheduleEvent(eventData: any, organizerIds: number[], logoUrl?: string): ScheduleResult;
+    scheduleEvent(eventData: RWGPSEventInput, organizerIds: number[], logoUrl?: string): ScheduleResult;
 
     /**
      * Update an existing event with new data and optionally set organizers
@@ -78,11 +81,11 @@ declare class RWGPSClient {
      * Note: Organizer IDs should be looked up by caller via RWGPSMembersAdapter.lookupUserIdByName()
      * 
      * @param {string} eventUrl - Event URL
-     * @param {any} eventData - Updated event data
+     * @param {RWGPSEventInput} eventData - Updated event data
      * @param {number[]} organizerIds - Optional array of organizer user IDs (pre-looked up)
      * @returns {ScheduleResult} Result with event data
      */
-    updateEvent(eventUrl: string, eventData: any, organizerIds?: number[]): ScheduleResult;
+    updateEvent(eventUrl: string, eventData: RWGPSEventInput, organizerIds?: number[]): ScheduleResult;
 
     /**
      * Cancel an event (adds CANCELLED prefix)
@@ -124,9 +127,9 @@ declare class RWGPSClient {
      * Get event details
      * 
      * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, event?: any, error?: string}} Result with event data
+     * @returns {RWGPSEventResult} Result with event data
      */
-    getEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
+    getEvent(eventUrl: string): RWGPSEventResult;
 
     /**
      * Edit an event using single PUT with all_day=0
@@ -136,10 +139,10 @@ declare class RWGPSClient {
      * with a single PUT request setting all_day=0.
      * 
      * @param {string} eventUrl - Event URL
-     * @param {any} eventData - Event data object (from getEvent or modified)
-     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     * @param {RWGPSEventInput} eventData - Event data object (from getEvent or modified)
+     * @returns {RWGPSEventResult} Result with updated event data
      */
-    editEvent(eventUrl: string, eventData: any): { success: boolean; event?: any; error?: string };
+    editEvent(eventUrl: string, eventData: RWGPSEventInput): RWGPSEventResult;
 
     /**
      * Create a new event using v1 API with optional logo
@@ -151,33 +154,23 @@ declare class RWGPSClient {
      * @param logoUrl - Optional logo image URL to fetch and attach
      * @returns Result with event URL and data
      */
-    createEvent(eventData: {
-        name: string;
-        description?: string;
-        start_date: string;
-        start_time: string;
-        visibility?: string | number;
-        organizer_ids?: (string | number)[];
-        route_ids?: (string | number)[];
-        location?: string;
-        time_zone?: string;
-    }, logoUrl?: string): { success: boolean; eventUrl?: string; event?: any; error?: string };
+    createEvent(eventData: RWGPSEventInput, logoUrl?: string): RWGPSEventResult;
 
     /**
      * Cancel an event (adds "CANCELLED: " prefix to name)
      * 
      * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     * @returns {RWGPSEventResult} Result with updated event data
      */
-    cancelEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
+    cancelEvent(eventUrl: string): RWGPSEventResult;
 
     /**
      * Reinstate a cancelled event (removes "CANCELLED: " prefix from name)
      * 
      * @param {string} eventUrl - Event URL
-     * @returns {{success: boolean, event?: any, error?: string}} Result with updated event data
+     * @returns {RWGPSEventResult} Result with updated event data
      */
-    reinstateEvent(eventUrl: string): { success: boolean; event?: any; error?: string };
+    reinstateEvent(eventUrl: string): RWGPSEventResult;
 
     /**
      * Import (copy) a route into the club library with tags
