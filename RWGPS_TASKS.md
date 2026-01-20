@@ -1795,6 +1795,45 @@ Routes (discovered from API response, not fully in spec):
 
 ---
 
+## Phase 10: Finalize RWGPS Library Ownership
+
+### Goal
+Complete the migration from external RWGPSLib to internal vendored library by ensuring adequate test coverage and API contract validation. This is the final phase of the RWGPS library migration.
+
+### Task 10.1: Increase RWGPSClient.js test coverage to 90%+
+
+Current coverage: ~76% (many GAS adapter paths untested)
+
+- [ ] 10.1.1 Identify uncovered lines in RWGPSClient.js: `npm test -- --coverage --collectCoverageFrom='src/rwgpslib/RWGPSClient.js'`
+- [ ] 10.1.2 Add tests for `updateEventLogo()` method
+- [ ] 10.1.3 Add tests for `setRouteExpiration()` method
+- [ ] 10.1.4 Add tests for `getClubMembers()` pagination
+- [ ] 10.1.5 Add tests for error handling paths (login failures, HTTP errors)
+- [ ] 10.1.6 Achieve 90%+ statement coverage
+- [ ] 10.1.7 Commit: "Task 10.1: Increase RWGPSClient test coverage to 90%+"
+
+### Task 10.2: Add API contract integration tests
+
+Validate that our type definitions match actual RWGPS API behavior.
+
+- [ ] 10.2.1 Create `gas-integration-tests-rwgps.js` with GAS-runnable tests
+- [ ] 10.2.2 Add test: `testRWGPSEventResponseMatchesType()` - verify GET response fields
+- [ ] 10.2.3 Add test: `testRWGPSEventInputAccepted()` - verify PUT with our types works
+- [ ] 10.2.4 Add test: `testUndocumentedFieldsStillWork()` - verify organizer_ids, route_ids
+- [ ] 10.2.5 Document test procedure in README or test file header
+- [ ] 10.2.6 Commit: "Task 10.2: Add RWGPS API contract integration tests"
+
+### Phase 10 Complete Checkpoint
+
+- [ ] RWGPSClient.js test coverage ≥ 90%
+- [ ] API contract tests exist and pass manually in GAS
+- [ ] No remaining dependencies on external RWGPSLib for core operations
+- [ ] Documentation updated to reflect vendored library ownership
+
+**After Phase 10**: The RWGPS library migration is COMPLETE. The vendored library is fully owned, tested, and documented.
+
+---
+
 ## Future Work
 
 ### When RWGPS Improves v1 API
