@@ -6,7 +6,7 @@ if (typeof require !== 'undefined') {
 }
 
 /**
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  * @typedef {import('./Externals').RWGPS} RWGPS
  */
 

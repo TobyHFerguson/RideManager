@@ -4,19 +4,25 @@ if (typeof require !== 'undefined') {
   const Exports = require('./Exports')
 }
 
+/**
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
+ * @typedef {import('./Externals').ScheduleAdapterInstance} ScheduleAdapterInstance
+ */
+
 // These functions need to be global so that they can be
 // accessed from the html client or from timers
 
 const MenuFunctions = (() => {
   /**
    * Execute a ride operation using RideCoordinator
-   * @param {(rows: InstanceType<typeof RowCore>[], adapter: InstanceType<typeof ScheduleAdapter>, force?: boolean) => void} operation
+   * @param {(rows: RowCoreInstance[], adapter: ScheduleAdapterInstance, force?: boolean) => void} operation
    * @param {boolean} [force]
    */
   function executeOperation(operation, force = false) {
     // Create adapter and load selected rows
     const adapter = new ScheduleAdapter();
-    let rows = adapter.loadSelected();
+    /** @type {RowCoreInstance[]} */
+    const rows = adapter.loadSelected();
     const rowNumbers = rows.map(row => row.rowNum).join(", ");
     
     try {
@@ -76,6 +82,7 @@ const MenuFunctions = (() => {
       try {
         const ui = SpreadsheetApp.getUi();
         const adapter = new ScheduleAdapter();
+        /** @type {RowCoreInstance[]} */
         const selectedRows = adapter.loadSelected();
         
         if (selectedRows.length === 0) {
@@ -119,8 +126,7 @@ const MenuFunctions = (() => {
         
         pendingRows.forEach(row => {
           try {
-            // @ts-expect-error - sendAnnouncement expects AnnouncementQueueItem but this passes Row directly
-            // TODO: This should be refactored to properly convert Row to AnnouncementQueueItem or use a Row-based API
+            // Note: sendAnnouncement now accepts RowCoreInstance directly
             const result = manager.sendAnnouncement(row);
             
             if (result.success) {
@@ -130,14 +136,14 @@ const MenuFunctions = (() => {
               
               // Capture send details for logging
               sentRows.push({ 
-                rowNum: row.rowNum, 
+                rowNum: row.rowNum ?? 0, 
                 rideName: row.rideName || '(unnamed)',
                 routeName: row.routeName || '(unnamed)',
                 emailAddress: result.emailAddress || '(unknown)'
               });
             } else {
               failedRows.push({ 
-                rowNum: row.rowNum, 
+                rowNum: row.rowNum ?? 0, 
                 rideName: row.rideName || '(unnamed)',
                 routeName: row.routeName || '(unnamed)',
                 emailAddress: result.emailAddress,
@@ -146,14 +152,15 @@ const MenuFunctions = (() => {
               
               // Update failure info
               row.setStatus('failed');
-              row.setAttempts(row.attempts + 1);
+              const currentAttempts = typeof row.attempts === 'number' ? row.attempts : 0;
+              row.setAttempts(currentAttempts + 1);
               row.setLastError(result.error || 'Unknown error');
               row.setLastAttemptAt(new Date(now));
             }
           } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
             failedRows.push({ 
-              rowNum: row.rowNum, 
+              rowNum: row.rowNum ?? 0, 
               rideName: row.rideName || '(unnamed)',
               routeName: row.routeName || '(unnamed)',
               error: err.message 

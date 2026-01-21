@@ -4,9 +4,8 @@
 // @ts-check
 
 /**
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').ScheduleAdapterInstance} ScheduleAdapterInstance
  */
-
 
 function onOpen() {
   createMenu_();
@@ -136,8 +135,9 @@ function viewApiLogStats_() {
   }
   
   // Group by operation
+  /** @type {Record<string, number>} */
   var opCounts = {};
-  entries.forEach(function(entry) {
+  entries.forEach(function(/** @type {{operation?: string}} */ entry) {
     var op = entry.operation || 'unknown';
     opCounts[op] = (opCounts[op] || 0) + 1;
   });
@@ -230,7 +230,7 @@ function editHandler(event) {
  *
  * @private
  * @param {GoogleAppsScript.Events.SheetsOnEdit} event
- * @param {InstanceType<typeof ScheduleAdapter>} adapter - Reusable adapter instance
+ * @param {ScheduleAdapterInstance} adapter - Reusable adapter instance
  * @returns {*|undefined} Returns the value from next() when processing continues, or undefined if the edit was rejected/handled.
  */
 function handleCRSheetEdit_(event, adapter) {

@@ -2,7 +2,7 @@
 /// <reference path="./gas-globals.d.ts" />
 
 /**
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  */
 
 /**
@@ -485,7 +485,7 @@ const ScheduleAdapter = (function() {
          * @private
          * @param {Object<string, any>} data - Raw row data from Fiddler (spreadsheet column names as keys)
          * @param {number} rowNum - Spreadsheet row number (1-based)
-         * @returns {InstanceType<typeof RowCore>} RowCore instance
+         * @returns {RowCoreInstance} RowCore instance
          */
         _createRowCore(data, rowNum) {
             // Map spreadsheet data to domain properties
