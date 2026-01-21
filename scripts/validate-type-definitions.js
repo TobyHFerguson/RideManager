@@ -215,8 +215,9 @@ function validateModule(moduleName) {
                 // CRITICAL: Property type mismatches should be errors, not warnings
                 // These indicate actual type safety issues that can cause runtime problems
                 if (prop === 'constructor' || prop.startsWith('_')) {
-                    // constructor and private properties are expected to not be enumerable
-                    warnings.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js (may be a property or getter)`);
+                    // constructor and private properties are expected to not be enumerable - SKIP these entirely
+                    // Don't even add as warnings - they're normal and expected
+                    continue;
                 } else {
                     // Public properties missing from implementation are ERRORS
                     errors.push(`${moduleName}: Property "${prop}" declared in .d.ts but not found in .js - possible type mismatch`);
@@ -284,10 +285,11 @@ function main() {
     }
     
     if (totalWarnings > 0) {
-        console.log('⚠️  Warnings found. Some warnings may indicate type safety issues.\n');
+        console.log('❌ Validation failed due to warnings. Some warnings may indicate type safety issues.\n');
         console.log('💡 Tip: Review warnings for property type mismatches that could cause runtime errors.\n');
-        // Allow warnings to pass for now, but make them visible
-        return 0; 
+        console.log('⚠️  Warnings are now treated as failures to enforce strict type safety.\n');
+        // Fail on warnings to enforce strict type safety
+        return 1; 
     }
     
     return 0;

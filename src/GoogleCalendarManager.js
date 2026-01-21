@@ -1,5 +1,4 @@
 // @ts-check
-// @ts-expect-error
 var GoogleCalendarManager = (function() {
 
 class GoogleCalendarManager {

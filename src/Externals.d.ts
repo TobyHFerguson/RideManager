@@ -2,6 +2,35 @@
  * Typedefs etc for objects defined elsewhere
  */
 
+// Import classes for instance types
+import type RowCoreClass from './RowCore';
+import type SCCCCEventClass from './SCCCCEvent';
+import type ScheduleAdapterClass from './ScheduleAdapter';
+
+/**
+ * Instance type of RowCore - use this for function parameters that receive row instances
+ * This is the canonical type for row instances throughout the codebase.
+ * 
+ * @example
+ * // In JSDoc:
+ * /** @param {RowCoreInstance} row - A row instance * /
+ * function processRow(row) { ... }
+ * 
+ * // Or import in JS file:
+ * /** @typedef {import('./Externals').RowCoreInstance} RowCoreInstance * /
+ */
+export type RowCoreInstance = InstanceType<typeof RowCoreClass>;
+
+/**
+ * Instance type of SCCCCEvent - use this for function parameters that receive event instances
+ */
+export type SCCCCEventInstance = InstanceType<typeof SCCCCEventClass>;
+
+/**
+ * Instance type of ScheduleAdapter - use this for function parameters that receive adapter instances
+ */
+export type ScheduleAdapterInstance = InstanceType<typeof ScheduleAdapterClass>;
+
 // Import types from RWGPSEvent module for re-export
 import type {
     RWGPSEventSummary,
@@ -180,4 +209,4 @@ declare namespace dates {
 
 // Export types for use in other modules
 // Note: RWGPSEvent and related types are imported and re-exported at the top of the file
-export { RWGPS, Organizer, dates };
+export { RWGPS, Organizer, dates, RowCoreInstance };

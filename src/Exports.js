@@ -1,8 +1,6 @@
 // @ts-check
-if (typeof require !== 'undefined') {
-    const {RWGPS, RWGPSService} = require('./Externals')
-    modules.export = Exports;
-}
+// Note: This file uses GAS global scope pattern, not module.exports
+// The Exports variable is directly available as a GAS global
 
 /**
  * Centralized exports using property getters for lazy loading
@@ -12,6 +10,7 @@ if (typeof require !== 'undefined') {
  * handle loading order issues - the referenced module will be available
  * when you access it, regardless of file load order.
  */
+// @ts-ignore - Intentional redeclaration: .d.ts provides types, .js provides implementation for GAS
 var Exports = {
     get MenuFunctions() {
         return MenuFunctions;

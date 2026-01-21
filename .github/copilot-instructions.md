@@ -572,7 +572,7 @@ function enrichRowData(rowData) {
 ```javascript
 // At top of file (after triple-slash references)
 /**
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  * @typedef {import('./Externals').RWGPS} RWGPS
  */
 ```
@@ -618,6 +618,178 @@ npm test
 - ✅ Prevents entire class of runtime errors
 
 See GitHub Issue #188: "Eliminate `@param {any}` parameter types to enable compile-time error detection" for complete type safety enforcement.
+
+### Implicit `any` in Array Callbacks (CRITICAL)
+
+**MANDATORY**: The following patterns cause implicit `any` errors that VS Code catches but `npm run typecheck` often misses:
+
+**Problem 1: Array filter/map/forEach callbacks**:
+```javascript
+// ❌ WRONG - Implicit any on callback parameter (VS Code will flag this)
+const allRows = adapter.getData();  // Returns RowCoreInstance[]
+allRows.filter(row => row.Status === 'pending');  // 'row' has implicit any!
+
+// ❌ WRONG - Variable without type annotation
+const filteredRows = allRows.filter(row => row.Status === 'pending');  // 'filteredRows' has implicit any[]!
+```
+
+**Solution: Explicit types everywhere**:
+```javascript
+// ✅ CORRECT - Type annotation on the array variable
+/** @type {RowCoreInstance[]} */
+const allRows = adapter.getData();
+
+// ✅ CORRECT - Inline parameter type in callback
+const filteredRows = allRows.filter((/** @type {RowCoreInstance} */ row) => row.Status === 'pending');
+
+// ✅ ALSO CORRECT - Pre-type the result variable
+/** @type {RowCoreInstance[]} */
+const pendingRows = allRows.filter((/** @type {RowCoreInstance} */ r) => r.Status === 'pending');
+```
+
+**Problem 2: forEach/map with destructuring**:
+```javascript
+// ❌ WRONG - TypeScript syntax in JavaScript (won't work!)
+rows.forEach(({ data }: { data: any }) => { });  // SYNTAX ERROR!
+
+// ✅ CORRECT - JSDoc inline type on entire parameter
+rows.forEach((/** @type {{ data: any, rowNum: number }} */ item) => {
+    const data = item.data;
+    // ...
+});
+```
+
+**Problem 3: Circular type references**:
+```javascript
+// ❌ WRONG - InstanceType<typeof X> can cause circular reference errors
+/**
+ * @param {InstanceType<typeof ScheduleAdapter>} adapter
+ */
+function processRows(adapter) { }  // May cause "Type instantiation is excessively deep" error
+
+// ✅ CORRECT - Use an interface typedef to break the cycle
+/**
+ * @typedef {Object} ScheduleAdapterLike
+ * @property {function(): void} save - Save method
+ * @property {function(): RowCoreInstance[]} getData - Get data method
+ */
+
+/**
+ * @param {ScheduleAdapterLike} adapter
+ */
+function processRows(adapter) { }  // Works! Minimal interface contract
+```
+
+**RowCoreInstance Global Type Pattern**:
+
+This codebase uses a shared `RowCoreInstance` type declared globally for consistency:
+
+```javascript
+// In Externals.d.ts - Declare the type
+export type RowCoreInstance = InstanceType<typeof import('./RowCore').default>;
+
+// In gas-globals.d.ts - Make it globally available
+declare global {
+    type RowCoreInstance = import('./Externals').RowCoreInstance;
+}
+
+// In any .js file - Use directly (no import needed)
+/**
+ * @param {RowCoreInstance[]} rows - Array of row instances
+ */
+function processRows(rows) { }
+```
+
+**VS Code vs `npm run typecheck` Discrepancy**:
+
+⚠️ **CRITICAL**: VS Code TypeScript server catches MORE errors than `npm run typecheck` (tsc --noEmit).
+
+This is because:
+1. VS Code uses incremental compilation with stricter implicit type resolution
+2. `tsc --noEmit` may miss some implicit `any` cases in callback parameters
+3. The same code can have ZERO errors in `npm run typecheck` but 82+ errors in VS Code!
+
+**MANDATORY Verification Order**:
+
+**FOR CHAT ASSISTANTS**:
+1. `get_errors(['src/'])` - Check VS Code first (MORE STRICT)
+2. ONLY after VS Code shows 0 errors, run `npm run typecheck`
+3. Both must pass with zero errors
+
+**FOR AUTONOMOUS AGENTS**:
+1. Run `npm run typecheck` after EVERY change
+2. Use explicit `@type` annotations everywhere (don't rely on inference)
+3. Add inline types to ALL callback parameters: `(/** @type {T} */ param) =>`
+
+### Detecting Hidden `any` Types (CRITICAL)
+
+**Problem**: Some type patterns are syntactically valid but resolve to `any`, providing NO type safety. These are NOT flagged as errors because `type X = any` is valid TypeScript.
+
+**The Dangerous Pattern (NOW BANNED in .js files)**:
+```javascript
+// ❌ WRONG - In .js files, typeof can't resolve GAS globals → becomes any
+/**
+ * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ */
+// Hovering over RowCoreInstance shows: type RowCoreInstance = any
+
+// ✅ CORRECT - Import from .d.ts where TypeScript resolution works
+/**
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
+ */
+// Hovering over RowCoreInstance shows: type RowCoreInstance = { ... actual properties }
+```
+
+**Why This Happens**:
+- In `.d.ts` files: TypeScript's module resolution works → `InstanceType<typeof X>` resolves correctly
+- In `.js` files with JSDoc: `typeof X` on a GAS global can't be resolved → defaults to `any`
+- The `any` type silently accepts everything, providing ZERO type safety
+
+**Detection Methods**:
+
+| Method | How to Use | What It Catches |
+|--------|------------|-----------------|
+| **Hover in VS Code** | Hover over type names in JSDoc | Shows `= any` if type resolves to any |
+| **Go to Type Definition** | Right-click → Go to Type Definition | If it lands on `any`, there's a problem |
+| **Grep for banned patterns** | `grep -rn "InstanceType<typeof" src/*.js` | Must return ZERO matches |
+| **`get_errors()`** | Tool call after changes | Catches actual type errors (not hidden any) |
+| **`npm run typecheck`** | Terminal after changes | Same as above |
+
+**MANDATORY: Verify New Types Don't Resolve to `any`**:
+
+After adding any new `@typedef`, immediately hover over the type name in VS Code:
+1. If it shows `type X = any` → **STOP** - fix the typedef
+2. If it shows `type X = { properties... }` → ✅ Safe to proceed
+
+**Pre-Commit Check for Hidden `any` Types**:
+```bash
+# Check for banned InstanceType patterns in .js files
+grep -rn "InstanceType<typeof" src/*.js
+
+# Expected result: No matches (exit code 1)
+# If any matches found: FIX THEM before committing
+```
+
+**Canonical Instance Types** (import from Externals.d.ts):
+```javascript
+// ✅ CORRECT - These are pre-defined in Externals.d.ts
+/**
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
+ * @typedef {import('./Externals').SCCCCEventInstance} SCCCCEventInstance
+ * @typedef {import('./Externals').ScheduleAdapterInstance} ScheduleAdapterInstance
+ */
+```
+
+**Adding New Instance Types**:
+1. Add to `src/Externals.d.ts`:
+   ```typescript
+   import type NewModuleClass from './NewModule';
+   export type NewModuleInstance = InstanceType<typeof NewModuleClass>;
+   ```
+2. Use in `.js` files:
+   ```javascript
+   /** @typedef {import('./Externals').NewModuleInstance} NewModuleInstance */
+   ```
 
 ## Architecture Overview
 This is a Google Apps Script (GAS) project that manages ride scheduling through integration with RideWithGPS and Google Calendar. The codebase mixes GAS-specific APIs with standard JavaScript/Node.js code.

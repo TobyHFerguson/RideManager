@@ -18,7 +18,7 @@ if (typeof require !== 'undefined') {
 }
 
 /**
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  */
 
 var AnnouncementManager = (function () {
@@ -31,7 +31,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Create a ride announcement document and add to row's announcement columns
-         * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
+         * @param {RowCoreInstance} row - Row object from ScheduleAdapter
          * @returns {string} Document URL
          */
         createAnnouncement(row) {
@@ -89,7 +89,7 @@ var AnnouncementManager = (function () {
 
                 // Build rowData object for template expansion
                 const rowData = {
-                    _rowNum: row.rowNum,
+                    _rowNum: row.rowNum ?? 0,
                     RideName: row.rideName,
                     Date: row.startDate,
                     RideLeaders: row.leaders.join(', '),
@@ -130,7 +130,7 @@ var AnnouncementManager = (function () {
          * Send an announcement email for a row
         /**
          * Send announcement email for a row
-         * @param {InstanceType<typeof RowCore>} row - Row object with announcement data
+         * @param {RowCoreInstance} row - Row object with announcement data
          * @param {string | null} email - Optional email override (defaults to group email from globals)
          * @returns {{success: boolean, emailAddress?: string, error?: string}} Result object
          */
@@ -223,11 +223,12 @@ var AnnouncementManager = (function () {
         processQueue() {
             // Load all rows from spreadsheet
             const adapter = new ScheduleAdapter();
+            /** @type {RowCoreInstance[]} */
             const allRows = adapter.loadAll();
 
             if (allRows.length === 0) {
                 console.log('AnnouncementManager: No rows in spreadsheet');
-                this._removeTrigger();
+                this.triggerManager.removeAnnouncementTrigger();
                 return { sent: 0, failed: 0, remaining: 0 };
             }
 
@@ -298,10 +299,17 @@ var AnnouncementManager = (function () {
          */
         removeByRideUrls(rideUrls) {
             try {
+                /**
+                 * Adapter instance for managing schedule-related operations.
+                 * Provides an interface to interact with schedule data and functionality.
+                 * @type {ScheduleAdapter}
+                 */
                 const adapter = new ScheduleAdapter();
+                /** @type {RowCoreInstance[]} */
                 const allRows = adapter.loadAll();
                 const rideUrlSet = new Set(rideUrls);
-                const rowsToRemove = allRows.filter(r => r.announcementURL && rideUrlSet.has(r.rideURL));
+                /** @type {RowCoreInstance[]} */
+                const rowsToRemove = allRows.filter((/** @type {RowCoreInstance} */ r) => r.announcementURL && rideUrlSet.has(r.rideURL));
 
                 if (rowsToRemove.length === 0) {
                     console.log(`AnnouncementManager: No announcements found for ${rideUrls.length} ride(s)`);
@@ -309,9 +317,12 @@ var AnnouncementManager = (function () {
                 }
 
                 // Delete the announcement documents and clear row data
-                rowsToRemove.forEach(row => {
+                rowsToRemove.forEach((/** @type {RowCoreInstance} */ row) => {
                     try {
-                        const documentId = this._extractDocId(row.announcementCell);
+                        const announcementUrl = typeof row.announcementCell === 'string' 
+                            ? row.announcementCell 
+                            : row.announcementCell?.url || '';
+                        const documentId = this._extractDocId(announcementUrl);
                         if (documentId) {
                             const file = DriveApp.getFileById(documentId);
                             file.setTrashed(true);
@@ -354,8 +365,10 @@ var AnnouncementManager = (function () {
         clearAll() {
             try {
                 const adapter = new ScheduleAdapter();
+                /** @type {RowCoreInstance[]} */
                 const allRows = adapter.loadAll();
-                const rowsWithAnnouncements = allRows.filter(r => r.announcementURL);
+                /** @type {RowCoreInstance[]} */
+                const rowsWithAnnouncements = allRows.filter((/** @type {RowCoreInstance} */ r) => r.announcementURL);
                 const count = rowsWithAnnouncements.length;
 
                 if (count === 0) {
@@ -366,7 +379,7 @@ var AnnouncementManager = (function () {
                 // Trash all announcement documents
                 let trashedCount = 0;
                 let failedCount = 0;
-                rowsWithAnnouncements.forEach(row => {
+                rowsWithAnnouncements.forEach((/** @type {RowCoreInstance} */ row) => {
                     try {
                         const documentId = this._extractDocId(row.announcementURL);
                         if (documentId) {
@@ -401,7 +414,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Handle ride cancellation with announcement
-         * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
+         * @param {RowCoreInstance} row - Row object from ScheduleAdapter
          * @param {boolean} sendEmail - Whether to send cancellation email
          * @param {string} [reason=''] - User-provided cancellation reason
          * @returns {{announcementSent: boolean, emailAddress?: string, error?: string}} Result object
@@ -441,7 +454,7 @@ var AnnouncementManager = (function () {
 
         /**
          * Handle ride reinstatement with announcement
-         * @param {InstanceType<typeof RowCore>} row - Row object from ScheduleAdapter
+         * @param {RowCoreInstance} row - Row object from ScheduleAdapter
          * @param {boolean} sendEmail - Whether to send reinstatement email
          * @param {string} [reason=''] - User-provided reinstatement reason
          * @returns {{announcementSent: boolean, emailAddress?: string, error?: string}} Result object
@@ -484,7 +497,7 @@ var AnnouncementManager = (function () {
          * Automatically updates document name and sendAt based on new ride data
          * If no announcement exists, creates one
          * 
-         * @param {InstanceType<typeof RowCore>} row - Row object with updated ride data
+         * @param {RowCoreInstance} row - Row object with updated ride data
          * @returns {{success: boolean, error?: string}} Result object
          */
         updateAnnouncement(row) {
@@ -683,14 +696,12 @@ var AnnouncementManager = (function () {
                 // Add special marker paragraph that we can search for later
                 body.appendParagraph('')
                     .appendHorizontalRule();
-                body.appendParagraph('━━━ OPERATOR INSTRUCTIONS (will be removed when email is sent) ━━━')
-                    .setHeading(DocumentApp.ParagraphHeading.HEADING2)
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
-                    .setForegroundColor('#990000');
+                const instructionsParagraph = body.appendParagraph('━━━ OPERATOR INSTRUCTIONS (will be removed when email is sent) ━━━')
+                    .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+                instructionsParagraph.editAsText().setForegroundColor('#990000');
 
-                body.appendParagraph('⚠️ This section will be automatically removed when the announcement is sent.')
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
-                    .setBold(true);
+                const warningParagraph = body.appendParagraph('⚠️ This section will be automatically removed when the announcement is sent.');
+                warningParagraph.editAsText().setBold(true);
 
                 // Send time information
                 const sendTimeFormatted = new Date(sendTime).toLocaleString('en-US', {
@@ -698,9 +709,8 @@ var AnnouncementManager = (function () {
                     dateStyle: 'full',
                     timeStyle: 'short'
                 });
-                body.appendParagraph(`Scheduled Send Time: ${sendTimeFormatted}`)
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
-                    .setBold(true);
+                const sendTimeParagraph = body.appendParagraph(`Scheduled Send Time: ${sendTimeFormatted}`);
+                sendTimeParagraph.editAsText().setBold(true);
 
                 // Template field explanation
                 body.appendParagraph('Template Fields')
@@ -709,9 +719,8 @@ var AnnouncementManager = (function () {
                 body.appendParagraph('Fields in curly braces (e.g., {RideName}) will be replaced with current ride data when the email is sent. You can edit the text around these fields, but keep the {FieldName} syntax intact.');
 
                 // Available fields
-                body.appendParagraph('Available Fields:')
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
-                    .setBold(true);
+                const availableFieldsParagraph = body.appendParagraph('Available Fields:');
+                availableFieldsParagraph.editAsText().setBold(true);
 
                 const fields = [
                     '{DateTime} - Full date and time (e.g., "Saturday, December 7, 2024 at 10:00 AM")',
@@ -810,54 +819,54 @@ var AnnouncementManager = (function () {
 
                 case DocumentApp.ElementType.LIST_ITEM:
                     html += '<li>';
-                    // @ts-expect-error - Type narrowing needed for LIST_ITEM element
-                    const listChildren = element.getNumChildren();
+                    /** @type {GoogleAppsScript.Document.ListItem} */
+                    const listItem = /** @type {any} */ (element);
+                    const listChildren = listItem.getNumChildren();
                     for (let i = 0; i < listChildren; i++) {
-                        // @ts-expect-error - Type narrowing needed for LIST_ITEM element
-                        html += this._processElement(element.getChild(i));
+                        html += this._processElement(listItem.getChild(i));
                     }
                     html += '</li>';
                     break;
 
                 case DocumentApp.ElementType.TABLE:
                     html += '<table border="1" style="border-collapse:collapse;">';
-                    // @ts-expect-error - Type narrowing needed for TABLE element
-                    const numRows = element.getNumRows();
+                    /** @type {GoogleAppsScript.Document.Table} */
+                    const table = /** @type {any} */ (element);
+                    const numRows = table.getNumRows();
                     for (let i = 0; i < numRows; i++) {
-                        // @ts-expect-error - Type narrowing needed for TABLE element
-                        html += this._processElement(element.getRow(i));
+                        html += this._processElement(table.getRow(i));
                     }
                     html += '</table>';
                     break;
 
                 case DocumentApp.ElementType.TABLE_ROW:
                     html += '<tr>';
-                    // @ts-expect-error - Type narrowing needed for TABLE_ROW element
-                    const numCells = element.getNumCells();
+                    /** @type {GoogleAppsScript.Document.TableRow} */
+                    const tableRow = /** @type {any} */ (element);
+                    const numCells = tableRow.getNumCells();
                     for (let i = 0; i < numCells; i++) {
-                        // @ts-expect-error - Type narrowing needed for TABLE_ROW element
-                        html += this._processElement(element.getCell(i));
+                        html += this._processElement(tableRow.getCell(i));
                     }
                     html += '</tr>';
                     break;
 
                 case DocumentApp.ElementType.TABLE_CELL:
                     html += '<td>';
-                    // @ts-expect-error - Type narrowing needed for TABLE_CELL element
-                    const cellChildren = element.getNumChildren();
+                    /** @type {GoogleAppsScript.Document.TableCell} */
+                    const tableCell = /** @type {any} */ (element);
+                    const cellChildren = tableCell.getNumChildren();
                     for (let i = 0; i < cellChildren; i++) {
-                        // @ts-expect-error - Type narrowing needed for TABLE_CELL element
-                        html += this._processElement(element.getChild(i));
+                        html += this._processElement(tableCell.getChild(i));
                     }
                     html += '</td>';
                     break;
 
                 case DocumentApp.ElementType.BODY_SECTION:
-                    // @ts-expect-error - Type narrowing needed for BODY_SECTION element
-                    const bodyChildren = element.getNumChildren();
+                    /** @type {GoogleAppsScript.Document.Body} */
+                    const body = /** @type {any} */ (element);
+                    const bodyChildren = body.getNumChildren();
                     for (let i = 0; i < bodyChildren; i++) {
-                        // @ts-expect-error - Type narrowing needed for BODY_SECTION element
-                        html += this._processElement(element.getChild(i));
+                        html += this._processElement(body.getChild(i));
                     }
                     break;
 
@@ -868,13 +877,12 @@ var AnnouncementManager = (function () {
                 default:
                     // For other element types, try to process children if available
                     try {
-                        // @ts-expect-error - Type narrowing needed for generic element
-                        if (typeof element.getNumChildren === 'function') {
-                            // @ts-expect-error - Type narrowing needed for generic element
-                            const defaultChildren = element.getNumChildren();
+                        /** @type {GoogleAppsScript.Document.ContainerElement} */
+                        const containerElement = /** @type {any} */ (element);
+                        if (typeof containerElement.getNumChildren === 'function') {
+                            const defaultChildren = containerElement.getNumChildren();
                             for (let i = 0; i < defaultChildren; i++) {
-                                // @ts-expect-error - Type narrowing needed for generic element
-                                html += this._processElement(element.getChild(i));
+                                html += this._processElement(containerElement.getChild(i));
                             }
                         }
                     } catch (e) {
@@ -1152,7 +1160,7 @@ var AnnouncementManager = (function () {
         /**
          * Notify immediately about a failed announcement
          * Sends email to Ride Scheduler group with failure details
-         * @param {InstanceType<typeof RowCore>} row - Row instance with failed announcement
+         * @param {RowCoreInstance} row - Row instance with failed announcement
          * @param {string} error - Error message
          * @private
          */
@@ -1180,7 +1188,6 @@ var AnnouncementManager = (function () {
                 console.log(`AnnouncementManager: Sent immediate failure notification for row ${row.rowNum} to ${rsGroupEmail}`);
                 
                 // Log to UserLogger
-                // @ts-expect-error - UserLogger is global in GAS runtime
                 UserLogger.log('ANNOUNCEMENT_FAILURE_NOTIFICATION', `Row ${row.rowNum}, ${row.rideName}`, {
                     emailAddress: rsGroupEmail,
                     error: error,
@@ -1208,10 +1215,12 @@ var AnnouncementManager = (function () {
 
                 // Load all rows to find next pending announcement
                 const adapter = new ScheduleAdapter();
+                /** @type {RowCoreInstance[]} */
                 const allRows = adapter.loadAll();
 
                 // Find earliest pending announcement
-                const pendingRows = allRows.filter(r =>
+                /** @type {RowCoreInstance[]} */
+                const pendingRows = allRows.filter((/** @type {RowCoreInstance} */ r) =>
                     r.announcementURL &&
                     r.status === 'pending' &&
                     r.sendAt
@@ -1225,10 +1234,12 @@ var AnnouncementManager = (function () {
                 }
 
                 // Find earliest send time
-                const earliestRow = pendingRows.reduce((earliest, row) => {
-                    if (!row.sendAt || !earliest.sendAt) return earliest;
-                    return row.sendAt.getTime() < earliest.sendAt.getTime() ? row : earliest;
-                });
+                const earliestRow = pendingRows.reduce(
+                    (/** @type {RowCoreInstance} */ earliest, /** @type {RowCoreInstance} */ row) => {
+                        if (!row.sendAt || !earliest.sendAt) return earliest;
+                        return row.sendAt.getTime() < earliest.sendAt.getTime() ? row : earliest;
+                    }
+                );
 
                 if (!earliestRow.sendAt) {
                     console.warn('AnnouncementManager: Earliest row has no SendAt time');
@@ -1249,7 +1260,7 @@ var AnnouncementManager = (function () {
         /**
          * Send cancellation email
          * @private
-         * @param {InstanceType<typeof RowCore>} row - Row instance
+         * @param {RowCoreInstance} row - Row instance
          * @param {string} reason - Cancellation reason
          * @returns {{success: boolean, emailAddress?: string, error?: string}} Result object
          */
@@ -1290,7 +1301,7 @@ var AnnouncementManager = (function () {
         /**
          * Send reinstatement email
          * @private
-         * @param {InstanceType<typeof RowCore>} row - Row instance
+         * @param {RowCoreInstance} row - Row instance
          * @param {string} reason - Reinstatement reason
          * @returns {{success: boolean, emailAddress?: string, error?: string}} Result object
          */
@@ -1332,7 +1343,7 @@ var AnnouncementManager = (function () {
          * Load template document and expand with row data
          * @private
          * @param {string} templateUrl - Template document URL
-         * @param {InstanceType<typeof RowCore>} row - Row instance
+         * @param {RowCoreInstance} row - Row instance
          * @param {string} reason - Cancellation/reinstatement reason
          * @param {string} reasonFieldName - Field name for reason (always 'Reason')
          * @returns {{html: string, subject: string}} HTML and subject

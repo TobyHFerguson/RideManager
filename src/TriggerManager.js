@@ -38,7 +38,7 @@ class TriggerManager {
             const ss = SpreadsheetApp.getActiveSpreadsheet();
             const owner = ss.getOwner();
             const currentUser = Session.getEffectiveUser().getEmail();
-            return owner && currentUser === owner.getEmail();
+            return owner !== null && currentUser === owner.getEmail();
         }
         
         /**
@@ -62,22 +62,24 @@ class TriggerManager {
         installAllTriggers() {
             this.requireOwner();
             
+            /** @type {Record<string, {success: boolean, error?: string, [key: string]: any}>} */
             const results = {};
             
             try {
                 // Install all installable triggers
                 const triggerTypes = this.core.getAllInstallableTriggers();
                 
-                triggerTypes.forEach(triggerType => {
+                triggerTypes.forEach((/** @type {string} */ triggerType) => {
                     try {
                         const result = this._ensureTrigger(triggerType);
                         results[triggerType] = { success: true, ...result };
                     } catch (error) {
+                        const err = error instanceof Error ? error : new Error(String(error));
                         results[triggerType] = { 
                             success: false, 
-                            error: error.message 
+                            error: err.message 
                         };
-                        console.error(`TriggerManager: Failed to install ${triggerType}:`, error);
+                        console.error(`TriggerManager: Failed to install ${triggerType}:`, err);
                     }
                 });
                 
@@ -117,14 +119,15 @@ class TriggerManager {
                 return summary;
                 
             } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
                 UserLogger.log(
                     'INSTALL_TRIGGERS_ERROR',
                     'Failed to install triggers',
-                    { error: error.message, stack: error.stack }
+                    { error: err.message, stack: err.stack }
                 );
                 
-                console.error('TriggerManager: Error installing triggers:', error);
-                throw error;
+                console.error('TriggerManager: Error installing triggers:', err);
+                throw err;
             }
         }
         
@@ -133,11 +136,12 @@ class TriggerManager {
          * Idempotent: Safe to call multiple times
          * Owner-only operation
          * 
-         * @returns {{success: boolean, deletedCount: number, errors: any[]}} Removal result with deletion counts
+         * @returns {{success: boolean, deletedCount: number, errors: string[]}} Removal result with deletion counts
          */
         removeAllTriggers() {
             this.requireOwner();
             
+            /** @type {{success: boolean, deletedCount: number, errors: string[]}} */
             const result = {
                 success: true,
                 deletedCount: 0,
@@ -172,17 +176,18 @@ class TriggerManager {
                 console.log(`TriggerManager: Removed ${result.deletedCount} trigger(s)`);
                 
             } catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
                 result.success = false;
-                result.errors.push(error.message);
+                result.errors.push(err.message);
                 
                 UserLogger.log(
                     'REMOVE_TRIGGERS_ERROR',
                     'Failed to remove triggers',
-                    { error: error.message, stack: error.stack }
+                    { error: err.message, stack: err.stack }
                 );
                 
-                console.error('TriggerManager: Error removing triggers:', error);
-                throw error;
+                console.error('TriggerManager: Error removing triggers:', err);
+                throw err;
             }
             
             return result;
@@ -209,6 +214,10 @@ class TriggerManager {
          * Generic method to schedule a timed trigger
          * Queries actual triggers from ScriptApp (no caching)
          * @private
+         * @param {string} triggerType - Type of trigger to schedule
+         * @param {Date|number} time - When to schedule the trigger
+         * @param {string} logAction - Action name for logging
+         * @returns {{created: boolean, triggerId: string}} Result with created flag and trigger ID
          */
         _scheduleTimedTrigger(triggerType, time, logAction) {
             this.requireOwner();
@@ -230,7 +239,7 @@ class TriggerManager {
             );
             
             if (!decision.shouldSchedule) {
-                const triggerId = existingTrigger ? existingTrigger.getUniqueId() : null;
+                const triggerId = existingTrigger ? existingTrigger.getUniqueId() : '';
                 console.log(`TriggerManager: ${triggerType} - ${decision.reason}`);
                 return { created: false, triggerId };
             }
@@ -280,6 +289,8 @@ class TriggerManager {
          * Generic method to remove a scheduled trigger
          * Queries and deletes actual trigger (no cache management)
          * @private
+         * @param {string} triggerType - Type of trigger to remove
+         * @param {string} logAction - Action name for logging
          */
         _removeScheduledTrigger(triggerType, logAction) {
             this.requireOwner();
@@ -405,6 +416,8 @@ class TriggerManager {
         /**
          * Delete a scheduled trigger by property key
          * @private
+         * @param {string} propKey - Property key for the trigger ID
+         * @param {string} handlerName - Handler function name for logging
          * @returns {boolean} True if trigger was deleted
          */
         _deleteScheduledTrigger(propKey, handlerName) {
@@ -429,6 +442,7 @@ class TriggerManager {
         /**
          * Delete all triggers by handler function name
          * @private
+         * @param {string} handlerName - Handler function name to match
          * @returns {number} Number of triggers deleted
          */
         _deleteTriggersByHandlerName(handlerName) {

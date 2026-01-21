@@ -3,7 +3,7 @@
 
 /**
  * @typedef {import('./ValidationCore').ValidationResult} ValidationResult
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  */
 
 /**
@@ -32,7 +32,7 @@ class UIHelper {
                 return { confirmed: true, processableRows };
             }
 
-            const message = this.buildValidationMessage(operationName, rows, validation);
+            const message = UIHelper.buildValidationMessage(operationName, rows, validation);
 
             if (processableRows.length === 0) {
                 SpreadsheetApp.getUi().alert(
@@ -152,7 +152,7 @@ class UIHelper {
                 return v && v.errors.length === 0;
             });
 
-            const message = this.buildValidationMessage('Cancel Rides', rows, validation);
+            const message = UIHelper.buildValidationMessage('Cancel Rides', rows, validation);
 
             if (processableRows.length === 0) {
                 SpreadsheetApp.getUi().alert(
@@ -194,7 +194,7 @@ class UIHelper {
                 return v && v.errors.length === 0;
             });
 
-            const message = this.buildValidationMessage('Reinstate Rides', rows, validation);
+            const message = UIHelper.buildValidationMessage('Reinstate Rides', rows, validation);
 
             if (processableRows.length === 0) {
                 SpreadsheetApp.getUi().alert(
