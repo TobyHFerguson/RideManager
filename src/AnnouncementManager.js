@@ -685,11 +685,9 @@ var AnnouncementManager = (function () {
                     .appendHorizontalRule();
                 body.appendParagraph('━━━ OPERATOR INSTRUCTIONS (will be removed when email is sent) ━━━')
                     .setHeading(DocumentApp.ParagraphHeading.HEADING2)
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setForegroundColor('#990000');
 
                 body.appendParagraph('⚠️ This section will be automatically removed when the announcement is sent.')
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setBold(true);
 
                 // Send time information
@@ -699,7 +697,6 @@ var AnnouncementManager = (function () {
                     timeStyle: 'short'
                 });
                 body.appendParagraph(`Scheduled Send Time: ${sendTimeFormatted}`)
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setBold(true);
 
                 // Template field explanation
@@ -710,7 +707,6 @@ var AnnouncementManager = (function () {
 
                 // Available fields
                 body.appendParagraph('Available Fields:')
-                    // @ts-expect-error - setForegroundColor exists but not in TypeScript defs
                     .setBold(true);
 
                 const fields = [
@@ -810,54 +806,54 @@ var AnnouncementManager = (function () {
 
                 case DocumentApp.ElementType.LIST_ITEM:
                     html += '<li>';
-                    // @ts-expect-error - Type narrowing needed for LIST_ITEM element
-                    const listChildren = element.getNumChildren();
+                    /** @type {GoogleAppsScript.Document.ListItem} */
+                    const listItem = /** @type {any} */ (element);
+                    const listChildren = listItem.getNumChildren();
                     for (let i = 0; i < listChildren; i++) {
-                        // @ts-expect-error - Type narrowing needed for LIST_ITEM element
-                        html += this._processElement(element.getChild(i));
+                        html += this._processElement(listItem.getChild(i));
                     }
                     html += '</li>';
                     break;
 
                 case DocumentApp.ElementType.TABLE:
                     html += '<table border="1" style="border-collapse:collapse;">';
-                    // @ts-expect-error - Type narrowing needed for TABLE element
-                    const numRows = element.getNumRows();
+                    /** @type {GoogleAppsScript.Document.Table} */
+                    const table = /** @type {any} */ (element);
+                    const numRows = table.getNumRows();
                     for (let i = 0; i < numRows; i++) {
-                        // @ts-expect-error - Type narrowing needed for TABLE element
-                        html += this._processElement(element.getRow(i));
+                        html += this._processElement(table.getRow(i));
                     }
                     html += '</table>';
                     break;
 
                 case DocumentApp.ElementType.TABLE_ROW:
                     html += '<tr>';
-                    // @ts-expect-error - Type narrowing needed for TABLE_ROW element
-                    const numCells = element.getNumCells();
+                    /** @type {GoogleAppsScript.Document.TableRow} */
+                    const tableRow = /** @type {any} */ (element);
+                    const numCells = tableRow.getNumCells();
                     for (let i = 0; i < numCells; i++) {
-                        // @ts-expect-error - Type narrowing needed for TABLE_ROW element
-                        html += this._processElement(element.getCell(i));
+                        html += this._processElement(tableRow.getCell(i));
                     }
                     html += '</tr>';
                     break;
 
                 case DocumentApp.ElementType.TABLE_CELL:
                     html += '<td>';
-                    // @ts-expect-error - Type narrowing needed for TABLE_CELL element
-                    const cellChildren = element.getNumChildren();
+                    /** @type {GoogleAppsScript.Document.TableCell} */
+                    const tableCell = /** @type {any} */ (element);
+                    const cellChildren = tableCell.getNumChildren();
                     for (let i = 0; i < cellChildren; i++) {
-                        // @ts-expect-error - Type narrowing needed for TABLE_CELL element
-                        html += this._processElement(element.getChild(i));
+                        html += this._processElement(tableCell.getChild(i));
                     }
                     html += '</td>';
                     break;
 
                 case DocumentApp.ElementType.BODY_SECTION:
-                    // @ts-expect-error - Type narrowing needed for BODY_SECTION element
-                    const bodyChildren = element.getNumChildren();
+                    /** @type {GoogleAppsScript.Document.Body} */
+                    const body = /** @type {any} */ (element);
+                    const bodyChildren = body.getNumChildren();
                     for (let i = 0; i < bodyChildren; i++) {
-                        // @ts-expect-error - Type narrowing needed for BODY_SECTION element
-                        html += this._processElement(element.getChild(i));
+                        html += this._processElement(body.getChild(i));
                     }
                     break;
 
@@ -868,13 +864,12 @@ var AnnouncementManager = (function () {
                 default:
                     // For other element types, try to process children if available
                     try {
-                        // @ts-expect-error - Type narrowing needed for generic element
-                        if (typeof element.getNumChildren === 'function') {
-                            // @ts-expect-error - Type narrowing needed for generic element
-                            const defaultChildren = element.getNumChildren();
+                        /** @type {GoogleAppsScript.Document.ContainerElement} */
+                        const containerElement = /** @type {any} */ (element);
+                        if (typeof containerElement.getNumChildren === 'function') {
+                            const defaultChildren = containerElement.getNumChildren();
                             for (let i = 0; i < defaultChildren; i++) {
-                                // @ts-expect-error - Type narrowing needed for generic element
-                                html += this._processElement(element.getChild(i));
+                                html += this._processElement(containerElement.getChild(i));
                             }
                         }
                     } catch (e) {
@@ -1180,7 +1175,6 @@ var AnnouncementManager = (function () {
                 console.log(`AnnouncementManager: Sent immediate failure notification for row ${row.rowNum} to ${rsGroupEmail}`);
                 
                 // Log to UserLogger
-                // @ts-expect-error - UserLogger is global in GAS runtime
                 UserLogger.log('ANNOUNCEMENT_FAILURE_NOTIFICATION', `Row ${row.rowNum}, ${row.rideName}`, {
                     emailAddress: rsGroupEmail,
                     error: error,

@@ -104,6 +104,54 @@ declare global {
     function getGroupSpecs(): any;
 }
 
+// Augment Google Apps Script types that are missing from @types/google-apps-script
+// These methods exist in the runtime but are not in the type definitions
+
+declare namespace GoogleAppsScript {
+    namespace Document {
+        // Add missing methods to Paragraph
+        interface Paragraph {
+            setForegroundColor(color: string): Paragraph;
+        }
+        
+        // Add ContainerElement interface for elements that have children
+        interface ContainerElement extends Element {
+            getNumChildren(): number;
+            getChild(childIndex: number): Element;
+        }
+        
+        // Add missing methods to ListItem (extends ContainerElement)
+        interface ListItem extends ContainerElement {
+            getNumChildren(): number;
+            getChild(childIndex: number): Element;
+        }
+        
+        // Add missing methods to Table
+        interface Table {
+            getNumRows(): number;
+            getRow(rowIndex: number): TableRow;
+        }
+        
+        // Add missing methods to TableRow
+        interface TableRow {
+            getNumCells(): number;
+            getCell(cellIndex: number): TableCell;
+        }
+        
+        // Add missing methods to TableCell (extends ContainerElement)
+        interface TableCell extends ContainerElement {
+            getNumChildren(): number;
+            getChild(childIndex: number): Element;
+        }
+        
+        // Add missing methods to Body (extends ContainerElement)
+        interface Body extends ContainerElement {
+            getNumChildren(): number;
+            getChild(childIndex: number): Element;
+        }
+    }
+}
+
 export { };
 
 
