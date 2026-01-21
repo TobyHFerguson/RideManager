@@ -337,6 +337,7 @@ class AnnouncementCore {
      * @returns {{needsDocumentRename: boolean, newDocumentName: string | null, needsSendAtUpdate: boolean, calculatedSendAt: Date | null}} Update decision object
      */
     static calculateAnnouncementUpdates(currentAnnouncement, newRideData, timezone = 'America/Los_Angeles') {
+        /** @type {{needsDocumentRename: boolean, newDocumentName: string | null, needsSendAtUpdate: boolean, calculatedSendAt: Date | null}} */
         const updates = {
             needsDocumentRename: false,
             newDocumentName: null,
@@ -348,12 +349,10 @@ class AnnouncementCore {
         const newDocName = AnnouncementCore.calculateAnnouncementDocName(newRideData.rideName);
         if (currentAnnouncement.documentName !== newDocName) {
             updates.needsDocumentRename = true;
-            // @ts-expect-error
             updates.newDocumentName = newDocName;
         }
 
         // Calculate new sendAt based on updated ride date
-        // @ts-expect-error
         updates.calculatedSendAt = AnnouncementCore.calculateSendTime(newRideData.rideDate, timezone);
 
         return updates;
