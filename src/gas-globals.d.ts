@@ -16,7 +16,7 @@ import type AnnouncementManager from './AnnouncementManager';
 import type CacheManager from './CacheManager';
 import type EventFactory from './EventFactory';
 import type Exports from './Exports';
-import type { Externals as ExternalsType } from './Externals';
+import type { Externals as ExternalsType, RowCoreInstance } from './Externals';
 import type Globals from './Globals';
 import type { GlobalsObject } from './Globals';
 import type GoogleEventCore from './GoogleEventCore';
@@ -49,6 +49,10 @@ import type ValidationCore from './ValidationCore';
 // In GAS, all .js files are concatenated, so 'var' declarations become globals
 
 declare global {
+    // Shared instance types - use these for function parameters
+    // These allow TypeScript to properly infer types from loadSelected(), loadAll(), etc.
+    type RowCoreInstance = import('./Externals').RowCoreInstance;
+    
     // Classes - use 'typeof' to get the constructor type (can use 'new')
     const ScheduleAdapter: typeof ScheduleAdapter;
     const RowCore: typeof RowCore;
@@ -83,6 +87,12 @@ declare global {
     const RWGPSClientFactory: typeof RWGPSClientFactory;
     const RouteService: typeof RouteService;
     const RouteServiceCore: typeof RouteServiceCore;
+    
+    // Developer/Debug utilities (may not be fully implemented)
+    const RWGPSApiLogger: {
+        clear(): void;
+        getAll(): Array<{operation?: string; [key: string]: any}>;
+    };
     
     // External libraries available in GAS runtime
     const RWGPSLib: typeof import('./Externals').RWGPSLib;

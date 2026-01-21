@@ -3,7 +3,7 @@
 
 /**
  * @typedef {import('./ValidationCore').ValidationResult} ValidationResult
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  */
 
 /**

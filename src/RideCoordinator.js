@@ -10,7 +10,8 @@ if (typeof require !== 'undefined') {
 }
 
 /**
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {Object} ScheduleAdapterLike
+ * @property {function(): void} save - Save changes to spreadsheet
  */
 
 /**
@@ -37,7 +38,7 @@ class RideCoordinator {
     /**
      * Schedule rides operation
      * @param {RowCoreInstance[]} rows - Rows to schedule
-     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {ScheduleAdapterLike} adapter - Persistence adapter with save() method
      * @param {boolean} [force] - Skip user confirmation
      */
     static scheduleRides(rows, adapter, force = false) {
@@ -88,7 +89,7 @@ class RideCoordinator {
     /**
      * Cancel rides operation
      * @param {RowCoreInstance[]} rows - Rows to cancel
-     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {ScheduleAdapterLike} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
     static cancelRides(rows, adapter, force = false) {
@@ -208,7 +209,7 @@ class RideCoordinator {
     /**
      * Update rides operation
      * @param {RowCoreInstance[]} rows - Rows to update
-     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {ScheduleAdapterLike} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
     static updateRides(rows, adapter, force = false) {
@@ -258,7 +259,7 @@ class RideCoordinator {
     /**
      * Reinstate rides operation
      * @param {RowCoreInstance[]} rows - Rows to reinstate
-     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {ScheduleAdapterLike} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
     static reinstateRides(rows, adapter, force = false) {
@@ -378,7 +379,7 @@ class RideCoordinator {
     /**
      * Unschedule rides operation
      * @param {RowCoreInstance[]} rows - Rows to unschedule
-     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {ScheduleAdapterLike} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
     static unscheduleRides(rows, adapter, force = false) {
@@ -425,7 +426,7 @@ class RideCoordinator {
     /**
      * Import routes operation
      * @param {RowCoreInstance[]} rows - Rows to import
-     * @param {InstanceType<typeof ScheduleAdapter>} adapter - Persistence adapter
+     * @param {ScheduleAdapterLike} adapter - Persistence adapter
      * @param {boolean} [force] - Skip user confirmation
      */
     static importRoutes(rows, adapter, force = false) {

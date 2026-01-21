@@ -88,7 +88,7 @@ Files using RowCore must include at the top (after triple-slash references):
 
 ```javascript
 /**
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  */
 ```
 

@@ -5,9 +5,9 @@
  */
 
 /**
- * CacheManager class with static utility methods
+ * CacheManager namespace with static utility methods
  */
-declare class CacheManager {
+declare namespace CacheManager {
     /**
      * Clear cached Globals and Groups data
      * Uses CacheService.getDocumentCache() to remove cached values
@@ -19,7 +19,7 @@ declare class CacheManager {
      * CacheManager.clearCache(); // Clears 'Globals' and 'Groups' from document cache
      * ```
      */
-    static clearCache(): void;
+    function clearCache(): void;
 }
 
 export default CacheManager;

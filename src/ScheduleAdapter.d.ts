@@ -8,11 +8,14 @@
  * - Handles all spreadsheet I/O using Load → Work → Save pattern
  */
 
-import RowCoreClass from './RowCore';
+import type { RowCoreInstance } from './Externals';
 import Row from './Row';
 
-/** Instance type of RowCore */
-type RowCore = InstanceType<typeof RowCoreClass>;
+/** 
+ * Instance type of RowCore - exported for use by consumers
+ * @deprecated Use import { RowCoreInstance } from './Externals' instead
+ */
+export type RowCore = RowCoreInstance;
 
 /**
  * Adapter for schedule spreadsheet operations

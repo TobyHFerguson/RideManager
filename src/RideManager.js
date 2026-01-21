@@ -11,7 +11,7 @@ if (typeof require !== 'undefined') {
  * @typedef {import('./Externals').RWGPS} RWGPS
  * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
  * @typedef {import('./Externals').Organizer} Organizer
- * @typedef {InstanceType<typeof RowCore>} RowCoreInstance
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
  * @typedef {import('./RideManagerCore').default} RideManagerCoreType
  */
 

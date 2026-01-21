@@ -9,11 +9,12 @@ var Groups = (function() {
 function flatten_(groups) {
     // groups = [ {"Group": "A", "LogoURL": ..., "MIN_LENGTH": ...}]
     // result = { "A": { "LogoURL": ...}, "B": { "LogoURL": ...}}
-    groups = groups.reduce((acc, { Group, ...rest }) => {
+    /** @type {Object<string, any>} */
+    const result = groups.reduce((acc, { Group, ...rest }) => {
         acc[Group] = rest;
         return acc;
     }, /** @type {Object<string, any>} */ ({}));
-    return groups;
+    return result;
 }
 
 /**
@@ -54,7 +55,10 @@ class Groups {
 
     static getGroupSpecs() {
         const cache = CacheService.getDocumentCache();
-        let cachedGroups = cache.get('groups');
+        if (!cache) {
+            return Groups.initializeGroupCache();
+        }
+        const cachedGroups = cache.get('groups');
         if (cachedGroups) {
             return JSON.parse(cachedGroups);
         } else {
@@ -64,7 +68,10 @@ class Groups {
 
     static initializeGroupCache() {
         const cache = CacheService.getDocumentCache();
-        let groups = getGroupsFromSheet_();
+        if (!cache) {
+            throw new Error('Document cache not available');
+        }
+        const groups = getGroupsFromSheet_();
         cache.put('groups', JSON.stringify(groups), 21600); // Cache for 6 hours
         return groups;
     }

@@ -73,6 +73,11 @@ export interface RWGPSEventSummary {
  * Full event object returned by GET/PUT requests
  * Extends EventSummary with organizers, routes, photos
  * Matches OpenAPI Event schema (docs/rwgps-openapi.yaml lines 2619-2645)
+ * 
+ * Note: Some endpoints return alternative field names (legacy v1 API):
+ * - desc (alias for description)
+ * - organizer_ids (array of IDs instead of organizer objects)
+ * - starts_at (ISO datetime instead of separate start_date/start_time)
  */
 export interface RWGPSEvent extends RWGPSEventSummary {
     /** Array of organizer objects (read-only in responses) */
@@ -85,6 +90,14 @@ export interface RWGPSEvent extends RWGPSEventSummary {
         url: string;
         caption?: string;
     }>;
+    
+    // Legacy v1 API alternative field names (some endpoints return these)
+    /** Legacy alias for description (some v1 endpoints) */
+    desc?: string;
+    /** Organizer IDs array (some v1 endpoints return this instead of organizers) */
+    organizer_ids?: number[];
+    /** ISO datetime string (some v1 endpoints return this instead of start_date/start_time) */
+    starts_at?: string;
 }
 
 /**

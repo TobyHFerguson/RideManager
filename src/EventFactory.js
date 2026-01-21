@@ -14,6 +14,8 @@ if (typeof require !== 'undefined') {
 /**
  * @typedef {import('./Externals').Organizer} Organizer
  * @typedef {import('./Externals').RWGPSEvent} RWGPSEvent
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
+ * @typedef {import('./Externals').SCCCCEventInstance} SCCCCEventInstance
  */
 
 var EventFactory = (function() {
@@ -43,7 +45,7 @@ Note: When using a browser use the "Go to route" link below to open up the route
 }
 
 /**
- * @param {InstanceType<typeof RowCore>} row
+ * @param {RowCoreInstance} row
  * @returns {string}
  */
 function makeRideName_(row) {
@@ -55,10 +57,10 @@ function makeRideName_(row) {
 
 class EventFactory {
     /**
-     * @param {InstanceType<typeof RowCore>} row row object to make event from
+     * @param {RowCoreInstance} row row object to make event from
      * @param {Organizer[]} organizers the organizers (i.e. ride leaders) for this event
      * @param {string | number} event_id the event ID (extracted from event URL)
-     * @returns {InstanceType<typeof SCCCCEvent>} the constructed event
+     * @returns {SCCCCEventInstance} the constructed event
      */
     static newEvent(row, organizers, event_id) {
         const globals = Globals.getGlobals();
@@ -85,7 +87,7 @@ class EventFactory {
 
     /**
      * @param {RWGPSEvent} rwgpsEvent
-     * @returns {InstanceType<typeof SCCCCEvent>}
+     * @returns {SCCCCEventInstance}
      */
     static fromRwgpsEvent(rwgpsEvent) {
         const event = new SCCCCEvent();

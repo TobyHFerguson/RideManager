@@ -2,6 +2,10 @@
 /// <reference path="./gas-globals.d.ts" />
 
 /**
+ * @typedef {import('./Externals').RowCoreInstance} RowCoreInstance
+ */
+
+/**
  * EXAMPLE: How to use the new ScheduleAdapter + Row architecture
  * 
  * This demonstrates the new pattern that separates GAS from pure JavaScript
@@ -14,7 +18,7 @@ var console;
 
 /**
  * Example function (implementation not shown)
- * @param {InstanceType<typeof RowCore>} row
+ * @param {RowCoreInstance} row
  * @returns {string}
  */
 function createCalendarEvent(row) {
