@@ -468,7 +468,7 @@ const RideManager = (function () {
             start_date: dateParts.start_date,
             start_time: dateParts.start_time,
             route_ids: routeId ? [routeId] : [],
-            visibility: 1  // 1 = friends_only/members_only
+            visibility: 0  // 0 = public, 1 = managers, 2 = members, 
         };
         
         const logoUrl = groupSpec.LogoURL || null;
