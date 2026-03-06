@@ -9,6 +9,9 @@ class GoogleCalendarManager {
      * @throws Will throw an error if the calendar cannot be retrieved
      */
     static getCalendar(calendarId) {
+        if (!calendarId) {
+            throw new Error(`Calendar ID is missing or undefined. Check that the group has a GoogleCalendarId configured in the Groups sheet.`);
+        }
         const calendar = CalendarApp.getCalendarById(calendarId);
         if (!calendar) {
             throw new Error(`Calendar not found: ${calendarId}\n\nYou must subscribe to the calendar.`);
@@ -36,8 +39,26 @@ class GoogleCalendarManager {
             location: location
         });
 
+        if (!event) {
+            throw new Error(`calendar.createEvent returned null/undefined for calendar ${calendarId}`);
+        }
+
         const eventId = event.getId();
-        console.log("GoogleCalendarEvent created:", eventId);
+        if (!eventId) {
+            throw new Error(`event.getId() returned null/undefined after createEvent on calendar ${calendarId}`);
+        }
+
+        // Verification: read back the event to confirm it was persisted
+        const verification = calendar.getEventById(eventId);
+        if (!verification) {
+            console.error(`GoogleCalendarManager.createEvent: VERIFICATION FAILED - Event ${eventId} was created but cannot be read back from calendar ${calendarId}`);
+            console.error(`GoogleCalendarManager.createEvent: Event details - title="${title}", start=${startTime}, end=${endTime}`);
+            throw new Error(`Calendar event verification failed: event ${eventId} created but not readable from calendar ${calendarId}. The event may not have been persisted.`);
+        }
+
+        // Log verification details for debugging
+        console.log(`GoogleCalendarManager.createEvent: VERIFIED - Event ${eventId} on calendar ${calendarId}`);
+        console.log(`GoogleCalendarManager.createEvent: Verified title="${verification.getTitle()}", start=${verification.getStartTime()}`);
         return eventId;
     }
     
@@ -56,6 +77,8 @@ class GoogleCalendarManager {
         if (event) {
             event.deleteEvent();
             console.log(`GoogleCalendarManager: Deleted event ${eventId}`);
+        } else {
+            console.warn(`GoogleCalendarManager.deleteEvent: Event ${eventId} not found on calendar ${calendarId} - may have already been deleted`);
         }
     }
     
@@ -77,11 +100,26 @@ class GoogleCalendarManager {
         const calendar = GoogleCalendarManager.getCalendar(calendarId);
         const event = calendar.getEventById(eventId);
         if (event) {
-            event.setTitle(title)
-            .setTime(startTime, endTime)
-            .setLocation(location)
-            .setDescription(description);
-            console.log(`GoogleCalendarManager: Updated event ${eventId}`);
+            // Break setter chain - each call verified individually to catch silent failures
+            event.setTitle(title);
+            event.setTime(startTime, endTime);
+            event.setLocation(location);
+            event.setDescription(description);
+
+            // Verification: read back to confirm changes persisted
+            const verification = calendar.getEventById(eventId);
+            if (!verification) {
+                console.error(`GoogleCalendarManager.updateEvent: VERIFICATION FAILED - Event ${eventId} not readable after update on calendar ${calendarId}`);
+                throw new Error(`Calendar event verification failed: event ${eventId} not readable after update on calendar ${calendarId}`);
+            }
+
+            const verifiedTitle = verification.getTitle();
+            if (verifiedTitle !== title) {
+                console.warn(`GoogleCalendarManager.updateEvent: TITLE MISMATCH - Expected "${title}", got "${verifiedTitle}" for event ${eventId}`);
+            }
+
+            console.log(`GoogleCalendarManager.updateEvent: VERIFIED - Event ${eventId} updated on calendar ${calendarId}`);
+            console.log(`GoogleCalendarManager.updateEvent: Verified title="${verifiedTitle}", start=${verification.getStartTime()}`);
         } else {
             throw new Error(`Event not found: ${eventId} in calendar ${calendarId}`);
         }
