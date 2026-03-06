@@ -46,7 +46,7 @@ const RideManager = (function () {
         console.log(`getCalendarId: Resolved calendar ID="${id}"`);
         
         if (!id) {
-            console.error(`getCalendarId(${groupName}) resulted in no id from these specs:`, groupSpecs);
+            throw new Error(`No GoogleCalendarId configured for group "${groupName}". Check the Groups sheet.`);
         }
         return id;
     }
