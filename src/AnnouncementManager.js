@@ -308,6 +308,7 @@ var AnnouncementManager = (function () {
                 /** @type {RowCoreInstance[]} */
                 const allRows = adapter.loadAll();
                 const rideUrlSet = new Set(rideUrls);
+                const protectedTemplateIds = this._getProtectedTemplateIds();
                 /** @type {RowCoreInstance[]} */
                 const rowsToRemove = allRows.filter((/** @type {RowCoreInstance} */ r) => r.announcementURL && rideUrlSet.has(r.rideURL));
 
@@ -324,7 +325,16 @@ var AnnouncementManager = (function () {
                             : row.announcementCell?.url || '';
                         const documentId = this._extractDocId(announcementUrl);
                         if (documentId) {
+                            if (protectedTemplateIds.has(documentId)) {
+                                console.warn(`AnnouncementManager: Skipping trash for protected template document ${documentId} (row ${row.rowNum})`);
+                                return;
+                            }
                             const file = DriveApp.getFileById(documentId);
+                            const fileName = file.getName();
+                            if (!fileName.startsWith('RA-')) {
+                                console.warn(`AnnouncementManager: Skipping trash for non-announcement document "${fileName}" (${documentId}) in row ${row.rowNum} - expected name starting with 'RA-'`);
+                                return;
+                            }
                             file.setTrashed(true);
                             console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.rideURL}`);
                         }
@@ -365,6 +375,7 @@ var AnnouncementManager = (function () {
         clearAll() {
             try {
                 const adapter = new ScheduleAdapter();
+                const protectedTemplateIds = this._getProtectedTemplateIds();
                 /** @type {RowCoreInstance[]} */
                 const allRows = adapter.loadAll();
                 /** @type {RowCoreInstance[]} */
@@ -383,7 +394,16 @@ var AnnouncementManager = (function () {
                     try {
                         const documentId = this._extractDocId(row.announcementURL);
                         if (documentId) {
+                            if (protectedTemplateIds.has(documentId)) {
+                                console.warn(`AnnouncementManager: Skipping trash for protected template document ${documentId} during clearAll (row ${row.rowNum})`);
+                                return;
+                            }
                             const file = DriveApp.getFileById(documentId);
+                            const fileName = file.getName();
+                            if (!fileName.startsWith('RA-')) {
+                                console.warn(`AnnouncementManager: Skipping trash for non-announcement document "${fileName}" (${documentId}) in row ${row.rowNum} - expected name starting with 'RA-'`);
+                                return;
+                            }
                             file.setTrashed(true);
                             trashedCount++;
                             console.log(`AnnouncementManager: Trashed document ${documentId} for ride ${row.rideName}`);
@@ -609,6 +629,35 @@ var AnnouncementManager = (function () {
             // Extract from URL: https://docs.google.com/document/d/{ID}/edit
             const match = urlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
             return match ? match[1] : null;
+        }
+
+        /**
+         * Build a set of template IDs that must never be trashed by cleanup flows.
+         * @private
+         * @returns {Set<string>} Protected template IDs
+         */
+        _getProtectedTemplateIds() {
+            /** @type {Set<string>} */
+            const ids = new Set();
+
+            const globals = getGlobals();
+            const masterTemplate = globals && typeof globals.RIDE_ANNOUNCEMENT_MASTER_TEMPLATE === 'string'
+                ? globals.RIDE_ANNOUNCEMENT_MASTER_TEMPLATE
+                : '';
+            const masterId = this._extractDocId(masterTemplate);
+            if (masterId) {
+                ids.add(masterId);
+            }
+
+            const personalTemplates = Globals.getPersonalTemplates();
+            Object.values(personalTemplates).forEach((/** @type {string} */ templateUrl) => {
+                const id = this._extractDocId(templateUrl);
+                if (id) {
+                    ids.add(id);
+                }
+            });
+
+            return ids;
         }
 
         /**

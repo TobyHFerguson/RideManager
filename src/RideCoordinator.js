@@ -104,7 +104,7 @@ class RideCoordinator {
                 // 2. Check for rows with announcements
                 const rowsWithAnnouncements = rows.filter(r => {
                     const v = validation.get(r);
-                    return v && v.errors.length === 0 && r.announcementCell && r.status;
+                    return v && v.errors.length === 0 && r.announcementURL && r.status;
                 });
 
                 // 3. Get user confirmation (with announcement handling if needed)
@@ -274,7 +274,7 @@ class RideCoordinator {
                 // 2. Check for rows with announcements
                 const rowsWithAnnouncements = rows.filter(r => {
                     const v = validation.get(r);
-                    return v && v.errors.length === 0 && r.announcementCell && r.status === 'cancelled';
+                    return v && v.errors.length === 0 && r.announcementURL && r.status === 'cancelled';
                 });
 
                 // 3. Get user confirmation (with announcement handling if needed)
@@ -309,7 +309,7 @@ class RideCoordinator {
 
                     for (const row of confirmation.processableRows) {
                         try {
-                            if (!row.announcementCell || !row.status || row.status !== 'cancelled') {
+                            if (!row.announcementURL || !row.status || row.status !== 'cancelled') {
                                 // No announcement - simple reinstatement
                                 RideManager.reinstateRows([row], false, '');
                                 reinstated++;
