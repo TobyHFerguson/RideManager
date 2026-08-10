@@ -81,15 +81,14 @@ describe('AnnouncementCore', () => {
 
         it('should return rows due to send (pending status)', () => {
             const rows = [
-                createMockRow('http://doc1', now + 30 * 60 * 1000), // Due within hour
+                createMockRow('http://doc1', now + 30 * 60 * 1000), // Not due yet
                 createMockRow('http://doc2', now + 2 * 60 * 60 * 1000), // Not due yet
-                createMockRow('http://doc3', now - 1000), // Past due (within window)
+                createMockRow('http://doc3', now - 1000), // Past due
             ];
 
             const dueToSend = AnnouncementCore.getDueItems(rows, now);
-            expect(dueToSend).toHaveLength(2);
-            expect(dueToSend[0].announcementCell).toBe('http://doc1');
-            expect(dueToSend[1].announcementCell).toBe('http://doc3');
+            expect(dueToSend).toHaveLength(1);
+            expect(dueToSend[0].announcementCell).toBe('http://doc3');
         });
 
         it('should NOT retry failed announcements automatically', () => {
@@ -109,7 +108,7 @@ describe('AnnouncementCore', () => {
                 createMockRow('', now + 1000), // No URL
                 createMockRow('http://doc1', null), // No SendAt
                 createMockRow('', null), // Neither
-                createMockRow('http://doc2', now + 1000), // Valid
+                createMockRow('http://doc2', now - 1000), // Valid and due
             ];
 
             const dueToSend = AnnouncementCore.getDueItems(rows, now);

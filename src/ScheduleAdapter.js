@@ -329,6 +329,10 @@ const ScheduleAdapter = (function() {
                         // Regular value
                         else {
                             cell.setValue(value);
+                            // Keep SendAt human-readable in sheet: "Aug 9 2:19 PM".
+                            if (columnName === 'SendAt' && value instanceof Date) {
+                                cell.setNumberFormat('mmm d h:mm am/pm');
+                            }
                         }
                     } catch (error) {
                         const err = error instanceof Error ? error : new Error(String(error));

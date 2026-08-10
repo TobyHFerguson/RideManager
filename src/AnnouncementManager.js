@@ -218,9 +218,18 @@ var AnnouncementManager = (function () {
 
         /**
          * Process all due announcements
-         * Called by time-based trigger
+         * Called by time-based triggers or owner maintenance flows.
+         *
+         * Modes:
+         * - send (default): send due announcements, then reschedule next trigger
+         * - reschedule-only: do not send emails, only recompute/schedule trigger
+         *
+         * @param {{mode?: 'send' | 'reschedule-only', source?: string}} [options] - Processing options
          */
-        processQueue() {
+        processQueue(options = {}) {
+            const mode = options.mode === 'reschedule-only' ? 'reschedule-only' : 'send';
+            const source = options.source || 'unspecified';
+
             // Load all rows from spreadsheet
             const adapter = new ScheduleAdapter();
             /** @type {RowCoreInstance[]} */
@@ -233,40 +242,44 @@ var AnnouncementManager = (function () {
             }
 
             const now = new Date().getTime();
-            const dueToSend = AnnouncementCore.getDueItems(allRows, now);
-
             let sent = 0;
             let failed = 0;
 
-            // Process announcements due to send
-            dueToSend.forEach((/** @type {any} */ row) => {
-                try {
-                    const result = this.sendAnnouncement(row);
+            if (mode === 'send') {
+                const dueToSend = AnnouncementCore.getDueItems(allRows, now);
 
-                    if (result.success) {
-                        // Mark as sent
-                        row.setStatus('sent');
-                        row.setLastAttemptAt(new Date(now));
-                        sent++;
-                    } else {
-                        // Handle failure - set status to failed immediately
-                        row.setStatus('failed');
-                        row.setLastError(result.error || 'Unknown error');
-                        row.setLastAttemptAt(new Date(now));
-                        failed++;
+                // Process announcements due to send
+                dueToSend.forEach((/** @type {any} */ row) => {
+                    try {
+                        const result = this.sendAnnouncement(row);
 
-                        console.error(`AnnouncementManager: Announcement for row ${row.rowNum} failed: ${row.lastError}`);
+                        if (result.success) {
+                            // Mark as sent
+                            row.setStatus('sent');
+                            row.setLastAttemptAt(new Date(now));
+                            sent++;
+                        } else {
+                            // Handle failure - set status to failed immediately
+                            row.setStatus('failed');
+                            row.setLastError(result.error || 'Unknown error');
+                            row.setLastAttemptAt(new Date(now));
+                            failed++;
 
-                        // Send immediate failure notification to Ride Schedulers
-                        this._notifyFailureImmediately(row, result.error || 'Unknown error');
+                            console.error(`AnnouncementManager: Announcement for row ${row.rowNum} failed: ${row.lastError}`);
+
+                            // Send immediate failure notification to Ride Schedulers
+                            this._notifyFailureImmediately(row, result.error || 'Unknown error');
+                        }
+                    } catch (error) {
+                        console.error(`AnnouncementManager: Unexpected error processing announcement for row ${row.rowNum}:`, error);
                     }
-                } catch (error) {
-                    console.error(`AnnouncementManager: Unexpected error processing announcement for row ${row.rowNum}:`, error);
-                }
-            });
+                });
 
-            // Save all changes back to spreadsheet
-            adapter.save();
+                // Save all changes back to spreadsheet
+                adapter.save();
+            } else {
+                console.log(`AnnouncementManager: Reschedule-only queue processing (source: ${source})`);
+            }
 
             // Schedule next announcement trigger
             this._scheduleNextAnnouncement();
@@ -1271,7 +1284,7 @@ var AnnouncementManager = (function () {
                 /** @type {RowCoreInstance[]} */
                 const pendingRows = allRows.filter((/** @type {RowCoreInstance} */ r) =>
                     r.announcementURL &&
-                    r.status === 'pending' &&
+                    AnnouncementCore.normalizeStatus(r.status) === 'pending' &&
                     r.sendAt
                 );
 

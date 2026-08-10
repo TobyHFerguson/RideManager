@@ -33,6 +33,20 @@ export interface ProcessResult {
 }
 
 /**
+ * Options for queue processing mode
+ */
+export interface ProcessQueueOptions {
+    /**
+     * Queue processing mode.
+     * - send: send due announcements and then reschedule
+     * - reschedule-only: do not send, only recompute/reschedule trigger
+     */
+    mode?: 'send' | 'reschedule-only';
+    /** Optional source tag for logging */
+    source?: string;
+}
+
+/**
  * Row data from Consolidated Rides spreadsheet
  * Contains all column data plus metadata fields
  */
@@ -155,11 +169,12 @@ declare class AnnouncementManager {
 
     /**
      * Process all due announcements
-     * Called by time-based trigger
+        * Called by time-based trigger or owner maintenance flow
      * 
+        * @param options - Optional processing mode/source metadata
      * @returns Statistics about processing results
      */
-    processQueue(): ProcessResult;
+        processQueue(options?: ProcessQueueOptions): ProcessResult;
 
     /**
      * Get queue statistics for monitoring

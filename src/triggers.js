@@ -524,16 +524,6 @@ function announcementTrigger() {
     console.log('announcementTrigger: Completed', result);
     UserLogger.log('ANNOUNCEMENT_TRIGGER_COMPLETE', 'Scheduled announcements processed', result);
 
-    // Clean up this trigger since it has fired
-    try {
-      const triggerManager = new TriggerManager();
-      triggerManager.removeAnnouncementTrigger();
-      console.log('announcementTrigger: Cleaned up trigger');
-    } catch (cleanupError) {
-      console.warn('announcementTrigger: Failed to cleanup trigger:', cleanupError);
-      // Non-fatal - daily backstop will handle cleanup
-    }
-
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
     console.error('announcementTrigger error:', err);
@@ -597,10 +587,21 @@ function installTriggers_() {
     // Install triggers
     const summary = triggerManager.installAllTriggers();
 
+    // Compute next pending announcement send time for user-visible confirmation.
+    const nextPending = getNextPendingAnnouncement_();
+    const timezone = Session.getScriptTimeZone();
+
     // Build success message
     let message = `Trigger Installation Complete\n\n`;
     message += `Installed: ${summary.installed}\n`;
     message += `Already existed: ${summary.existed}\n`;
+
+    if (nextPending) {
+      const formatted = Utilities.formatDate(nextPending.sendAt, timezone, 'MMM d, yyyy h:mm a');
+      message += `\nNext scheduled announcement trigger: ${formatted} (row ${nextPending.rowNum})\n`;
+    } else {
+      message += `\nNext scheduled announcement trigger: none (no pending announcements with SendAt)\n`;
+    }
 
     if (summary.failed > 0) {
       message += `Failed: ${summary.failed}\n\n`;
@@ -621,6 +622,41 @@ function installTriggers_() {
 
     ui.alert('Installation Failed', message, ui.ButtonSet.OK);
   }
+}
+
+/**
+ * Find the earliest pending announcement with a valid sendAt time.
+ * Mirrors AnnouncementManager scheduling criteria so the popup can confirm
+ * what will drive the dynamic announcement trigger.
+ * @returns {{sendAt: Date, rowNum: number} | null}
+ */
+function getNextPendingAnnouncement_() {
+  const adapter = new ScheduleAdapter();
+  const rows = adapter.loadAll();
+
+  /** @type {RowCoreInstance[]} */
+  const pending = rows.filter((/** @type {RowCoreInstance} */ row) =>
+    AnnouncementCore.hasAnnouncement(row) &&
+    AnnouncementCore.normalizeStatus(row.status) === 'pending' &&
+    row.sendAt instanceof Date
+  );
+
+  if (pending.length === 0) {
+    return null;
+  }
+
+  const earliest = pending.reduce((/** @type {RowCoreInstance} */ a, /** @type {RowCoreInstance} */ b) =>
+    (b.sendAt && a.sendAt && b.sendAt.getTime() < a.sendAt.getTime()) ? b : a
+  );
+
+  if (!earliest.sendAt) {
+    return null;
+  }
+
+  return {
+    sendAt: earliest.sendAt,
+    rowNum: earliest.rowNum ?? 0
+  };
 }
 
 /**

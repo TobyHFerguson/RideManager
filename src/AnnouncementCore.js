@@ -13,6 +13,47 @@ var AnnouncementCore = (function() {
 
 class AnnouncementCore {
     /**
+     * Normalize announcement status for robust comparisons.
+     * Blank/undefined status is treated as pending for backward compatibility.
+     * @param {any} status - Raw status value from row
+     * @returns {string} Normalized status
+     */
+    static normalizeStatus(status) {
+        if (status === null || status === undefined) {
+            return '';
+        }
+
+        const normalized = String(status).trim().toLowerCase();
+        return normalized;
+    }
+
+    /**
+     * Determine whether a row has an actual announcement document link.
+     * @param {any} row - RowCore domain object
+     * @returns {boolean} True when an announcement URL/link exists
+     */
+    static hasAnnouncement(row) {
+        if (!row) {
+            return false;
+        }
+
+        if (row.announcementURL) {
+            return true;
+        }
+
+        const cell = row.announcementCell;
+        if (typeof cell === 'string') {
+            return cell.trim() !== '';
+        }
+
+        if (cell && typeof cell === 'object') {
+            return Boolean(cell.url && String(cell.url).trim() !== '');
+        }
+
+        return false;
+    }
+
+    /**
      * Calculate the send time for a ride announcement
      * Send at 6:00 PM, 2 calendar days before the ride date
      * 
@@ -95,18 +136,24 @@ class AnnouncementCore {
         
         rows.forEach(row => {
             // Skip rows without announcement data
-            if (!row.announcementCell || !row.sendAt) {
+            if (!AnnouncementCore.hasAnnouncement(row) || !row.sendAt) {
                 return;
+            }
+
+            // Never send announcements for rides that already started.
+            if (row.startDate) {
+                const rideStartTime = new Date(row.startDate).getTime();
+                if (!Number.isNaN(rideStartTime) && rideStartTime <= currentTime) {
+                    return;
+                }
             }
             
             const sendTime = new Date(row.sendAt).getTime();
-            const status = row.status || 'pending';
+            const status = AnnouncementCore.normalizeStatus(row.status);
             
             if (status === 'pending') {
-                const timeDiff = sendTime - currentTime;
-                
-                // Due to send (within 1 hour window OR past due)
-                if (timeDiff <= 60 * 60 * 1000) {
+                // Due to send only when SendAt has been reached or passed.
+                if (sendTime <= currentTime) {
                     dueToSend.push(row);
                 }
             }
@@ -134,9 +181,9 @@ class AnnouncementCore {
         };
         
         rows.forEach(row => {
-            if (row.announcementCell) {
+            if (AnnouncementCore.hasAnnouncement(row)) {
                 stats.total++;
-                const status = row.status || 'pending';
+                const status = AnnouncementCore.normalizeStatus(row.status);
                 if (stats.hasOwnProperty(status)) {
                     /** @type {any} */ (stats)[status]++;
                 }

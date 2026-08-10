@@ -96,14 +96,19 @@ class TriggerManager {
                 
                 console.log('TriggerManager: Installation complete', summary);
                 
-                // Run daily backstop functions immediately to process any pending work
+                // Reconcile announcement trigger scheduling without sending emails.
+                // This keeps Install Triggers safe for owner maintenance operations.
                 try {
-                    console.log('TriggerManager: Running daily backstop functions immediately');
-                    
-                    // Run announcement check
-                    if (typeof dailyAnnouncementCheck === 'function') {
-                        dailyAnnouncementCheck();
-                        console.log('TriggerManager: Completed dailyAnnouncementCheck');
+                    console.log('TriggerManager: Reconciling announcement trigger schedule (reschedule-only mode)');
+                    if (typeof AnnouncementManager === 'function') {
+                        const announcementManager = new AnnouncementManager();
+                        const queueResult = announcementManager.processQueue({
+                            mode: 'reschedule-only',
+                            source: 'install-triggers'
+                        });
+                        console.log('TriggerManager: Completed announcement reschedule-only pass', queueResult);
+                    } else {
+                        console.warn('TriggerManager: AnnouncementManager unavailable, skipping reschedule-only pass');
                     }
                     
                     // Run RWGPS members sync
@@ -111,9 +116,9 @@ class TriggerManager {
                         dailyRWGPSMembersDownload();
                         console.log('TriggerManager: Completed dailyRWGPSMembersDownload');
                     }
-                } catch (backstopError) {
-                    // Log but don't fail installation if backstop functions error
-                    console.warn('TriggerManager: Error running backstop functions:', backstopError);
+                } catch (maintenanceError) {
+                    // Log but don't fail installation if maintenance pass errors
+                    console.warn('TriggerManager: Error during post-install maintenance:', maintenanceError);
                 }
                 
                 return summary;
@@ -230,13 +235,12 @@ class TriggerManager {
             const existingTime = existingTrigger ? this._getTriggerTime(existingTrigger) : null;
             
             // Use core logic to determine if scheduling needed
-            // Note: existingTime will be -1 if trigger exists but time can't be queried
-            // We treat this as "trigger exists for unknown time" and check if it's the same
-            const decision = this.core.shouldScheduleTrigger(
-                triggerType,
-                existingTime === -1 ? timestamp : existingTime, // If marker, assume same time
-                timestamp
-            );
+            // Note: existingTime will be -1 if trigger exists but time can't be queried.
+            // In that case we must reschedule to guarantee the trigger points at the
+            // intended next send time.
+            const decision = existingTime === -1
+                ? { shouldSchedule: true, reason: 'Existing trigger time unknown; rescheduling for safety' }
+                : this.core.shouldScheduleTrigger(triggerType, existingTime, timestamp);
             
             if (!decision.shouldSchedule) {
                 const triggerId = existingTrigger ? existingTrigger.getUniqueId() : '';
