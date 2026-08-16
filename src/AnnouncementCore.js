@@ -13,6 +13,84 @@ var AnnouncementCore = (function() {
 
 class AnnouncementCore {
     /**
+     * Split a comma-separated address list into trimmed non-empty tokens.
+     * @param {any} rawValue - Raw cell value from the Groups sheet
+     * @returns {string[]} Parsed address list
+     */
+    static parseAddressList(rawValue) {
+        if (rawValue === null || rawValue === undefined) {
+            return [];
+        }
+
+        return String(rawValue)
+            .split(',')
+            .map(address => address.trim())
+            .filter(address => address !== '');
+    }
+
+    /**
+     * Validate a single email address token.
+     * @param {string} email - Candidate email address
+     * @returns {boolean} True when the token looks like a valid email address
+     */
+    static isValidEmailAddress(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    /**
+     * Resolve announcement email routing from a group spec.
+     *
+     * Rules:
+     * - Send To is required unless an override is supplied.
+     * - Any malformed Send To address is fatal.
+     * - Reply To may be blank.
+     * - Malformed Reply To addresses are ignored and returned for logging.
+     * - When no valid Reply To remains, callers should use noReply=true.
+     *
+     * @param {string} groupName - Group name for error messages
+     * @param {Record<string, any> | undefined} groupSpec - Group spec from Groups sheet
+     * @param {string | null} [overrideSendTo=null] - Optional manual recipient override
+     * @returns {{sendTo: string, replyTo: string | null, noReply: boolean, invalidReplyTo: string[], rawReplyTo: string, sendToList: string[], replyToList: string[]}}
+     */
+    static resolveAnnouncementEmailRouting(groupName, groupSpec, overrideSendTo = null) {
+        if (!groupSpec) {
+            throw new Error(`Group "${groupName}" not found in Groups`);
+        }
+
+        const usingOverride = typeof overrideSendTo === 'string' && overrideSendTo.trim() !== '';
+        const rawSendTo = usingOverride ? overrideSendTo : groupSpec['Send To'];
+        const rawReplyTo = typeof groupSpec['Reply To'] === 'string' ? groupSpec['Reply To'] : '';
+
+        const sendToList = AnnouncementCore.parseAddressList(rawSendTo);
+        if (sendToList.length === 0) {
+            throw new Error(usingOverride
+                ? 'Override Send To is blank'
+                : `Send To not configured in Groups for group "${groupName}"`);
+        }
+
+        const invalidSendTo = sendToList.filter(address => !AnnouncementCore.isValidEmailAddress(address));
+        if (invalidSendTo.length > 0) {
+            throw new Error(usingOverride
+                ? `Override Send To contains malformed address(es): ${invalidSendTo.join(', ')}`
+                : `Malformed Send To address(es) in Groups for group "${groupName}": ${invalidSendTo.join(', ')}`);
+        }
+
+        const parsedReplyTo = AnnouncementCore.parseAddressList(rawReplyTo);
+        const replyToList = parsedReplyTo.filter(address => AnnouncementCore.isValidEmailAddress(address));
+        const invalidReplyTo = parsedReplyTo.filter(address => !AnnouncementCore.isValidEmailAddress(address));
+
+        return {
+            sendTo: sendToList.join(','),
+            replyTo: replyToList.length > 0 ? replyToList.join(',') : null,
+            noReply: replyToList.length === 0,
+            invalidReplyTo: invalidReplyTo,
+            rawReplyTo: rawReplyTo,
+            sendToList: sendToList,
+            replyToList: replyToList
+        };
+    }
+
+    /**
      * Normalize announcement status for robust comparisons.
      * Blank/undefined status is treated as pending for backward compatibility.
      * @param {any} status - Raw status value from row

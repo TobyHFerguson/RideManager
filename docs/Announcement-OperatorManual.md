@@ -235,11 +235,11 @@ If you have existing announcements showing as plain URLs instead of clickable do
 **Diagnostic:**
 1. Verify `Status` = `sent` (proves email was sent)
 2. Check recipient's spam/junk folder
-3. Verify `RIDE_ANNOUNCEMENT_RECIPIENTS_EMAIL` in Globals is correct
+3. Verify the group's `Send To` value in the `Groups` sheet is correct
 4. Check execution logs for successful send confirmation
 
 **Fix:**
-1. If wrong recipient email: Update Globals, resend (change Status to pending)
+1. If wrong recipient email: Update the group's `Send To` / `Reply To` in `Groups`, resend (change Status to pending)
 2. If spam issue: Work with email admin to whitelist sender
 3. If email never sent despite `sent` status: Check logs for actual send confirmation
 
@@ -355,14 +355,14 @@ If you have existing announcements showing as plain URLs instead of clickable do
 
 **Steps:**
 ```
-1. In Globals sheet, temporarily change:
-   - `RIDE_ANNOUNCEMENT_RECIPIENTS_EMAIL` = your personal email
-2. Create test ride row and announcement
-3. Change `SendAt` to immediate time (10 min ago)
-4. Wait for send (or manually trigger)
-5. Verify email received at personal address
-6. IMPORTANT: Restore original recipient email in Globals
-7. Delete test row
+1. In the Groups sheet, temporarily change the row's `Send To` value to your personal email
+2. Optionally clear `Reply To` if you want to verify `noReply: true` behavior
+3. Create test ride row and announcement
+4. Change `SendAt` to immediate time (10 min ago)
+5. Wait for send (or manually trigger)
+6. Verify email received at personal address
+7. IMPORTANT: Restore the original `Send To` / `Reply To` values in Groups
+8. Delete test row
 ```
 
 ## Quick Reference
@@ -374,7 +374,7 @@ If you have existing announcements showing as plain URLs instead of clickable do
 | Master Template | Globals: `RIDE_ANNOUNCEMENT_MASTER_TEMPLATE` | Default template for all users |
 | Personal Templates | Sheet: `Personal Templates` (optional) | User-specific template preferences |
 | Announcement Folder | Globals: `RIDE_ANNOUNCEMENT_FOLDER_URL` | Storage for created docs |
-| Recipient Email | Globals: `RIDE_ANNOUNCEMENT_RECIPIENTS_EMAIL` | Where emails are sent |
+| Recipient Routing | Groups sheet: `Send To` / `Reply To` | Where emails are sent and where replies should go |
 | Trigger Function | Apps Script: `processAnnouncementQueue` | Runs every hour (auto-installed) |
 | Trigger ID Storage | Script Properties: `announcementTriggerId` | Tracks installed trigger |
 | Execution Logs | Apps Script → Executions | Debug and monitoring |

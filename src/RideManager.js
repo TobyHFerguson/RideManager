@@ -536,8 +536,20 @@ const RideManager = (function () {
         }
         
         // Log to UserLogger
-        const emailKey = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
-        const announcementEmail = row.announcementURL ? (globals[emailKey] || '(not configured)') : '(no announcement)';
+        const groupSpecsForLogging = Groups.getGroupSpecs();
+        let announcementAddress = '';
+        try {
+            announcementAddress = AnnouncementCore.resolveAnnouncementEmailRouting(
+                row.group,
+                groupSpecsForLogging[row.group]
+            ).sendTo;
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            announcementAddress = `(${err.message})`;
+        }
+        const announcementEmail = row.announcementURL
+            ? (announcementAddress || '(not configured in Groups.Send To)')
+            : '(no announcement)';
         
         UserLogger.log('SCHEDULE_RIDE', `Row ${row.rowNum}, ${row.rideName}`, {
             rideUrl: new_event_url,

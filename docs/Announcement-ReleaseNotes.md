@@ -61,8 +61,14 @@ The following entries must be added to the **Globals** sheet.
 | `RIDE_ANNOUNCEMENT_MASTER_TEMPLATE` | Document URL or ID | URL or ID of the Google Doc template used for announcements |
 | `RIDE_ANNOUNCEMENT_FOLDER_URL` | Folder URL | Google Drive folder where announcement docs are created |
 | `RIDE_ANNOUNCEMENT_FROM_EMAIL` | Email address | "From" email for announcements (defaults to active user if not set) |
-| `${row.Group}_GROUP_ANNOUNCEMENT_ADDRESS` | Email address | Distribution list email for each row group (e.g., `a_group_ride_announcements@sc3.club`) |
 | `RIDE_SCHEDULER_GROUP_EMAIL` | Email address | Group email that gets edit access to announcements |
+
+Announcement recipients are now configured in the `Groups` sheet:
+
+| Column | Value | Description |
+|--------|-------|-------------|
+| `Send To` | Comma-separated email list | Required recipient list for the group's announcements |
+| `Reply To` | Comma-separated email list | Optional reply-to list; when blank, announcements are sent with `noReply: true` |
 
 ### Template Field Enhancements
 

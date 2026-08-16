@@ -12,6 +12,8 @@ export type GroupSpec = {
     MIN_LENGTH?: number;
     LogoURL?: string;
     GoogleCalendarId?: string;
+    'Send To'?: string;
+    'Reply To'?: string;
     [key: string]: any;
 };
 

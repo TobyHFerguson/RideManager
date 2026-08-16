@@ -162,7 +162,7 @@ declare class AnnouncementManager {
      * Send an announcement email
      * 
      * @param row - Row instance with announcement data
-     * @param {string} [testEmail=null] - Optional email address for testing (overrides actual recipients)
+        * @param {string} [testEmail=null] - Optional email address for testing (overrides Send To recipients)
      * @returns Result indicating success or failure
      */
     sendAnnouncement(row: InstanceType<typeof RowCore>, testEmail?: string | null): SendResult;

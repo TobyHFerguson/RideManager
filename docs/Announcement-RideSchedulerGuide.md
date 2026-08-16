@@ -324,12 +324,12 @@ Your announcement document becomes an HTML email:
 ### Email Details
 
 **From:** Ride Scheduler (or configured sender)  
-**To:** Ride announcements distribution list (e.g., `ride_announcements@sc3.club`)  
+**To:** The group's `Send To` list from the `Groups` sheet  
 **Subject:** `Ride Announcement: {Your Ride Name}`
 
 ### Who Receives It
 
-The email goes to the distribution list configured by your club.  
+The email goes to the `Send To` addresses configured for that ride's group in the `Groups` sheet.  
 This typically includes:
 - All club members subscribed to ride announcements
 - Ride coordinators

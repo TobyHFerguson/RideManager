@@ -131,22 +131,33 @@ var AnnouncementManager = (function () {
         /**
          * Send announcement email for a row
          * @param {RowCoreInstance} row - Row object with announcement data
-         * @param {string | null} email - Optional email override (defaults to group email from globals)
+         * @param {string | null} email - Optional email override (defaults to Groups sheet Send To column)
          * @returns {{success: boolean, emailAddress?: string, error?: string}} Result object
          */
+        _getAnnouncementEmailRouting(row, email = null) {
+            const groupSpecs = getGroupSpecs();
+            const groupSpec = groupSpecs[row.group];
+            const routing = AnnouncementCore.resolveAnnouncementEmailRouting(row.group, groupSpec, email);
+
+            if (routing.invalidReplyTo.length > 0) {
+                const message = `Ignoring malformed Reply To address(es) for group "${row.group}": ${routing.invalidReplyTo.join(', ')}`;
+                console.error(`AnnouncementManager: ${message}`);
+                UserLogger.log('ANNOUNCEMENT_INVALID_REPLY_TO', `Row ${row.rowNum}, ${row.rideName}`, {
+                    group: row.group,
+                    invalidReplyTo: routing.invalidReplyTo,
+                    rawReplyTo: routing.rawReplyTo,
+                    sendTo: routing.sendTo,
+                    noReply: routing.noReply
+                });
+            }
+
+            return routing;
+        }
+
         sendAnnouncement(row, email = null) {
             try {
-                const globals = getGlobals();
-                const key = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
-
-                let recipientEmail = '';
-                if (email) {
-                    recipientEmail = email;
-                } else
-                    recipientEmail = globals[key];
-                if (!recipientEmail) {
-                    throw new Error(`${key} not configured in Globals`);
-                }
+                const emailRouting = this._getAnnouncementEmailRouting(row, email);
+                const recipientEmail = emailRouting.sendTo;
 
                 // Extract document ID from announcement URL
                 const docUrl = row.announcementURL;
@@ -200,11 +211,18 @@ var AnnouncementManager = (function () {
                 const htmlBody = emailContent.body;
 
                 // Send HTML email
-                MailApp.sendEmail(recipientEmail, subject, '', {
+                /** @type {{htmlBody: string, name: string, replyTo?: string, noReply?: boolean}} */
+                const mailOptions = {
                     htmlBody: htmlBody,
-                    name: 'Ride Scheduler',
-                    replyTo: globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail()
-                });
+                    name: 'Ride Scheduler'
+                };
+                if (emailRouting.noReply) {
+                    mailOptions.noReply = true;
+                } else if (emailRouting.replyTo) {
+                    mailOptions.replyTo = emailRouting.replyTo;
+                }
+
+                MailApp.sendEmail(recipientEmail, subject, '', mailOptions);
 
                 console.log(`AnnouncementManager: Sent announcement for row ${row.rowNum} to ${recipientEmail}`);
 
@@ -1338,18 +1356,21 @@ var AnnouncementManager = (function () {
                 // Load and expand template
                 const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'Reason');
 
-                // Send email to group-specific announcement address
-                const key = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
-                const recipientEmail = globals[key];
-                if (!recipientEmail) {
-                    throw new Error(`${key} not configured in Globals`);
+                const emailRouting = this._getAnnouncementEmailRouting(row);
+                const recipientEmail = emailRouting.sendTo;
+
+                /** @type {{htmlBody: string, name: string, replyTo?: string, noReply?: boolean}} */
+                const mailOptions = {
+                    htmlBody: html,
+                    name: 'Ride Scheduler'
+                };
+                if (emailRouting.noReply) {
+                    mailOptions.noReply = true;
+                } else if (emailRouting.replyTo) {
+                    mailOptions.replyTo = emailRouting.replyTo;
                 }
 
-                MailApp.sendEmail(recipientEmail, subject, '', {
-                    htmlBody: html,
-                    name: 'Ride Scheduler',
-                    replyTo: globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail()
-                });
+                MailApp.sendEmail(recipientEmail, subject, '', mailOptions);
 
                 console.log(`AnnouncementManager: Sent cancellation email for row ${row.rowNum} to ${recipientEmail}`);
                 return { success: true, emailAddress: recipientEmail };
@@ -1379,18 +1400,21 @@ var AnnouncementManager = (function () {
                 // Load and expand template
                 const { html, subject } = this._loadAndExpandTemplate(templateUrl, row, reason, 'Reason');
 
-                // Send email to group-specific announcement address
-                const key = `${row.group}_GROUP_ANNOUNCEMENT_ADDRESS`;
-                const recipientEmail = globals[key];
-                if (!recipientEmail) {
-                    throw new Error(`${key} not configured in Globals`);
+                const emailRouting = this._getAnnouncementEmailRouting(row);
+                const recipientEmail = emailRouting.sendTo;
+
+                /** @type {{htmlBody: string, name: string, replyTo?: string, noReply?: boolean}} */
+                const mailOptions = {
+                    htmlBody: html,
+                    name: 'Ride Scheduler'
+                };
+                if (emailRouting.noReply) {
+                    mailOptions.noReply = true;
+                } else if (emailRouting.replyTo) {
+                    mailOptions.replyTo = emailRouting.replyTo;
                 }
 
-                MailApp.sendEmail(recipientEmail, subject, '', {
-                    htmlBody: html,
-                    name: 'Ride Scheduler',
-                    replyTo: globals.RIDE_SCHEDULER_GROUP_EMAIL || Session.getActiveUser().getEmail()
-                });
+                MailApp.sendEmail(recipientEmail, subject, '', mailOptions);
 
                 console.log(`AnnouncementManager: Sent reinstatement email for row ${row.rowNum} to ${recipientEmail}`);
                 return { success: true, emailAddress: recipientEmail };

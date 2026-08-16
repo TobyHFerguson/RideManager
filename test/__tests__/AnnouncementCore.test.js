@@ -67,6 +67,88 @@ describe('AnnouncementCore', () => {
         });
     });
 
+    describe('resolveAnnouncementEmailRouting', () => {
+        it('should resolve valid Send To and Reply To lists', () => {
+            const result = AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': 'a@example.com, b@example.com',
+                'Reply To': 'reply1@example.com, reply2@example.com'
+            });
+
+            expect(result.sendTo).toBe('a@example.com,b@example.com');
+            expect(result.replyTo).toBe('reply1@example.com,reply2@example.com');
+            expect(result.noReply).toBe(false);
+            expect(result.invalidReplyTo).toEqual([]);
+            expect(result.sendToList).toEqual(['a@example.com', 'b@example.com']);
+            expect(result.replyToList).toEqual(['reply1@example.com', 'reply2@example.com']);
+        });
+
+        it('should reject blank Send To', () => {
+            expect(() => AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': '   ',
+                'Reply To': ''
+            })).toThrow('Send To not configured in Groups for group "Sat A"');
+        });
+
+        it('should reject malformed Send To addresses', () => {
+            expect(() => AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': 'valid@example.com, not-an-email',
+                'Reply To': ''
+            })).toThrow('Malformed Send To address(es) in Groups for group "Sat A": not-an-email');
+        });
+
+        it('should treat blank Reply To as noReply', () => {
+            const result = AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': 'a@example.com',
+                'Reply To': ' '
+            });
+
+            expect(result.replyTo).toBeNull();
+            expect(result.noReply).toBe(true);
+            expect(result.invalidReplyTo).toEqual([]);
+        });
+
+        it('should ignore malformed Reply To addresses but keep valid ones', () => {
+            const result = AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': 'a@example.com',
+                'Reply To': 'good@example.com, not-an-email, other@example.com'
+            });
+
+            expect(result.replyTo).toBe('good@example.com,other@example.com');
+            expect(result.noReply).toBe(false);
+            expect(result.invalidReplyTo).toEqual(['not-an-email']);
+            expect(result.replyToList).toEqual(['good@example.com', 'other@example.com']);
+        });
+
+        it('should treat all-malformed Reply To as blank', () => {
+            const result = AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': 'a@example.com',
+                'Reply To': 'bad-address, still-bad'
+            });
+
+            expect(result.replyTo).toBeNull();
+            expect(result.noReply).toBe(true);
+            expect(result.invalidReplyTo).toEqual(['bad-address', 'still-bad']);
+        });
+
+        it('should validate manual override Send To independently of Groups Send To', () => {
+            const result = AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': '',
+                'Reply To': 'reply@example.com'
+            }, 'test1@example.com, test2@example.com');
+
+            expect(result.sendTo).toBe('test1@example.com,test2@example.com');
+            expect(result.replyTo).toBe('reply@example.com');
+            expect(result.noReply).toBe(false);
+        });
+
+        it('should reject malformed manual override Send To', () => {
+            expect(() => AnnouncementCore.resolveAnnouncementEmailRouting('Sat A', {
+                'Send To': 'group@example.com',
+                'Reply To': ''
+            }, 'good@example.com, not-an-email')).toThrow('Override Send To contains malformed address(es): not-an-email');
+        });
+    });
+
     describe('getDueItems', () => {
         const now = new Date('2025-12-05T18:00:00').getTime();
         

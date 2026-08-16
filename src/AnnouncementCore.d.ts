@@ -70,6 +70,26 @@ export interface AnnouncementStatistics {
 }
 
 /**
+ * Resolved announcement email routing derived from Groups sheet columns
+ */
+export interface AnnouncementEmailRouting {
+    /** Comma-separated Send To recipient list */
+    sendTo: string;
+    /** Comma-separated Reply To list, or null when no valid reply addresses remain */
+    replyTo: string | null;
+    /** True when email should be sent with noReply=true */
+    noReply: boolean;
+    /** Malformed Reply To addresses that were ignored */
+    invalidReplyTo: string[];
+    /** Raw Reply To cell value from the Groups sheet */
+    rawReplyTo: string;
+    /** Valid Send To addresses as individual tokens */
+    sendToList: string[];
+    /** Valid Reply To addresses as individual tokens */
+    replyToList: string[];
+}
+
+/**
  * Formatted queue item for display
  */
 export interface FormattedAnnouncementItem {
@@ -83,6 +103,36 @@ export interface FormattedAnnouncementItem {
  * AnnouncementCore module containing all pure JavaScript business logic
  */
 declare class AnnouncementCore {
+    /**
+     * Split a comma-separated address list into trimmed non-empty tokens.
+     *
+     * @param rawValue - Raw value from a Groups sheet cell
+     * @returns Parsed addresses
+     */
+    static parseAddressList(rawValue: any): string[];
+
+    /**
+     * Validate whether a token looks like an email address.
+     *
+     * @param email - Candidate email address
+     * @returns True if valid
+     */
+    static isValidEmailAddress(email: string): boolean;
+
+    /**
+     * Resolve Send To / Reply To behavior from a Groups sheet row.
+     *
+     * @param groupName - Group name for error messages
+     * @param groupSpec - Group spec object from Groups sheet
+     * @param overrideSendTo - Optional manual recipient override
+     * @returns Resolved routing details
+     */
+    static resolveAnnouncementEmailRouting(
+        groupName: string,
+        groupSpec: Record<string, any> | undefined,
+        overrideSendTo?: string | null
+    ): AnnouncementEmailRouting;
+
     /**
      * Calculate when announcement should be sent
      * Returns 6 PM local time, 2 calendar days before ride date
