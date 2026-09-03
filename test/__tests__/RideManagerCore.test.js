@@ -1,6 +1,21 @@
 const RideManagerCore = require('../../src/RideManagerCore');
 
 describe('RideManagerCore', () => {
+    describe('route operation policy', () => {
+        test('route copying is not part of ride scheduling', () => {
+            const rideManagerSource = require('fs').readFileSync(
+                require('path').join(__dirname, '../../src/RideManager.js'),
+                'utf8'
+            );
+            const scheduleFunction = rideManagerSource.match(
+                /function schedule_row_\(row\) \{[\s\S]*?\n    \}/
+            );
+
+            expect(scheduleFunction).not.toBeNull();
+            expect(scheduleFunction[0]).not.toContain('importRoute(');
+        });
+    });
+
     describe('extractEventID', () => {
         it('should extract event ID from event URL', () => {
             const url = 'https://ridewithgps.com/events/12345-epic-ride';

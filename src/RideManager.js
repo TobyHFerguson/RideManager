@@ -445,8 +445,6 @@ const RideManager = (function () {
             throw new Error(`Unknown group: ${row.group}. Expected one of ${Groups.getGroupNames().join(', ')}`);
         }
         
-        const globals = getGlobals();
-        
         // Create RWGPSClient via factory
         const client = RWGPSClientFactory.create();
         
@@ -488,15 +486,6 @@ const RideManager = (function () {
         if (row.group) {
             client._addEventTags(newEventId, [row.group]);
         }
-        
-        // Set route expiration via importRoute (RWGPSClient handles this)
-        const expiryDate = /** @type {Date} */ (dates.add(row.startDate, globals.EXPIRY_DELAY));
-        const expiryStr = `${expiryDate.getMonth() + 1}/${expiryDate.getDate()}/${expiryDate.getFullYear()}`;
-        client.importRoute(row.routeURL, { 
-            expiry: expiryStr, 
-            userId: globals.SCCCC_USER_ID,
-            tags: []
-        });
         
         // Update row with ride link
         row.setRideLink(rideEvent.name, new_event_url);
