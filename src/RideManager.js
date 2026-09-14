@@ -95,6 +95,22 @@ const RideManager = (function () {
         return organizers;
     }
 
+    /* istanbul ignore next - GAS-only route lookup and spreadsheet mutation */
+    /**
+     * @param {RowCoreInstance} row
+     */
+    function _normalizeRouteDisplayName(row) {
+        const route = getRoute(row.routeURL);
+        const routeName = RideManagerCore.resolveRouteDisplayName(
+            row.routeName,
+            row.routeURL,
+            route
+        );
+        if (routeName !== row.routeName) {
+            row.setRouteLink(routeName, row.routeURL);
+        }
+    }
+
     /**
      * Common sync logic for update, cancel, and reinstate operations.
      * Syncs all row data (columns A-F) with RWGPS event, updates logo if group changed,
@@ -146,6 +162,9 @@ const RideManager = (function () {
             // Managed ride: sync all row data (columns A-F)
             const event_id = _extractEventID(row.rideURL);
             const organizers = _lookupOrganizers(row.leaders);
+
+            // Resolve raw route URLs before constructing any downstream title.
+            _normalizeRouteDisplayName(row);
             
             rideEvent = EventFactory.newEvent(row, organizers, event_id);
             
@@ -456,6 +475,9 @@ const RideManager = (function () {
         const organizerNames = Array.isArray(row.leaders) ? row.leaders : [row.leaders];
         const organizers = _lookupOrganizers(organizerNames);
         const organizerIds = organizers.map((/** @type {{id: number}} */ o) => o.id);
+
+        // Resolve raw route URLs before constructing the ride title.
+        _normalizeRouteDisplayName(row);
         
         // Build ride name using EventFactory logic (we need this for the event name)
         const rideEvent = EventFactory.newEvent(row, organizers, 0);

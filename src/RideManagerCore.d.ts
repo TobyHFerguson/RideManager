@@ -59,6 +59,12 @@ declare class RideManagerCore {
         formatDate: (date: Date) => string
     ): RouteImportConfig;
 
+    static resolveRouteDisplayName(
+        routeName: string,
+        routeURL: string,
+        route: {name?: string} | null | undefined
+    ): string;
+
     /**\n     * Validates if event name ends with square bracket (debug check for Issue 22)
      * @param eventName - The event name to validate
      * @param rowNum - Row number for error message

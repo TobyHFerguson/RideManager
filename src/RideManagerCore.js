@@ -63,6 +63,20 @@ class RideManagerCore {
     }
 
     /**
+     * Resolve a route display name when a raw route URL was entered in the Route cell.
+     * @param {string} routeName - Current route display text
+     * @param {string} routeURL - Route URL
+     * @param {{name?: string} | null | undefined} route - Loaded route data
+     * @returns {string} Route display name for downstream ride titles
+     */
+    static resolveRouteDisplayName(routeName, routeURL, route) {
+        if (routeName && routeName !== routeURL) {
+            return routeName;
+        }
+        return route?.name || routeName || '';
+    }
+
+    /**
      * Validates if event name ends with square bracket (debug check for Issue 22)
      * @param {string} eventName - The event name to validate
      * @param {number} rowNum - Row number for error message

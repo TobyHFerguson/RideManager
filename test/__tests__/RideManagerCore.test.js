@@ -221,6 +221,32 @@ describe('RideManagerCore', () => {
     });
 
     describe('prepareCalendarEventData', () => {
+        it('should preserve the corrected route name in the calendar title', () => {
+            const routeURL = 'https://ridewithgps.com/routes/456';
+            const rideEvent = {
+                name: 'Sat A (1/15 10:00) Great Ride',
+                start_time: '2026-01-15T10:00:00'
+            };
+            const rowData = {
+                endTime: new Date('2026-01-15T13:00:00')
+            };
+
+            const result = RideManagerCore.prepareCalendarEventData(rideEvent, rowData);
+
+            expect(result.name).toContain('Great Ride');
+            expect(result.name).not.toContain(routeURL);
+        });
+
+        it('should retain the current value when route metadata has no name', () => {
+            const routeURL = 'https://ridewithgps.com/routes/456';
+
+            expect(RideManagerCore.resolveRouteDisplayName(routeURL, routeURL, null)).toBe(routeURL);
+        });
+
+        it('should return an empty name when no route values are available', () => {
+            expect(RideManagerCore.resolveRouteDisplayName('', '', undefined)).toBe('');
+        });
+
         it('should prepare calendar event with all fields', () => {
             const rideEvent = {
                 name: 'Epic Ride',

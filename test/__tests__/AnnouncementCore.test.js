@@ -297,6 +297,22 @@ describe('AnnouncementCore', () => {
             expect(enriched.RideLeader).toBe('John Doe, Jane Smith');
         });
 
+        it('should keep the route name separate from the route URL in templates', () => {
+            const routeURL = 'https://ridewithgps.com/routes/456';
+            const rowData = {
+                rideName: 'Sat A (12/7 10:00) Coastal Loop',
+                routeName: 'Coastal Loop',
+                routeURL
+            };
+
+            const enriched = AnnouncementCore.enrichRowData(rowData);
+
+            expect(enriched.RouteName).toBe('Coastal Loop');
+            expect(enriched.RouteURL).toBe(routeURL);
+            expect(enriched.RouteName).not.toContain(routeURL);
+            expect(enriched.RideName).not.toContain(routeURL);
+        });
+
         it('should add route metrics when route provided', () => {
             const rowData = {
                 date: new Date('2024-12-07T10:00:00')

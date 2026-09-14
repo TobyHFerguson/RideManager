@@ -14,6 +14,16 @@ const AnnouncementCore = require('../../src/AnnouncementCore');
 
 describe('AnnouncementCore - Document Rename on Cancel/Reinstate', () => {
     describe('calculateAnnouncementDocName with cancelled rides', () => {
+        it('should use the ride name and not a route URL', () => {
+            const routeURL = 'https://ridewithgps.com/routes/456';
+            const rideName = 'Sat A (12/7 10:00) Coastal Loop';
+
+            const result = AnnouncementCore.calculateAnnouncementDocName(rideName);
+
+            expect(result).toBe(`RA-${rideName}`);
+            expect(result).not.toContain(routeURL);
+        });
+
         it('should include CANCELLED prefix when ride name has it', () => {
             const cancelledRideName = 'CANCELLED: Sat A (12/7 10:00) [3] Route Name';
             
