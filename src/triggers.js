@@ -78,6 +78,7 @@ function createMenu_() {
     .addItem('Install Triggers', installTriggers_.name)
     .addItem('Get App Version', showAppVersion_.name)
     .addItem('Clear Cache', clearCache_.name)
+    .addItem('Sync RWGPS Members Now', syncRWGPSMembersNow_.name)
     .addSeparator()
     .addSubMenu(ui.createMenu('Developer')
       .addItem('Clear API Log', clearApiLog_.name)
@@ -676,10 +677,30 @@ function dailyRWGPSMembersDownload() {
     const adapter = new RWGPSMembersAdapter();
     const result = adapter.updateMembers();
 
-    console.log(`dailyRWGPSMembersDownload: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total)`);
+    console.log(`dailyRWGPSMembersDownload: Successfully updated ${result.validMembers} members (${result.filteredOut} filtered out from ${result.totalMembers} total, ${result.incompleteNames} with incomplete names)`);
   } catch (error) {
     console.error('dailyRWGPSMembersDownload error:', error);
     // Don't throw - let the trigger continue on next scheduled run
+  }
+}
+
+/**
+ * Manually re-run the RWGPS members sync from the menu, with UI feedback.
+ * Runs the same update+notify flow as the daily trigger.
+ */
+function syncRWGPSMembersNow_() {
+  try {
+    const adapter = new RWGPSMembersAdapter();
+    const result = adapter.updateMembers();
+
+    alert_(
+      `Updated ${result.validMembers} member(s) (${result.filteredOut} filtered out from ${result.totalMembers} total).\n` +
+      `${result.incompleteNames} member(s) have an incomplete name` +
+      (result.incompleteNames > 0 ? ' - details were written to the User Activity Log.' : '.')
+    );
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    alert_(`Failed to sync RWGPS members: ${err.message}`);
   }
 }
 

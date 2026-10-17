@@ -428,4 +428,102 @@ describe('RWGPSMembersCore', () => {
             ]);
         });
     });
+
+    describe('getIncompleteNameMembers', () => {
+        it('should flag members missing both first and last name', () => {
+            const input = [
+                { user: { id: 100, first_name: null, last_name: null, email: 'kyle@example.com' } }
+            ];
+
+            const result = RWGPSMembersCore.getIncompleteNameMembers(input);
+
+            expect(result).toEqual([
+                { UserID: 100, FirstName: '', LastName: '', Email: 'kyle@example.com' }
+            ]);
+        });
+
+        it('should flag members missing only the last name', () => {
+            const input = [
+                { user: { id: 100, first_name: 'Kyle', last_name: '', email: 'kyle@example.com' } }
+            ];
+
+            const result = RWGPSMembersCore.getIncompleteNameMembers(input);
+
+            expect(result).toEqual([
+                { UserID: 100, FirstName: 'Kyle', LastName: '', Email: 'kyle@example.com' }
+            ]);
+        });
+
+        it('should flag members missing only the first name', () => {
+            const input = [
+                { user: { id: 100, first_name: '', last_name: 'Carpenter', email: 'jim@example.com' } }
+            ];
+
+            const result = RWGPSMembersCore.getIncompleteNameMembers(input);
+
+            expect(result).toEqual([
+                { UserID: 100, FirstName: '', LastName: 'Carpenter', Email: 'jim@example.com' }
+            ]);
+        });
+
+        it('should treat whitespace-only names as incomplete', () => {
+            const input = [
+                { user: { id: 100, first_name: '   ', last_name: 'Carpenter' } }
+            ];
+
+            const result = RWGPSMembersCore.getIncompleteNameMembers(input);
+
+            expect(result).toEqual([
+                { UserID: 100, FirstName: '', LastName: 'Carpenter', Email: '' }
+            ]);
+        });
+
+        it('should not flag members with both names present', () => {
+            const input = [
+                { user: { id: 100, first_name: 'John', last_name: 'Doe' } }
+            ];
+
+            expect(RWGPSMembersCore.getIncompleteNameMembers(input)).toEqual([]);
+        });
+
+        it('should handle a member missing the user object entirely', () => {
+            const input = [{ id: 799 }];
+
+            const result = RWGPSMembersCore.getIncompleteNameMembers(input);
+
+            expect(result).toEqual([
+                { UserID: null, FirstName: '', LastName: '', Email: '' }
+            ]);
+        });
+
+        it('should handle a mix of complete and incomplete members', () => {
+            const input = [
+                { user: { id: 100, first_name: 'John', last_name: 'Doe' } },
+                { user: { id: 200, first_name: 'Kyle', last_name: null } }
+            ];
+
+            const result = RWGPSMembersCore.getIncompleteNameMembers(input);
+
+            expect(result).toEqual([
+                { UserID: 200, FirstName: 'Kyle', LastName: '', Email: '' }
+            ]);
+        });
+
+        it('should throw error if input is not an array', () => {
+            expect(() => {
+                RWGPSMembersCore.getIncompleteNameMembers('not an array');
+            }).toThrow('Members data must be an array');
+        });
+    });
+
+    describe('buildProfileUrl', () => {
+        it('should build a profile URL for a valid user id', () => {
+            expect(RWGPSMembersCore.buildProfileUrl(131258)).toBe('https://ridewithgps.com/users/131258');
+        });
+
+        it('should return an empty string for a null user id', () => {
+            expect(RWGPSMembersCore.buildProfileUrl(null)).toBe('');
+        });
+    });
+
 });

@@ -42,7 +42,7 @@ class RWGPSMembersAdapter {
      * Main entry point - fetches from v1 API, transforms, and saves to sheet
      * Creates sheet if it doesn't exist
      * 
-     * @returns {{success: boolean, totalMembers: number, validMembers: number, filteredOut: number}} Result object with success status and counts
+     * @returns {{success: boolean, totalMembers: number, validMembers: number, filteredOut: number, incompleteNames: number}} Result object with success status and counts
      * @throws {Error} If API fetch or data processing fails
      */
     updateMembers() {
@@ -59,6 +59,12 @@ class RWGPSMembersAdapter {
             
             // Validate API response (Core logic)
             RWGPSMembersCore.validateApiResponse(rawData);
+
+            // Detect members with incomplete names before they're silently dropped downstream
+            const incompleteNameMembers = RWGPSMembersCore.getIncompleteNameMembers(rawData);
+            if (incompleteNameMembers.length > 0) {
+                this._logIncompleteNames(incompleteNameMembers);
+            }
             
             // Transform data (Core logic)
             const members = RWGPSMembersCore.transformMembersData(rawData);
@@ -73,12 +79,39 @@ class RWGPSMembersAdapter {
                 success: true,
                 totalMembers: rawData.length,
                 validMembers: validMembers.length,
-                filteredOut: rawData.length - validMembers.length
+                filteredOut: rawData.length - validMembers.length,
+                incompleteNames: incompleteNameMembers.length
             };
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
             console.error('RWGPSMembersAdapter.updateMembers error:', err);
             throw new Error(`Failed to update RWGPS members: ${err.message}`);
+        }
+    }
+
+    /**
+     * Log members whose RWGPS profile is missing a first or last name.
+     * @private
+     * @param {Array<{UserID: number|null, FirstName: string, LastName: string, Email: string}>} incompleteNameMembers
+     */
+    _logIncompleteNames(incompleteNameMembers) {
+        try {
+            const members = incompleteNameMembers.map((member) => ({
+                userId: member.UserID,
+                firstName: member.FirstName,
+                lastName: member.LastName,
+                email: member.Email,
+                profileUrl: RWGPSMembersCore.buildProfileUrl(member.UserID)
+            }));
+            console.warn('RWGPSMembersAdapter: Members with incomplete RWGPS names:', members);
+            UserLogger.log(
+                'RWGPS_MEMBERS_INCOMPLETE_NAME',
+                `${incompleteNameMembers.length} member(s) missing a complete name`,
+                { members }
+            );
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error(String(error));
+            console.error('RWGPSMembersAdapter: Failed to log incomplete-name members:', err.message);
         }
     }
 

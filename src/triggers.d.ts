@@ -80,6 +80,12 @@ declare function showAppVersion_(): void;
 declare function clearCache_(): void;
 
 /**
+ * Manually re-run the RWGPS members sync from the menu, with UI feedback
+ * @private
+ */
+declare function syncRWGPSMembersNow_(): void;
+
+/**
  * Initialize global configuration
  * @private
  */

@@ -1,14 +1,13 @@
 /**
  * RWGPSMembersCore - Pure JavaScript business logic for RWGPS club member data processing
  */
-
 declare class RWGPSMembersCore {
     /**
      * Transform RWGPS API member data to spreadsheet format
      * Extracts first_name, last_name, and user ID from user object
-     * 
+     *
      * @param membersData - Raw JSON array from RWGPS API
-     * @returns Array of objects with Name and UserID fields: [{Name: "First Last", UserID: 456}, ...]
+     * @returns Array of objects with Name and UserID fields
      */
     static transformMembersData(membersData: any[]): Array<{Name: string, UserID: number}>;
 
@@ -37,6 +36,41 @@ declare class RWGPSMembersCore {
      * @returns Filtered array excluding empty names
      */
     static filterEmptyNames(members: Array<{Name: string, UserID: number}>): Array<{Name: string, UserID: number}>;
+
+    /**
+     * Find members whose RWGPS profile is missing a first or last name
+     * @param membersData - Raw JSON array from RWGPS API
+     * @returns Members needing a profile fix
+     */
+    static getIncompleteNameMembers(membersData: any[]): Array<{
+        UserID: number | null;
+        FirstName: string;
+        LastName: string;
+        Email: string;
+    }>;
+
+    /**
+     * Build the RWGPS profile URL for a user
+     * @param userId - RWGPS user ID
+     * @returns Profile URL, or empty string if userId is missing
+     */
+    static buildProfileUrl(userId: number | null): string;
+
+    /**
+     * Find members whose RWGPS profile is missing a first or last name
+     *
+     * @param membersData - Raw JSON array from RWGPS API
+     * @returns Members needing a profile fix
+     */
+    static getIncompleteNameMembers(membersData: any[]): Array<{UserID: number | null, FirstName: string, LastName: string, Email: string}>;
+
+    /**
+     * Build the RWGPS profile URL for a user
+     *
+     * @param userId - RWGPS user ID
+     * @returns Profile URL, or empty string if userId is missing
+     */
+    static buildProfileUrl(userId: number | null): string;
 
     /**
      * Look up a member's user ID by name

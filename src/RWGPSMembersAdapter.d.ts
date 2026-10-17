@@ -26,7 +26,15 @@ declare class RWGPSMembersAdapter {
         totalMembers: number;
         validMembers: number;
         filteredOut: number;
+        incompleteNames: number;
     };
+
+    /**
+    * Log members whose RWGPS profile is missing a first or last name
+     * @private
+     * @param incompleteNameMembers - Members needing a profile fix
+     */
+    private _logIncompleteNames(incompleteNameMembers: Array<{UserID: number | null, FirstName: string, LastName: string, Email: string}>): void;
 
     /**
      * Fetch data from RWGPS API

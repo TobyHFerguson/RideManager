@@ -118,6 +118,46 @@ class RWGPSMembersCore {
     }
 
     /**
+     * Find members whose RWGPS profile is missing a first or last name
+     * Operates on raw API data (before transformMembersData) so the member's
+     * email is still available for the operator notification.
+     *
+     * @param {any[]} membersData - Raw JSON array from RWGPS API
+     * @returns {Array<{UserID: number|null, FirstName: string, LastName: string, Email: string}>} Members needing a profile fix
+     */
+    static getIncompleteNameMembers(membersData) {
+        if (!Array.isArray(membersData)) {
+            throw new Error('Members data must be an array');
+        }
+
+        return membersData
+            .filter((/** @type {any} */ member) => {
+                const user = member && member.user;
+                const firstName = (user && user.first_name || '').trim();
+                const lastName = (user && user.last_name || '').trim();
+                return !firstName || !lastName;
+            })
+            .map((/** @type {any} */ member) => {
+                const user = member.user || {};
+                return {
+                    UserID: user.id !== undefined && user.id !== null ? Number(user.id) : null,
+                    FirstName: (user.first_name || '').trim(),
+                    LastName: (user.last_name || '').trim(),
+                    Email: user.email || ''
+                };
+            });
+    }
+
+    /**
+     * Build the RWGPS profile URL for a user, used so operators can jump straight to the account
+     * @param {number|null} userId - RWGPS user ID
+     * @returns {string} Profile URL, or empty string if userId is missing
+     */
+    static buildProfileUrl(userId) {
+        return userId ? `https://ridewithgps.com/users/${userId}` : '';
+    }
+
+    /**
      * Look up a member's user ID by name
      * Supports exact and partial name matching (case-insensitive)
      * 
