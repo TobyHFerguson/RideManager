@@ -250,6 +250,13 @@ class RideCoordinator {
             } catch (error) {
                 const err = error instanceof Error ? error : new Error(String(error));
                 console.error('RideCoordinator.updateRides error:', err);
+                try {
+                    adapter.save();
+                } catch (saveError) {
+                    const saveErr = saveError instanceof Error ? saveError : new Error(String(saveError));
+                    console.error('RideCoordinator.updateRides: Failed to save partial updates:', saveErr);
+                    err.message = `${err.message} Spreadsheet changes could not be saved: ${saveErr.message}`;
+                }
                 // NOTE: showError exists in UIHelper (see UIHelper.d.ts:74)
                 UIHelper.showError('Update Failed', err);
                 throw err;

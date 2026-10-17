@@ -14,6 +14,38 @@ describe('RideManagerCore', () => {
             expect(scheduleFunction).not.toBeNull();
             expect(scheduleFunction[0]).not.toContain('importRoute(');
         });
+
+        test('ride updates refresh announcements and report Calendar repair failures', () => {
+            const rideManagerSource = require('fs').readFileSync(
+                require('path').join(__dirname, '../../src/RideManager.js'),
+                'utf8'
+            );
+            const updateRowFunction = rideManagerSource.match(
+                /function updateRow_\(row\) \{[\s\S]*?\n    \}/
+            );
+
+            expect(updateRowFunction).not.toBeNull();
+            expect(updateRowFunction[0]).toContain('manager.updateAnnouncement(row)');
+            expect(updateRowFunction[0]).toContain('if (!syncResult.success)');
+            expect(updateRowFunction[0]).toContain('Google Calendar event could not be created or updated');
+        });
+
+        test('update coordinator saves partial row changes before showing an operation error', () => {
+            const coordinatorSource = require('fs').readFileSync(
+                require('path').join(__dirname, '../../src/RideCoordinator.js'),
+                'utf8'
+            );
+            const updateRidesFunction = coordinatorSource.match(
+                /static updateRides\(rows, adapter, force = false\) \{[\s\S]*?\n    \}/
+            );
+
+            expect(updateRidesFunction).not.toBeNull();
+            expect(updateRidesFunction[0]).toContain('adapter.save()');
+            expect(updateRidesFunction[0]).toContain("UIHelper.showError('Update Failed', err)");
+            expect(updateRidesFunction[0].indexOf('adapter.save()')).toBeLessThan(
+                updateRidesFunction[0].indexOf("UIHelper.showError('Update Failed', err)")
+            );
+        });
     });
 
     describe('extractEventID', () => {

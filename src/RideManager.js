@@ -574,23 +574,29 @@ const RideManager = (function () {
      */
     function updateRow_(row) {
         // Use common sync logic (no forceCancel/forceReinstate - preserves row's cancelled state)
-        const { success } = _syncRowWithRwgps(row, {});
+        const syncResult = _syncRowWithRwgps(row, {});
+        const failures = [];
 
         // Update announcement (will create one if it doesn't exist)
         try {
-            if (success) {
-                const manager = new AnnouncementManager();
-                const result = manager.updateAnnouncement(row);
+            const manager = new AnnouncementManager();
+            const result = manager.updateAnnouncement(row);
 
-                if (!result.success && result.error) {
-                    console.error(`RideManager.updateRow_: Error updating announcement for row ${row.rowNum}: ${result.error}`);
-                    // Don't throw - announcement update failure shouldn't block ride update
-                }
+            if (!result.success && result.error) {
+                failures.push(`announcement update failed: ${result.error}`);
             }
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
             console.error(`RideManager.updateRow_: Error updating announcement for row ${row.rowNum}: ${err.message}`);
-            // Errors don't block ride update
+            failures.push(`announcement update failed: ${err.message}`);
+        }
+
+        if (!syncResult.success) {
+            failures.push('Google Calendar event could not be created or updated');
+        }
+
+        if (failures.length > 0) {
+            throw new Error(`Ride data was updated, but ${failures.join('; ')} for row ${row.rowNum}.`);
         }
     }
 
