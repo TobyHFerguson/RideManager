@@ -682,6 +682,161 @@ function dailyRWGPSMembersDownload() {
     console.error('dailyRWGPSMembersDownload error:', error);
     // Don't throw - let the trigger continue on next scheduled run
   }
+
+  try {
+    const audit = auditUpcomingCalendarEvents_();
+    console.log(`dailyRWGPSMembersDownload: Calendar audit checked ${audit.checked} upcoming ride(s), found ${audit.findingCount} issue(s)`);
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error('dailyRWGPSMembersDownload: Calendar audit failed:', err.message);
+    _sendCalendarAuditNotification_(
+      'ACTION REQUIRED - Error detected: upcoming calendar audit failed',
+      `The daily Google Calendar audit failed before it could finish checking upcoming rides.\n\nError: ${err.message}\n\nPlease review the Apps Script execution log and run the audit again.`
+    );
+  }
+}
+
+function _sendCalendarAuditNotification_(subject, body) {
+  try {
+    const recipient = String(getGlobals().DEVELOPER_EMAIL || '').trim();
+    if (!recipient) {
+      console.error('Calendar audit notification not sent: DEVELOPER_EMAIL is not configured in the Globals sheet.');
+      return;
+    }
+
+    GmailApp.sendEmail(recipient, subject, body, { name: 'Ride Manager' });
+    console.log(`Calendar audit notification sent to ${recipient}: ${subject}`);
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error(`Failed to send calendar audit notification: ${err.message}`);
+  }
+}
+
+function auditUpcomingCalendarEvents() {
+  try {
+    const result = auditUpcomingCalendarEvents_();
+    console.log(`Manual calendar audit checked ${result.checked} upcoming ride(s), found ${result.findingCount} issue(s)`);
+    return result;
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    _sendCalendarAuditNotification_(
+      'ACTION REQUIRED - Error detected: upcoming calendar audit failed',
+      `The manual Google Calendar audit failed before it could finish checking upcoming rides.\n\nError: ${err.message}\n\nPlease review the Apps Script execution log.`
+    );
+    throw err;
+  }
+}
+
+function auditUpcomingCalendarEvents_() {
+  const scheduleAdapter = new ScheduleAdapter();
+  const rows = CalendarAuditCore.getUpcomingScheduledRows(scheduleAdapter.loadAll(), new Date());
+  const groupSpecs = getGroupSpecs();
+  const findings = [];
+  const checks = [];
+
+  rows.forEach((row) => {
+    const groupSpec = row.group ? groupSpecs[row.group.toUpperCase()] : null;
+    const calendarId = groupSpec?.GoogleCalendarId || '';
+    let issues = [];
+    let calendarEvent = null;
+    let calendar = null;
+    let lookupError = '';
+
+    if (!row.googleEventId) {
+      issues = ['missing_event_id'];
+    } else if (!calendarId) {
+      issues = ['missing_calendar_id'];
+    } else {
+      try {
+        calendar = CalendarApp.getCalendarById(calendarId);
+        if (!calendar) {
+          issues = ['calendar_unavailable'];
+        } else {
+          calendarEvent = calendar.getEventById(row.googleEventId);
+          const hasValidDate = row.startDateTime && !Number.isNaN(new Date(row.startDateTime).getTime());
+          const expectedUrl = hasValidDate
+            ? GoogleEventCore.buildRichTextLink(
+                row.googleEventId,
+                calendarId,
+                row.startDateTime
+              ).url
+            : '';
+          issues = CalendarAuditCore.inspectEvent(
+            row,
+            calendarEvent ? {
+              title: calendarEvent.getTitle(),
+              description: calendarEvent.getDescription()
+            } : null,
+            expectedUrl
+          );
+        }
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        lookupError = err.message;
+        issues = [`calendar_check_failed: ${err.message}`];
+      }
+    }
+
+    if ((!row.startDateTime || Number.isNaN(new Date(row.startDateTime).getTime())) &&
+        !issues.includes('missing_datetime')) {
+      issues.push('missing_datetime');
+    }
+
+    const check = {
+      rowNum: row.rowNum,
+      group: row.group,
+      rideDate: row.startDateTime,
+      rideName: row.rideName,
+      rideURL: row.rideURL,
+      spreadsheetEventId: row.googleEventId,
+      spreadsheetEventLink: row.googleEventIdCell?.url || '',
+      queriedCalendarId: calendarId,
+      queriedCalendarName: calendar ? calendar.getName() : '',
+      queriedCalendarHiddenForRunner: calendar ? calendar.isHidden() : null,
+      queriedCalendarSelectedForRunner: calendar ? calendar.isSelected() : null,
+      eventFound: Boolean(calendarEvent),
+      actualEventId: calendarEvent ? calendarEvent.getId() : '',
+      actualOriginalCalendarId: calendarEvent ? calendarEvent.getOriginalCalendarId() : '',
+      actualEventTitle: calendarEvent ? calendarEvent.getTitle() : '',
+      actualEventStart: calendarEvent ? calendarEvent.getStartTime() : null,
+      actualEventVisibility: calendarEvent ? String(calendarEvent.getVisibility()) : '',
+      actualEventLastUpdated: calendarEvent ? calendarEvent.getLastUpdated() : null,
+      lookupError,
+      issues
+    };
+    checks.push(check);
+    console.log('Calendar audit row result:', check);
+
+    if (issues.length > 0) {
+      findings.push({
+        rowNum: row.rowNum,
+        group: row.group,
+        rideDate: row.startDateTime,
+        rideName: row.rideName,
+        rideURL: row.rideURL,
+        googleEventId: row.googleEventId,
+        calendarId,
+        issues,
+        actualEventId: check.actualEventId,
+        actualEventTitle: check.actualEventTitle,
+        actualEventStart: check.actualEventStart,
+        spreadsheetEventLink: check.spreadsheetEventLink
+      });
+    }
+  });
+
+  if (findings.length > 0) {
+    console.warn('Upcoming Google Calendar audit findings:', findings);
+    UserLogger.log(
+      'GOOGLE_CALENDAR_AUDIT',
+      `${findings.length} upcoming ride(s) have calendar issues`,
+      { findings }
+    );
+    const notification = CalendarAuditCore.formatFindingsEmail(findings);
+    _sendCalendarAuditNotification_(notification.subject, notification.body);
+  }
+
+  return { checked: rows.length, findingCount: findings.length, checks };
 }
 
 /**

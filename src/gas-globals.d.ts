@@ -14,6 +14,7 @@
 import type AnnouncementCore from './AnnouncementCore';
 import type AnnouncementManager from './AnnouncementManager';
 import type CacheManager from './CacheManager';
+import type CalendarAuditCore from './CalendarAuditCore';
 import type EventFactory from './EventFactory';
 import type Exports from './Exports';
 import type { Externals as ExternalsType, RowCoreInstance } from './Externals';
@@ -69,6 +70,7 @@ declare global {
     const GoogleEventCore: typeof GoogleEventCore;
     const HyperlinkUtils: typeof HyperlinkUtils;
     const CacheManager: typeof CacheManager;
+    const CalendarAuditCore: typeof CalendarAuditCore;
     const Groups: typeof Groups;
     const Globals: typeof Globals;
     

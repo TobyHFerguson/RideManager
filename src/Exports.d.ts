@@ -22,6 +22,7 @@ import EventFactory from './EventFactory';
 import AnnouncementManager from './AnnouncementManager';
 import AnnouncementCore from './AnnouncementCore';
 import GoogleCalendarManager from './GoogleCalendarManager';
+import type CalendarAuditCore from './CalendarAuditCore';
 import Groups from './Groups';
 import Globals from './Globals';
 import CacheManager from './CacheManager';
@@ -72,6 +73,8 @@ interface ExportsNamespace {
     readonly AnnouncementCore: typeof AnnouncementCore;
     /** GoogleCalendarManager class */
     readonly GoogleCalendarManager: typeof GoogleCalendarManager;
+    /** Calendar event audit logic */
+    readonly CalendarAuditCore: typeof CalendarAuditCore;
     /** Groups module */
     readonly Groups: typeof Groups;
     /** Globals module */

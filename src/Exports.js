@@ -36,6 +36,9 @@ var Exports = {
     get GoogleEventCore() {
         return GoogleEventCore;
     },
+    get CalendarAuditCore() {
+        return CalendarAuditCore;
+    },
     get RideCoordinator() {
         return RideCoordinator;
     },

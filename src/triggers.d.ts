@@ -79,6 +79,33 @@ declare function showAppVersion_(): void;
  */
 declare function clearCache_(): void;
 
+declare function auditUpcomingCalendarEvents(): {
+    checked: number;
+    findingCount: number;
+    checks: Array<{
+        rowNum: number;
+        group: string;
+        rideDate: Date;
+        rideName: string;
+        rideURL: string;
+        spreadsheetEventId: string;
+        spreadsheetEventLink: string;
+        queriedCalendarId: string;
+        queriedCalendarName: string;
+        queriedCalendarHiddenForRunner: boolean | null;
+        queriedCalendarSelectedForRunner: boolean | null;
+        eventFound: boolean;
+        actualEventId: string;
+        actualOriginalCalendarId: string;
+        actualEventTitle: string;
+        actualEventStart: Date | null;
+        actualEventVisibility: string;
+        actualEventLastUpdated: Date | null;
+        lookupError: string;
+        issues: string[];
+    }>;
+};
+
 /**
  * Manually re-run the RWGPS members sync from the menu, with UI feedback
  * @private
