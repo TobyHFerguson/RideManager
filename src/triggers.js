@@ -729,20 +729,25 @@ function auditUpcomingCalendarEvents() {
 
 function auditUpcomingCalendarEvents_() {
   const scheduleAdapter = new ScheduleAdapter();
-  const rows = CalendarAuditCore.getUpcomingScheduledRows(scheduleAdapter.loadAll(), new Date());
+  const now = new Date();
+  const rows = CalendarAuditCore.getUpcomingScheduledRows(scheduleAdapter.loadAll(), now);
   const groupSpecs = getGroupSpecs();
   const findings = [];
   const checks = [];
 
   rows.forEach((row) => {
-    const groupSpec = row.group ? groupSpecs[row.group.toUpperCase()] : null;
+    const groupName = typeof row.group === 'string' ? row.group.trim() : '';
+    const googleEventId = typeof row.googleEventId === 'string' ? row.googleEventId.trim() : '';
+    const rideURL = typeof row.rideURL === 'string' ? row.rideURL.trim() : '';
+    const groupSpec = groupName ? groupSpecs[groupName.toUpperCase()] : null;
     const calendarId = groupSpec?.GoogleCalendarId || '';
     let issues = [];
     let calendarEvent = null;
     let calendar = null;
     let lookupError = '';
+    let expectedUrl = '';
 
-    if (!row.googleEventId) {
+    if (!googleEventId) {
       issues = ['missing_event_id'];
     } else if (!calendarId) {
       issues = ['missing_calendar_id'];
@@ -752,17 +757,17 @@ function auditUpcomingCalendarEvents_() {
         if (!calendar) {
           issues = ['calendar_unavailable'];
         } else {
-          calendarEvent = calendar.getEventById(row.googleEventId);
+          calendarEvent = calendar.getEventById(googleEventId);
           const hasValidDate = row.startDateTime && !Number.isNaN(new Date(row.startDateTime).getTime());
-          const expectedUrl = hasValidDate
+          expectedUrl = hasValidDate
             ? GoogleEventCore.buildRichTextLink(
-                row.googleEventId,
+                googleEventId,
                 calendarId,
                 row.startDateTime
               ).url
             : '';
           issues = CalendarAuditCore.inspectEvent(
-            row,
+            { ...row, googleEventId, rideURL },
             calendarEvent ? {
               title: calendarEvent.getTitle(),
               description: calendarEvent.getDescription()
@@ -777,9 +782,16 @@ function auditUpcomingCalendarEvents_() {
       }
     }
 
-    if ((!row.startDateTime || Number.isNaN(new Date(row.startDateTime).getTime())) &&
-        !issues.includes('missing_datetime')) {
-      issues.push('missing_datetime');
+    // A blank spreadsheet date falls back to the Calendar event's own start.
+    const effectiveStart = (row.startDateTime && !Number.isNaN(new Date(row.startDateTime).getTime()))
+      ? row.startDateTime
+      : (calendarEvent ? calendarEvent.getStartTime() : null);
+    if (CalendarAuditCore.isBeforeToday(effectiveStart, now)) {
+      return;
+    }
+
+    if (!row.startDateTime || Number.isNaN(new Date(row.startDateTime).getTime())) {
+      issues = ['No audit performed: spreadsheet date is missing; insert a date.'];
     }
 
     const check = {
@@ -814,8 +826,9 @@ function auditUpcomingCalendarEvents_() {
         rideDate: row.startDateTime,
         rideName: row.rideName,
         rideURL: row.rideURL,
-        googleEventId: row.googleEventId,
-        calendarId,
+        calendarUrl: issues.includes('malformed_event_url')
+          ? (expectedUrl || '(missing)')
+          : (check.spreadsheetEventLink || expectedUrl || '(missing)'),
         issues,
         actualEventId: check.actualEventId,
         actualEventTitle: check.actualEventTitle,

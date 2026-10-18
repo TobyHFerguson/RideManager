@@ -20,7 +20,7 @@ class CalendarAuditCore {
         today.setHours(0, 0, 0, 0);
 
         return rows.filter((row) => {
-            if (!row || (!row.rideURL && !row.googleEventId)) {
+            if (!row || (!String(row.rideURL || '').trim() && !String(row.googleEventId || '').trim())) {
                 return false;
             }
 
@@ -34,7 +34,26 @@ class CalendarAuditCore {
     }
 
     /**
-     * @param {Array<{rowNum: number, group: string, rideDate: Date, rideName: string, rideURL: string, googleEventId: string, calendarId: string, issues: string[]}>} findings
+     * True when the date is valid and falls before the start of today.
+     * @param {Date|string|null|undefined} date
+     * @param {Date} now
+     * @returns {boolean}
+     */
+    static isBeforeToday(date, now) {
+        if (!date) {
+            return false;
+        }
+        const value = new Date(date);
+        if (Number.isNaN(value.getTime())) {
+            return false;
+        }
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        return value < today;
+    }
+
+    /**
+     * @param {Array<{rowNum: number, group: string, rideDate: Date|string|null, rideName: string, rideURL: string, calendarUrl?: string, issues: string[]}>} findings
      * @returns {{subject: string, body: string}}
      */
     static formatFindingsEmail(findings) {
@@ -54,8 +73,7 @@ class CalendarAuditCore {
             `Ride date: ${rideDateText}`,
             `Ride: ${finding.rideName || '(unnamed)'}`,
             `Issues: ${finding.issues.join(', ')}`,
-            `Calendar ID: ${finding.calendarId || '(missing)'}`,
-            `Calendar event ID: ${finding.googleEventId || '(missing)'}`,
+            `Calendar link: ${finding.calendarUrl || '(missing)'}`,
             `Ride URL: ${finding.rideURL || '(missing)'}`
             ].join('\n');
         });
@@ -79,7 +97,7 @@ class CalendarAuditCore {
         const issues = [];
 
         if (!row.startDateTime || Number.isNaN(new Date(row.startDateTime).getTime())) {
-            issues.push('missing_datetime');
+            return ['No audit performed: spreadsheet date is missing; insert a date.'];
         }
 
         if (!row.googleEventId) {
@@ -91,22 +109,25 @@ class CalendarAuditCore {
             return issues;
         }
 
-        const title = typeof event.title === 'string' ? event.title.trim() : '';
+        const title = typeof event.title === 'string' ? event.title.replace(/\s+/g, ' ').trim() : '';
         const description = typeof event.description === 'string' ? event.description.trim() : '';
+        const rideName = typeof row.rideName === 'string' ? row.rideName.replace(/\s+/g, ' ').trim() : '';
+        const rideURL = typeof row.rideURL === 'string' ? row.rideURL.replace(/\s/g, '') : '';
 
         if (!title) {
             issues.push('blank_title');
-        } else if (row.rideName && title !== row.rideName) {
+        } else if (rideName && title !== rideName) {
             issues.push('title_mismatch');
         }
 
         if (!description) {
             issues.push('blank_description');
-        } else if (row.rideURL && !description.includes(row.rideURL)) {
+        } else if (rideURL && !description.replace(/\s/g, '').includes(rideURL)) {
             issues.push('description_missing_ride_url');
         }
 
-        if (expectedCalendarUrl && row.googleEventIdCell?.url !== expectedCalendarUrl) {
+        if (expectedCalendarUrl &&
+            (row.googleEventIdCell?.url || '').replace(/\s/g, '') !== expectedCalendarUrl.replace(/\s/g, '')) {
             issues.push('malformed_event_url');
         }
 

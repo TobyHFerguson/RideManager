@@ -7,10 +7,11 @@ declare class CalendarAuditCore {
         rideDate: Date | string | null;
         rideName: string;
         rideURL: string;
-        googleEventId: string;
-        calendarId: string;
+        calendarUrl?: string;
         issues: string[];
     }>): {subject: string; body: string};
+
+    static isBeforeToday(date: Date | string | null | undefined, now: Date): boolean;
 
     static inspectEvent(
         row: {
