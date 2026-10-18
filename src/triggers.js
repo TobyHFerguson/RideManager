@@ -767,7 +767,13 @@ function auditUpcomingCalendarEvents_() {
               ).url
             : '';
           issues = CalendarAuditCore.inspectEvent(
-            { ...row, googleEventId, rideURL },
+            {
+              startDateTime: row.startDateTime,
+              googleEventId,
+              googleEventIdCell: row.googleEventIdCell,
+              rideName: row.rideName,
+              rideURL
+            },
             calendarEvent ? {
               title: calendarEvent.getTitle(),
               description: calendarEvent.getDescription()

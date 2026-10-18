@@ -4,9 +4,9 @@ var CalendarAuditCore = (function() {
 
 class CalendarAuditCore {
     /**
-    * @param {Array<{startDateTime?: Date|null, rideURL?: string, googleEventId?: string}>} rows
+    * @param {Array<{startDateTime?: Date|null, rideName?: string, rideURL?: string, googleEventId?: string}>} rows
      * @param {Date} now
-    * @returns {Array<{startDateTime?: Date|null, rideURL?: string, googleEventId?: string}>}
+    * @returns {Array<{startDateTime?: Date|null, rideName?: string, rideURL?: string, googleEventId?: string}>}
      */
     static getUpcomingScheduledRows(rows, now) {
         if (!Array.isArray(rows)) {
@@ -20,7 +20,7 @@ class CalendarAuditCore {
         today.setHours(0, 0, 0, 0);
 
         return rows.filter((row) => {
-            if (!row || (!String(row.rideURL || '').trim() && !String(row.googleEventId || '').trim())) {
+            if (!row || !String(row.rideName || '').trim()) {
                 return false;
             }
 

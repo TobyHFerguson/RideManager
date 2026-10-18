@@ -1,5 +1,5 @@
 declare class CalendarAuditCore {
-    static getUpcomingScheduledRows<T extends {startDateTime?: Date | null; rideURL?: string; googleEventId?: string}>(rows: T[], now: Date): T[];
+    static getUpcomingScheduledRows<T extends {startDateTime?: Date | null; rideName?: string}>(rows: T[], now: Date): T[];
 
     static formatFindingsEmail(findings: Array<{
         rowNum: number;

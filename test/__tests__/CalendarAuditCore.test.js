@@ -16,10 +16,10 @@ describe('CalendarAuditCore', () => {
         it('includes scheduled rides from today onward and excludes past or unscheduled rows', () => {
             const today = new Date('2026-10-17T12:00:00');
             const rows = [
-                { startDateTime: new Date('2026-10-17T08:00:00'), rideURL: 'event-today' },
-                { startDateTime: new Date('2026-10-18T08:00:00'), rideURL: 'event-future' },
-                { startDateTime: new Date('2026-10-16T08:00:00'), rideURL: 'event-past' },
-                { startDateTime: new Date('2026-10-18T08:00:00'), rideURL: '' }
+                { startDateTime: new Date('2026-10-17T08:00:00'), rideName: 'event-today' },
+                { startDateTime: new Date('2026-10-18T08:00:00'), rideName: 'event-future' },
+                { startDateTime: new Date('2026-10-16T08:00:00'), rideName: 'event-past' },
+                { startDateTime: new Date('2026-10-18T08:00:00'), rideName: '' }
             ];
 
             expect(CalendarAuditCore.getUpcomingScheduledRows(rows, today)).toEqual(rows.slice(0, 2));
@@ -27,20 +27,21 @@ describe('CalendarAuditCore', () => {
 
         it('includes scheduled rows with a missing or invalid spreadsheet date', () => {
             const rows = [
-                { startDateTime: null, rideURL: 'event-no-date', googleEventId: 'id-no-date' },
-                { startDateTime: new Date('invalid'), rideURL: '', googleEventId: 'id-invalid-date' }
+                { startDateTime: null, rideName: 'event-no-date', googleEventId: 'id-no-date' },
+                { startDateTime: new Date('invalid'), rideName: 'event-invalid-date', googleEventId: '' }
             ];
 
             expect(CalendarAuditCore.getUpcomingScheduledRows(rows, new Date('2026-10-17'))).toEqual(rows);
         });
 
-        it('ignores rows whose scheduling identifiers contain only whitespace', () => {
+        it('includes only rows with a non-empty Ride name', () => {
             const rows = [
-                { startDateTime: new Date('2026-10-18'), rideURL: ' \t\u00a0 ', googleEventId: '' },
-                { startDateTime: new Date('2026-10-18'), rideURL: '', googleEventId: ' \t ' }
+                { startDateTime: new Date('2026-10-18'), rideName: ' \t\u00a0 ', googleEventId: 'event-id' },
+                { startDateTime: new Date('2026-10-18'), rideName: '', googleEventId: 'event-id' },
+                { startDateTime: new Date('2026-10-18'), rideName: 'Ride name', googleEventId: '' }
             ];
 
-            expect(CalendarAuditCore.getUpcomingScheduledRows(rows, new Date('2026-10-17'))).toEqual([]);
+            expect(CalendarAuditCore.getUpcomingScheduledRows(rows, new Date('2026-10-17'))).toEqual([rows[2]]);
         });
 
         it('returns an empty list when there are no rows', () => {
